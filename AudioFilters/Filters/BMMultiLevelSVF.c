@@ -1,0 +1,281 @@
+//
+//  BMMultiLevelSVF.c
+//  BMAudioFilters
+//
+//  Created by Nguyen Minh Tien on 1/9/19.
+//  Copyright © 2019 Hans. All rights reserved.
+//
+
+#include "BMMultiLevelSVF.h"
+#include <stdlib.h>
+#include <assert.h>
+#include "Constants.h"
+
+#define SVF_Param_Count 3
+
+static inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF* This, int level,float* input,float* output,size_t numSamples);
+static inline void BMMultiLevelSVF_updateSVFParam(BMMultiLevelSVF* This);
+
+void BMMultiLevelSVF_init(BMMultiLevelSVF* This,int numLevels,float sampleRate,
+                          bool isStereo){
+    This->sampleRate = sampleRate;
+    This->numChannels = isStereo? 2 : 1;
+    This->numLevels = numLevels;
+    //If stereo -> we need totalnumlevel = numlevel *2
+    int totalNumLevels = numLevels * This->numChannels;
+    This->a = (float**)malloc(sizeof(float*) * totalNumLevels);
+    This->m = (float**)malloc(sizeof(float*) * totalNumLevels);
+    This->tempA = (float**)malloc(sizeof(float*) * totalNumLevels);
+    This->tempM = (float**)malloc(sizeof(float*) * totalNumLevels);
+    This->ic1eq = malloc(sizeof(float)* totalNumLevels);
+    This->ic2eq = malloc(sizeof(float)* totalNumLevels);
+    for(int i=0;i<totalNumLevels;i++){
+        This->a[i] = malloc(sizeof(float) * SVF_Param_Count);
+        This->m[i] = malloc(sizeof(float) * SVF_Param_Count);
+        This->tempA[i] = malloc(sizeof(float) * SVF_Param_Count);
+        This->tempM[i] = malloc(sizeof(float) * SVF_Param_Count);
+        This->ic1eq[i] = 0;
+        This->ic2eq[i] = 0;
+    }
+
+}
+
+
+#pragma mark - process
+void BMMultiLevelSVF_processBufferMono(BMMultiLevelSVF* This,float* input, float* output, size_t numSamples){
+    assert(This->numChannels == 1);
+    
+    if(This->shouldUpdateParam)
+        BMMultiLevelSVF_updateSVFParam(This);
+    
+    for(int level = 0;level<This->numLevels;level++){
+        if(level==This->numLevels-1){
+            //Process into output
+            BMMultiLevelSVF_processBufferAtLevel(This,level, input,output, numSamples);
+        }else
+            BMMultiLevelSVF_processBufferAtLevel(This,level, input,input, numSamples);
+    }
+}
+
+void BMMultiLevelSVF_processBufferStereo(BMMultiLevelSVF* This,float* inputL,float* inputR, float* outputL, float* outputR, size_t numSamples){
+    assert(This->numChannels == 2);
+    
+    if(This->shouldUpdateParam)
+        BMMultiLevelSVF_updateSVFParam(This);
+    
+    for(int level = 0;level<This->numLevels;level++){
+        if(level==This->numLevels-1){
+            //Process into output
+            //Left channel
+            BMMultiLevelSVF_processBufferAtLevel(This,level, inputL,outputL, numSamples);
+            //Right channel
+            BMMultiLevelSVF_processBufferAtLevel(This,level + This->numLevels, inputR,outputR, numSamples);
+        }else{
+            //Left channel
+            BMMultiLevelSVF_processBufferAtLevel(This,level, inputL,inputL, numSamples);
+            //Right channel
+            BMMultiLevelSVF_processBufferAtLevel(This,level + This->numLevels, inputR,inputR, numSamples);
+        }
+    }
+}
+
+inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF* This, int level,float* input,float* output,size_t numSamples){
+    for(int i=0;i<numSamples;i++){
+        float v3 = input[i] - This->ic2eq[level];
+        float v1 = This->a[level][0]*This->ic1eq[level] + This->a[level][1]*v3;
+        float v2 = This->ic2eq[level] + This->a[level][1]*This->ic1eq[level] + This->a[level][2] * v3;
+        This->ic1eq[level] = 2* v1 - This->ic1eq[level];
+        This->ic2eq[level] = 2*v2 - This->ic2eq[level];
+        output[i] = This->m[level][0] * input[i] + This->m[level][1] * v1 + This->m[level][2]*v2;
+    }
+}
+
+inline void BMMultiLevelSVF_updateSVFParam(BMMultiLevelSVF* This){
+    if(This->shouldUpdateParam){
+        This->shouldUpdateParam = false;
+        //Update all param
+        int totalNumLevels = This->numLevels * This->numChannels;
+        for(int i=0;i<totalNumLevels;i++){
+            for(int j=0;j<SVF_Param_Count;j++){
+                This->a[i][j] = This->tempA[i][j];
+                This->m[i][j] = This->tempM[i][j];
+            }
+            
+        }
+    }
+}
+
+#pragma mark - Filters
+void BMMultiLevelSVF_setLowpass(BMMultiLevelSVF* This, double fc, size_t level){
+    BMMultiLevelSVF_setLowpassQ(This, fc, 1./sqrtf(2.), level);
+}
+
+void BMMultiLevelSVF_setLowpassQ(BMMultiLevelSVF* This, double fc, double q, size_t level){
+    assert(level < This->numLevels);
+    
+    float g = tanf(M_PI*fc/This->sampleRate);
+    float k = 1/q;
+    This->tempA[level][0] = 1/(1 + g*(g+k));
+    This->tempA[level][1] = g*This->tempA[level][0];
+    This->tempA[level][2] = g*This->tempA[level][1];
+    This->tempM[level][0] = 0;
+    This->tempM[level][1] = 0;
+    This->tempM[level][2] = 1;
+    
+    This->shouldUpdateParam = true;
+}
+
+void BMMultiLevelSVF_setBandpass(BMMultiLevelSVF* This, double fc, double q, size_t level){
+    assert(level < This->numLevels);
+    
+    float g = tanf(M_PI*fc/This->sampleRate);
+    float k = 1/q;
+    This->tempA[level][0] = 1/(1 + g*(g+k));
+    This->tempA[level][1] = g*This->tempA[level][0];
+    This->tempA[level][2] = g*This->tempA[level][1];
+    This->tempM[level][0] = 0;
+    This->tempM[level][1] = 1;
+    This->tempM[level][2] = 0;
+    
+    This->shouldUpdateParam = true;
+}
+
+void BMMultiLevelSVF_setHighpass(BMMultiLevelSVF* This, double fc, size_t level){
+    BMMultiLevelSVF_setHighpassQ(This, fc, 1./sqrtf(2.), level);
+}
+
+void BMMultiLevelSVF_setHighpassQ(BMMultiLevelSVF* This, double fc, double q, size_t level){
+    assert(level < This->numLevels);
+    
+    float g = tanf(M_PI*fc/This->sampleRate);
+    float k = 1/q;
+    This->tempA[level][0] = 1/(1 + g*(g+k));
+    This->tempA[level][1] = g*This->tempA[level][0];
+    This->tempA[level][2] = g*This->tempA[level][1];
+    This->tempM[level][0] = 1;
+    This->tempM[level][1] = -k;
+    This->tempM[level][2] = -1;
+    
+    This->shouldUpdateParam = true;
+}
+
+void BMMultiLevelSVF_setNotchpass(BMMultiLevelSVF* This, double fc, double q, size_t level){
+    assert(level < This->numLevels);
+    
+    float g = tanf(M_PI*fc/This->sampleRate);
+    float k = 1/q;
+    This->tempA[level][0] = 1/(1 + g*(g+k));
+    This->tempA[level][1] = g*This->tempA[level][0];
+    This->tempA[level][2] = g*This->tempA[level][1];
+    This->tempM[level][0] = 1;
+    This->tempM[level][1] = -k;
+    This->tempM[level][2] = 0;
+    
+    This->shouldUpdateParam = true;
+}
+
+void BMMultiLevelSVF_setPeak(BMMultiLevelSVF* This, double fc, double q, size_t level){
+    assert(level < This->numLevels);
+    
+    float g = tanf(M_PI*fc/This->sampleRate);
+    float k = 1/q;
+    This->tempA[level][0] = 1/(1 + g*(g+k));
+    This->tempA[level][1] = g*This->tempA[level][0];
+    This->tempA[level][2] = g*This->tempA[level][1];
+    This->tempM[level][0] = 1;
+    This->tempM[level][1] = -k;
+    This->tempM[level][2] = -2;
+    
+    This->shouldUpdateParam = true;
+}
+
+void BMMultiLevelSVF_setAllpass(BMMultiLevelSVF* This, double fc, double q, size_t level){
+    assert(level < This->numLevels);
+    
+    float g = tanf(M_PI*fc/This->sampleRate);
+    float k = 1/q;
+    This->tempA[level][0] = 1/(1 + g*(g+k));
+    This->tempA[level][1] = g*This->tempA[level][0];
+    This->tempA[level][2] = g*This->tempA[level][1];
+    This->tempM[level][0] = 1;
+    This->tempM[level][1] = -2*k;
+    This->tempM[level][2] = 0;
+    
+    This->shouldUpdateParam = true;
+}
+
+void BMMultiLevelSVF_setBell(BMMultiLevelSVF* This, double fc, double gain, double q, size_t level){
+    assert(level < This->numLevels);
+    
+    float A = powf(10, gain/40.);
+    float g = tanf(M_PI*fc/This->sampleRate);
+    float k = 1/(q*A);
+    This->tempA[level][0] = 1/(1 + g*(g+k));
+    This->tempA[level][1] = g*This->tempA[level][0];
+    This->tempA[level][2] = g*This->tempA[level][1];
+    This->tempM[level][0] = 1;
+    This->tempM[level][1] = k*(A*A -1);
+    This->tempM[level][2] = 0;
+    
+    This->shouldUpdateParam = true;
+}
+
+void BMMultiLevelSVF_setLowShelf(BMMultiLevelSVF* This, double fc, double gain, size_t level){
+    BMMultiLevelSVF_setLowShelfQ(This, fc, gain, 1./sqrtf(2.), level);
+}
+
+void BMMultiLevelSVF_setLowShelfQ(BMMultiLevelSVF* This, double fc, double gain, double q, size_t level){
+    assert(level < This->numLevels);
+    
+    float A = powf(10, gain/40.);
+    float g = tanf(M_PI*fc/This->sampleRate)/sqrtf(A);
+    float k = 1/q;
+    This->tempA[level][0] = 1/(1 + g*(g+k));
+    This->tempA[level][1] = g*This->tempA[level][0];
+    This->tempA[level][2] = g*This->tempA[level][1];
+    This->tempM[level][0] = 1;
+    This->tempM[level][1] = k*(A -1);
+    This->tempM[level][2] = A*A - 1;
+    
+    This->shouldUpdateParam = true;
+}
+
+void BMMultiLevelSVF_setHighShelf(BMMultiLevelSVF* This, double fc, double gain, size_t level){
+    BMMultiLevelSVF_setHighShelfQ(This, fc, gain, 1./sqrtf(2.), level);
+}
+
+void BMMultiLevelSVF_setHighShelfQ(BMMultiLevelSVF* This, double fc, double gain, double q, size_t level){
+    assert(level < This->numLevels);
+    
+    float A = powf(10, gain/40.);
+    float g = tanf(M_PI*fc/This->sampleRate)*sqrtf(A);
+    float k = 1/q;
+    This->tempA[level][0] = 1/(1 + g*(g+k));
+    This->tempA[level][1] = g*This->tempA[level][0];
+    This->tempA[level][2] = g*This->tempA[level][1];
+    This->tempM[level][0] = A*A;
+    This->tempM[level][1] = k*(1 - A)*A;
+    This->tempM[level][2] = 1 - A*A;
+    
+    This->shouldUpdateParam = true;
+}
+
+void BMMultiLevelSVF_impulseResponse(BMMultiLevelSVF* this,size_t frameCount){
+    float* irBuffer = malloc(sizeof(float)*frameCount);
+    float* outBuffer = malloc(sizeof(float)*frameCount);
+    for(int i=0;i<frameCount;i++){
+        if(i==0)
+            irBuffer[i] = 1;
+        else
+            irBuffer[i] = 0;
+    }
+    
+    BMMultiLevelSVF_processBufferMono(this, irBuffer, outBuffer, frameCount);
+    
+    printf("\[");
+    for(size_t i=0; i<(frameCount-1); i++)
+        printf("%f\n", outBuffer[i]);
+    printf("%f],",outBuffer[frameCount-1]);
+    
+}
+
