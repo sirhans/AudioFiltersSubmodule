@@ -19,4 +19,12 @@
 #define MIN(a,b) (((a) < (b)) ? (a) : (b))
 #endif /* MIN */
 
+#ifndef BM_MIN
+#define BM_MIN(a,b) (((a)<(b))?(a):(b))
+#endif
+
+#ifndef BM_MAX
+#define BM_MAX(a,b) (((a)>(b))?(a):(b))
+#endif
+
 #endif /* Constants_h */

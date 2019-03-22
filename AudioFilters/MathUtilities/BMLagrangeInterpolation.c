@@ -14,6 +14,8 @@ float calculateH(float fractionalDelay, float n,float order);
 void BMLI_getStartIdx(BMLagrangeInterpolation* This,float strideIdx, int* startIdx,size_t inputLength);
 
 void BMLagrangeInterpolation_init(BMLagrangeInterpolation* This, int order){
+    assert(order%2==0);
+    
     This->order = order;
     This->totalStepPerSample = order;
     This->deltaStep = 1.0/This->totalStepPerSample;
@@ -56,6 +58,22 @@ void BMLagrangeInterpolation_processUpSample(BMLagrangeInterpolation* This, cons
 ////            printf("%f %d\n",This->table[j][deltaIdx],startIdx);
 //        }
     }
+}
+
+float BMLagrangeInterpolation_processOneSample(BMLagrangeInterpolation* This, const float* input, const float strideInput,size_t inputLength){
+    float output;
+    int startIdx = 0;
+    //Get start index
+    BMLI_getStartIdx(This, strideInput, &startIdx, inputLength);
+    //Calculate the delta
+    float delta = strideInput - startIdx;
+    //Get delta index in the table by the delta
+    int deltaIdx = floorf(delta/This->deltaStep);
+    //Multiple input to lagrange interpolation table
+    vDSP_vmul(input+startIdx, 1, This->table[deltaIdx], 1, This->temp, 1, This->sampleRange);
+    //Sum it
+    vDSP_sve(This->temp, 1, &output, This->sampleRange);
+    return output;
 }
 
 void BMLagrangeInterpolation_processDownSample(BMLagrangeInterpolation* This, const float* input,int inputStride, float* output, int outputStride,size_t inputLength,size_t outputLength){

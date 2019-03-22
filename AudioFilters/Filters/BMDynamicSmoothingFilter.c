@@ -26,7 +26,7 @@
 #define BM_DSF_MIN_FC 1.0f
 
 // this softens the way the filter changes its own cutoff frequency
-inline float DSControlCurve(float x){
+static inline float DSControlCurve(float x){
     // Mathematica: DSControlCurve[x_]:=1-(x-1)^2
     float xMinus1 = x - 1.0f;
     return 1.0f - xMinus1 * xMinus1;

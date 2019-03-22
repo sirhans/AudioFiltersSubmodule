@@ -268,10 +268,10 @@ void BMTransientEnveloper_init(BMTransientEnveloper* This, float sampleRate){
      * release envelope filters
      */
     for(size_t i=0; i<BMENV_NUM_STAGES; i++){
-        BMReleaseFilter_init(&This->releaseRF1[i],BMENV_FILTER_Q,???,sampleRate);
+        BMReleaseFilter_init(&This->releaseRF1[i],BMENV_FILTER_Q,0,sampleRate);
     }
     
-    BMReleaseFilter_init(&This->releaseRF2,BMENV_FILTER_Q,???,sampleRate);
+    BMReleaseFilter_init(&This->releaseRF2,BMENV_FILTER_Q,0,sampleRate);
     
     BMDynamicSmoothingFilter_init(&This->attackDSF,
                                   BMTRANS_DYNAMIC_SMOOTHING_SENSITIVITY,

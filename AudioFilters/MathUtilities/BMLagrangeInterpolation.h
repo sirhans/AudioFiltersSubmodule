@@ -34,4 +34,7 @@ void BMLagrangeInterpolation_processUpSample(BMLagrangeInterpolation* This, cons
  */
 void BMLagrangeInterpolation_processDownSample(BMLagrangeInterpolation* This, const float* input,int inputStride, float* output, int outputStride,size_t inputLength,size_t outputLength);
 
+float BMLagrangeInterpolation_processOneSample(BMLagrangeInterpolation* This, const float* input, const float strideInput,size_t inputLength);
+/* Process 1 sample */
+
 #endif /* BMLagrangeInterpolation_h */
