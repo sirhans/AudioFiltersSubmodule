@@ -356,6 +356,30 @@ void BMTransientEnveloper_processBuffer(BMTransientEnveloper* This,
                                              float* releaseEnvelope,
                                              size_t numSamples){
     assert(input != releaseEnvelope && input != attackEnvelope && input != afterAttackEnvelope);
+    
+    /************************************
+     *  Computing the release envelope  *
+     ************************************/
+    
+    // get aliases to improve code readability
+    float* fastRelease = afterAttackEnvelope;
+    float* slowRelease = releaseEnvelope;
+    
+    // compute the fast release envelope
+    BMReleaseFilter_processBuffer(&This->releaseRF1[0], input, fastRelease, numSamples);
+    for (size_t i=1; i<BMENV_NUM_STAGES; i++)
+        BMReleaseFilter_processBuffer(&This->releaseRF1[i], fastRelease, fastRelease, numSamples);
+    
+    // release filter the complete envelope another time to get slower release
+    BMReleaseFilter_processBuffer(&This->releaseRF2,fastRelease,slowRelease,numSamples);
+    
+    // releaseEnvelope = slowRelease - fastRelease
+    vDSP_vsub(fastRelease, 1, slowRelease, 1, releaseEnvelope, 1, numSamples);
+    
+    // use a dynamic smoothing filter on the release envelope to reduce noise
+    BMDynamicSmoothingFilter_processBuffer(&This->releaseDSF, releaseEnvelope, releaseEnvelope, numSamples);
+    
+    
 
     /***********************************
      *  Computing the attack envelope  *
@@ -363,7 +387,7 @@ void BMTransientEnveloper_processBuffer(BMTransientEnveloper* This,
     
     // get two aliases to make the code more readable
     float* slowAttack = attackEnvelope;
-    float* fastAttack = releaseEnvelope;
+    float* fastAttack = afterAttackEnvelope;
     
     // Connecting the envelope across signal peaks
     //
@@ -441,33 +465,18 @@ void BMTransientEnveloper_processBuffer(BMTransientEnveloper* This,
 
     
     
-    
-    /************************************
-     *  Computing the release envelope  *
-     ************************************/
-    
-    // get aliases to improve code readability
-    float* fastRelease = afterAttackEnvelope;
-    float* slowRelease = releaseEnvelope;
-    
-    // reusing the fastAttack envelope from the previous section, attack filter
-    // with fast time to get a complete volume envelope
-    BMReleaseFilter_processBuffer(&This->releaseRF1[0], input, fastRelease, numSamples);
-    for (size_t i=1; i<BMENV_NUM_STAGES; i++)
-        BMReleaseFilter_processBuffer(&This->releaseRF1[i], fastRelease, fastRelease, numSamples);
-    
-    // release filter the complete envelope another time to get slower release
-    BMReleaseFilter_processBuffer(&This->releaseRF2,fastRelease,slowRelease,numSamples);
-    
-    // releaseEnvelope = slowRelease - fastRelease
-    vDSP_vsub(fastRelease, 1, slowRelease, 1, releaseEnvelope, 1, numSamples);
-    
-    // use a dynamic smoothing filter on the release envelope to reduce noise
-    BMDynamicSmoothingFilter_processBuffer(&This->releaseDSF, releaseEnvelope, releaseEnvelope, numSamples);
-    
-    
     /***************************
      *  After-attack Envelope  *
      ***************************/
     
+    // get aliases to improve code readability
+    fastAttack = attackEnvelope;
+    slowAttack = afterAttackEnvelope;
+    
+    // release filter the attack envelope again to get a slower attack envelope
+    BMReleaseFilter_processBuffer(&This->afterAttackRF, fastAttack, slowAttack, numSamples);
+    
+    // after-attack = slowAttack - fastAttack
+    vDSP_vsub(fastAttack, 1, slowAttack, 1, afterAttackEnvelope, 1, numSamples);
+
 }

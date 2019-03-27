@@ -60,7 +60,7 @@ typedef struct BMEnvelopeFollower {
 
 
 typedef struct BMTransientEnveloper {
-    // filters for transient attack envelopes
+    // filters for transient attack envelope
     BMReleaseFilter attackRF1 [BMENV_NUM_STAGES];
     BMReleaseFilter attackRF2 [BMENV_NUM_STAGES];
     BMAttackFilter  attackAF1 [BMENV_NUM_STAGES];
@@ -68,7 +68,10 @@ typedef struct BMTransientEnveloper {
     BMDynamicSmoothingFilter attackDSF;
     bool filterAttackOnset;
     
-    // filters for transient release envelopes
+    // filter for transient after-attack envelope
+    BMReleaseFilter afterAttackRF;
+    
+    // filters for transient release envelope
     BMReleaseFilter releaseRF1 [BMENV_NUM_STAGES];
     BMReleaseFilter releaseRF2;
     BMDynamicSmoothingFilter releaseDSF;
