@@ -14,6 +14,13 @@
 typedef struct BMLagrangeInterpolation {
     float** table;
     size_t order;
+    float startIdxFactor;
+    int* startIdxBuffer;
+    int* deltaX;
+    size_t* sizeTBuffer1;
+    size_t* sizeTBuffer2;
+    float* floatBuffer1;
+    float* floatBuffer2;
     size_t deltaRange;
     size_t sampleRange;
     float* temp;
@@ -23,6 +30,7 @@ typedef struct BMLagrangeInterpolation {
 }BMLagrangeInterpolation;
 
 void BMLagrangeInterpolation_init(BMLagrangeInterpolation* This, int order);
+void BMLagrangeInterpolation_destroy(BMLagrangeInterpolation* This);
 /*
 Provide upsample output. The number of upsample base on the order.
  2nd order will provide double samples mean double sampleRate also.
