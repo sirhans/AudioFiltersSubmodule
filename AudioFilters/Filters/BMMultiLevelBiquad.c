@@ -564,9 +564,16 @@ void BMMultiLevelBiquad_setBypass(BMMultiLevelBiquad* bqf, size_t level){
         // 2. output is 1.0 when gain == 0
         // 3. output is dbToGain(gainDb) when bw == Nyquist frequency
         //
-        return pow(pow(10.,gainDb/20.),0.07062002693643497*
+        // positive gain approximation
+        if(gainDb >= 0.0)
+            return pow(pow(10.,gainDb/20.),0.07062002693643497*
               pow(1. - 0.5797783118516802*pow(bw,0.47619047619047616),4.)*pow(bw,1.9047619047619047)*
                    gainDb + pow(bw,11./(11. + gainDb))/pow(M_PI,11./(11. + gainDb)));
+        //
+        // negative gain approximation
+        return  pow(pow(10.,-gainDb/20.),-0.000282948025718253*
+              pow(pow(bw,2.1) - 0.09036188195622674*pow(bw,4.2),1.5)*gainDb -
+                    pow(M_PI,25./(-25. + gainDb))/pow(bw,25./(-25. + gainDb)));
     }
 
 
