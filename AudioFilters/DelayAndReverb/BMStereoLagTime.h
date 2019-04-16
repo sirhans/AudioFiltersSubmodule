@@ -37,7 +37,14 @@ typedef struct BMStereoLagTime {
     float* lgiUpBuffer;
     float strideIdxL;
     float strideIdxR;
+    float* strideBufferL;
+    float* strideBufferR;
     BMLagrangeInterpolation lgInterpolation;
+    
+    float speedL;
+    float speedR;
+    size_t sampleToReachTargetL;
+    size_t sampleToReachTargetR;
 } BMStereoLagTime;
 
 void BMStereoLagTime_init(BMStereoLagTime* This,size_t maxDelayTimeInMilSecond,size_t sampleRate);
