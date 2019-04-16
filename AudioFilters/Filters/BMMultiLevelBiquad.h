@@ -76,6 +76,18 @@ extern "C" {
     // and update filter settings
     void BMMultiLevelBiquad_setBell(BMMultiLevelBiquad* bqf, float fc, float bandwidth, float gain_db, size_t level);
     
+    /*!
+     * BMMultiLevelBiquad_setNormalizedBell
+     *
+     * @abstract This is based on the setBell function above. The difference is that it attempts to keep the overall gain at unity by adjusting the broadband gain to compensate for the boost or cut of the bell filter. This allows us to acheive extreme filter curves that approach the behavior of bandpas and notch filters without clipping or loosing too much signal gain.
+     * @param bqf pointer to an initialized struct
+     * @param fc bell filter cutoff frequency in Hz
+     * @param bandwidth bell filter bandwidth in Hz
+     * @param controlGainDb the actual post-compensation gain of the filter at fc
+     * @param level the level number in the multilevel biquad struct
+     */
+    void BMMultiLevelBiquad_normalizedBell(BMMultiLevelBiquad* bqf, float fc, float bandwidth, float controlGainDb, size_t level);
+    
     
     // set a high shelf filter at on the specified level in both
     // channels and update filter settings
