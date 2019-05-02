@@ -134,7 +134,7 @@ void BMCompressor_ProcessBufferMono(BMCompressor* This, const float* input, floa
     
     // prepare to track the minimum gain
     float minGainThisChunk;
-    *minGainDb = FLT_MAX;
+    float minGainWholeBuffer = FLT_MAX;
     
     // get a shorter name for settings
     BMCompressorSetting* settings = &This->settings;
@@ -173,7 +173,7 @@ void BMCompressor_ProcessBufferMono(BMCompressor* This, const float* input, floa
         
         // if this chunk min gain is less than the min gain for the whole
         // buffer, update the min gain for the buffer
-        *minGainDb = MIN(minGainThisChunk,*minGainDb);
+        minGainWholeBuffer = MIN(minGainThisChunk,minGainWholeBuffer);
         
         // convert to linear gain control signal
         vector_fastDbToGain(buffer1,buffer1,framesProcessing);
@@ -186,6 +186,8 @@ void BMCompressor_ProcessBufferMono(BMCompressor* This, const float* input, floa
         input += framesProcessing;
         output += framesProcessing;
     }
+    
+    *minGainDb = minGainWholeBuffer;
 }
 
 
