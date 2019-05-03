@@ -3,7 +3,7 @@
 //  AudioFiltersXcodeProject
 //
 //  Created by hans anderson on 4/24/19.
-//  Copyright © 2019 BlueMangoo. All rights reserved.
+//  Anyone may use this file without restrictions of any kind
 //
 
 
