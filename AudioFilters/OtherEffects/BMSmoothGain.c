@@ -118,6 +118,15 @@ extern "C" {
     }
     
     
+    
+    
+    float BMSmoothGain_getGainDb(BMSmoothGain* This){
+        return BM_GAIN_TO_DB(This->gainTarget);
+    }
+    
+    
+    
+    
 #ifdef __cplusplus
 }
 #endif
