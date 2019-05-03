@@ -33,6 +33,8 @@ extern "C" {
     
     
     void BMSmoothGain_setGainDb(BMSmoothGain* This, float gainDb);
+    
+    float BMSmoothGain_getGainDb(BMSmoothGain* This);
 
 #endif /* BMSmoothGain_h */
 
