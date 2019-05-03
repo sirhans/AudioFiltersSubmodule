@@ -52,11 +52,14 @@ extern "C" {
             
             // how many samples of multiplication by the perSampleRatio will
             // it take to get us to that multiplier?
-            size_t samplesTillTarget = log2(ratioToTarget) / log2(This->perSampleRatioUp);
+            int samplesTillTarget = log2(ratioToTarget) / log2(This->perSampleRatioUp);
             
             // if we are increasing the gain, use the increasing ratio (> 1)
             // otherwise use the decreasing ratio (< 1)
             float perSampleRatio = samplesTillTarget > 0 ? This->perSampleRatioUp : This->perSampleRatioDown;
+            
+            // samplesTillTarget can be negative here. We only want positive values
+            samplesTillTarget = abs(samplesTillTarget);
             
             // process only until we reach the target, or reach the end of the
             // buffer, whichever comes first
