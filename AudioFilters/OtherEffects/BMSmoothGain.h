@@ -2,6 +2,8 @@
 //  BMSmoothGain.h
 //  AudioFiltersXcodeProject
 //
+//  Manages a gain control so that it can be adjusted without causing clicks
+//
 //  Created by hans anderson on 4/24/19.
 //  Anyone may use this file without restrictions of any kind
 //
