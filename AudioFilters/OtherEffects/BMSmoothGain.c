@@ -84,7 +84,7 @@ extern "C" {
             }
             
             // if we are finished, exit the transition state
-            if(error <= tolerance)
+            if(fabs(error) <= tolerance)
                 This->inTransition = false;
             
             // if there are still samples left to be copied, finish them up
