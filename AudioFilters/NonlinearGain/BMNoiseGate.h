@@ -16,22 +16,41 @@ extern "C" {
 #endif
 
 #include <stdio.h>
+#include "Constants.h"
+#include "BMEnvelopeFollower.h"
 
-typedef struct BMNoiseGate {
-    float threshold;
-    float decayTime;
-    float preVolume;
-    float volume;
-    float k;
-    float fadeCount_Current;
-    float fadeCount_Max;
-} BMNoiseGate;
+    typedef struct BMNoiseGate {
+        float thresholdGain, lastState;
+        float buffer [BM_BUFFER_CHUNK_SIZE];
+        BMEnvelopeFollower envFollower;
+    } BMNoiseGate;
 
-void BMNoiseGate_init(BMNoiseGate* this,float threshold,float decayTime,float sampleRate);
-void BMNoiseGate_process(BMNoiseGate* this,float* input,float* output,size_t numSamplesIn);
-void BMNoiseGate_free(BMNoiseGate* This);
-void BMNoiseGate_setDecayTime(BMNoiseGate* this,float decayTime,float sampleRate);
-void BMNoiseGate_setThreshold(BMNoiseGate* this,float thres);
+    
+    void BMNoiseGate_init(BMNoiseGate* this,float thresholdDb,float decayTime,float sampleRate);
+    
+    void BMNoiseGate_processMono(BMNoiseGate* this,
+                                 const float* input,
+                                 float* output,
+                                 size_t numSamplesIn);
+    
+    void BMNoiseGate_processStereo(BMNoiseGate* this,
+                                   const float* inputL, const float* inputR,
+                                   float* outputL, float* outputR,
+                                   size_t numSamplesIn);
+    
+    void BMNoiseGate_setDecayTime(BMNoiseGate* this,float decayTimeSeconds);
+    
+    void BMNoiseGate_setAttackTime(BMNoiseGate* this,float attackTimeSeconds);
+    
+    void BMNoiseGate_setThreshold(BMNoiseGate* this,float thresholdDb);
+    
+    /*!
+     * BMNoiseGate_getState
+     *
+     * @return   the last value of the gain control
+     */
+    float BMNoiseGate_getState(BMNoiseGate* This);
+    
     
 #ifdef __cplusplus
 }
