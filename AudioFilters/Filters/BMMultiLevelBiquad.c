@@ -336,6 +336,27 @@ void BMMultiLevelBiquad_setActiveOnLevel(BMMultiLevelBiquad* bqf,bool active,siz
 }
     
 #pragma mark - Set filter parameters
+void BMMultiLevelBiquad_setCoefficientZ(BMMultiLevelBiquad* bqf,size_t level,double* coeff){
+    assert(level < bqf->numLevels);
+    
+    // for left and right channels, set coefficients
+    for(size_t i=0; i < bqf->numChannels; i++){
+        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+        double* b1 = b0 + 1;
+        double* b2 = b0 + 2;
+        double* a1 = b0 + 3;
+        double* a2 = b0 + 4;
+        
+        *b0 = coeff[0 + i*5];
+        *b1 = coeff[1 + i*5];
+        *b2 = coeff[2 + i*5];
+        *a1 = coeff[3 + i*5];
+        *a2 = coeff[4 + i*5];
+    }
+    
+    BMMultiLevelBiquad_queueUpdate(bqf);
+}
+
 //Bypass function is still allow filter to be processed. It only set all parameters back to 0 to achieve the bypass effects. If you want to actually disable it, call setActiveOnLevel function.
 void BMMultiLevelBiquad_setBypass(BMMultiLevelBiquad* bqf, size_t level){
     assert(level < bqf->numLevels);
