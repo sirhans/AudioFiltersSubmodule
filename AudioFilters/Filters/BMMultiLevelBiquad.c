@@ -595,6 +595,17 @@ void BMMultiLevelBiquad_setBypass(BMMultiLevelBiquad* bqf, size_t level){
         return  pow(pow(10.,-gainDb/20.),-0.000282948025718253*
               pow(pow(bw,2.1) - 0.09036188195622674*pow(bw,4.2),1.5)*gainDb -
                     pow(M_PI,25./(-25. + gainDb))/pow(bw,25./(-25. + gainDb)));
+        
+        // the following is the result of an exact symbolic integration of the integral
+//        double gainL = BM_DB_TO_GAIN(gainDb);
+//        if (gainL < 1.0)
+//           return (bw*M_PI*(cos(gainL/2.) + sin(gainL/2.)))
+//                    /
+//                  (bw*cos(gainL/2.) + sin(gainL/2.));
+//
+//        return (M_PI*(cos(gainL/2.) + bw*sin(gainL/2.)))
+//                /
+//               (cos(gainL/2.) + sin(gainL/2.));
     }
 
 

@@ -294,9 +294,9 @@ void BMEnvelopeFollower_setAttackTime(BMEnvelopeFollower* This, float attackTime
 
 
 
-void BMEnvelopeFollower_setReleaseTime(BMEnvelopeFollower* This, float releaseTime){
+void BMEnvelopeFollower_setReleaseTime(BMEnvelopeFollower* This, float releaseTimeSeconds){
     
-    float releaseFc = ARTimeToCutoffFrequency(releaseTime,BMENV_NUM_STAGES);
+    float releaseFc = ARTimeToCutoffFrequency(releaseTimeSeconds,BMENV_NUM_STAGES);
     
     for(size_t i=0; i<BMENV_NUM_STAGES; i++)
         BMReleaseFilter_setCutoff(&This->releaseFilters[i],releaseFc);
