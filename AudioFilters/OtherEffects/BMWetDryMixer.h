@@ -19,7 +19,7 @@ extern "C" {
     
     
     typedef struct BMWetDryMixer {
-        float wetMix, mixTarget, nextMixTarget, perSampleDifference;
+        float wetMix, mixTarget, perSampleDifference;
         bool inTransition;
     } BMWetDryMixer;
     

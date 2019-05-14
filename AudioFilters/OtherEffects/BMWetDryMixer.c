@@ -25,8 +25,8 @@ extern "C" {
         This->inTransition = false;
         
         // set the per sample difference to fade from 0 to 1 in *time*
-        double time = 1.0 / 2.0;
-        This->perSampleDifference = 1.0f / sampleRate * time;
+        float time = 1.0f / 2.0f;
+        This->perSampleDifference = 1.0f / (sampleRate * time);
     }
     
     
@@ -40,16 +40,12 @@ extern "C" {
         
         // if we are now transitioning to a new gain setting, fade geometrically
         if(This->inTransition){
-            
-            // update the mix target in case there was a change while the last
-            // buffer was processing
-            This->mixTarget = This->nextMixTarget;
 
             // how much do we have to change the mix control to reach the target?
             float error = This->mixTarget - This->wetMix;
             
             // how much will we move with each sample?
-            float perSampleDifference = error > 0 ? This->perSampleDifference : -This->perSampleDifference;
+            float perSampleDifference = error > 0.0f ? This->perSampleDifference : -This->perSampleDifference;
             
             // how many samples will it take us to get there?
             size_t samplesTillTarget = error / perSampleDifference;
@@ -104,8 +100,8 @@ extern "C" {
         
         // if this is a legitimate gain change, set the new target and switch to
         // transition state
-        if (mix != This->nextMixTarget){
-            This->nextMixTarget = mix;
+        if (mix != This->mixTarget){
+            This->mixTarget = mix;
             This->inTransition = true;
         }
     }
@@ -114,7 +110,7 @@ extern "C" {
     
     
     float BMWetDryMixer_getMix(BMWetDryMixer* This){
-        return This->nextMixTarget;
+        return This->mixTarget;
     }
     
     
