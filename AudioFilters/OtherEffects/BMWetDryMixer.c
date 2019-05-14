@@ -59,7 +59,7 @@ extern "C" {
             
             // fade the dry input, buffering onto itself
             float dryMix = sqrtf(1.0f - This->wetMix*This->wetMix);
-            float newMix = samplesFading * perSampleDifference;
+            float newMix = This->wetMix + (samplesFading * perSampleDifference);
             float newDryMix = sqrtf(1.0f - newMix*newMix);
             perSampleDifference = (newDryMix - dryMix) / samplesFading;
             vDSP_vrampmul(inputDryL, 1, &dryMix, &perSampleDifference, inputDryL, 1, samplesFading);
@@ -73,8 +73,10 @@ extern "C" {
             This->wetMix = newMix;
             
             // exit the transition state if we finished fading
-            if(samplesFading <= numSamples)
+            if(samplesFading <= numSamples){
                 This->inTransition = false;
+                This->wetMix = This->mixTarget;
+            }
             
             // if there are still samples left to be copied, finish them up
             if (samplesFading < numSamples) {
