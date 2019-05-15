@@ -57,10 +57,14 @@ extern "C" {
             vDSP_vrampmul(inputWetL, 1, &This->wetMix, &perSampleDifference, outputL, 1, samplesFading);
             vDSP_vrampmul(inputWetR, 1, &This->wetMix, &perSampleDifference, outputR, 1, samplesFading);
             
-            // fade the dry input, buffering onto itself
+            // compute the dry mix at the end of the fade
             float dryMix = sqrtf(1.0f - This->wetMix*This->wetMix);
+            if (isnan(dryMix)) dryMix = 0.0f;
             float newMix = This->wetMix + (samplesFading * perSampleDifference);
             float newDryMix = sqrtf(1.0f - newMix*newMix);
+            if (isnan(newDryMix)) newDryMix = 0.0f;
+            
+            // fade the dry input, buffering onto itself
             perSampleDifference = (newDryMix - dryMix) / samplesFading;
             vDSP_vrampmul(inputDryL, 1, &dryMix, &perSampleDifference, inputDryL, 1, samplesFading);
             vDSP_vrampmul(inputDryR, 1, &dryMix, &perSampleDifference, inputDryR, 1, samplesFading);
@@ -69,8 +73,9 @@ extern "C" {
             vDSP_vadd(inputDryL, 1, outputL, 1, outputL, 1, samplesFading);
             vDSP_vadd(inputDryR, 1, outputR, 1, outputR, 1, samplesFading);
             
-            // update the mix
+            // update the mix settings
             This->wetMix = newMix;
+            This->dryMix = newDryMix;
             
             // exit the transition state if we finished fading
             if(samplesFading <= numSamples){
@@ -88,9 +93,8 @@ extern "C" {
         
         // if we aren't in the transition state, apply the mix by simple multiply and add
         else {
-            float dryMix = sqrtf(1.0f - This->wetMix*This->wetMix);
-            vDSP_vsmsma(inputWetL, 1, &This->wetMix, inputDryL, 1, &dryMix, outputL, 1, numSamples);
-            vDSP_vsmsma(inputWetR, 1, &This->wetMix, inputDryR, 1, &dryMix, outputR, 1, numSamples);
+            vDSP_vsmsma(inputWetL, 1, &This->wetMix, inputDryL, 1, &This->dryMix, outputL, 1, numSamples);
+            vDSP_vsmsma(inputWetR, 1, &This->wetMix, inputDryR, 1, &This->dryMix, outputR, 1, numSamples);
         }
     }
     
