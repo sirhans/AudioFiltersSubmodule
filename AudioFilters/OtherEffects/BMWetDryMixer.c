@@ -58,16 +58,14 @@ extern "C" {
             vDSP_vrampmul(inputWetR, 1, &This->wetMix, &perSampleDifference, outputR, 1, samplesFading);
             
             // compute the dry mix at the end of the fade
-            float dryMix = sqrtf(1.0f - This->wetMix*This->wetMix);
-            if (isnan(dryMix)) dryMix = 0.0f;
             float newMix = This->wetMix + (samplesFading * perSampleDifference);
             float newDryMix = sqrtf(1.0f - newMix*newMix);
             if (isnan(newDryMix)) newDryMix = 0.0f;
             
             // fade the dry input, buffering onto itself
-            perSampleDifference = (newDryMix - dryMix) / samplesFading;
-            vDSP_vrampmul(inputDryL, 1, &dryMix, &perSampleDifference, inputDryL, 1, samplesFading);
-            vDSP_vrampmul(inputDryR, 1, &dryMix, &perSampleDifference, inputDryR, 1, samplesFading);
+            perSampleDifference = (newDryMix - This->dryMix) / samplesFading;
+            vDSP_vrampmul(inputDryL, 1, &This->dryMix, &perSampleDifference, inputDryL, 1, samplesFading);
+            vDSP_vrampmul(inputDryR, 1, &This->dryMix, &perSampleDifference, inputDryR, 1, samplesFading);
             
             // mix the dry and wet inputs
             vDSP_vadd(inputDryL, 1, outputL, 1, outputL, 1, samplesFading);
@@ -110,8 +108,8 @@ extern "C" {
             // if there are still samples left to be copied, finish them up
             if (samplesFading < numSamples) {
                 size_t samplesLeft = numSamples - samplesFading;
-                vDSP_vsmsma(inputWetL+samplesFading, 1, &This->wetMix, inputDryL+samplesFading, 1, &newDryMix, outputL+samplesFading, 1, samplesLeft);
-                vDSP_vsmsma(inputWetR+samplesFading, 1, &This->wetMix, inputDryR+samplesFading, 1, &newDryMix, outputR+samplesFading, 1, samplesLeft);
+                vDSP_vsmsma(inputWetL+samplesFading, 1, &This->wetMix, inputDryL+samplesFading, 1, &This->dryMix, outputL+samplesFading, 1, samplesLeft);
+                vDSP_vsmsma(inputWetR+samplesFading, 1, &This->wetMix, inputDryR+samplesFading, 1, &This->dryMix, outputR+samplesFading, 1, samplesLeft);
             }
         }
         
