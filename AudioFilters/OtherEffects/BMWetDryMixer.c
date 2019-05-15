@@ -60,7 +60,7 @@ extern "C" {
             // compute the dry mix at the end of the fade
             float dryMix = sqrtf(1.0f - This->wetMix*This->wetMix);
             if (isnan(dryMix)) dryMix = 0.0f;
-            float newMix = BM_MIN(This->wetMix + (samplesFading * perSampleDifference),1.0f);
+            float newMix = This->wetMix + (samplesFading * perSampleDifference);
             float newDryMix = sqrtf(1.0f - newMix*newMix);
             if (isnan(newDryMix)) newDryMix = 0.0f;
             
@@ -75,7 +75,7 @@ extern "C" {
             
             // update the mix settings
             This->wetMix = newMix;
-            This->dryMix = newDryMix;
+            This->dryMix = This->dryMix + (samplesFading * perSampleDifference);
             
             // exit the transition state if we finished fading
             if(samplesFading <= numSamples){
