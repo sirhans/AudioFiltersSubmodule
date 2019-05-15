@@ -80,7 +80,7 @@ extern "C" {
             // if we overshot or undershot the target, approach it asymptotically
             // until we get very near
             float tolerance = 0.00001f;
-            float correctionSpeed = 0.03;
+            float correctionSpeed = 0.05;
             float wetError = This->mixTarget - This->wetMix;
             float dryMixTarget = sqrtf(1.0f - This->mixTarget*This->mixTarget);
             if (isnan(dryMixTarget)) dryMixTarget = 0.0f;
