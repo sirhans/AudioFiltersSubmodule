@@ -216,6 +216,8 @@ extern "C" {
     //Call this function to manually disable desired filter level
     void BMMultiLevelBiquad_setActiveOnLevel(BMMultiLevelBiquad* bqf,bool active,size_t level);
     
+    //Set coefficient z directly at level
+    void BMMultiLevelBiquad_setCoefficientZ(BMMultiLevelBiquad* bqf,size_t level,double* coeff);
 #ifdef __cplusplus
 }
 #endif

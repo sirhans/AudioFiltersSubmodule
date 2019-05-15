@@ -25,8 +25,8 @@ extern "C" {
         This->inTransition = false;
         
         // set the per sample difference to fade from 0 to 1 in *time*
-        double time = 1.0 / 2.0;
-        This->perSampleDifference = 1.0f / sampleRate * time;
+        float time = 1.0f / 2.0f;
+        This->perSampleDifference = 1.0f / (sampleRate * time);
     }
     
     
@@ -40,16 +40,12 @@ extern "C" {
         
         // if we are now transitioning to a new gain setting, fade geometrically
         if(This->inTransition){
-            
-            // update the mix target in case there was a change while the last
-            // buffer was processing
-            This->mixTarget = This->nextMixTarget;
 
             // how much do we have to change the mix control to reach the target?
             float error = This->mixTarget - This->wetMix;
             
             // how much will we move with each sample?
-            float perSampleDifference = error > 0 ? This->perSampleDifference : -This->perSampleDifference;
+            float perSampleDifference = error > 0.0f ? This->perSampleDifference : -This->perSampleDifference;
             
             // how many samples will it take us to get there?
             size_t samplesTillTarget = error / perSampleDifference;
@@ -61,10 +57,14 @@ extern "C" {
             vDSP_vrampmul(inputWetL, 1, &This->wetMix, &perSampleDifference, outputL, 1, samplesFading);
             vDSP_vrampmul(inputWetR, 1, &This->wetMix, &perSampleDifference, outputR, 1, samplesFading);
             
-            // fade the dry input, buffering onto itself
+            // compute the dry mix at the end of the fade
             float dryMix = sqrtf(1.0f - This->wetMix*This->wetMix);
-            float newMix = samplesFading * perSampleDifference;
+            if (isnan(dryMix)) dryMix = 0.0f;
+            float newMix = This->wetMix + (samplesFading * perSampleDifference);
             float newDryMix = sqrtf(1.0f - newMix*newMix);
+            if (isnan(newDryMix)) newDryMix = 0.0f;
+            
+            // fade the dry input, buffering onto itself
             perSampleDifference = (newDryMix - dryMix) / samplesFading;
             vDSP_vrampmul(inputDryL, 1, &dryMix, &perSampleDifference, inputDryL, 1, samplesFading);
             vDSP_vrampmul(inputDryR, 1, &dryMix, &perSampleDifference, inputDryR, 1, samplesFading);
@@ -73,12 +73,15 @@ extern "C" {
             vDSP_vadd(inputDryL, 1, outputL, 1, outputL, 1, samplesFading);
             vDSP_vadd(inputDryR, 1, outputR, 1, outputR, 1, samplesFading);
             
-            // update the mix
+            // update the mix settings
             This->wetMix = newMix;
+            This->dryMix = newDryMix;
             
             // exit the transition state if we finished fading
-            if(samplesFading <= numSamples)
+            if(samplesFading <= numSamples){
                 This->inTransition = false;
+                This->wetMix = This->mixTarget;
+            }
             
             // if there are still samples left to be copied, finish them up
             if (samplesFading < numSamples) {
@@ -90,9 +93,8 @@ extern "C" {
         
         // if we aren't in the transition state, apply the mix by simple multiply and add
         else {
-            float dryMix = sqrtf(1.0f - This->wetMix*This->wetMix);
-            vDSP_vsmsma(inputWetL, 1, &This->wetMix, inputDryL, 1, &dryMix, outputL, 1, numSamples);
-            vDSP_vsmsma(inputWetR, 1, &This->wetMix, inputDryR, 1, &dryMix, outputR, 1, numSamples);
+            vDSP_vsmsma(inputWetL, 1, &This->wetMix, inputDryL, 1, &This->dryMix, outputL, 1, numSamples);
+            vDSP_vsmsma(inputWetR, 1, &This->wetMix, inputDryR, 1, &This->dryMix, outputR, 1, numSamples);
         }
     }
     
@@ -100,12 +102,12 @@ extern "C" {
     
     
     void BMWetDryMixer_setMix(BMWetDryMixer* This, float mix){
-        assert(0.0f >= mix && mix <= 1.0f);
+        assert(0.0f <= mix && mix <= 1.0f);
         
         // if this is a legitimate gain change, set the new target and switch to
         // transition state
-        if (mix != This->nextMixTarget){
-            This->nextMixTarget = mix;
+        if (mix != This->mixTarget){
+            This->mixTarget = mix;
             This->inTransition = true;
         }
     }
@@ -114,7 +116,7 @@ extern "C" {
     
     
     float BMWetDryMixer_getMix(BMWetDryMixer* This){
-        return This->nextMixTarget;
+        return This->mixTarget;
     }
     
     
