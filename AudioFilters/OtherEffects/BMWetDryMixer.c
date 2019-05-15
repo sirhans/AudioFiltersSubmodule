@@ -60,7 +60,7 @@ extern "C" {
             // compute the dry mix at the end of the fade
             float dryMix = sqrtf(1.0f - This->wetMix*This->wetMix);
             if (isnan(dryMix)) dryMix = 0.0f;
-            float newMix = This->wetMix + (samplesFading * perSampleDifference);
+            float newMix = BM_MIN(This->wetMix + (samplesFading * perSampleDifference),1.0f);
             float newDryMix = sqrtf(1.0f - newMix*newMix);
             if (isnan(newDryMix)) newDryMix = 0.0f;
             
