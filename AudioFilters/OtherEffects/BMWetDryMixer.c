@@ -77,10 +77,34 @@ extern "C" {
             This->wetMix = newMix;
             This->dryMix = This->dryMix + (samplesFading * perSampleDifference);
             
-            // exit the transition state if we finished fading
-            if(samplesFading <= numSamples){
+            // if we overshot or undershot the target, approach it asymptotically
+            // until we get very near
+            float tolerance = 0.00001f;
+            float correctionSpeed = 0.03;
+            float wetError = This->mixTarget - This->wetMix;
+            float dryMixTarget = sqrtf(1.0f - This->mixTarget*This->mixTarget);
+            if (isnan(dryMixTarget)) dryMixTarget = 0.0f;
+            float dryError = dryMixTarget - This->dryMix;
+            size_t i = samplesFading;
+            while ((wetError > tolerance || dryError > tolerance) && i < numSamples){
+                // correct the mix values
+                This->wetMix += correctionSpeed * wetError;
+                This->dryMix += correctionSpeed * dryError;
+                // mix the audio
+                outputL[i] = inputDryL[i] * This->dryMix + inputWetL[i] * This->wetMix;
+                outputR[i] = inputDryR[i] * This->dryMix + inputWetR[i] * This->wetMix;
+                // update the error
+                wetError = This->mixTarget - This->wetMix;
+                dryError = dryMixTarget - This->dryMix;
+                // increment the array index
+                i++;
+            }
+            
+            // exit the transition state if we are within the tolerance limit
+            if((wetError < tolerance && dryError < tolerance)){
                 This->inTransition = false;
                 This->wetMix = This->mixTarget;
+                This->dryMix = dryMixTarget;
             }
             
             // if there are still samples left to be copied, finish them up
