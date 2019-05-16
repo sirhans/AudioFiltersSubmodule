@@ -78,8 +78,7 @@ extern "C" {
             if(fabsf(This->wetMix - This->mixTarget) <= This->perSampleDifference){
                 This->inTransition = false;
                 This->wetMix = This->mixTarget;
-                This->dryMix = sqrtf(1.0f - This->mixTarget*This->mixTarget);
-                if (isnan(This->dryMix)) This->dryMix = 0.0f;
+                This->dryMix = 1.0f - This->mixTarget;
             }
             
             // if there are still samples left to be copied, finish them up
