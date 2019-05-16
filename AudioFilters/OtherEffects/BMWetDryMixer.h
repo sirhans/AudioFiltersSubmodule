@@ -34,8 +34,11 @@ extern "C" {
     void BMWetDryMixer_init(BMWetDryMixer* This, float sampleRate);
     
     
+    
     /*!
-     * BMWetDryMixer_processBuffer
+     * BMWetDryMixer_processBufferInPhase
+     *
+     * @abstract crossfade, keeping wetGain + dryGain == 1.0f;
      *
      * @param This        pointer to an initialized BMSmoothGain struct
      * @param inputWetL   left channel wet input buffer length >= numSamples
@@ -46,7 +49,29 @@ extern "C" {
      * @param outputR     right channel output buffer length >= numSamples
      * @param numSamples  to process completely, all input and output arrays should have this length
      */
-    void BMWetDryMixer_processBuffer(BMWetDryMixer* This,
+    void BMWetDryMixer_processBufferInPhase(BMWetDryMixer* This,
+                                                float* inputWetL, float* inputWetR,
+                                                float* inputDryL, float* inputDryR,
+                                                float* outputL, float* outputR,
+                                                size_t numSamples);
+    
+    
+    
+    /*!
+     * BMWetDryMixer_processBufferRandomPhase
+     *
+     * @abstract crossfade, keeping wetGain^2 + dryGain^2 == 1.0f;
+     *
+     * @param This        pointer to an initialized BMSmoothGain struct
+     * @param inputWetL   left channel wet input buffer length >= numSamples
+     * @param inputWetR   right channel wet input buffer length >= numSamples
+     * @param inputDryL   left channel dry input buffer length >= numSamples
+     * @param inputDryR   right channel dry input buffer length >= numSamples
+     * @param outputL     left channel output buffer length >= numSamples
+     * @param outputR     right channel output buffer length >= numSamples
+     * @param numSamples  to process completely, all input and output arrays should have this length
+     */
+    void BMWetDryMixer_processBufferRandomPhase(BMWetDryMixer* This,
                                     float* inputWetL, float* inputWetR,
                                     float* inputDryL, float* inputDryR,
                                     float* outputL, float* outputR,
