@@ -39,6 +39,7 @@ typedef struct BMReleaseFilter {
     bool attackMode;
 } BMReleaseFilter;
 
+
 /*
  * A smoothing filter that only works while the signal amplitude is increasing
  */
@@ -59,58 +60,77 @@ typedef struct BMEnvelopeFollower {
 } BMEnvelopeFollower;
 
 
-typedef struct BMTransientEnveloper {
-    // filters for transient attack envelope
-    BMReleaseFilter attackRF1 [BMENV_NUM_STAGES];
-    BMReleaseFilter attackRF2 [BMENV_NUM_STAGES];
-    BMAttackFilter  attackAF1 [BMENV_NUM_STAGES];
-    BMAttackFilter  attackAF2 [BMENV_NUM_STAGES];
-    BMDynamicSmoothingFilter attackDSF;
-    bool filterAttackOnset;
-    
-    // filter for transient after-attack envelope
-    BMReleaseFilter afterAttackRF;
-    
-    // filters for transient release envelope
-    BMReleaseFilter releaseRF1 [BMENV_NUM_STAGES];
-    BMReleaseFilter releaseRF2;
-    BMDynamicSmoothingFilter releaseDSF;
-    
-    // filters for after-attack envelopes
-} BMTransientEnveloper;
-
+/*!
+ * BMEnvelopeFollower_processBuffer
+ */
 void BMEnvelopeFollower_processBuffer(BMEnvelopeFollower* This,
                                       const float* input,
                                       float* output,
                                       size_t numSamples);
 
+/*!
+ * BMEnvelopeFollower_init
+ */
 void BMEnvelopeFollower_init(BMEnvelopeFollower* This, float sampleRate);
 
+/*!
+ * BMEnvelopeFollower_setAttackTime
+ */
 void BMEnvelopeFollower_setAttackTime(BMEnvelopeFollower* This, float attackTime);
 
+/*!
+ * BMEnvelopeFollower_setReleaseTime
+ */
 void BMEnvelopeFollower_setReleaseTime(BMEnvelopeFollower* This, float releaseTime);
 
 /*!
- * BMTransientEnveloper_processBuffer
- * @abstract used as a component of a transient shaper
- *
- * @param This             pointer to an initialised BMEnvelopeFollower struct
- * @param input            single channel input array
- * @param attackEnvelope   positive values indicate that we are in the attack portion. output values in range: [0,input]
- * @param afterAttackEnvelope positive values indicate that we are in the portion immediately after the attack range: [0,+?]
- * @param releaseEnvelope  positive values indicate that we are in the release portion. output values in range: [0,input]
+ * BMAttackFilter_init
  */
-void BMTransientEnveloper_processBuffer(BMTransientEnveloper* This,
-                                           const float* input,
-                                           float* attackEnvelope,
-                                           float* afterAttackEnvelope,
-                                           float* releaseEnvelope,
-                                           size_t numSamples);
+void BMAttackFilter_init(BMAttackFilter* This, float fc, float sampleRate);
 
-void BMTransientEnveloper_setAttackOnsetTime(BMTransientEnveloper* This, float seconds);
+/*!
+ * BMReleaseFilter_init
+ */
+void BMReleaseFilter_init(BMReleaseFilter* This, float fc, float sampleRate);
 
-void BMTransientEnveloper_setAttackDuration(BMTransientEnveloper* This, float seconds);
+/*!
+ * BMAttackFilter_processBuffer
+ */
+void BMAttackFilter_processBuffer(BMAttackFilter* This,
+                                  const float* input,
+                                  float* output,
+                                  size_t numSamples);
 
-void BMTransientEnveloper_setReleaseDuration(BMEnvelopeFollower* This, float seconds);
+/*!
+ * BMReleaseFilter_processBuffer
+ */
+void BMReleaseFilter_processBuffer(BMReleaseFilter* This,
+                                   const float* input,
+                                   float* output,
+                                   size_t numSamples);
+
+/*!
+ * BMAttackFilter_setCutoff
+ */
+void BMAttackFilter_setCutoff(BMAttackFilter* This, float fc);
+
+/*!
+ * BMReleaseFilter_setCutoff
+ */
+void BMReleaseFilter_setCutoff(BMReleaseFilter* This, float fc);
+
+
+/*!
+ * ARTimeToCutoffFrequency
+ * @param time       time in seconds
+ * @param numStages  number of stages in the filter cascade
+ * @abstract The -3db point of the filters shifts to a lower frequency each time we add another filter to the cascade. This function converts from time to cutoff frequency, taking into account the number of filters in the cascade.
+ */
+float ARTimeToCutoffFrequency(float time, size_t numStages);
+
+
+
+
+
 
 #endif /* BMEnvelopeFollower_h */
