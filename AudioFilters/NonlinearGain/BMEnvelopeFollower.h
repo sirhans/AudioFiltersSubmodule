@@ -31,7 +31,7 @@
  * signal amplitude is decreasing
  */
 typedef struct BMReleaseFilter {
-    float sampleRate;
+    float sampleRate, fc;
     float ic1, ic2;
     float g,k;
     float a1, a2, a3;
@@ -44,7 +44,7 @@ typedef struct BMReleaseFilter {
  * A smoothing filter that only works while the signal amplitude is increasing
  */
 typedef struct BMAttackFilter {
-    float sampleRate;
+    float sampleRate, fc;
     float ic1, ic2;
     float g,gInv_2,k;
     float a1, a2, a3;
@@ -114,10 +114,23 @@ void BMReleaseFilter_processBuffer(BMReleaseFilter* This,
  */
 void BMAttackFilter_setCutoff(BMAttackFilter* This, float fc);
 
+
 /*!
  * BMReleaseFilter_setCutoff
  */
 void BMReleaseFilter_setCutoff(BMReleaseFilter* This, float fc);
+
+
+/*!
+ * BMReleaseFilter_updateSampleRate
+ */
+void BMReleaseFilter_updateSampleRate(BMReleaseFilter* This, float sampleRate);
+
+
+/*!
+ * BMAttackFilter_updateSampleRate
+ */
+void BMAttackFilter_updateSampleRate(BMAttackFilter* This, float sampleRate);
 
 
 /*!

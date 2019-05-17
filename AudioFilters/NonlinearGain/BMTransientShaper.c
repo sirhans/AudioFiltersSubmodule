@@ -7,11 +7,21 @@
 //
 
 #include "BMTransientShaper.h"
+#include <assert.h>
+
+
+// set defaults for transient shaper
+#define BMTRANS_ATTACK_PEAK_CONNECTION_TIME 1.0f / 2.0f
+#define BMTRANS_ATTACK_SLOW_ATTACK_ENV_TIME 1.0f / 20.0f
+#define BMTRANS_ATTACK_ONSET_TIME 1.0f / 2000.0f
+#define BMTRANS_ATTACK_DURATION 1.0f / 5.0f
+#define BMTRANS_DYNAMIC_SMOOTHING_SENSITIVITY 1.0f / 8.0f
+#define BMTRANS_DYNAMIC_SMOOTHING_MIN_FC 1.0f
 
 
 
 
-void BMTransientShaper_init(BMTransientShaper* This, float sampleRate){
+void BMTransientEnveloper_init(BMTransientEnveloper* This, float sampleRate){
     
     /*
      * attack transient filters
@@ -22,14 +32,14 @@ void BMTransientShaper_init(BMTransientShaper* This, float sampleRate){
     float attackOnsetTimeFc = ARTimeToCutoffFrequency(BMTRANS_ATTACK_ONSET_TIME, BMENV_NUM_STAGES);
     
     for(size_t i=0; i<BMENV_NUM_STAGES; i++){
-        BMReleaseFilter_init(&This->attackRF1[i],BMENV_FILTER_Q,attackPeakConnectionFc,sampleRate);
-        BMAttackFilter_init(&This->attackAF1[i],BMENV_FILTER_Q,attackSlowAttackEnvFc,sampleRate);
-        BMReleaseFilter_init(&This->attackRF2[i],BMENV_FILTER_Q,attackDurationFc,sampleRate);
-        BMAttackFilter_init(&This->attackAF2[i],BMENV_FILTER_Q,attackOnsetTimeFc,sampleRate);
+        BMReleaseFilter_init(&This->attackRF1[i],attackPeakConnectionFc,sampleRate);
+        BMAttackFilter_init(&This->attackAF1[i],attackSlowAttackEnvFc,sampleRate);
+        BMReleaseFilter_init(&This->attackRF2[i],attackDurationFc,sampleRate);
+        BMAttackFilter_init(&This->attackAF2[i],attackOnsetTimeFc,sampleRate);
     }
     
-    // if the attack onset time is zero, disable attack onset filtering
-    This->filterAttackOnset = !(attackOnsetTimeFc == FLT_MAX);
+    // Since we aren't initializing with zero attack time, we set filterAttackOnset to true
+    This->filterAttackOnset = true;
     
     BMDynamicSmoothingFilter_init(&This->attackDSF,
                                   BMTRANS_DYNAMIC_SMOOTHING_SENSITIVITY,
@@ -40,10 +50,10 @@ void BMTransientShaper_init(BMTransientShaper* This, float sampleRate){
      * release envelope filters
      */
     for(size_t i=0; i<BMENV_NUM_STAGES; i++){
-        BMReleaseFilter_init(&This->releaseRF1[i],BMENV_FILTER_Q,0,sampleRate);
+        BMReleaseFilter_init(&This->releaseRF1[i],0,sampleRate);
     }
     
-    BMReleaseFilter_init(&This->releaseRF2,BMENV_FILTER_Q,0,sampleRate);
+    BMReleaseFilter_init(&This->releaseRF2,0,sampleRate);
     
     BMDynamicSmoothingFilter_init(&This->attackDSF,
                                   BMTRANS_DYNAMIC_SMOOTHING_SENSITIVITY,
@@ -56,11 +66,14 @@ void BMTransientShaper_init(BMTransientShaper* This, float sampleRate){
 
 
 void BMTransientEnveloper_setAttackOnsetTime(BMTransientEnveloper* This, float seconds){
+    if(seconds > 0){
+        float attackOnsetFc = ARTimeToCutoffFrequency(seconds, BMENV_NUM_STAGES);
     
-    float attackOnsetFc = ARTimeToCutoffFrequency(seconds, BMENV_NUM_STAGES);
-    
-    for(size_t i=0; i<BMENV_NUM_STAGES; i++)
+        for(size_t i=0; i<BMENV_NUM_STAGES; i++)
         BMAttackFilter_setCutoff(&This->attackAF2[i],attackOnsetFc);
+    }
+    
+    else This->filterAttackOnset = false;
 }
 
 

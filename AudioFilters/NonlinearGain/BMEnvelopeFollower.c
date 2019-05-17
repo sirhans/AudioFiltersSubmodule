@@ -18,21 +18,11 @@
 #define BMENV_ATTACK_TIME 1.0f / 1000.0f
 #define BMENV_RELEASE_TIME 1.0f / 10.0f
 
-// set default times for transient shaper attack
-#define BMTRANS_ATTACK_PEAK_CONNECTION_TIME 1.0f / 2.0f
-#define BMTRANS_ATTACK_SLOW_ATTACK_ENV_TIME 1.0f / 20.0f
-#define BMTRANS_ATTACK_ONSET_TIME 1.0f / 2000.0f
-#define BMTRANS_ATTACK_DURATION 1.0f / 5.0f
-#define BMTRANS_DYNAMIC_SMOOTHING_SENSITIVITY 1.0f / 8.0f
-#define BMTRANS_DYNAMIC_SMOOTHING_MIN_FC 1.0f
-
-// set default times for transient shaper release
-
-
-
 
 
 void BMAttackFilter_setCutoff(BMAttackFilter* This, float fc){
+    This->fc = fc;
+    
     // compute the input gain to the integrators
     float g = tanf(M_PI * fc / This->sampleRate);
     
@@ -57,6 +47,8 @@ void BMAttackFilter_setCutoff(BMAttackFilter* This, float fc){
 
 
 void BMReleaseFilter_setCutoff(BMReleaseFilter* This, float fc){
+    This->fc = fc;
+    
     // compute the input gain to the integrators
     float g = tanf(M_PI * fc / This->sampleRate);
     
@@ -74,6 +66,21 @@ void BMReleaseFilter_setCutoff(BMReleaseFilter* This, float fc){
 }
 
 
+
+void BMReleaseFilter_updateSampleRate(BMReleaseFilter* This, float sampleRate){
+    This->sampleRate = sampleRate;
+    BMReleaseFilter_setCutoff(This, This->fc);
+}
+
+
+
+void BMAttackFilter_updateSampleRate(BMAttackFilter* This, float sampleRate){
+    This->sampleRate = sampleRate;
+    BMAttackFilter_setCutoff(This, This->fc);
+}
+
+
+
 /*!
  * ARTimeToCutoffFrequency
  * @param time       time in seconds
@@ -81,9 +88,9 @@ void BMReleaseFilter_setCutoff(BMReleaseFilter* This, float fc){
  * @abstract The -3db point of the filters shifts to a lower frequency each time we add another filter to the cascade. This function converts from time to cutoff frequency, taking into account the number of filters in the cascade.
  */
 float ARTimeToCutoffFrequency(float time, size_t numStages){
+    assert (time > 0.0f);
     float correctionFactor = 0.472859f + 0.434404 * (float)numStages;
-    if (time > 0) return 1.0f / (time / correctionFactor);
-    else return FLT_MAX;
+    return 1.0f / (time / correctionFactor);
 }
 
 
@@ -230,8 +237,8 @@ void BMEnvelopeFollower_init(BMEnvelopeFollower* This, float sampleRate){
     
     // initialize all the filters
     for(size_t i=0; i<BMENV_NUM_STAGES; i++){
-        BMAttackFilter_init(&This->attackFilters[i], BMENV_FILTER_Q, attackFc, sampleRate);
-        BMReleaseFilter_init(&This->releaseFilters[i], BMENV_FILTER_Q, releaseFc, sampleRate);
+        BMAttackFilter_init(&This->attackFilters[i], attackFc, sampleRate);
+        BMReleaseFilter_init(&This->releaseFilters[i], releaseFc, sampleRate);
     }
     
 }
