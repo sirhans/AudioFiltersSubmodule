@@ -49,10 +49,10 @@ extern "C" {
      *
      * @param inputL an array of audio samples with length = bufferLength
      * @param inputR an array of audio samples with length = bufferLength
-     * @param fastPeakL pointer to a scalar value that tracks the peak quickly
-     * @param fastPeakR pointer to a scalar value that tracks the peak quickly
-     * @param slowPeakL pointer to a scalar that tracks the peak more slowly
-     * @param slowPeakR pointer to a scalar that tracks the peak more slowly
+     * @param fastPeakL pointer to a scalar decibel value that tracks the peak quickly
+     * @param fastPeakR pointer to a scalar decibel value that tracks the peak quickly
+     * @param slowPeakL pointer to a scalar decibel that tracks the peak more slowly
+     * @param slowPeakR pointer to a scalar decibel that tracks the peak more slowly
      * @param bufferLength length of inputL and inputR. This should be the length of the actual audio buffer. If the buffer length changes from one function call to the next, this class will automatically adjust the filter frequencies to keep the release time constant.
      */
     void BMLevelMeter_peakLevelStereo(BMLevelMeter* This,
@@ -70,10 +70,10 @@ extern "C" {
      *
      * @param inputL an array of audio samples with length = bufferLength
      * @param inputR an array of audio samples with length = bufferLength
-     * @param fastReleaseL pointer to a scalar value that tracks the peak quickly
-     * @param fastReleaseR pointer to a scalar value that tracks the peak quickly
-     * @param slowReleaseL pointer to a scalar that tracks the peak more slowly
-     * @param slowReleaseR pointer to a scalar that tracks the peak more slowly
+     * @param fastReleaseL pointer to a scalar decibel value that tracks the peak quickly
+     * @param fastReleaseR pointer to a scalar decibel value that tracks the peak quickly
+     * @param slowReleaseL pointer to a scalar decibel that tracks the peak more slowly
+     * @param slowReleaseR pointer to a scalar decibel that tracks the peak more slowly
      * @param bufferLength length of inputL and inputR. This should be the length of the actual audio buffer. If the buffer length changes from one function call to the next, this class will automatically adjust the filter frequencies to keep the release time constant.
      */
     void BMLevelMeter_RMSPowerStereo(BMLevelMeter* This,

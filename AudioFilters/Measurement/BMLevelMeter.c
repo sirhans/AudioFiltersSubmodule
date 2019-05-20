@@ -16,6 +16,7 @@ extern "C" {
     
 #include "BMLevelMeter.h"
 #include "BMRMSPower.h"
+#include "Constants.h"
 #include <Accelerate/Accelerate.h>
     
 #define BM_LEVEL_METER_DEFAULT_BUFFER_LENGTH 256
@@ -79,6 +80,10 @@ extern "C" {
         vDSP_maxmgv(inputL, 1, &maxMagnitudeL, bufferLength);
         vDSP_maxmgv(inputR, 1, &maxMagnitudeR, bufferLength);
         
+        // convert to decibels
+        maxMagnitudeL = BM_GAIN_TO_DB(maxMagnitudeL);
+        maxMagnitudeR = BM_GAIN_TO_DB(maxMagnitudeR);
+        
         // release filter the maxMagnitudes to get the peak with fast release time
         BMReleaseFilter_processBuffer(&This->fastReleaseL, &maxMagnitudeL, fastPeakL, 1);
         BMReleaseFilter_processBuffer(&This->fastReleaseR, &maxMagnitudeR, fastPeakR, 1);
@@ -112,6 +117,10 @@ extern "C" {
         // get the max magnitude in each channel
         RMSLeft  = BMRMSPower_process(inputL, bufferLength);
         RMSRight = BMRMSPower_process(inputR, bufferLength);
+        
+        // convert to decibels
+        RMSLeft  = BM_GAIN_TO_DB(RMSLeft);
+        RMSRight = BM_GAIN_TO_DB(RMSRight);
         
         // release filter the maxMagnitudes to get the peak with fast release time
         BMReleaseFilter_processBuffer(&This->fastReleaseL, &RMSLeft, fastReleaseL, 1);
