@@ -11,7 +11,7 @@
 #include "BMRMSPower.h"
 #include <Accelerate/Accelerate.h>
 
-float BMRMSPower_process(float* input,size_t processSample){
+float BMRMSPower_process(const float* input,size_t processSample){
     float sumSquare = 0;
     vDSP_svesq(input, 1, &sumSquare, processSample);
     return sqrtf(sumSquare/processSample);

@@ -13,6 +13,9 @@
 
 #include <stdio.h>
 
-float BMRMSPower_process(float* input,size_t processSample);
+/*!
+ *BMRMSPower_process
+ */
+float BMRMSPower_process(const float* input,size_t numSamples);
 
 #endif /* BMRMSPower_h */
