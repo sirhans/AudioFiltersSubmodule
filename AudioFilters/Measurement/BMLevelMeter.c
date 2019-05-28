@@ -81,8 +81,10 @@ extern "C" {
         vDSP_maxmgv(inputR, 1, &maxMagnitudeR, bufferLength);
         
         // convert to decibels
-        maxMagnitudeL = BM_GAIN_TO_DB(maxMagnitudeL);
-        maxMagnitudeR = BM_GAIN_TO_DB(maxMagnitudeR);
+        if (maxMagnitudeL > 0.0f) maxMagnitudeL = BM_GAIN_TO_DB(maxMagnitudeL);
+        else maxMagnitudeL = -128.0f;
+        if (maxMagnitudeR > 0.0f) maxMagnitudeR = BM_GAIN_TO_DB(maxMagnitudeR);
+        else maxMagnitudeR = -128.0f;
         
         // release filter the maxMagnitudes to get the peak with fast release time
         BMReleaseFilter_processBuffer(&This->fastReleaseL, &maxMagnitudeL, fastPeakL, 1);
@@ -119,8 +121,10 @@ extern "C" {
         RMSRight = BMRMSPower_process(inputR, bufferLength);
         
         // convert to decibels
-        RMSLeft  = BM_GAIN_TO_DB(RMSLeft);
-        RMSRight = BM_GAIN_TO_DB(RMSRight);
+        if (RMSLeft > 0.0f) RMSLeft = BM_GAIN_TO_DB(RMSLeft);
+        else RMSLeft = -128.0f;
+        if (RMSRight > 0.0f) RMSRight = BM_GAIN_TO_DB(RMSRight);
+        else RMSRight = -128.0f;
         
         // release filter the maxMagnitudes to get the peak with fast release time
         BMReleaseFilter_processBuffer(&This->fastReleaseL, &RMSLeft, fastReleaseL, 1);
