@@ -148,10 +148,6 @@ void BMCompressor_ProcessBufferMono(BMCompressor* This, const float* input, floa
         // rectify the input signal
         vDSP_vabs(input, 1, buffer1, 1, framesProcessing);
         
-        // add a small value to avoid errors when converting zero to dB
-        float nearZero = BM_DB_TO_GAIN(-128.0f);
-        vDSP_vsadd(buffer1, 1, &nearZero, buffer1, 1, framesProcessing);
-        
         // convert linear gain to decibel scale
         float one = 1.0f;
         vDSP_vdbcon(buffer1,1,&one,buffer1,1,framesProcessing,0);
@@ -222,10 +218,6 @@ void BMCompressor_ProcessBufferStereo(BMCompressor* This,
         // rectify the input signal
         vDSP_vabs(buffer1, 1, buffer1, 1, framesProcessing);
         
-        // add a small value to avoid errors when converting zero to dB
-        float nearZero = BM_DB_TO_GAIN(-128.0f);
-        vDSP_vsadd(buffer1, 1, &nearZero, buffer1, 1, framesProcessing);
-        
         // convert linear gain to decibel scale
         float one = 1.0f;
         vDSP_vdbcon(buffer1,1,&one,buffer1,1,framesProcessing,0);
@@ -278,24 +270,34 @@ void BMCompressor_SetThresholdInDB(BMCompressor* compressor, float threshold){
 }
 
 void BMCompressor_SetKneeWidthInDB(BMCompressor* compressor, float knee){
+    assert(knee >= 0.0f);
+    
     BMCompressorSetting *setting = &compressor->settings;
     setting->kneeWidthInDB = knee;
 }
 
 void BMCompressor_SetRatio(BMCompressor* compressor, float ratio){
+    assert(ratio > 0.0);
+    
     BMCompressorSetting *setting = &compressor->settings;
     setting->slope = 1.0f - (1.0f / ratio);
 }
 
 void BMCompressor_SetAttackTime(BMCompressor* compressor, float attackTime){
+    assert(attackTime >= 0.0f);
+    
     BMEnvelopeFollower_setAttackTime(&compressor->envelopeFollower, compressor->settings.attackTime);
 }
 
 void BMCompressor_SetReleaseTime(BMCompressor* compressor, float releaseTime){
+    assert(releaseTime > 0.0f);
+    
     BMEnvelopeFollower_setReleaseTime(&compressor->envelopeFollower, releaseTime);
 }
 
 void BMCompressor_SetSampleRate(BMCompressor* compressor, float sampleRate){
+    assert(sampleRate > 0.0f);
+    
     BMEnvelopeFollower_init(&compressor->envelopeFollower, sampleRate);
     BMEnvelopeFollower_setAttackTime(&compressor->envelopeFollower, compressor->settings.attackTime);
     BMEnvelopeFollower_setReleaseTime(&compressor->envelopeFollower, compressor->settings.releaseTime);
