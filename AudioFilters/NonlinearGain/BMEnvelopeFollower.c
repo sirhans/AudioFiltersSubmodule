@@ -254,16 +254,16 @@ void BMEnvelopeFollower_init(BMEnvelopeFollower* This, float sampleRate){
 
 
 void BMEnvelopeFollower_setAttackTime(BMEnvelopeFollower* This, float attackTime){
-    
-    float attackFc = ARTimeToCutoffFrequency(attackTime,BMENV_NUM_STAGES);
+    assert(attackTime >= 0.0f);
     
     // if the attack time is zero, don't process the attack at all
-    if(attackFc <= 0.0f){
+    if(attackTime == 0.0f){
         This->processAttack = false;
     }
     
     // for non-zero attack time, set the attack filter frequency
     else {
+        float attackFc = ARTimeToCutoffFrequency(attackTime,BMENV_NUM_STAGES);
         This->processAttack = true;
         for(size_t i=0; i<BMENV_NUM_STAGES; i++)
             BMAttackFilter_setCutoff(&This->attackFilters[i],attackFc);
