@@ -149,7 +149,7 @@ void BMCompressor_ProcessBufferMono(BMCompressor* This, const float* input, floa
         vDSP_vabs(input, 1, buffer1, 1, framesProcessing);
         
         // add a small value to avoid errors when converting zero to dB
-        float nearZero = FLT_MIN;
+        float nearZero = BM_DB_TO_GAIN(-128.0f);
         vDSP_vsadd(buffer1, 1, &nearZero, buffer1, 1, framesProcessing);
         
         // convert linear gain to decibel scale
@@ -223,7 +223,7 @@ void BMCompressor_ProcessBufferStereo(BMCompressor* This,
         vDSP_vabs(buffer1, 1, buffer1, 1, framesProcessing);
         
         // add a small value to avoid errors when converting zero to dB
-        float nearZero = FLT_MIN;
+        float nearZero = BM_DB_TO_GAIN(-128.0f);
         vDSP_vsadd(buffer1, 1, &nearZero, buffer1, 1, framesProcessing);
         
         // convert linear gain to decibel scale
