@@ -57,6 +57,7 @@ typedef struct BMEnvelopeFollower {
     // filters for standandard envelopes
     BMReleaseFilter releaseFilters [BMENV_NUM_STAGES];
     BMAttackFilter  attackFilters [BMENV_NUM_STAGES];
+    bool processAttack;
 } BMEnvelopeFollower;
 
 

@@ -21,6 +21,8 @@
 
 
 void BMAttackFilter_setCutoff(BMAttackFilter* This, float fc){
+    assert(fc > 0.0f);
+    
     This->fc = fc;
     
     // compute the input gain to the integrators
@@ -47,6 +49,8 @@ void BMAttackFilter_setCutoff(BMAttackFilter* This, float fc){
 
 
 void BMReleaseFilter_setCutoff(BMReleaseFilter* This, float fc){
+    assert(fc > 0.0f);
+    
     This->fc = fc;
     
     // compute the input gain to the integrators
@@ -233,13 +237,15 @@ void BMReleaseFilter_processBuffer(BMReleaseFilter* This,
 void BMEnvelopeFollower_init(BMEnvelopeFollower* This, float sampleRate){
     
     float attackFc = ARTimeToCutoffFrequency(BMENV_ATTACK_TIME, BMENV_NUM_STAGES);
-    float releaseFc = ARTimeToCutoffFrequency(BMENV_ATTACK_TIME, BMENV_NUM_STAGES);
+    float releaseFc = ARTimeToCutoffFrequency(BMENV_RELEASE_TIME, BMENV_NUM_STAGES);
     
     // initialize all the filters
     for(size_t i=0; i<BMENV_NUM_STAGES; i++){
         BMAttackFilter_init(&This->attackFilters[i], attackFc, sampleRate);
         BMReleaseFilter_init(&This->releaseFilters[i], releaseFc, sampleRate);
     }
+    
+    
     
 }
 
@@ -251,8 +257,17 @@ void BMEnvelopeFollower_setAttackTime(BMEnvelopeFollower* This, float attackTime
     
     float attackFc = ARTimeToCutoffFrequency(attackTime,BMENV_NUM_STAGES);
     
-    for(size_t i=0; i<BMENV_NUM_STAGES; i++)
-        BMAttackFilter_setCutoff(&This->attackFilters[i],attackFc);
+    // if the attack time is zero, don't process the attack at all
+    if(attackFc <= 0.0f){
+        This->processAttack = false;
+    }
+    
+    // for non-zero attack time, set the attack filter frequency
+    else {
+        This->processAttack = true;
+        for(size_t i=0; i<BMENV_NUM_STAGES; i++)
+            BMAttackFilter_setCutoff(&This->attackFilters[i],attackFc);
+    }
 }
 
 
@@ -275,10 +290,12 @@ void BMEnvelopeFollower_processBuffer(BMEnvelopeFollower* This, const float* inp
     BMReleaseFilter_processBuffer(&This->releaseFilters[0], input, output, numSamples);
     for(size_t i=1; i<BMENV_NUM_STAGES; i++)
         BMReleaseFilter_processBuffer(&This->releaseFilters[i], output, output, numSamples);
-    
-    // process all the attack filters in series
-    for(size_t i=0; i<BMENV_NUM_STAGES; i++)
-        BMAttackFilter_processBuffer(&This->attackFilters[i], output, output, numSamples);
+
+    if(This->processAttack){
+        // process all the attack filters in series
+        for(size_t i=0; i<BMENV_NUM_STAGES; i++)
+            BMAttackFilter_processBuffer(&This->attackFilters[i], output, output, numSamples);
+    }
 }
 
 
