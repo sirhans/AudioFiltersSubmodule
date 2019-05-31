@@ -23,9 +23,10 @@ extern "C" {
     typedef struct BMVariableFilter {
         float sampleRate, fc;
         float ic1, ic2;
+        float lastG;
         float antiClick [BM_BUFFER_CHUNK_SIZE];
         float g [BM_BUFFER_CHUNK_SIZE];
-        float k, lastG;
+        float k [BM_BUFFER_CHUNK_SIZE];
         float a1 [BM_BUFFER_CHUNK_SIZE];
         float a2 [BM_BUFFER_CHUNK_SIZE];
         float a3 [BM_BUFFER_CHUNK_SIZE];
@@ -38,7 +39,7 @@ extern "C" {
      * BMVariableFilter_freqSweepMono
      *
      * @param audioInput     array of values for filter inout, length = numSamples
-     * @param cutoffControl  an array of filter cutoff frequencies length = numSamples
+     * @param cutoffControl  an array of filter cutoff frequencies, length = numSamples
      * @param audioOutput    an array of values for the filter output, length = numSamples
      * @param numSamples     length of input and output arrays
      */
@@ -47,6 +48,24 @@ extern "C" {
                                         const float* cutoffControl,
                                         float* audioOutput,
                                         size_t numSamples);
+    
+    
+    
+    /*!
+     * BMVariableFilter_freqAndQSweepMono
+     *
+     * @param audioInput     array of values for filter inout, length = numSamples
+     * @param cutoffControl  an array of filter cutoff frequencies, length = numSamples
+     * @param qControl       an array of filter Q settings, length = numSamples
+     * @param audioOutput    an array of values for the filter output, length = numSamples
+     * @param numSamples     length of input and output arrays
+     */
+    void BMVariableFilter_freqAndQSweepMono(BMVariableFilter* This,
+                                            const float* audioInput,
+                                            const float* cutoffControl,
+                                            const float* qControl,
+                                            float* audioOutput,
+                                            size_t numSamples);
     
 
 #endif /* BMVariableFilter_h */
