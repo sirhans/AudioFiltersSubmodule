@@ -286,12 +286,14 @@ void BMCompressor_SetRatio(BMCompressor* compressor, float ratio){
 void BMCompressor_SetAttackTime(BMCompressor* compressor, float attackTime){
     assert(attackTime >= 0.0f);
     
-    BMEnvelopeFollower_setAttackTime(&compressor->envelopeFollower, compressor->settings.attackTime);
+    compressor->settings.attackTime = attackTime;
+    BMEnvelopeFollower_setAttackTime(&compressor->envelopeFollower, attackTime);
 }
 
 void BMCompressor_SetReleaseTime(BMCompressor* compressor, float releaseTime){
     assert(releaseTime > 0.0f);
     
+    compressor->settings.releaseTime = releaseTime;
     BMEnvelopeFollower_setReleaseTime(&compressor->envelopeFollower, releaseTime);
 }
 

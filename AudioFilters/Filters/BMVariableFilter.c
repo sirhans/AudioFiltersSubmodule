@@ -112,10 +112,11 @@ extern "C" {
             int samplesTCInt = (int)samplesThisChunk;
             
             // compute the input gain to the integrators at each control sample
+            // g = tanf(M_PI * fc / This->sampleRate);
             float* tempBuffer = This->a1;
             float alpha = M_PI / This->sampleRate;
-            vDSP_vsmul(cutoffControl, 1, &alpha, This->g, 1, samplesThisChunk);
-            vvtanf(tempBuffer, This->g, &samplesTCInt);
+            vDSP_vsmul(cutoffControl, 1, &alpha, tempBuffer, 1, samplesThisChunk);
+            vvtanf(This->g, tempBuffer, &samplesTCInt);
             
             // compute k from Q
             vvrecf(This->k, qControl, &samplesTCInt);
