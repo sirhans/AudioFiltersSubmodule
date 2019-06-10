@@ -44,6 +44,8 @@ extern "C" {
     void BMLevelMeter_init(BMLevelMeter* This, float sampleRate){
         This->expectedBufferLength = BM_LEVEL_METER_DEFAULT_BUFFER_LENGTH;
         
+        This->sampleRate = sampleRate;
+        
         float buffersPerSecond = sampleRate / (float)BM_LEVEL_METER_DEFAULT_BUFFER_LENGTH;
         
         // init the fast release filters
