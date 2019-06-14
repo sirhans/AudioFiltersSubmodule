@@ -24,6 +24,7 @@ extern "C" {
 #define BM_LEVEL_METER_DEFAULT_SLOW_RELEASE_TIME 5.0
     
     
+    
     /*!
      *BMLevelMeter_setBufferSize
      *
@@ -38,6 +39,7 @@ extern "C" {
             BMReleaseFilter_updateSampleRate(&This->slowReleaseR[i], buffersPerSecond);
         }
     }
+    
     
     
     
@@ -61,14 +63,17 @@ extern "C" {
         }
     }
     
-
     
     
-    void BMLevelMeter_peakLevelStereo(BMLevelMeter* This,
-                                         const float* inputL, const float* inputR,
-                                         float* fastPeakL, float* fastPeakR,
-                                         float* slowPeakL, float* slowPeakR,
-                                         size_t bufferLength){
+    
+    
+    void BMLevelMeter_processStereo(BMLevelMeter* This,
+                                    const float* inputL, const float* inputR,
+                                    float* fastPeakL, float* fastPeakR,
+                                    float* slowPeakL, float* slowPeakR,
+                                    size_t bufferLength,
+                                    bool RMS){
+        
         // if the buffer size has changed, update the filters to keep the release
         // times correct
         if(bufferLength != This->expectedBufferLength){
@@ -78,9 +83,18 @@ extern "C" {
         
         float maxMagnitudeL, maxMagnitudeR;
         
-        // get the max magnitude in each channel
-        vDSP_maxmgv(inputL, 1, &maxMagnitudeL, bufferLength);
-        vDSP_maxmgv(inputR, 1, &maxMagnitudeR, bufferLength);
+        // if we are measuring RMS level, calculate that
+        if(RMS){
+            // get the max RMS power in each channel
+            maxMagnitudeL  = BMRMSPower_process(inputL, bufferLength);
+            maxMagnitudeR = BMRMSPower_process(inputR, bufferLength);
+        }
+        // else get peak level
+        else {
+            // get the max magnitude in each channel
+            vDSP_maxmgv(inputL, 1, &maxMagnitudeL, bufferLength);
+            vDSP_maxmgv(inputR, 1, &maxMagnitudeR, bufferLength);
+        }
         
         // convert to decibels
         if (maxMagnitudeL > 0.0f) maxMagnitudeL = BM_GAIN_TO_DB(maxMagnitudeL);
@@ -104,41 +118,26 @@ extern "C" {
     
     
     
+    
+    void BMLevelMeter_peakLevelStereo(BMLevelMeter* This,
+                                         const float* inputL, const float* inputR,
+                                         float* fastReleaseL, float* fastReleaseR,
+                                         float* slowReleaseL, float* slowReleaseR,
+                                         size_t bufferLength){
+        BMLevelMeter_processStereo(This, inputL, inputR, fastReleaseL, fastReleaseR, slowReleaseL, slowReleaseR, bufferLength, false);
+        
+    }
+    
+    
+    
+    
+    
     void BMLevelMeter_RMSPowerStereo(BMLevelMeter* This,
                                       const float* inputL, const float* inputR,
                                       float* fastReleaseL, float* fastReleaseR,
                                       float* slowReleaseL, float* slowReleaseR,
                                       size_t bufferLength){
-        // if the buffer size has changed, update the filters to keep the release
-        // times correct
-        if(bufferLength != This->expectedBufferLength){
-            This->expectedBufferLength = bufferLength;
-            BMLevelMeter_setBufferSize(This, bufferLength);
-        }
-        
-        float RMSLeft, RMSRight;
-        
-        // get the max magnitude in each channel
-        RMSLeft  = BMRMSPower_process(inputL, bufferLength);
-        RMSRight = BMRMSPower_process(inputR, bufferLength);
-        
-        // convert to decibels
-        if (RMSLeft > 0.0f) RMSLeft = BM_GAIN_TO_DB(RMSLeft);
-        else RMSLeft = -128.0f;
-        if (RMSRight > 0.0f) RMSRight = BM_GAIN_TO_DB(RMSRight);
-        else RMSRight = -128.0f;
-        
-        // release filter the maxMagnitudes to get the peak with fast release time
-        BMReleaseFilter_processBuffer(&This->fastReleaseL, &RMSLeft, fastReleaseL, 1);
-        BMReleaseFilter_processBuffer(&This->fastReleaseR, &RMSRight, fastReleaseR, 1);
-        
-        // release filter in multiple stages to get the peak with slow release time
-        BMReleaseFilter_processBuffer(&This->slowReleaseL[0], &RMSLeft, slowReleaseL, 1);
-        BMReleaseFilter_processBuffer(&This->slowReleaseR[0], &RMSRight, slowReleaseR, 1);
-        for(size_t i=1; i<BM_PEAK_METER_NUM_SLOW_RELEASE_FILTERS; i++){
-            BMReleaseFilter_processBuffer(&This->slowReleaseL[i], slowReleaseL, slowReleaseL, 1);
-            BMReleaseFilter_processBuffer(&This->slowReleaseR[i], slowReleaseL, slowReleaseL, 1);
-        }
+        BMLevelMeter_processStereo(This, inputL, inputR, fastReleaseL, fastReleaseR, slowReleaseL, slowReleaseR, bufferLength, true);
     }
     
     
