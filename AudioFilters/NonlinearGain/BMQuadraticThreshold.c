@@ -41,7 +41,27 @@ void BMQuadraticThreshold_initLower(BMQuadraticThreshold* This, float threshold,
 void BMQuadraticThreshold_initUpper(BMQuadraticThreshold* This, float threshold, float width){
     This->isUpper = true;
     
-TODO: write this
+    float l = threshold;
+    float w = width;
+    
+    /*
+     * we want to express the curved part of the function
+     * as a polynomial A*x^2 * Bx + C
+     *
+     * Mathematica: -(l^2 + (w - x)^2 - 2 l (w + x)) / (4 w)
+     */
+    This->lPlusW = l + w;
+    This->lMinusW = l - w;
+    float fourWinv = 1.0 / (4.0f * w);
+    // C = (l + w)^2 / (4 w)
+    float C = -This->lMinusW * This->lMinusW * fourWinv;
+    // B = 2 (w - l) / (4 w)
+    float B = 2.0f * This->lPlusW * fourWinv;
+    // A = 1 / (4 w)
+    float A = -fourWinv;
+    This->coefficients[0] = A;
+    This->coefficients[1] = B;
+    This->coefficients[2] = C;
 }
 
 
@@ -53,7 +73,7 @@ TODO: write this
  * qThreshold[x_, l_, w_] :=
  *       If[x < l - w, l, If[x > l + w, x, (- l x + (l + w + x)^2/4)/w]]
  */
-void quadraticThreshold_lowerBuffer(BMQuadraticThreshold* This,
+void BMQuadraticThreshold_lowerBuffer(BMQuadraticThreshold* This,
                               const float* input,
                               float* output,
                               size_t numFrames){
@@ -71,8 +91,12 @@ void quadraticThreshold_lowerBuffer(BMQuadraticThreshold* This,
 }
 
 
-
-void quadraticThreshold_upperBuffer(BMQuadraticThreshold* This,
+/*
+ * Mathematica code:
+ *  qUpperThreshold[x_, l_,w_] := -If[w < -l + x, -l, If[-x > -l + w, -x,
+                                            (l (-x) + 1/4 (-l + w - x)^2)/w]]
+ */
+void BMQuadraticThreshold_upperBuffer(BMQuadraticThreshold* This,
                                     const float* input,
                                     float* output,
                                     size_t numFrames){

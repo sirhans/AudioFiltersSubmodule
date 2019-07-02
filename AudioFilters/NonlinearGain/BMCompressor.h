@@ -15,17 +15,12 @@
 #include <stdbool.h>
 #include "BMMultiLevelBiquad.h"
 #include "BMEnvelopeFollower.h"
+#include "BMQuadraticThreshold.h"
 
 typedef struct{
-    float thresholdInDB;
-    float kneeWidthInDB;
-    float releaseTime, attackTime;
-    float slope;
-} BMCompressorSetting;
-
-typedef struct{
-    BMCompressorSetting settings;
+    float thresholdInDB,kneeWidthInDB, releaseTime, attackTime,slope;
     BMEnvelopeFollower envelopeFollower;
+    BMQuadraticThreshold quadraticThreshold;
     float *buffer1, *buffer2;
 } BMCompressor;
 

@@ -28,14 +28,14 @@ void BMQuadraticThreshold_initUpper(BMQuadraticThreshold* This, float threshold,
  * qThreshold[x_, l_, w_] :=
  *       If[x < l - w, l, If[x > l + w, x, (- l x + (l + w + x)^2/4)/w]]
  */
-void quadraticThreshold_lowerBuffer(BMQuadraticThreshold* This,
+void BMQuadraticThreshold_lowerBuffer(BMQuadraticThreshold* This,
                                    const float* input,
                                    float* output,
                                    size_t numFrames);
 
 
 
-void quadraticThreshold_upperBuffer(BMQuadraticThreshold* This,
+void BMQuadraticThreshold_upperBuffer(BMQuadraticThreshold* This,
                                     const float* input,
                                     float* output,
                                     size_t numFrames);
