@@ -77,44 +77,6 @@ void BMCompressor_Free(BMCompressor* compressor){
 
 
 
-/*
- * Mathematica code:
- *
- * qThreshold[x_, l_, w_] :=
- *       If[x < l - w, l, If[x > l + w, x, (- l x + (l + w + x)^2/4)/w]]
- */
-void quadraticThreshold(const float* input, float* output, float threshold, float softKneeWidth, size_t numFrames){
-    assert(input != output);
-    
-    float l = threshold;
-    float w = softKneeWidth;
-    
-    /*
-     * we want to express (- l x + (l + w + x)^2/4)/w
-     * as a polynomial A*x^2 * Bx + C
-     *
-     * Mathematica: (l^2 + 2 l w + w^2 + (-2 l + 2 w) x + x^2) / (4 w)
-     */
-    float lPlusW = l + w;
-    float lMinusW = l - w;
-    float fourWinv = 1.0 / (4.0f * w);
-    // C = (l + w)^2 / (4 w)
-    float C = lPlusW * lPlusW * fourWinv;
-    // B = 2 (w - l) / (4 w)
-    float B = 2.0f * (-lMinusW) * fourWinv;
-    // A = 1 / (4 w)
-    float A = fourWinv;
-    float coefficients [3] = {A, B, C};
-    
-    // clip values to [l-w,l+w];
-    vDSP_vclip(input, 1, &lMinusW, &lPlusW, output, 1, numFrames);
-
-    // process the polynomial
-    vDSP_vpoly(coefficients, 1, output, 1, output, 1, numFrames, 2);
-    
-    // where the input is greater than the polynomial output, return the input
-    vDSP_vmax(input,1,output,1,output,1,numFrames);
-}
 
 
 /*!
