@@ -66,6 +66,7 @@ void quadraticThreshold_lowerBuffer(BMQuadraticThreshold* This,
     vDSP_vpoly(This->coefficients, 1, output, 1, output, 1, numFrames, 2);
     
     // where the input is greater than the polynomial output, return the input
+    // *** This works because the output has been clipped ***
     vDSP_vmax(input,1,output,1,output,1,numFrames);
 }
 
@@ -84,5 +85,6 @@ void quadraticThreshold_upperBuffer(BMQuadraticThreshold* This,
     vDSP_vpoly(This->coefficients, 1, output, 1, output, 1, numFrames, 2);
     
     // where the input is less than the polynomial output, return the input
+    // *** this works because the output has been clipped ***
     vDSP_vmin(input,1,output,1,output,1,numFrames);
 }
