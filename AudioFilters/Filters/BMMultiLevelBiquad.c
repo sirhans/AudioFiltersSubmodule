@@ -392,29 +392,31 @@ void BMMultiLevelBiquad_setBypass(BMMultiLevelBiquad* bqf, size_t level){
             
             float gainV = BM_DB_TO_GAIN(gain_db);
             
-            // if gain is close to 1.0, bypass the filter
-            if (fabsf(gain_db) < 0.01){
-                *b0 = 1.0;
-                *b1 = *b2 = *a1 = *a2 = 0.0;
-            }
-            
-            // if the gain is nontrivial
-            else {
                 double gamma = tanf(M_PI * fc / bqf->sampleRate);
                 double gamma_2 = gamma*gamma;
                 double sqrt_gain = sqrtf(gainV);
+                double g_d;
                 
                 // conditionally set G
                 double G;
-                if (gainV > 2.0f) G = gainV * M_SQRT2 * 0.5f;
-                else {
-                    if (gainV >= 0.5f) G = sqrt_gain;
-                    else G = gainV * M_SQRT2;
+                if (gainV > 2.0){
+                    G = gainV * M_SQRT2 * 0.5;
+                    double G_2 = G*G;
+                    g_d = pow((G_2 - 1.0)/(gainV*gainV - G_2), 0.25);
                 }
-                double G_2 = G*G;
+                else {
+                    if (gainV >= 0.5) {
+                        G = sqrt_gain;
+                        g_d = pow(1/gainV,0.25);
+                    }
+                    else{
+                        G = gainV * M_SQRT2;
+                        double G_2 = G*G;
+                        g_d = pow((G_2 - 1.0)/(gainV*gainV - G_2), 0.25);
+                    }
+                }
                 
                 // compute reuseable variables
-                double g_d = powf((G_2 - 1.0f)/(gainV*gainV - G_2), 0.25f);
                 double g_d_2 = g_d*g_d;
                 double g_n = g_d * sqrt_gain;
                 double g_n_2 = g_n * g_n;
@@ -431,7 +433,6 @@ void BMMultiLevelBiquad_setBypass(BMMultiLevelBiquad* bqf, size_t level){
                 
                 *a1 = 2.0f * (gamma_2 - g_d_2) * one_over_denominator;
                 *a2 = (gamma_2_plus_g_d_2 - sqrt_2_g_d_gamma)*one_over_denominator;
-            }
         }
         
         BMMultiLevelBiquad_queueUpdate(bqf);
@@ -458,29 +459,32 @@ void BMMultiLevelBiquad_setBypass(BMMultiLevelBiquad* bqf, size_t level){
             
             float gainV = BM_DB_TO_GAIN(gain_db);
             
-            // if gain is close to 1.0, bypass the filter
-            if (fabsf(gain_db) < 0.01){
-                *b0 = 1.0;
-                *b1 = *b2 = *a1 = *a2 = 0.0;
-            }
-            
-            // if the gain is nontrivial
-            else {
+
                 double gamma = tanf(M_PI * fc / bqf->sampleRate);
                 double gamma_2 = gamma*gamma;
                 double sqrt_gain = sqrtf(gainV);
+                double g_d;
                 
                 // conditionally set G
                 double G;
-                if (gainV > 2.0f) G = gainV * M_SQRT2 * 0.5f;
-                else {
-                    if (gainV >= 0.5f) G = sqrt_gain;
-                    else G = gainV * M_SQRT2;
+                if (gainV > 2.0){
+                    G = gainV * M_SQRT2 * 0.5;
+                    double G_2 = G*G;
+                    g_d = pow((G_2 - 1.0)/(gainV*gainV - G_2), 0.25);
                 }
-                double G_2 = G*G;
+                else {
+                    if (gainV >= 0.5) {
+                        G = sqrt_gain;
+                        g_d = pow(1/gainV,0.25);
+                    }
+                    else{
+                        G = gainV * M_SQRT2;
+                        double G_2 = G*G;
+                        g_d = pow((G_2 - 1.0)/(gainV*gainV - G_2), 0.25);
+                    }
+                }
                 
                 // compute reuseable variables
-                double g_d = powf((G_2 - 1.0f)/(gainV*gainV - G_2), 0.25f);
                 double g_d_2 = g_d*g_d;
                 double g_n = g_d * sqrt_gain;
                 double g_n_2 = g_n * g_n;
@@ -488,18 +492,17 @@ void BMMultiLevelBiquad_setBypass(BMMultiLevelBiquad* bqf, size_t level){
                 double g_d_2_gamma_2 = g_d_2 * gamma_2;
                 double sqrt_2_g_d_gamma = M_SQRT2 * g_d * gamma;
                 double sqrt_2_g_n_gamma = M_SQRT2 * g_n * gamma;
-                double g_d_2_gamma_2_plus_1 = g_d_2_gamma_2 + 1.0f;
-                double g_n_2_gamma_2_plus_1 = g_n_2_gamma_2 + 1.0f;
+                double g_d_2_gamma_2_plus_1 = g_d_2_gamma_2 + 1.0;
+                double g_n_2_gamma_2_plus_1 = g_n_2_gamma_2 + 1.0;
                 
-                double one_over_denominator = 1.0f / (g_d_2_gamma_2_plus_1 + sqrt_2_g_d_gamma);
+                double one_over_denominator = 1.0 / (g_d_2_gamma_2_plus_1 + sqrt_2_g_d_gamma);
                 
                 *b0 = (g_n_2_gamma_2_plus_1 + sqrt_2_g_n_gamma) * one_over_denominator;
-                *b1 = 2.0f * (g_n_2_gamma_2 - 1.0f) * one_over_denominator;
+                *b1 = 2.0 * (g_n_2_gamma_2 - 1.0) * one_over_denominator;
                 *b2 = (g_n_2_gamma_2_plus_1 - sqrt_2_g_n_gamma) * one_over_denominator;
                 
-                *a1 = 2.0f * (g_d_2_gamma_2 - 1.0f) * one_over_denominator;
+                *a1 = 2.0 * (g_d_2_gamma_2 - 1.0) * one_over_denominator;
                 *a2 = (g_d_2_gamma_2_plus_1 - sqrt_2_g_d_gamma)*one_over_denominator;
-            }
         }
         
         BMMultiLevelBiquad_queueUpdate(bqf);
