@@ -439,7 +439,42 @@ void BMMultiLevelBiquad_setBypass(BMMultiLevelBiquad* bqf, size_t level){
     }
     
     
+void BMMultiLevelBiquad_setHighShelfFirstOrder(BMMultiLevelBiquad* bqf, float fc, float gain_db, size_t level){
+    assert(level < bqf->numLevels);
     
+    // for left and right channels, set coefficients
+    for(size_t i=0; i < bqf->numChannels; i++){
+        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+        double* b1 = b0 + 1;
+        double* b2 = b0 + 2;
+        double* a1 = b0 + 3;
+        double* a2 = b0 + 4;
+        
+        float gainV = BM_DB_TO_GAIN(gain_db);
+        
+        // if the gain is nontrivial
+        {
+            double gamma = tanf(M_PI * fc / bqf->sampleRate);
+            double one_over_denominator;
+            if(gainV>1){
+                one_over_denominator = 1.0f / (gamma + 1);
+                *b0 = (gamma + gainV) * one_over_denominator;
+                *b1 = (gamma - gainV) * one_over_denominator;
+                *a1 = (gamma - 1) * one_over_denominator;
+            }else{
+                one_over_denominator = 1.0f / (gamma*gainV + 1);
+                *b0 = gainV*(gamma + 1) * one_over_denominator;
+                *b1 = gainV*(gamma - 1) * one_over_denominator;
+                *a1 = (gainV*gamma - 1) * one_over_denominator;
+            }
+            
+            *b2 = 0.0f;
+            *a2 = 0.0f;
+        }
+    }
+    
+    BMMultiLevelBiquad_queueUpdate(bqf);
+}
     
     
     
