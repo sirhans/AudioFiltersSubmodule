@@ -18,10 +18,7 @@ extern "C" {
 #include "TPCircularBuffer.h"
 
     typedef struct BMDownsampler {
-        float* AAFilter;
-        TPCircularBuffer buffer;
-        size_t decimationFactor;
-        size_t filterLength;
+
         size_t IRLength;
     } BMDownsampler;
     

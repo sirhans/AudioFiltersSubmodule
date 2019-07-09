@@ -12,18 +12,12 @@ extern "C" {
 
 #ifndef BMUpsampler_h
 #define BMUpsampler_h
-
-#define BMUPSAMPLER_FLTR_0_LENGTH 18
-#define BMUPSAMPLER_FLTR_1_LENGTH 12
-#define BMUPSAMPLER_FLTR_2_LENGTH 6
-#define BMUPSAMPLER_FLTR_SECTIONS 2
+    
     
 #include <MacTypes.h>
-#include "BMUpsampler2x.h"
     
     typedef struct BMUpsampler {
-        BMUpsampler2x* upsamplerBank;
-        size_t numStages;
+
         size_t IRLength;
     } BMUpsampler;
     
