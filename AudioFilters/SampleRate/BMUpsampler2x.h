@@ -14,7 +14,7 @@
 
 typedef struct BMUpsampler2x {
     size_t numCoefficients, numStages, stageWidth;
-    simd_float4* filter;
+    simd_float4* filters;
 } BMUpsampler2x;
 
 #endif /* BMUpsampler2x_h */

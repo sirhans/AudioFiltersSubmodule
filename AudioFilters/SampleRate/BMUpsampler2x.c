@@ -9,6 +9,7 @@
 #include "BMUpsampler2x.h"
 #include <Accelerate/Accelerate.h>
 
+void clearBuffers();
 
 // from Upsampler2XNeon.hpp of Laurent de Soras HIIR library
 //
@@ -37,15 +38,16 @@ void BMUpsampler2x_init(BMUpsampler2x* This, size_t numCoefficients){
     // set all the filter coefficients to zero
     for (size_t i = 0; i < This->numStages + 1; ++i)
     {
-        This->filter[i] = 0.0f;
+        This->filters[i] = 0.0f;
     }
     // if the number of coefficients is odd
     if ((This->numCoefficients & 1) != 0)
     {
         // set one of the coefficients to 1;
         const size_t pos = (numCoefficients ^ 1) & (This->stageWidth - 1);
-        *(pos + (float*)(This->filter[This->numStages])) = 1;
+        *(pos + (float*)(&This->filters[This->numStages])) = 1;
     }
     
-    clear_buffers ();
+    clearBuffers();
 }
+
