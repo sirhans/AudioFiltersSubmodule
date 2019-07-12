@@ -15,7 +15,6 @@ extern "C" {
 #define BMDownsampler_h
     
 #include <MacTypes.h>
-#include "TPCircularBuffer.h"
 
     typedef struct BMDownsampler {
 
