@@ -17,8 +17,8 @@
 #include "BMHIIRStage.h"
 
 typedef struct BMUpsampler2x {
-    size_t numCoefficients, numStages, numFilters;
-    BMHIIRStageData* filters;
+    size_t numCoefficients, numStages;
+    BMHIIRStage* filterStages;
 } BMUpsampler2x;
 
 void BMUpsampler2x_init(BMUpsampler2x* This, size_t numCoefficients);

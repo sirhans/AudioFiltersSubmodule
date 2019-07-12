@@ -11,7 +11,7 @@
 
 #include "BMUpsampler2x.h"
 #include <Accelerate/Accelerate.h>
-#include <assert/assert.h>
+#include <assert.h>
 
 // from Upsampler2XNeon.hpp of Laurent de Soras HIIR library
 //
