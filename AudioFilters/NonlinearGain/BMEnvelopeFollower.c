@@ -7,9 +7,11 @@
 //  Anyone may use this file without restrictions.
 //
 
-#include "BMEnvelopeFollower.h"
 #include <math.h>
+#include <assert.h>
 #include <Accelerate/Accelerate.h>
+#include "BMEnvelopeFollower.h"
+
 
 // set all stages of smoothing filters to critically damped
 #define BMENV_FILTER_Q 0.5f
