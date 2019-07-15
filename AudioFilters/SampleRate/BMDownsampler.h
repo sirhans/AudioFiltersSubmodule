@@ -15,42 +15,45 @@ extern "C" {
 #define BMDownsampler_h
     
 #include <MacTypes.h>
+#include "BMHIIRDownsampler2x.h"
 
     typedef struct BMDownsampler {
-
-        size_t IRLength;
+        BMHIIRDownsampler2x lastStageDS;
     } BMDownsampler;
     
     
     
     
-    /*
-     * @param decimationFactor   set this to N to keep 1 in N samples
+    /*!
+     *BMDownsampler_init
+     *
+     * @param decimationFactor must be a power of 2.
      */
     void BMDownsampler_init(BMDownsampler* This,
                             size_t decimationFactor);
     
     
     
-    /*
-     * length of input >= numSamplesOut*This->decimationFactor
-     * length of output >= numSamplesOut
+    /*!
+     *BMDownsampler_processBufferMono
+     *
+     * @input length of input >= numSamplesIn
+     * @output length of output >= numSamplesIn/decimationFactor
+     * @numSamplesIn = 2 * numSamplesOut
      */
-    void BMDownsampler_process(BMDownsampler* This,
+    void BMDownsampler_processBufferMono(BMDownsampler* This,
                                float* input,
                                float* output,
-                               size_t numSamplesOut);
+                               size_t numSamplesIn);
     
 
+    
     void BMDownsampler_free(BMDownsampler* This);
     
     
     
-    /*
-     * Calling function must ensure that the length of IR is at least
-     * This->IRLength
-     */
-    void BMDownsampler_impulseResponse(BMDownsampler* This, float* IR);
+    
+    void BMDownsampler_impulseResponse(BMDownsampler* This, float* IR, size_t numSamples);
         
 
     

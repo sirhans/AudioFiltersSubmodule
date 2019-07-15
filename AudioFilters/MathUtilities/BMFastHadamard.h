@@ -20,12 +20,21 @@ extern "C" {
     
 #include <assert.h>
 #include <stdbool.h>
+#include <string.h>
 
     
     // forward declarations
     void BMFastHadamard16(const float* input, float* output, float* temp16);
-    bool BMPowerOfTwoQ (size_t x);
     
+    
+    
+    
+    // is x a power of 2?
+    // reference: http://www.exploringbinary.com/ten-ways-to-check-if-an-integer-is-a-power-of-two-in-c/
+    static inline bool BMPowerOfTwoQ (size_t x)
+    {
+        return ((x != 0) && ((x & (~x + 1)) == x));
+    }
     
     
     
@@ -225,14 +234,6 @@ extern "C" {
         output[15] = temp16[14] - temp16[15];
     }
 
-    
-    
-    // is x a power of 2?
-    // reference: http://www.exploringbinary.com/ten-ways-to-check-if-an-integer-is-a-power-of-two-in-c/
-    inline bool BMPowerOfTwoQ (size_t x)
-    {
-        return ((x != 0) && ((x & (~x + 1)) == x));
-    }
 
     
     

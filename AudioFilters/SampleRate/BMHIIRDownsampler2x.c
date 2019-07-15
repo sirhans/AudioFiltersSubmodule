@@ -1,17 +1,22 @@
 //
-//  BMDownsampler2x.c
+//  BMHIIRDownsampler2x.c
 //  AudioFiltersXcodeProject
+//
+//  Ported from Downsampler2x4.hpp from Laurent De Soras HIIR library
+//  http://ldesoras.free.fr/prod.html
 //
 //  Created by hans anderson on 7/10/19.
 //  Anyone may use this file without restrictions of any kind
 //
 
-#include "BMDownsampler2x.h"
-#include "BMHIIRStage.h"
 #include <assert.h>
+#include "BMHIIRDownsampler2x.h"
+#include "BMHIIRStage.h"
+#include "BMPolyphaseIIR2Designer.h"
 
-void BMDownsampler2x_clearBuffers(BMDownsampler2x* This);
-void BMDownsampler2x_setCoefficients(BMDownsampler2x* This, const float* coefficientArray);
+
+void BMHIIRDownsampler2x_clearBuffers(BMHIIRDownsampler2x* This);
+void BMHIIRDownsampler2x_setCoefficients(BMHIIRDownsampler2x* This, const double* coefficientArray);
 
 //template <int NC>
 //Downsampler2x4Neon <NC>::Downsampler2x4Neon ()
@@ -24,21 +29,29 @@ void BMDownsampler2x_setCoefficients(BMDownsampler2x* This, const float* coeffic
 //
 //    clear_buffers ();
 //}
-void BMDownsampler2x_init(BMDownsampler2x* This, const float* coefficientArray, size_t numCoefficients){
+float BMHIIRDownsampler2x_init(BMHIIRDownsampler2x* This, size_t numCoefficients, float transitionBandwidth){
     This->numCoefficients = numCoefficients;
     This->numFilterStages = This->numCoefficients + 2;
     This->filterStages = malloc(sizeof(BMHIIRStage)*This->numFilterStages);
     
-    // initialize all coefficients to zero
-    for(size_t i=0; i < This->numFilterStages; i++)
-        This->filterStages[i].coef = 0.0f;
-
-    BMDownsampler2x_clearBuffers(This);
-    BMDownsampler2x_setCoefficients(This, coefficientArray);
+    // generate filter coefficients
+    double* coefficientArray = malloc(sizeof(double)*numCoefficients);
+    BMPolyphaseIIR2Designer_computeCoefsSpecOrderTbw(coefficientArray,
+                                                     (int)numCoefficients,
+                                                     transitionBandwidth);
+    
+    // set up the filters
+    BMHIIRDownsampler2x_setCoefficients(This, coefficientArray);
+    BMHIIRDownsampler2x_clearBuffers(This);
+    
+    free(coefficientArray);
+    
+    // compute and return the attenuation, in dB, that we get from the filters 
+    return BMPolyphaseIIR2Designer_computeAttenFromOrderTbw((int)numCoefficients, transitionBandwidth);
 }
 
 
-void BMDownsampler2x_free(BMDownsampler2x* This){
+void BMHIIRDownsampler2x_free(BMHIIRDownsampler2x* This){
     free(This->filterStages);
     This->filterStages = NULL;
 }
@@ -69,15 +82,15 @@ void BMDownsampler2x_free(BMDownsampler2x* This){
 //}
 
 /*!
- *BMDownsampler2x_setCoefficients
+ *BMHIIRDownsampler2x_setCoefficients
  *
  * @param coefficientArray Generate these using BMPolyphaseIIR2Designer
  */
-void BMDownsampler2x_setCoefficients(BMDownsampler2x* This, const float* coefficientArray){
+void BMHIIRDownsampler2x_setCoefficients(BMHIIRDownsampler2x* This, const double* coefficientArray){
     assert(coefficientArray != 0);
     
     for(size_t i=0; i<This->numCoefficients; i++)
-        This->filterStages[i+2].coef = coefficientArray[i]; // converting float to float4
+        This->filterStages[i+2].coef = (float)coefficientArray[i]; // converting float to float4
 }
 
 
@@ -97,16 +110,16 @@ void BMDownsampler2x_setCoefficients(BMDownsampler2x* This, const float* coeffic
 //
 //    return out;
 //}
-inline simd_float4 BMDownsampler2x_processSampleFloat4(BMDownsampler2x* This, simd_float4 in0, simd_float4 in1){
+simd_float4 BMHIIRDownsampler2x_processSampleFloat4(BMHIIRDownsampler2x* This, simd_float4 in0, simd_float4 in1){
     
     // switch the order of the input samples
-    simd_float4 sample0 = in1;
-    simd_float4 sample1 = in0;
+    simd_float4* sample0 = &in1;
+    simd_float4* sample1 = &in0;
     
-    BMHIIRStage_processSamplePos(This->numCoefficients, This->numCoefficients, &sample0, &sample1, This->filterStages);
+    BMHIIRStage_processSamplePos(This->numCoefficients, This->numCoefficients, sample0, sample1, This->filterStages);
     
-    simd_float4 sum = sample0 + sample1;
-    simd_float4 out = sum + 0.5f;
+    simd_float4 sum = *sample0 + *sample1;
+    simd_float4 out = sum * 0.5f;
     
     return out;
 }
@@ -128,15 +141,14 @@ inline simd_float4 BMDownsampler2x_processSampleFloat4(BMDownsampler2x* This, si
 //
 //    return process_sample (in_0, in_1);
 //}
-inline simd_float4 BMDownsampler2x_processSampleFloat8(BMDownsampler2x* This, simd_float8* input8){
+simd_float4 BMHIIRDownsampler2x_processSampleFloat8(BMHIIRDownsampler2x* This, simd_float8* input8){
     // split the float8 input into a pair of float4 vectors
     simd_float4 in0 = *((simd_float4*)input8);
     simd_float4 in1 = *(1 + (simd_float4*)input8);
     
     // and call the process function for the pair
-    return BMDownsampler2x_processSampleFloat4(This,in0,in1);
+    return BMHIIRDownsampler2x_processSampleFloat4(This,in0,in1);
 }
-
 
 
 
@@ -178,7 +190,7 @@ inline simd_float4 BMDownsampler2x_processSampleFloat8(BMDownsampler2x* This, si
 //    }
 //    while (pos < nbr_spl);
 //}
-void BMDownsampler2x_processBuffer(BMDownsampler2x* This, float* input, float* output, size_t numSamplesIn){
+void BMHIIRDownsampler2x_processBuffer(BMHIIRDownsampler2x* This, float* input, float* output, size_t numSamplesIn){
     // the pointers are not null
     assert (input  != 0);
     assert (output != 0);
@@ -186,14 +198,11 @@ void BMDownsampler2x_processBuffer(BMDownsampler2x* This, float* input, float* o
     // input and output are not in an overlapping region of memory
     assert (output <= input || output >= input + numSamplesIn * 8);
     
-    // cast the pointers to simd vector types and rename
-    simd_float4* output4 = (simd_float4*)output;
-    simd_float8* input8  = (simd_float8*)input;
     
     // process audio buffer
     while(numSamplesIn > 0){
         // process 8 floats of input to get 4 floats of output
-        *output4 = BMDownsampler2x_processSampleFloat8(This, input8);
+        *((simd_float4*)output) = BMHIIRDownsampler2x_processSampleFloat8(This, (simd_float8*)input);
         
         // update pointers
         input++;
@@ -239,7 +248,7 @@ void BMDownsampler2x_processBuffer(BMDownsampler2x* This, float* input, float* o
 //    low  = sum * vdupq_n_f32 (0.5f);
 //    high = spl_0 - low;
 //}
-inline void BMDownsampler2x_processSampleSplit4(BMDownsampler2x* This, simd_float4* outLow, simd_float4* outHigh, const simd_float4* input0, const simd_float4* input1){
+void BMHIIRDownsampler2x_processSampleSplit4(BMHIIRDownsampler2x* This, simd_float4* outLow, simd_float4* outHigh, const simd_float4* input0, const simd_float4* input1){
     // swap the order of the input samples
     simd_float4 sample0 = *input1;
     simd_float4 sample1 = *input0;
@@ -284,11 +293,11 @@ inline void BMDownsampler2x_processSampleSplit4(BMDownsampler2x* This, simd_floa
 //
 //    process_sample_split (low, high, in_0, in_1);
 //}
-void BMDownsampler2x_processSampleSplit8(BMDownsampler2x* This, simd_float4* outLow, simd_float4* outHigh, simd_float8* input){
+void BMHIIRDownsampler2x_processSampleSplit8(BMHIIRDownsampler2x* This, simd_float4* outLow, simd_float4* outHigh, simd_float8* input){
     const simd_float4 in_0 = *((simd_float4*)input);
     const simd_float4 in_1 = *(1 + (simd_float4*)input);
     
-    BMDownsampler2x_processSampleSplit4(This, outLow, outHigh, &in_0, &in_1);
+    BMHIIRDownsampler2x_processSampleSplit4(This, outLow, outHigh, &in_0, &in_1);
 }
 
 
@@ -366,7 +375,7 @@ void BMDownsampler2x_processSampleSplit8(BMDownsampler2x* This, simd_float4* out
 //        _filter [i]._mem4 = vdupq_n_f32 (0);
 //    }
 //}
-void BMDownsampler2x_clearBuffers(BMDownsampler2x* This){
+void BMHIIRDownsampler2x_clearBuffers(BMHIIRDownsampler2x* This){
     for(size_t i=0; i < This->numFilterStages; i++)
         This->filterStages[i].mem = 0.0f;
 }
