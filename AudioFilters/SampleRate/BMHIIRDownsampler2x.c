@@ -10,6 +10,7 @@
 //
 
 #include <assert.h>
+#include <string.h>
 #include "BMHIIRDownsampler2x.h"
 #include "BMHIIRStage.h"
 #include "BMPolyphaseIIR2Designer.h"
@@ -190,7 +191,7 @@ simd_float4 BMHIIRDownsampler2x_processSampleFloat8(BMHIIRDownsampler2x* This, s
 //    }
 //    while (pos < nbr_spl);
 //}
-void BMHIIRDownsampler2x_processBuffer(BMHIIRDownsampler2x* This, float* input, float* output, size_t numSamplesIn){
+void BMHIIRDownsampler2x_processBufferMono(BMHIIRDownsampler2x* This, float* input, float* output, size_t numSamplesIn){
     // the pointers are not null
     assert (input  != 0);
     assert (output != 0);
@@ -379,3 +380,24 @@ void BMHIIRDownsampler2x_clearBuffers(BMHIIRDownsampler2x* This){
     for(size_t i=0; i < This->numFilterStages; i++)
         This->filterStages[i].mem = 0.0f;
 }
+
+
+
+
+void BMHIIRDownsampler2x_impulseResponse(BMHIIRDownsampler2x* This, float* IR, size_t numSamples){
+    // Prevent previous processing from affecting the IR
+    BMHIIRDownsampler2x_clearBuffers(This);
+    
+    // allocate memory for the impulse input
+    float* impulseInput = malloc(sizeof(float)*2*numSamples);
+    
+    // set the input to {1,0,0,0...}
+    memset(impulseInput,0,sizeof(float)*numSamples);
+    impulseInput[0] = 1.0f;
+    
+    // process the input into the IR output
+    BMHIIRDownsampler2x_processBufferMono(This, impulseInput, IR, numSamples);
+    
+    free(impulseInput);
+}
+

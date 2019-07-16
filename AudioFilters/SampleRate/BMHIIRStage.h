@@ -116,6 +116,8 @@ static inline void BMHIIRStage_processSamplePos(size_t remaining, size_t numCoef
     
     else { // remaining > 1
         const size_t cnt = numCoefficients + 2 - remaining;
+        
+        // process the filters
         const simd_float4 tmp_0 = simd_muladd(filterStages[cnt - 2].mem,
                                               *sample0 - filterStages[cnt].mem,
                                               filterStages[cnt].coef);

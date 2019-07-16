@@ -24,7 +24,7 @@ extern "C" {
 
     
     // forward declarations
-    void BMFastHadamard16(const float* input, float* output, float* temp16);
+    static void BMFastHadamard16(const float* input, float* output, float* temp16);
     
     
     
@@ -106,7 +106,7 @@ extern "C" {
      * @param temp16  an array of 16 floats that will be over-written
      *
      */
-    inline void BMFastHadamard16(const float* input, float* output, float* temp16){
+    static inline void BMFastHadamard16(const float* input, float* output, float* temp16){
         
         // TODO: is hard-coding faster than using for loops?
         //

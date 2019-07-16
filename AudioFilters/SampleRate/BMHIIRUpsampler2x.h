@@ -23,16 +23,40 @@ typedef struct BMHIIRUpsampler2x {
 
 /*!
  *BMHIIRUpsampler2x_init
- * @numCoefficients     more coefficients results in more stopband attenuation
- * @transitionBandwidth in (0, 0.5)
- * @returns the stopband attenuation in decibels
+ * @param This pointer to an initialised BMHIIRUpsampler2x struct
+ * @param numCoefficients     more coefficients results in more stopband attenuation
+ * @param transitionBandwidth in (0, 0.5)
+ * @return the stopband attenuation in decibels
  */
 float BMHIIRUpsampler2x_init(BMHIIRUpsampler2x* This, size_t numCoefficients, float transitionBandwidth);
+
+
+/*!
+ *BMHIIRUpsampler2x_free
+ * @param This  pointer to an initialised BMHIIRUpsampler2x struct
+ * @abstract frees memory allocated to the antialiasing filters
+ */
 void BMHIIRUpsampler2x_free(BMHIIRUpsampler2x* This);
-void BMHIIRUpsampler2x_setCoefficients(BMHIIRUpsampler2x* This, const double* coefficientArray);
-void BMHIIRUpsampler2x_processBuffer(BMHIIRUpsampler2x* This, const float* input, float* output, size_t numSamples);
-void BMHIIRUpsampler2x_clearBuffers(BMHIIRUpsampler2x* This);
-void BMHIIRUpsampler2x_impulseResponse(BMHIIRUpsampler2x* This, float* input, float* output, size_t numSamples);
+
+
+
+/*!
+ *BMHIIRUpsampler2x_processBufferMono
+ * @param This pointer to an initialised BMHIIRUpsampler2x struct
+ * @param input pointer to an array of floats with length >= numSamplesIn
+ * @param output pointer to an array of floats with length >= 2*numSamplesIn
+ * @param numSamplesIn the length of the input or half the length of the output
+ */
+void BMHIIRUpsampler2x_processBufferMono(BMHIIRUpsampler2x* This, const float* input, float* output, size_t numSamplesIn);
+
+
+
+/*!
+ * BMHIIRUpsampler2x_impulseResponse
+ * @param IR  pointer to an array of length numSamples for storing the output
+ * @param numSamples  length of the impulse response
+ */
+void BMHIIRUpsampler2x_impulseResponse(BMHIIRUpsampler2x* This, float* IR, size_t numSamples);
 
 
 #endif /* BMHIIRUpsampler2x_h */

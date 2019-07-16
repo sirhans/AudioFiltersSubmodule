@@ -15,6 +15,70 @@
 #include <assert.h>
 
 
+
+
+
+///*
+// ==============================================================================
+// Name: set_coefs
+// Description:
+// Sets filter coefficients. Generate them with the PolyphaseIir2Designer
+// class.
+// Call this function before doing any processing.
+// Input parameters:
+// - coef_arr: Array of coefficients. There should be as many coefficients as
+// mentioned in the class template parameter.
+// Throws: Nothing
+// ==============================================================================
+// */
+//
+//template <int NC>
+//void    Upsampler2x4Neon <NC>::set_coefs (const double coef_arr [NBR_COEFS])
+//{
+//    assert (coef_arr != 0);
+//
+//    for (int i = 0; i < NBR_COEFS; ++i)
+//    {
+//        _filter [i + 2]._coef4 = vdupq_n_f32 (float (coef_arr [i]));
+//    }
+//}
+void BMHIIRUpsampler2x_setCoefficients(BMHIIRUpsampler2x* This, const double* coefficientArray){
+    assert (coefficientArray != 0);
+    
+    for (int i = 0; i < This->numCoefficients; ++i)
+        This->filterStages[i + 2].coef = (float)coefficientArray[i];
+}
+
+
+
+
+
+///*
+// ==============================================================================
+// Name: clear_buffers
+// Description:
+// Clears filter memory, as if it processed silence since an infinite amount
+// of time.
+// Throws: Nothing
+// ==============================================================================
+// */
+//
+//template <int NC>
+//void    Upsampler2x4Neon <NC>::clear_buffers ()
+//{
+//    for (int i = 0; i < NBR_COEFS + 2; ++i)
+//    {
+//        _filter [i]._mem4 = vdupq_n_f32 (0);
+//    }
+//}
+void BMHIIRUpsampler2x_clearBuffers(BMHIIRUpsampler2x* This){
+    for(size_t i=0; i < This->numFilterStages; i++)
+        This->filterStages[i].mem = 0.0f;
+}
+
+
+
+
 ///*
 // ==============================================================================
 // Name: ctor
@@ -67,40 +131,6 @@ void BMHIIRUpsampler2x_free(BMHIIRUpsampler2x* This){
 
 
 
-
-///*
-// ==============================================================================
-// Name: set_coefs
-// Description:
-// Sets filter coefficients. Generate them with the PolyphaseIir2Designer
-// class.
-// Call this function before doing any processing.
-// Input parameters:
-// - coef_arr: Array of coefficients. There should be as many coefficients as
-// mentioned in the class template parameter.
-// Throws: Nothing
-// ==============================================================================
-// */
-//
-//template <int NC>
-//void    Upsampler2x4Neon <NC>::set_coefs (const double coef_arr [NBR_COEFS])
-//{
-//    assert (coef_arr != 0);
-//
-//    for (int i = 0; i < NBR_COEFS; ++i)
-//    {
-//        _filter [i + 2]._coef4 = vdupq_n_f32 (float (coef_arr [i]));
-//    }
-//}
-void BMHIIRUpsampler2x_setCoefficients(BMHIIRUpsampler2x* This, const double* coefficientArray){
-    assert (coefficientArray != 0);
-    
-    for (int i = 0; i < This->numCoefficients; ++i)
-        This->filterStages[i + 2].coef = (float)coefficientArray[i];
-}
-
-
-
 ///*
 // ==============================================================================
 // Name: process_sample
@@ -131,11 +161,16 @@ void BMHIIRUpsampler2x_setCoefficients(BMHIIRUpsampler2x* This, const double* co
 //}
 static inline void BMHIIRUpsampler2x_processSampleFloat4(BMHIIRUpsampler2x* This, const simd_float4* input, simd_float4* out0, simd_float4* out1){
 
-    // copy input to both outputs
-    *out0 = *out1 = *input;
+    // copy input to both inputs of BMHIIRStage_processSamplePos
+    simd_float4 even, odd;
+    even = odd = *input;
     
     // process the filters
-    BMHIIRStage_processSamplePos(This->numCoefficients, This->numCoefficients, out0, out1, This->filterStages);
+    BMHIIRStage_processSamplePos(This->numCoefficients, This->numCoefficients, &even, &odd, This->filterStages);
+    
+    // copy the result to the output
+    *out0 = even;
+    *out1 = odd;
 }
 
 
@@ -188,14 +223,14 @@ static inline void BMHIIRUpsampler2x_processSampleFloat4(BMHIIRUpsampler2x* This
 //    }
 //    while (pos < nbr_spl);
 //}
-void BMHIIRUpsampler2x_processBuffer(BMHIIRUpsampler2x* This, const float* input, float* output, size_t numSamplesIn){
+void BMHIIRUpsampler2x_processBufferMono(BMHIIRUpsampler2x* This, const float* input, float* output, size_t numSamplesIn){
         assert (output != 0);
         assert (input != 0);
-        assert (output >= input + numSamplesIn * 4 || input >= output + numSamplesIn * 4);
+        assert (output >= input + numSamplesIn || input >= output + numSamplesIn );
     
         while(numSamplesIn > 0) {
             // process 4 inputs; get 8 outputs.
-            BMHIIRUpsampler2x_processSampleFloat4(This, (simd_float4*)input, (simd_float4*)output, (simd_float4*)(output + 1));
+            BMHIIRUpsampler2x_processSampleFloat4(This, (simd_float4*)input, (simd_float4*)output, (simd_float4*)(output + 4));
             
             // increment the position
             input+=4;
@@ -205,26 +240,21 @@ void BMHIIRUpsampler2x_processBuffer(BMHIIRUpsampler2x* This, const float* input
 }
 
 
-///*
-// ==============================================================================
-// Name: clear_buffers
-// Description:
-// Clears filter memory, as if it processed silence since an infinite amount
-// of time.
-// Throws: Nothing
-// ==============================================================================
-// */
-//
-//template <int NC>
-//void    Upsampler2x4Neon <NC>::clear_buffers ()
-//{
-//    for (int i = 0; i < NBR_COEFS + 2; ++i)
-//    {
-//        _filter [i]._mem4 = vdupq_n_f32 (0);
-//    }
-//}
-void BMHIIRUpsampler2x_clearBuffers(BMHIIRUpsampler2x* This){
-    for(size_t i=0; i < This->numFilterStages; i++)
-        This->filterStages[i].mem = 0.0f;
-}
 
+
+void BMHIIRUpsampler2x_impulseResponse(BMHIIRUpsampler2x* This, float* IR, size_t numSamples){
+    // prevent previous processing from affecting the IR output
+    BMHIIRUpsampler2x_clearBuffers(This);
+    
+    // allocate memory for the impulse input
+    float* impulseInput = malloc(sizeof(float)*(numSamples/2));
+    
+    // set the input to {1,0,0,0...}
+    memset(impulseInput,0,sizeof(float)*numSamples);
+    impulseInput[0] = 1.0f;
+    
+    // process the input into the IR output
+    BMHIIRUpsampler2x_processBufferMono(This, impulseInput, IR, numSamples);
+    
+    free(impulseInput);
+}

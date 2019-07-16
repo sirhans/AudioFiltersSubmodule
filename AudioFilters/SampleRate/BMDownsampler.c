@@ -43,7 +43,7 @@ extern "C" {
                                          float* input,
                                          float* output,
                                          size_t numSamplesIn){
-        BMHIIRDownsampler2x_processBuffer(&This->lastStageDS, input, output, numSamplesIn);
+        BMHIIRDownsampler2x_processBufferMono(&This->lastStageDS, input, output, numSamplesIn);
     }
     
     
