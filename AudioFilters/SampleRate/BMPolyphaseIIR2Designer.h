@@ -18,6 +18,7 @@
 
 
 /* public functions */
+float   BMPolyphaseIIR2Designer_transitionBandwidthForStage(double stage0Bandwidth, size_t stage);
 int     BMPolyphaseIIR2Designer_computeNbrCoefsFromProto (double attenuation, double transition);
 double  BMPolyphaseIIR2Designer_computeAttenFromOrderTbw (int nbr_coefs, double transition);
 int     BMPolyphaseIIR2Designer_computeCoefs (double coef_arr [], double attenuation, double transition);

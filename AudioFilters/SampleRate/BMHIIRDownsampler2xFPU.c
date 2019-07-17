@@ -21,17 +21,19 @@
 
 
 
-float BMHIIRDownsampler2xFPU_init (BMHIIRDownsampler2xFPU* This, size_t numCoefficients, float transitionBandwidth){
-    This->numCoefficients = numCoefficients;
+float BMHIIRDownsampler2xFPU_init (BMHIIRDownsampler2xFPU* This, float stopbandAttenuationDb, float transitionBandwidth){
+    // find out how many allpass filter stages it will take to acheive the
+    // required stopband attenuation and transition bandwidth
+    This->numCoefficients = BMPolyphaseIIR2Designer_computeNbrCoefsFromProto(stopbandAttenuationDb, transitionBandwidth);
     
-    This->coef = malloc(sizeof(float)*numCoefficients);
-    This->x = malloc(sizeof(float)*numCoefficients);
-    This->y = malloc(sizeof(float)*numCoefficients);
+    This->coef = malloc(sizeof(float)*This->numCoefficients);
+    This->x = malloc(sizeof(float)*This->numCoefficients);
+    This->y = malloc(sizeof(float)*This->numCoefficients);
     
     // generate filter coefficients
-    double* coefficientArray = malloc(sizeof(double)*numCoefficients);
+    double* coefficientArray = malloc(sizeof(double)*This->numCoefficients);
     BMPolyphaseIIR2Designer_computeCoefsSpecOrderTbw(coefficientArray,
-                                                     (int)numCoefficients,
+                                                     (int)This->numCoefficients,
                                                      transitionBandwidth);
     
     // set up the filters
@@ -40,7 +42,7 @@ float BMHIIRDownsampler2xFPU_init (BMHIIRDownsampler2xFPU* This, size_t numCoeff
     
     free(coefficientArray);
     
-    return BMPolyphaseIIR2Designer_computeAttenFromOrderTbw((int)numCoefficients, transitionBandwidth);
+    return BMPolyphaseIIR2Designer_computeAttenFromOrderTbw((int)This->numCoefficients, transitionBandwidth);
 }
 
 

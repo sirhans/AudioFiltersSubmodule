@@ -19,8 +19,14 @@ typedef struct BMHIIRUpsampler2xFPU {
     size_t numCoefficients;
 } BMHIIRUpsampler2xFPU;
 
-
-float BMHIIRUpsampler2xFPU_init (BMHIIRUpsampler2xFPU* This, size_t numCoefficients, float transitionBandwidth);
+/*!
+ *BMHIIRUpsampler2xFPU_init
+ *
+ * @param stopbandAttenuationDb maximum allowable leakage of signal into the stopband
+ * @param transitionBandwidth fraction of the frequency range from 0 to Pi/2 for which the AA filters are in transition
+ * @return the stopband attenuation, in decibels, for the specified filter.
+ */
+float BMHIIRUpsampler2xFPU_init (BMHIIRUpsampler2xFPU* This, float stopbandAttenuationDb, float transitionBandwidth);
 void BMHIIRUpsampler2xFPU_free (BMHIIRUpsampler2xFPU* This);
 void BMHIIRUpsampler2xFPU_setCoefs (BMHIIRUpsampler2xFPU* This, const double* coef_arr);
 inline void BMHIIRUpsampler2xFPU_processSample(BMHIIRUpsampler2xFPU* This, float* out_0, float* out_1, float input);

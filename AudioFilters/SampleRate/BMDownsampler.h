@@ -15,10 +15,11 @@ extern "C" {
 #define BMDownsampler_h
     
 #include <MacTypes.h>
-#include "BMHIIRDownsampler2x.h"
+#include "BMHIIRDownsampler2xFPU.h"
 
     typedef struct BMDownsampler {
-        BMHIIRDownsampler2x lastStageDS;
+        BMHIIRDownsampler2xFPU* downsamplers;
+        size_t numStages;
     } BMDownsampler;
     
     

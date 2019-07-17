@@ -415,3 +415,14 @@ double    compute_acc_den (double q, int order, int c)
     
     return acc;
 }
+
+
+// This is taken from the readme file in Laurent De Soras HIIR resampling library
+//
+//2x -> 1x: TBW = 0.01
+//4x -> 2x: TBW = 0.01/2 + 1/4 = 0.255
+//8x -> 4x: TBW = 0.01/4 + 1/8 + 1/4 = 0.3775
+//16x -> 8x: TBW = 0.01/8 + 1/16 + 1/8 + 1/4 = 0.43865
+float BMPolyphaseIIR2Designer_transitionBandwidthForStage(double stage0Bandwidth, size_t stage){
+    return stage0Bandwidth * (pow(0.5,(double)stage)) + 0.5 * (1.0 - pow(0.5,(double)stage));
+}

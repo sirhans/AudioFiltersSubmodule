@@ -9,14 +9,14 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
-    
+
+#include <Accelerate/Accelerate.h>
 #include "BMDownsampler.h"
 #include "BMFastHadamard.h"
-#include <Accelerate/Accelerate.h>
+#include "BMPolyphaseIIR2Designer.h"
     
-#define BM_DOWNSAMPLER_LAST_STAGE_NUM_COEFFICIENTS 4
-#define BM_DOWNSAMPLER_LAST_STAGE_TRANSITION_BANDWIDTH 0.05
+#define BM_DOWNSAMPLER_TRANSITION_BANDWIDTH 0.025f
+#define BM_DOWNSAMPLER_STOPBAND_ATTENUATION 100.0f
     
     
     
@@ -26,15 +26,20 @@ extern "C" {
         // decimation factor must be a power of 2
         assert(BMPowerOfTwoQ(decimationFactor));
         
-        BMHIIRDownsampler2x_init(&This->lastStageDS,
-                                 BM_DOWNSAMPLER_LAST_STAGE_NUM_COEFFICIENTS,
-                                 BM_DOWNSAMPLER_LAST_STAGE_TRANSITION_BANDWIDTH);
+        This->numStages = (size_t)log2(decimationFactor);
         
-        // we haven't implemented any code for higher than 2x downsampling yet
-        // so don't allow it.
-        assert(decimationFactor == 2);
+        This->downsamplers = malloc(sizeof(BMDownsampler)*This->numStages);
+        
+        for(size_t i=0; i<This->numStages; i++){
+            // compute the transition bandwidth for the current stage
+            double transitionBw = BMPolyphaseIIR2Designer_transitionBandwidthForStage(BM_DOWNSAMPLER_TRANSITION_BANDWIDTH, i);
+            
+            // set up the stage
+            BMHIIRDownsampler2xFPU_init(&This->downsamplers[i],
+                                        BM_DOWNSAMPLER_STOPBAND_ATTENUATION,
+                                        transitionBw);
+        }
     }
-    
     
     
     
@@ -43,20 +48,27 @@ extern "C" {
                                          float* input,
                                          float* output,
                                          size_t numSamplesIn){
-        BMHIIRDownsampler2x_processBufferMono(&This->lastStageDS, input, output, numSamplesIn);
+        BMHIIRDownsampler2xFPU_processBufferMono(&This->downsamplers[0], input, output, numSamplesIn);
+        for(size_t i=1; i<This->numStages; i++){
+            numSamplesIn *= 2;
+            BMHIIRDownsampler2xFPU_processBufferMono(&This->downsamplers[i], output, output, numSamplesIn);
+        }
     }
     
     
     
     
     void BMDownsampler_free(BMDownsampler* This){
-        BMHIIRDownsampler2x_free(&This->lastStageDS);
+        for(size_t i=0; i<This->numStages; i++)
+            BMHIIRDownsampler2xFPU_free(&This->downsamplers[i]);
+        free(This->downsamplers);
+        This->downsamplers = NULL;
     }
     
     
     
+    
     void BMDownsampler_impulseResponse(BMDownsampler* This, float* IR, size_t numSamples){
-        BMHIIRDownsampler2x_impulseResponse(&This->lastStageDS, IR, numSamples);
     }
     
     
