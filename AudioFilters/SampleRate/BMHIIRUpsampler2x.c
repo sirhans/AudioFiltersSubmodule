@@ -229,8 +229,17 @@ void BMHIIRUpsampler2x_processBufferMono(BMHIIRUpsampler2x* This, const float* i
         assert (output >= input + numSamplesIn || input >= output + numSamplesIn );
     
         while(numSamplesIn > 0) {
+            // push a pair of vectors on the stack to store the output
+            simd_float4 dst0;
+            simd_float4 dst1;
+            
             // process 4 inputs; get 8 outputs.
-            BMHIIRUpsampler2x_processSampleFloat4(This, (simd_float4*)input, (simd_float4*)output, (simd_float4*)(output + 4));
+            // BMHIIRUpsampler2x_processSampleFloat4(This, (simd_float4*)input, (simd_float4*)output, (simd_float4*)(output + 4));
+            BMHIIRUpsampler2x_processSampleFloat4(This, (simd_float4*)input, &dst0, &dst1);
+            
+            // copy the output of the function call to the output buffer
+            *((simd_float4*)output) = dst0;
+            *(1 + (simd_float4*)output) = dst1;
             
             // increment the position
             input+=4;

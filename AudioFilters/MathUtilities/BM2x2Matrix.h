@@ -28,7 +28,17 @@ extern "C" {
     typedef struct {
         float m11,m12,m21,m22;
     } BM2x2Matrix;
+
     
+    
+    
+    /*
+     * |m11 m12|
+     * |m21 m22|
+     */
+    typedef struct {
+        double m11,m12,m21,m22;
+    } BM2x2MatrixD;
     
     
     
@@ -38,6 +48,10 @@ extern "C" {
     } BMVector2;
     
     
+    
+    typedef struct {
+        double x,y;
+    } BMVector2D;
     
     
     
@@ -52,10 +66,30 @@ extern "C" {
     
     
     
+    // C = A.B
+    static inline BM2x2MatrixD BM2x2MatrixD_mmul(BM2x2MatrixD A, BM2x2MatrixD B){
+        BM2x2MatrixD C = {A.m11*B.m11 + A.m12*B.m21, A.m11*B.m12 + A.m12*B.m22,
+            A.m21*B.m11 + A.m22*B.m21, A.m21*B.m12 + A.m22*B.m22 };
+        return C;
+    }
+    
+    
+    
+    
     
     static inline BM2x2Matrix BM2x2Matrix_rotationMatrix(float theta){
         BM2x2Matrix R = {cosf(theta), -sinf(theta),
                          sinf(theta), cosf(theta)};
+        return R;
+    }
+    
+    
+    
+    
+    
+    static inline BM2x2MatrixD BM2x2MatrixD_rotationMatrix(double theta){
+        BM2x2MatrixD R = {cos(theta), -sin(theta),
+            sin(theta), cos(theta)};
         return R;
     }
     
@@ -78,6 +112,15 @@ extern "C" {
         return y;
     }
     
+    
+    
+    
+    
+    // y = M.x
+    static inline BMVector2D BM2x2MatrixD_mvmul(BM2x2MatrixD M, BMVector2D x){
+        BMVector2D y = {x.x*M.m11 + x.y*M.m12, x.x*M.m21 + x.y*M.m22};
+        return y;
+    }
     
     
     

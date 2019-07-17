@@ -43,6 +43,7 @@ void BMWaveshaper_processBufferBidirectional(const float* input, float* output, 
         simd_float4* x = (simd_float4*)output;
         *x = *x * (*x * *x - 3.0f) * -0.5f;
         output+=4;
+        numSamples -= 4;
     }
     // finish up the last n <= 3 samples if necessary
     while (numSamples > 0){
