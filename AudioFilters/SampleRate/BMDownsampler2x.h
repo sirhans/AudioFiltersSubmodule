@@ -16,10 +16,11 @@
 #include "BMMultilevelBiquad.h"
 
 typedef struct BMDownsampler2x {
-    BMMultiLevelBiquad* even;
-    BMMultiLevelBiquad* odd;
+    BMMultiLevelBiquad even;
+    BMMultiLevelBiquad odd;
     float *b1L, *b2L, *b1R, *b2R;
     size_t numCoefficients,numBiquadStages;
+    bool stereo;
 } BMDownsampler2x;
 
 
@@ -30,7 +31,7 @@ typedef struct BMDownsampler2x {
  * @param transitionBandwidth fraction of the frequency range from 0 to Pi/2 for which the AA filters are in transition
  * @return the number of coefficients used.
  */
-size_t BMDownsampler2x_init (BMDownsampler2x* This, float stopbandAttenuationDb, float transitionBandwidth);
+size_t BMDownsampler2x_init (BMDownsampler2x* This, float stopbandAttenuationDb, float transitionBandwidth, bool stereo);
 
 void BMDownsampler2x_free (BMDownsampler2x* This);
 

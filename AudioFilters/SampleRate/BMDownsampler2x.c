@@ -17,7 +17,9 @@
 #include "BMPolyphaseIIR2Designer.h"
 #include "Constants.h"
 
-size_t BMDownsampler2x_init (BMDownsampler2x* This, float stopbandAttenuationDb, float transitionBandwidth){
+size_t BMDownsampler2x_init (BMDownsampler2x* This, float stopbandAttenuationDb, float transitionBandwidth, bool stereo){
+    This->stereo = stereo;
+    
     // find out how many allpass filter stages it will take to acheive the
     // required stopband attenuation and transition bandwidth
     This->numCoefficients = BMPolyphaseIIR2Designer_computeNbrCoefsFromProto(stopbandAttenuationDb, transitionBandwidth);
@@ -53,9 +55,9 @@ size_t BMDownsampler2x_init (BMDownsampler2x* This, float stopbandAttenuationDb,
     // is numCoefficients / 4
     This->numBiquadStages = This->numCoefficients / 4;
     
-    // allocate the biquad filters
-    This->even = malloc(sizeof(BMMultiLevelBiquad)*This->numBiquadStages);
-    This->odd = malloc(sizeof(BMMultiLevelBiquad)*This->numBiquadStages);
+    // init the filters
+    float sampleRate = 48000.0f; // it doesn't actually matter what we set here
+    BMMultiLevelBiquad_init(&This->even, This->numBiquadStages, sampleRate, stereo, false, false);
     
     // generate filter coefficients
     double* coefficientArray = malloc(sizeof(double)*This->numCoefficients);
@@ -83,24 +85,18 @@ size_t BMDownsampler2x_init (BMDownsampler2x* This, float stopbandAttenuationDb,
 
 void BMDownsampler2x_free (BMDownsampler2x* This){
     
-    for(size_t i=0; i<This->numBiquadStages; i++){
-        BMMultiLevelBiquad_destroy(&This->even[i]);
-        BMMultiLevelBiquad_destroy(&This->odd[i]);
-    }
+    BMMultiLevelBiquad_destroy(&This->even);
+    BMMultiLevelBiquad_destroy(&This->odd);
     
     free(This->b1L);
     free(This->b2L);
     free(This->b1R);
     free(This->b2R);
-    free(This->even);
-    free(This->odd);
     
     This->b1L = NULL;
     This->b2L = NULL;
     This->b1R = NULL;
     This->b2R = NULL;
-    This->even = NULL;
-    This->odd = NULL;
 }
 
 
@@ -111,8 +107,12 @@ void BMDownsampler2x_setCoefs (BMDownsampler2x* This, const double* coef_arr){
     
     size_t biquadSection = 0;
     for (size_t i = 0; i < This->numCoefficients; i+=4){
-        BMMultilevelBiquad_setAllpass2ndOrder(&This->even[i],coef_arr[i],coef_arr[i+2],biquadSection);
-        BMMultilevelBiquad_setAllpass2ndOrder(&This->odd[i],coef_arr[i+1],coef_arr[i+3],biquadSection);
+        BMMultilevelBiquad_setAllpass2ndOrder(&This->even,
+                                              coef_arr[i],coef_arr[i+2],
+                                              biquadSection);
+        BMMultilevelBiquad_setAllpass2ndOrder(&This->odd,
+                                              coef_arr[i+1],coef_arr[i+3],
+                                              biquadSection);
         biquadSection++;
     }
 }
@@ -133,6 +133,7 @@ void BMDownsampler2x_setCoefs (BMDownsampler2x* This, const double* coef_arr){
 
 
 void BMDownsampler2x_processBufferMono (BMDownsampler2x* This, float* input, float* output, size_t numSamplesIn){
+    assert(!This->stereo);
     assert (output != 0);
     assert (input != 0);
     assert (output >= input + numSamplesIn || input >= output + numSamplesIn);
@@ -155,10 +156,10 @@ void BMDownsampler2x_processBufferMono (BMDownsampler2x* This, float* input, flo
         }
         
         // filter the input through the even filters
-        BMMultiLevelBiquad_processBufferMono(This->even, even, even, samplesProcessing);
+        BMMultiLevelBiquad_processBufferMono(&This->even, even, even, samplesProcessing);
     
         // filter the input through the odd filters
-        BMMultiLevelBiquad_processBufferMono(This->odd, odd, odd, samplesProcessing);
+        BMMultiLevelBiquad_processBufferMono(&This->odd, odd, odd, samplesProcessing);
         
         // sum the even and odd outputs into the main output
         float half = 0.5;
