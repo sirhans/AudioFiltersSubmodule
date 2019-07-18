@@ -18,6 +18,7 @@
 typedef struct BMDownsampler2x {
     BMMultiLevelBiquad* even;
     BMMultiLevelBiquad* odd;
+    float* b1, *b2;
     size_t numCoefficients,numBiquadStages;
 } BMDownsampler2x;
 

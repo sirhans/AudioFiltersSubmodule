@@ -15,8 +15,7 @@
 #include "BMDownsampler2x.h"
 #include "BMHIIRStageFPU.h"
 #include "BMPolyphaseIIR2Designer.h"
-
-
+#include "Constants.h"
 
 float BMDownsampler2x_init (BMDownsampler2x* This, float stopbandAttenuationDb, float transitionBandwidth){
     // find out how many allpass filter stages it will take to acheive the
@@ -70,6 +69,10 @@ float BMDownsampler2x_init (BMDownsampler2x* This, float stopbandAttenuationDb, 
     
     free(coefficientArray);
     
+    // allocate memory for buffers
+    This->b1 = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+    This->b2 = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+    
     return BMPolyphaseIIR2Designer_computeAttenFromOrderTbw((int)This->numCoefficients, transitionBandwidth);
 }
 
@@ -77,13 +80,21 @@ float BMDownsampler2x_init (BMDownsampler2x* This, float stopbandAttenuationDb, 
 
 
 void BMDownsampler2x_free (BMDownsampler2x* This){
-    free(This->coef);
-    free(This->y);
-    free(This->x);
     
-    This->coef = NULL;
-    This->y = NULL;
-    This->x = NULL;
+    for(size_t i=0; i<This->numBiquadStages; i++){
+        BMMultiLevelBiquad_destroy(&This->even[i]);
+        BMMultiLevelBiquad_destroy(&This->odd[i]);
+    }
+    
+    free(This->b1);
+    free(This->b2);
+    free(This->even);
+    free(This->odd);
+    
+    This->b1 = NULL;
+    This->b2 = NULL;
+    This->even = NULL;
+    This->odd = NULL;
 }
 
 
@@ -92,9 +103,11 @@ void BMDownsampler2x_free (BMDownsampler2x* This){
 void BMDownsampler2x_setCoefs (BMDownsampler2x* This, const double* coef_arr){
     assert (coef_arr != 0);
     
+    size_t biquadSection = 0;
     for (size_t i = 0; i < This->numCoefficients; i+=4){
-        BMMultilevelBiquad_setAllpass2ndOrder(&This->even[i],coef_arr[i],coef_arr[i+2]);
-        BMMultilevelBiquad_setAllpass2ndOrder(&This->odd[i],coef_arr[i+1],coef_arr[i+3]);
+        BMMultilevelBiquad_setAllpass2ndOrder(&This->even[i],coef_arr[i],coef_arr[i+2],biquadSection);
+        BMMultilevelBiquad_setAllpass2ndOrder(&This->odd[i],coef_arr[i+1],coef_arr[i+3],biquadSection);
+        biquadSection++;
     }
 }
 
@@ -119,13 +132,36 @@ void BMDownsampler2x_processBufferMono (BMDownsampler2x* This, float* input, flo
     assert (output >= input + numSamplesIn || input >= output + numSamplesIn);
     assert (numSamplesIn > 0);
     
-    while(numSamplesIn > 0)
-    {
-//        BMDownsampler2x_processSample (This,
-                                              input,output);
-        input += 2;
-        output += 1;
-        numSamplesIn -=2;
+    float* even = This->b1;
+    float* odd = This->b2;
+    
+    // chunk processing
+    while(numSamplesIn > 0){
+        size_t samplesProcessing = BM_MIN(BM_BUFFER_CHUNK_SIZE*2, numSamplesIn);
+        
+        float* inputShifted = input+1;
+        
+        // copy even input samples to even, odd to odd
+        for(size_t i=0; i<samplesProcessing/2; i++){
+            // even and odd are opposite what we would expect here
+            even[i] = inputShifted[2*i];
+            odd[i] = input[2*i];
+        }
+        
+        // filter the input through the even filters
+        BMMultiLevelBiquad_processBufferMono(This->even, even, even, samplesProcessing);
+    
+        // filter the input through the odd filters
+        BMMultiLevelBiquad_processBufferMono(This->odd, odd, odd, samplesProcessing);
+        
+        // sum the even and odd outputs into the main output
+        float half = 0.5;
+        vDSP_vasm(even, 1, odd, 1, &half, output, 1, samplesProcessing);
+        
+        // advance pointers
+        numSamplesIn -= samplesProcessing;
+        input += samplesProcessing;
+        output += samplesProcessing / 2;
     }
 }
 
