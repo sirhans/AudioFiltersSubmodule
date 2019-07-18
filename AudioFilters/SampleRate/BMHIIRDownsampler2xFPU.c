@@ -73,7 +73,7 @@ void BMHIIRDownsampler2xFPU_setCoefs (BMHIIRDownsampler2xFPU* This, const double
 
 void BMHIIRDownsampler2xFPU_processSample(BMHIIRDownsampler2xFPU* This, float* input2, float* output){
     
-    // process the sample
+    // process the sample NOTICE THAT THE ORDER OF THE TWO INPUTS IS SWITCHED AROUND
     BMHIIRStageFPU_processSamplePos(This->numCoefficients, This->numCoefficients, input2+1, input2, This->coef, This->x, This->y);
     
     // average the two results to get the output

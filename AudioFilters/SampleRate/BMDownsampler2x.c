@@ -17,7 +17,7 @@
 #include "BMPolyphaseIIR2Designer.h"
 #include "Constants.h"
 
-float BMDownsampler2x_init (BMDownsampler2x* This, float stopbandAttenuationDb, float transitionBandwidth){
+size_t BMDownsampler2x_init (BMDownsampler2x* This, float stopbandAttenuationDb, float transitionBandwidth){
     // find out how many allpass filter stages it will take to acheive the
     // required stopband attenuation and transition bandwidth
     This->numCoefficients = BMPolyphaseIIR2Designer_computeNbrCoefsFromProto(stopbandAttenuationDb, transitionBandwidth);
@@ -65,15 +65,17 @@ float BMDownsampler2x_init (BMDownsampler2x* This, float stopbandAttenuationDb, 
     
     // set up the filters
     BMDownsampler2x_setCoefs(This, coefficientArray);
-    BMDownsampler2x_clearBuffers(This);
     
     free(coefficientArray);
     
     // allocate memory for buffers
-    This->b1 = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-    This->b2 = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+    This->b1L = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+    This->b2L = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+    This->b1R = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+    This->b2R = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     
-    return BMPolyphaseIIR2Designer_computeAttenFromOrderTbw((int)This->numCoefficients, transitionBandwidth);
+    // return the number of coefficients used
+    return This->numCoefficients;
 }
 
 
@@ -86,13 +88,17 @@ void BMDownsampler2x_free (BMDownsampler2x* This){
         BMMultiLevelBiquad_destroy(&This->odd[i]);
     }
     
-    free(This->b1);
-    free(This->b2);
+    free(This->b1L);
+    free(This->b2L);
+    free(This->b1R);
+    free(This->b2R);
     free(This->even);
     free(This->odd);
     
-    This->b1 = NULL;
-    This->b2 = NULL;
+    This->b1L = NULL;
+    This->b2L = NULL;
+    This->b1R = NULL;
+    This->b2R = NULL;
     This->even = NULL;
     This->odd = NULL;
 }
@@ -132,8 +138,8 @@ void BMDownsampler2x_processBufferMono (BMDownsampler2x* This, float* input, flo
     assert (output >= input + numSamplesIn || input >= output + numSamplesIn);
     assert (numSamplesIn > 0);
     
-    float* even = This->b1;
-    float* odd = This->b2;
+    float* even = This->b1L;
+    float* odd = This->b2L;
     
     // chunk processing
     while(numSamplesIn > 0){
@@ -167,10 +173,5 @@ void BMDownsampler2x_processBufferMono (BMDownsampler2x* This, float* input, flo
 
 
 
-
-void BMDownsampler2x_clearBuffers (BMDownsampler2x* This){
-    memset(This->x,0,sizeof(float)*This->numCoefficients);
-    memset(This->y,0,sizeof(float)*This->numCoefficients);
-}
 
 

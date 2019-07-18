@@ -18,7 +18,7 @@
 typedef struct BMDownsampler2x {
     BMMultiLevelBiquad* even;
     BMMultiLevelBiquad* odd;
-    float* b1, *b2;
+    float *b1L, *b2L, *b1R, *b2R;
     size_t numCoefficients,numBiquadStages;
 } BMDownsampler2x;
 
@@ -28,9 +28,9 @@ typedef struct BMDownsampler2x {
  *
  * @param stopbandAttenuationDb maximum allowable leakage of signal into the stopband
  * @param transitionBandwidth fraction of the frequency range from 0 to Pi/2 for which the AA filters are in transition
- * @return the stopband attenuation, in decibels, for the specified filter.
+ * @return the number of coefficients used.
  */
-float BMDownsampler2x_init (BMDownsampler2x* This, float stopbandAttenuationDb, float transitionBandwidth);
+size_t BMDownsampler2x_init (BMDownsampler2x* This, float stopbandAttenuationDb, float transitionBandwidth);
 
 void BMDownsampler2x_free (BMDownsampler2x* This);
 
@@ -38,6 +38,5 @@ void BMDownsampler2x_setCoefs (BMDownsampler2x* This, const double* coef_arr);
 
 void BMDownsampler2x_processBufferMono (BMDownsampler2x* This, float* input, float* output, size_t numSamplesIn);
 
-void BMDownsampler2x_clearBuffers (BMDownsampler2x* This);
 
 #endif /* BMDownsampler2x_h */
