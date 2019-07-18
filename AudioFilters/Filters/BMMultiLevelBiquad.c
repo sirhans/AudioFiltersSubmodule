@@ -974,7 +974,35 @@ void BMMultiLevelBiquad_setLowPass6db(BMMultiLevelBiquad* bqf, double fc, size_t
     }
     
     
+
+void BMMultilevelBiquad_setAllpass2ndOrder(BMMultiLevelBiquad* bqf, double c1, double c2, size_t level){
+    assert(level < bqf->numLevels);
     
+    // for left and right channels, set coefficients
+    for(size_t i=0; i < bqf->numChannels; i++){
+        
+        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+        double* b1 = b0 + 1;
+        double* b2 = b1 + 1;
+        double* a1 = b2 + 1;
+        double* a2 = a1 + 1;
+        
+        // 2nd order allpass transfer function, calculated in Mathematica
+        // by computing the product of 2 first order allpass filters
+        //
+        //        1 + (c1 + c2) z + c1 c2 z^2
+        // H(z) = ---------------------------
+        //         c1 c2 + (c1 + c2) z + z^2
+        
+        *b0 = c1 * c2;
+        *b1 = c1 + c2;
+        *b2 = 1.0;
+        *a1 = c1 + c2;
+        *a2 = c1 * c2;
+    }
+    
+    BMMultiLevelBiquad_queueUpdate(bqf);
+}
     
     /*
      * Computes the coefficient of the s^1 term in butterworth

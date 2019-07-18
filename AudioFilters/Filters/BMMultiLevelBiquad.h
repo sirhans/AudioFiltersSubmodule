@@ -176,8 +176,10 @@ extern "C" {
     
     void BMMultiLevelBiquad_setLinkwitzRileyLP(BMMultiLevelBiquad* bqf, double fc, size_t level);
     
-    
     void BMMultiLevelBiquad_setLinkwitzRileyHP(BMMultiLevelBiquad* bqf, double fc, size_t level);
+    
+    // c1, c2 are coefficients for a pair of first order allpass filters in series
+    void BMMultilevelBiquad_setAllpass2ndOrder(BMMultiLevelBiquad* bqf, double c1, double c2, size_t level);
     
     
     // Calling this sets the filter coefficients at 'level' to bypass.
