@@ -3,7 +3,7 @@
 //  BMAudioFilters
 //
 //  Created by Hans on 10/9/17.
-//  This file may be used by anyone without any restrictions.
+//  Anyone may use this file without restrictions of any kind.
 //
 
 #ifdef __cplusplus
