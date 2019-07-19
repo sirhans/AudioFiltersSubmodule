@@ -49,6 +49,7 @@ void BMWaveshaper_processBufferBidirectional(const float* input, float* output, 
     while (numSamples > 0){
         *output = *output * (*output + *output - 3.0f) * -0.5f;
         output++;
+        numSamples--;
     }
 }
 
@@ -79,11 +80,13 @@ void BMWaveshaper_processBufferPositive(const float* input, float* output, size_
         simd_float4* x = (simd_float4*)output;
         *x = *x * (two - *x);
         output+=4;
+        numSamples -=4;
     }
     // finish up the last n <= 3 samples if necessary
     while (numSamples > 0){
         *output = *output * (2.0f - *output);
         output++;
+        numSamples--;
     }
 }
 
@@ -110,11 +113,13 @@ void BMWaveshaper_processBufferNegative(const float* input, float* output, size_
         simd_float4* x = (simd_float4*)output;
         *x = *x * (two + *x);
         output+=4;
+        numSamples -= 4;
     }
     // finish up the last n <= 3 samples if necessary
     while (numSamples > 0){
         *output = *output * (2.0f - *output);
         output++;
+        numSamples--;
     }
 }
 
