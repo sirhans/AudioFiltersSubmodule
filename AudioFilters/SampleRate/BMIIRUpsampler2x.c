@@ -46,6 +46,7 @@ size_t BMIIRUpsampler2x_init (BMIIRUpsampler2x* This,
     BMMultiLevelBiquad_init(&This->odd, This->numBiquadStages, sampleRate, stereo, false, false);
     BMIIRUpsampler2x_setCoefs(This, coefficientArray);
     
+    
     free(coefficientArray);
     
     // allocate memory for buffers
