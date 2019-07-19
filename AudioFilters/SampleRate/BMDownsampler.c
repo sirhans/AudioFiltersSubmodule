@@ -9,66 +9,161 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <Accelerate/Accelerate.h>
+#include <assert.h>
 #include "BMDownsampler.h"
-#include "BMFastHadamard.h"
+#include "BMIntegerMath.h"
 #include "BMPolyphaseIIR2Designer.h"
+#include "Constants.h"
     
-#define BM_DOWNSAMPLER_TRANSITION_BANDWIDTH 0.025f
-#define BM_DOWNSAMPLER_STOPBAND_ATTENUATION 100.0f
+#define BM_DOWNSAMPLER_STAGE0_TRANSITION_BANDWIDTH 0.025
+#define BM_DOWNSAMPLER_STOPBAND_ATTENUATION_DB 110.0
     
     
     
-    
-    void BMDownsampler_init(BMDownsampler* This,
-                            size_t decimationFactor){
-        // decimation factor must be a power of 2
-        assert(BMPowerOfTwoQ(decimationFactor));
+    void BMDownsampler_init(BMDownsampler* This, bool stereo, size_t downsampleFactor){
+        assert(isPowerOfTwo(downsampleFactor));
         
-        This->numStages = (size_t)log2(decimationFactor);
+        This->stereo = stereo;
+        This->downsampleFactor = downsampleFactor;
         
-        This->downsamplers = malloc(sizeof(BMDownsampler)*This->numStages);
+        // the number of 2x downsampling stages is log2(upsampleFactor)
+        This->numStages = log2i((uint32_t)downsampleFactor);
         
+        // allocate the array of 2x downsamplers
+        This->downsamplers2x = malloc(sizeof(BMIIRDownsampler2x)*This->numStages);
+        
+        // initialise filters for each stage of downsampling
         for(size_t i=0; i<This->numStages; i++){
-            // compute the transition bandwidth for the current stage
-            double transitionBw = BMPolyphaseIIR2Designer_transitionBandwidthForStage(BM_DOWNSAMPLER_TRANSITION_BANDWIDTH, i);
+            // the transition bandwidth is narrower for later stages
+            float transitionBandwidth = BMPolyphaseIIR2Designer_transitionBandwidthForStage(BM_DOWNSAMPLER_STAGE0_TRANSITION_BANDWIDTH, i);
             
-            // set up the stage
-            BMHIIRDownsampler2xFPU_init(&This->downsamplers[i],
-                                        BM_DOWNSAMPLER_STOPBAND_ATTENUATION,
-                                        transitionBw);
+            // the stages go in the reverse order from how they are in the upsampler
+            // when sorted in terms of transition bandwidth
+            BMIIRDownsampler2x_init(&This->downsamplers2x[This->numStages - i - 1], BM_DOWNSAMPLER_STOPBAND_ATTENUATION_DB, transitionBandwidth, stereo);
+        }
+        
+        // allocate memory for buffers
+        This->bufferL1 = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE*downsampleFactor/2);
+        This->bufferL2 = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE*downsampleFactor/2);
+        if(stereo){
+            This->bufferR1 = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE*downsampleFactor/2);
+            This->bufferR2 = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE*downsampleFactor/2);
+        } else {
+            This->bufferR1 = NULL;
+            This->bufferR2 = NULL;
         }
     }
     
     
     
     
-    void BMDownsampler_processBufferMono(BMDownsampler* This,
-                                         float* input,
-                                         float* output,
-                                         size_t numSamplesIn){
-        BMHIIRDownsampler2xFPU_processBufferMono(&This->downsamplers[0], input, output, numSamplesIn);
-        for(size_t i=1; i<This->numStages; i++){
-            numSamplesIn *= 2;
-            BMHIIRDownsampler2xFPU_processBufferMono(&This->downsamplers[i], output, output, numSamplesIn);
+    
+    /*
+     * upsample a buffer that contains a single channel of audio samples
+     *
+     * @param input    length = numSamplesIn
+     * @param output   length = numSamplesIn / upsampleFactor
+     * @param numSamplesIn  number of input samples to process
+     */
+    void BMDownsampler_processBufferMono(BMDownsampler* This, float* input, float* output, size_t numSamplesIn){
+        // the input length must be divisible by the downsample factor
+        assert(numSamplesIn % This->downsampleFactor == 0);
+        
+        while(numSamplesIn > 0){
+            size_t samplesProcessing = BM_MIN(numSamplesIn, BM_BUFFER_CHUNK_SIZE*This->downsampleFactor);
+            size_t inputSize = samplesProcessing;
+        
+            if(This->numStages == 1){
+                BMIIRDownsampler2x_processBufferMono(&This->downsamplers2x[0], input, output, inputSize);
+            }
+            
+            // if there is more than one stage
+            else {
+                // we have only one buffer and the process functions don't work in place
+                // so we have to alternate between using the internal buffer and using
+                // the output array as a buffer
+                bool outputToBuffer1 = This->numStages % 2 == 0;
+                
+                // process stage 0
+                if(outputToBuffer1)
+                    BMIIRDownsampler2x_processBufferMono(&This->downsamplers2x[0], input, This->bufferL1, inputSize);
+                else
+                    BMIIRDownsampler2x_processBufferMono(&This->downsamplers2x[0], input, This->bufferL2, inputSize);
+                outputToBuffer1 = !outputToBuffer1;
+                
+                // process other stages if they are available
+                for(size_t i=1; i<This->numStages-1; i++){
+                    inputSize /= 2;
+                    
+                    // alternate between caching in the buffer and in the output for even and odd numbered stages;
+                    if(outputToBuffer1)
+                        BMIIRDownsampler2x_processBufferMono(&This->downsamplers2x[i], This->bufferL2, This->bufferL1, inputSize);
+                    else {
+                        BMIIRDownsampler2x_processBufferMono(&This->downsamplers2x[i], This->bufferL1, This->bufferL2, inputSize);
+                    }
+                    outputToBuffer1 = !outputToBuffer1;
+                }
+                
+                // when we reach the last stage, output straight to the output buffer
+                inputSize /= 2;
+                if(outputToBuffer1)
+                    BMIIRDownsampler2x_processBufferMono(&This->downsamplers2x[This->numStages-1], This->bufferL2, output, inputSize);
+                else
+                    BMIIRDownsampler2x_processBufferMono(&This->downsamplers2x[This->numStages-1], This->bufferL1, output, inputSize);
+                
+            }
+            
+            numSamplesIn -= samplesProcessing;
+            input += samplesProcessing;
+            output += samplesProcessing/This->downsampleFactor;
         }
     }
+    
+    
     
     
     
     
     void BMDownsampler_free(BMDownsampler* This){
+        // free internal memory for each 2x stage
         for(size_t i=0; i<This->numStages; i++)
-            BMHIIRDownsampler2xFPU_free(&This->downsamplers[i]);
-        free(This->downsamplers);
-        This->downsamplers = NULL;
+            BMIIRDownsampler2x_free(&This->downsamplers2x[i]);
+        
+        // free the stages array
+        free(This->downsamplers2x);
+        This->downsamplers2x = NULL;
+        
+        free(This->bufferL1);
+        free(This->bufferL2);
+        if(This->stereo){
+            free(This->bufferR1);
+            free(This->bufferR2);
+        }
+        
+        This->bufferL1 = NULL;
+        This->bufferR1 = NULL;
+        This->bufferL2 = NULL;
+        This->bufferR2 = NULL;
     }
     
     
     
     
-    void BMDownsampler_impulseResponse(BMDownsampler* This, float* IR, size_t numSamples){
+    void BMDownsampler_impulseResponse(BMDownsampler* This, float* IR, size_t IRLength){
+        // the input length is the output length * the upsample factor
+        size_t inputLength = IRLength * This->downsampleFactor;
+        
+        // allocate the array for the impulse input
+        float* impulse = malloc(sizeof(float)*inputLength);
+        
+        // set the input to all zeros
+        memset(impulse,0,sizeof(float)*inputLength);
+        
+        // set the first sample of input to 1.0f
+        impulse[0] = 1.0f;
+        
+        // process the impulse
+        BMDownsampler_processBufferMono(This, impulse, IR, inputLength);
     }
     
     

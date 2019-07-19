@@ -181,6 +181,8 @@ extern "C" {
     // c1, c2 are coefficients for a pair of first order allpass filters in series
     void BMMultilevelBiquad_setAllpass2ndOrder(BMMultiLevelBiquad* bqf, double c1, double c2, size_t level);
     
+    void BMMultilevelBiquad_setAllpass1stOrder(BMMultiLevelBiquad* bqf, double c, size_t level);
+    
     
     // Calling this sets the filter coefficients at 'level' to bypass.
     // Note that the filter still processes through the bypassed section
@@ -195,11 +197,11 @@ extern "C" {
     /*!
      * BMMultiLevelBiquad_tfMagVector
      *
-     * @param frequency: an an array specifying frequencies at which we want to evaluate
+     * @param frequency  an an array specifying frequencies at which we want to evaluate
      * the transfer function magnitude of the filter
      *
-     * @param magnitude: an array for storing the result
-     * @param length: the number of elements in frequency and magnitude
+     * @param magnitude an array for storing the result
+     * @param length  the number of elements in frequency and magnitude
      *
      */
     void BMMultiLevelBiquad_tfMagVector(BMMultiLevelBiquad* bqf, const float *frequency, float *magnitude, size_t length);

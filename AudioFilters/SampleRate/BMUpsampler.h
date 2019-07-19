@@ -15,40 +15,46 @@ extern "C" {
     
     
 #include <MacTypes.h>
+#include "BMIIRUpsampler2x.h"
     
     typedef struct BMUpsampler {
-
-        size_t IRLength;
+        BMIIRUpsampler2x* upsamplers2x;
+        float *bufferL, *bufferR;
+        size_t numStages, upsampleFactor;
     } BMUpsampler;
     
     
-    /*
-     * Initialise the struct at *This
+    /*!
+     *BMUpsampler_init
      *
-     * @param upsampleFactor supported values: 2, 4, 8
+     * @param This   pointer to an upsampler struct
+     * @param stereo set true if you need stereo processing; false for mono
+     * @param upsampleFactor supported values: 2^n
      */
-    void BMUpsampler_init(BMUpsampler* This, size_t upsampleFactor);
+    void BMUpsampler_init(BMUpsampler* This, bool stereo, size_t upsampleFactor);
     
     
     
-    /*
-     * upsample a buffer that contains a single channel of audio samples
+    /*!
+     *BMUpsampler_processBufferMono
+     * @abstract upsample a buffer that contains a single channel of audio samples
      *
      * @param input    length = numSamplesIn
      * @param output   length = numSamplesIn * upsampleFactor
      * @param numSamplesIn  number of input samples to process
      */
-    void BMUpsampler_processBuffer(BMUpsampler* This, float* input, float* output, size_t numSamplesOut);
+    void BMUpsampler_processBufferMono(BMUpsampler* This, const float* input, float* output, size_t numSamplesIn);
 
     
     void BMUpsampler_free(BMUpsampler* This);
     
     
-    /*
-     * The calling function must ensure that the length of IR is 
-     * at least This->IRLength
+    /*!
+     *BMUpsampler_impulseResponse
+     * @param IR array for IR output with length = IRLength
+     * @param IRLength must be divisible by upsampleFactor
      */
-    void BMUpsampler_impulseResponse(BMUpsampler* This, float* IR);
+    void BMUpsampler_impulseResponse(BMUpsampler* This, float* IR, size_t IRLength);
     
 #endif /* BMUpsampler_h */
 
