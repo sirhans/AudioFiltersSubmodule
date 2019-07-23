@@ -458,22 +458,23 @@ void BMMultiLevelBiquad_setHighShelfAdjustableSlope(BMMultiLevelBiquad* bqf, flo
         double A = pow(10.0,gain_db/40.0);
         double w0 = 2.0 * M_PI * (fc / bqf->sampleRate);
         double alpha = sin(w0)/2.0 * sqrt( (A + 1.0/A) * (1.0/slope - 1) + 2);
-        double tworAalpha = 1.0 * sqrt(A) * alpha;
+        double twoRAalpha = 1.0 * sqrt(A) * alpha;
         
         // compute the prenormalized filter coefficients
-        double b0pn =      A*( (A+1.0) + (A-1.0)*cos(w0) + tworAalpha );
-        double b1pn = -2.0*A*( (A-1.0) + (A+1.0)*cos(w0)              );
-        double b2pn =      A*( (A+1.0) + (A-1.0)*cos(w0) - tworAalpha );
-        double a0pn =          (A+1.0) - (A-1.0)*cos(w0) + tworAalpha;
-        double a1pn =    2.0*( (A-1.0) - (A+1.0)*cos(w0)              );
-        double a2pn =          (A+1.0) - (A-1.0)*cos(w0) - tworAalpha;
-
+        // these formulae are from the RBJ filter cookbook
+        double b0pn =      A*( (A+1.0) + (A-1.0)*cos(w0) + twoRAalpha );
+        double b1pn = -2.0*A*( (A-1.0) + (A+1.0)*cos(w0)            );
+        double b2pn =      A*( (A+1.0) + (A-1.0)*cos(w0) - twoRAalpha );
+        double a0pn =          (A+1.0) - (A-1.0)*cos(w0) + twoRAalpha;
+        double a1pn =    2.0*( (A-1.0) - (A+1.0)*cos(w0)            );
+        double a2pn =          (A+1.0) - (A-1.0)*cos(w0) - twoRAalpha;
+        
         // normalize the a0 term to 1 and save the coefficients
         *b0 = b0pn / a0pn;
         *b1 = b1pn / a0pn;
         *b2 = b2pn / a0pn;
         *a1 = a1pn / a0pn;
-        *a2 = a2pn / a0pn; 
+        *a2 = a2pn / a0pn;
     }
     
     BMMultiLevelBiquad_queueUpdate(bqf);
