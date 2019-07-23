@@ -18,5 +18,21 @@
 #define BMQuadraticRectifier_h
 
 #include <stdio.h>
+//#include <Accelerate/Accelerate.h>
+#include "BMQuadraticThreshold.h"
+
+
+typedef struct BMQuadraticRectifier {
+    BMQuadraticThreshold qtPos, qtNeg;
+} BMQuadraticRectifier;
+
+
+void BMQuadraticRectifier_init(BMQuadraticRectifier* This, float kneeWidth);
+
+
+void BMQuadraticRectifier_processBuffer(BMQuadraticRectifier* This,
+                                        const float* input,
+                                        float* outputPos, float* outputNeg,
+                                        size_t numSamples);
 
 #endif /* BMQuadraticRectifier_h */
