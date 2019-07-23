@@ -92,6 +92,17 @@ extern "C" {
     // set a high shelf filter at on the specified level in both
     // channels and update filter settings
     void BMMultiLevelBiquad_setHighShelf(BMMultiLevelBiquad* bqf, float fc, float gain_db, size_t level);
+
+    /*!
+     *BMMultiLevelBiquad_setHighShelfAdjustableSlope
+     * 
+     * @param BMMultiLevelBiquad pointer to initialized struct
+     * @param fc corner frequency
+     * @param gain_db   gain cut or boost in decibels
+     * @param s         slope in [0,1].
+     * @param level     biquad section number (counting from 0)
+     */
+    void BMMultiLevelBiquad_setHighShelfAdjustableSlope(BMMultiLevelBiquad* bqf, float fc, float gain_db, float slope, size_t level);
     
     //1st order of the HighShelf
     void BMMultiLevelBiquad_setHighShelfFirstOrder(BMMultiLevelBiquad* bqf, float fc, float gain_db, size_t level);
