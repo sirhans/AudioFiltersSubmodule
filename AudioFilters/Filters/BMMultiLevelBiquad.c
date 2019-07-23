@@ -447,6 +447,7 @@ void BMMultiLevelBiquad_setHighShelfAdjustableSlope(BMMultiLevelBiquad* bqf, flo
     assert(level < bqf->numLevels);
     
     // for left and right channels, set coefficients
+    // these formulae are from the RBJ filter cookbook
     for(size_t i=0; i < bqf->numChannels; i++){
         double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
         double* b1 = b0 + 1;
@@ -455,18 +456,17 @@ void BMMultiLevelBiquad_setHighShelfAdjustableSlope(BMMultiLevelBiquad* bqf, flo
         double* a2 = b0 + 4;
         
         double A = pow(10.0,gain_db/40.0);
-        double omega_0 = 2.0 * M_PI * (fc / bqf->sampleRate);
-        double alpha = sin(omega_0)/2.0 * sqrt( (A + 1.0/A) * (1.0/slope - 1) + 2);
-        double 2rAalpha = 1.0 * sqrt(A) * alpha;
+        double w0 = 2.0 * M_PI * (fc / bqf->sampleRate);
+        double alpha = sin(w0)/2.0 * sqrt( (A + 1.0/A) * (1.0/slope - 1) + 2);
+        double tworAalpha = 1.0 * sqrt(A) * alpha;
         
         // compute the prenormalized filter coefficients
-        // these formulae are from the RBJ filter cookbook
-        double b0pn =      A*( (A+1.0) + (A-1.0)*cos(w0) + 2rAalpha );
-        double b1pn = -2.0*A*( (A-1.0) + (A+1.0)*cos(w0)            );
-        double b2pn =      A*( (A+1.0) + (A-1.0)*cos(w0) - 2rAalpha );
-        double a0pn =          (A+1.0) - (A-1.0)*cos(w0) + 2rAalpha;
-        double a1pn =    2.0*( (A-1.0) - (A+1.0)*cos(w0)            );
-        double a2pn =          (A+1.0) - (A-1.0)*cos(w0) - 2rAalpha;
+        double b0pn =      A*( (A+1.0) + (A-1.0)*cos(w0) + tworAalpha );
+        double b1pn = -2.0*A*( (A-1.0) + (A+1.0)*cos(w0)              );
+        double b2pn =      A*( (A+1.0) + (A-1.0)*cos(w0) - tworAalpha );
+        double a0pn =          (A+1.0) - (A-1.0)*cos(w0) + tworAalpha;
+        double a1pn =    2.0*( (A-1.0) - (A+1.0)*cos(w0)              );
+        double a2pn =          (A+1.0) - (A-1.0)*cos(w0) - tworAalpha;
 
         // normalize the a0 term to 1 and save the coefficients
         *b0 = b0pn / a0pn;
@@ -478,6 +478,7 @@ void BMMultiLevelBiquad_setHighShelfAdjustableSlope(BMMultiLevelBiquad* bqf, flo
     
     BMMultiLevelBiquad_queueUpdate(bqf);
 }
+
 
 
 void BMMultiLevelBiquad_setHighShelfFirstOrder(BMMultiLevelBiquad* bqf, float fc, float gain_db, size_t level){

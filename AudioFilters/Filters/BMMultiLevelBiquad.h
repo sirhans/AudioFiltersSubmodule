@@ -96,10 +96,10 @@ extern "C" {
     /*!
      *BMMultiLevelBiquad_setHighShelfAdjustableSlope
      * 
-     * @param BMMultiLevelBiquad pointer to initialized struct
-     * @param fc corner frequency
+     * @param bqf       pointer to initialized struct
+     * @param fc        corner frequency
      * @param gain_db   gain cut or boost in decibels
-     * @param s         slope in [0,1].
+     * @param slope     slope in [0,1].
      * @param level     biquad section number (counting from 0)
      */
     void BMMultiLevelBiquad_setHighShelfAdjustableSlope(BMMultiLevelBiquad* bqf, float fc, float gain_db, float slope, size_t level);
