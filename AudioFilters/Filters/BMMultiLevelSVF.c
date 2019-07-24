@@ -125,10 +125,10 @@ void BMMultiLevelSVF_processBufferStereo(BMMultiLevelSVF* This,
             //Left channel
             BMMultiLevelSVF_processBufferAtLevel(This, level, inputL, outputL, numSamples);
             //Right channel
-            BMMultiLevelSVF_processBufferAtLevel(This,level + This->numLevels, outputR, outputR, numSamples);
+            BMMultiLevelSVF_processBufferAtLevel(This,level + This->numLevels, inputR, outputR, numSamples);
         }else{
             //Left channel
-            BMMultiLevelSVF_processBufferAtLevel(This,level, inputL, outputL, numSamples);
+            BMMultiLevelSVF_processBufferAtLevel(This,level, outputL, outputL, numSamples);
             //Right channel
             BMMultiLevelSVF_processBufferAtLevel(This,level + This->numLevels, outputR,outputR, numSamples);
         }
