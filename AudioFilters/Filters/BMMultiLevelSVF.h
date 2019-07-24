@@ -29,11 +29,15 @@ typedef struct BMMultiLevelSVF{
  */
 void BMMultiLevelSVF_init(BMMultiLevelSVF* This,int numLevels,float sampleRate,
                           bool isStereo);
+
+void BMMultiLevelSVF_free(BMMultiLevelSVF* This);
+
+
 /*
  Process buffer
  */
-void BMMultiLevelSVF_processBufferMono(BMMultiLevelSVF* This,float* input, float* output, size_t numSamples);
-void BMMultiLevelSVF_processBufferStereo(BMMultiLevelSVF* This,float* inputL,float* inputR, float* outputL, float* outputR, size_t numSamples);
+void BMMultiLevelSVF_processBufferMono(BMMultiLevelSVF* This, const float* input, float* output, size_t numSamples);
+void BMMultiLevelSVF_processBufferStereo(BMMultiLevelSVF* This, const float* inputL,const float* inputR, float* outputL, float* outputR, size_t numSamples);
 
 /*
  Filters
