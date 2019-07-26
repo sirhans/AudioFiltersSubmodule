@@ -57,6 +57,21 @@ void BMWaveshaper_processBufferBidirectional(const simd_float4* input, simd_floa
 
 
 
+
+void BMWaveshaper_squareClipping(const simd_float4* input, simd_float4* output, size_t numSamples){
+    float* outF = (float*)output;
+    float* inF = (float*)input;
+    for(size_t i=0; i<numSamples; i+=1){
+        if(inF[i]>0) outF[i] = 1.0f;
+        else if(inF[i]<0) outF[i] = -1.0f;
+        else outF[i] = 0.0f;
+    }
+}
+
+
+
+
+
 /*!
  *BMWaveshaper_processBufferPositive
  * @abstract clips the input to [-inf,1] with a cubic soft clipping function

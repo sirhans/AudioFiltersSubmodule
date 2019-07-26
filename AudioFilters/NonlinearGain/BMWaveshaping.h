@@ -21,6 +21,8 @@
 void BMWaveshaper_processBufferBidirectional(const simd_float4* input, simd_float4* output, size_t numSamples);
 
 
+void BMWaveshaper_squareClipping(const simd_float4* input, simd_float4* output, size_t numSamples);
+
 
 /*!
  *BMWaveshaper_processBufferPositive
