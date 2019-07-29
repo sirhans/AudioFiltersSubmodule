@@ -84,6 +84,8 @@ double* BMIIRUpsampler2x_genCoefficients(BMIIRUpsampler2x* This, float minStopba
     // required stopband attenuation and transition bandwidth
     This->numCoefficients = BMPolyphaseIIR2Designer_computeNbrCoefsFromProto(minStopbandAttenuationDb, maxTransitionBandwidth);
     
+    printf("numCoefficients before rounding: %zu\n",This->numCoefficients);
+    
     // if numCoefficients is not divisible by four, increase to the nearest multiple of four
     if(This->numCoefficients % 4 != 0)
         This->numCoefficients += (4 - This->numCoefficients%4);
