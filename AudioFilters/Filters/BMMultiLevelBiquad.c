@@ -378,10 +378,12 @@ void BMMultiLevelBiquad_setBypass(BMMultiLevelBiquad* bqf, size_t level){
     BMMultiLevelBiquad_queueUpdate(bqf);
     
 }
+
+
+
 // based on formula in 2.3.10 of Digital Filters for Everyone by Rusty Allred
 void BMMultiLevelBiquad_setHighShelf(BMMultiLevelBiquad* bqf, float fc, float gain_db, size_t level){
     assert(level < bqf->numLevels);
-    
     
     
     // for left and right channels, set coefficients
@@ -439,6 +441,45 @@ void BMMultiLevelBiquad_setHighShelf(BMMultiLevelBiquad* bqf, float fc, float ga
     
     BMMultiLevelBiquad_queueUpdate(bqf);
 }
+
+
+void BMMultiLevelBiquad_setHighShelfAdjustableSlope(BMMultiLevelBiquad* bqf, float fc, float gain_db, float slope, size_t level){
+    assert(level < bqf->numLevels);
+    
+    // for left and right channels, set coefficients
+    // these formulae are from the RBJ filter cookbook
+    for(size_t i=0; i < bqf->numChannels; i++){
+        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+        double* b1 = b0 + 1;
+        double* b2 = b0 + 2;
+        double* a1 = b0 + 3;
+        double* a2 = b0 + 4;
+        
+        double A = pow(10.0,gain_db/40.0);
+        double w0 = 2.0 * M_PI * (fc / bqf->sampleRate);
+        double alpha = sin(w0)/2.0 * sqrt( (A + 1.0/A) * (1.0/slope - 1) + 2);
+        double twoRAalpha = 1.0 * sqrt(A) * alpha;
+        
+        // compute the prenormalized filter coefficients
+        // these formulae are from the RBJ filter cookbook
+        double b0pn =      A*( (A+1.0) + (A-1.0)*cos(w0) + twoRAalpha );
+        double b1pn = -2.0*A*( (A-1.0) + (A+1.0)*cos(w0)            );
+        double b2pn =      A*( (A+1.0) + (A-1.0)*cos(w0) - twoRAalpha );
+        double a0pn =          (A+1.0) - (A-1.0)*cos(w0) + twoRAalpha;
+        double a1pn =    2.0*( (A-1.0) - (A+1.0)*cos(w0)            );
+        double a2pn =          (A+1.0) - (A-1.0)*cos(w0) - twoRAalpha;
+        
+        // normalize the a0 term to 1 and save the coefficients
+        *b0 = b0pn / a0pn;
+        *b1 = b1pn / a0pn;
+        *b2 = b2pn / a0pn;
+        *a1 = a1pn / a0pn;
+        *a2 = a2pn / a0pn;
+    }
+    
+    BMMultiLevelBiquad_queueUpdate(bqf);
+}
+
 
 
 void BMMultiLevelBiquad_setHighShelfFirstOrder(BMMultiLevelBiquad* bqf, float fc, float gain_db, size_t level){

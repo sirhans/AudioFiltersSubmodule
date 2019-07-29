@@ -13,7 +13,11 @@
 
 #define SVF_Param_Count 3
 
-static inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF* This, int level,float* input,float* output,size_t numSamples);
+static inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF* This,
+                                                        int level,
+                                                        const float* input,
+                                                        float* output,
+                                                        size_t numSamples);
 static inline void BMMultiLevelSVF_updateSVFParam(BMMultiLevelSVF* This);
 
 void BMMultiLevelSVF_init(BMMultiLevelSVF* This,int numLevels,float sampleRate,
@@ -37,49 +41,104 @@ void BMMultiLevelSVF_init(BMMultiLevelSVF* This,int numLevels,float sampleRate,
         This->ic1eq[i] = 0;
         This->ic2eq[i] = 0;
     }
-
 }
 
 
+
+void BMMultiLevelSVF_free(BMMultiLevelSVF* This){
+    
+    for(int i=0;i<This->numLevels*This->numChannels;i++){
+        free(This->a[i]);
+        This->a[i] = NULL;
+//        This->a[i] = malloc(sizeof(float) * SVF_Param_Count);
+        
+        free(This->m[i]);
+        This->m[i] = NULL;
+//        This->m[i] = malloc(sizeof(float) * SVF_Param_Count);
+        
+        free(This->tempA[i]);
+        This->tempA[i] = NULL;
+//        This->tempA[i] = malloc(sizeof(float) * SVF_Param_Count);
+        
+        free(This->tempM[i]);
+        This->tempM[i] = NULL;
+//        This->tempM[i] = malloc(sizeof(float) * SVF_Param_Count);
+    }
+    
+    free(This->a);
+    This->a = NULL;
+    //This->a = (float**)malloc(sizeof(float*) * totalNumLevels);
+    
+    free(This->m);
+    This->m = NULL;
+//    This->m = (float**)malloc(sizeof(float*) * totalNumLevels);
+    
+    free(This->tempA);
+    This->tempA = NULL;
+//    This->tempA = (float**)malloc(sizeof(float*) * totalNumLevels);
+    
+    free(This->tempM);
+    This->tempM = NULL;
+//    This->tempM = (float**)malloc(sizeof(float*) * totalNumLevels);
+    
+    free(This->ic1eq);
+    free(This->ic2eq);
+    This->ic1eq = NULL;
+    This->ic2eq = NULL;
+//    This->ic1eq = malloc(sizeof(float)* totalNumLevels);
+//    This->ic2eq = malloc(sizeof(float)* totalNumLevels);
+    
+}
+
+
+
 #pragma mark - process
-void BMMultiLevelSVF_processBufferMono(BMMultiLevelSVF* This,float* input, float* output, size_t numSamples){
+void BMMultiLevelSVF_processBufferMono(BMMultiLevelSVF* This,
+                                       const float* input,
+                                       float* output,
+                                       size_t numSamples){
     assert(This->numChannels == 1);
     
     if(This->shouldUpdateParam)
         BMMultiLevelSVF_updateSVFParam(This);
     
     for(int level = 0;level<This->numLevels;level++){
-        if(level==This->numLevels-1){
+        if(level==0){
             //Process into output
-            BMMultiLevelSVF_processBufferAtLevel(This,level, input,output, numSamples);
+            BMMultiLevelSVF_processBufferAtLevel(This, level, input, output, numSamples);
         }else
-            BMMultiLevelSVF_processBufferAtLevel(This,level, input,input, numSamples);
+            BMMultiLevelSVF_processBufferAtLevel(This, level, output, output, numSamples);
     }
 }
 
-void BMMultiLevelSVF_processBufferStereo(BMMultiLevelSVF* This,float* inputL,float* inputR, float* outputL, float* outputR, size_t numSamples){
+void BMMultiLevelSVF_processBufferStereo(BMMultiLevelSVF* This,
+                                         const float* inputL, const float* inputR,
+                                         float* outputL, float* outputR, size_t numSamples){
     assert(This->numChannels == 2);
     
     if(This->shouldUpdateParam)
         BMMultiLevelSVF_updateSVFParam(This);
     
     for(int level = 0;level<This->numLevels;level++){
-        if(level==This->numLevels-1){
+        if(level==0){
             //Process into output
             //Left channel
-            BMMultiLevelSVF_processBufferAtLevel(This,level, inputL,outputL, numSamples);
+            BMMultiLevelSVF_processBufferAtLevel(This, level, inputL, outputL, numSamples);
             //Right channel
-            BMMultiLevelSVF_processBufferAtLevel(This,level + This->numLevels, inputR,outputR, numSamples);
+            BMMultiLevelSVF_processBufferAtLevel(This,level + This->numLevels, inputR, outputR, numSamples);
         }else{
             //Left channel
-            BMMultiLevelSVF_processBufferAtLevel(This,level, inputL,inputL, numSamples);
+            BMMultiLevelSVF_processBufferAtLevel(This,level, outputL, outputL, numSamples);
             //Right channel
-            BMMultiLevelSVF_processBufferAtLevel(This,level + This->numLevels, inputR,inputR, numSamples);
+            BMMultiLevelSVF_processBufferAtLevel(This,level + This->numLevels, outputR,outputR, numSamples);
         }
     }
 }
 
-inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF* This, int level,float* input,float* output,size_t numSamples){
+inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF* This,
+                                                 int level,
+                                                 const float* input,
+                                                 float* output,size_t numSamples){
     for(int i=0;i<numSamples;i++){
         float v3 = input[i] - This->ic2eq[level];
         float v1 = This->a[level][0]*This->ic1eq[level] + This->a[level][1]*v3;
