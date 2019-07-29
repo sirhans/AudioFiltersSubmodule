@@ -1042,6 +1042,33 @@ void BMMultilevelBiquad_setAllpass1stOrder(BMMultiLevelBiquad* bqf, double c, si
 
 
 
+
+void BMMultilevelBiquad_setCriticallyDampedPhaseCompensator(BMMultiLevelBiquad * bqf, double lowpassFC, size_t level){
+    // We find the allpass coefficient Beta that yields the same phase response
+    // as the critically damped lowpass at lowpassFC.
+    //
+    // The following formulae were calculated in Mathematica.
+    // We used numerical minimisation to solve the equations, then used
+    // Wolfram alpha search to identify exact expressions that are equivalent
+    // to the numerical output up to 15 decimal places.
+    double c1 = 2.0 * M_2_PI; // 4 / pi
+    double c2 = -1.0 + M_SQRT2 + sqrt(10.0 - 7.0*M_SQRT2);
+    double c3 = 1.0 - c2;
+    
+    // get the cutoff in [0,pi]
+    double wc = 2.0 * M_PI * lowpassFC / bqf->sampleRate;
+    
+    double allpassBeta = -2.0 +
+                         (c1 * wc) +
+                         (c2 * (cos(wc/2.0) - sin(wc/2.0))) +
+                         (c3 * cos(wc));
+    
+    BMMultilevelBiquad_setAllpass1stOrder(bqf,allpassBeta,level);
+}
+
+
+
+
 /*
  * Computes the coefficient of the s^1 term in butterworth
  * polynomials
@@ -1804,6 +1831,63 @@ double BMMultiLevelBiquad_groupDelay(BMMultiLevelBiquad* bqf, double freq){
     
     return delay;
 }
+
+/*!
+ * BMMiltiLevelBiquad_phaseResponse
+ *
+ * @abstract Calculates the real-valued phase response of the filter cascade at the frequency freq. The formula for this generalizes to filters of any order. It is based on equation (24) in this document: http://www.rs-met.com/documents/dsp/BasicDigitalFilters.pdf
+ * @param bqf       pointer to an initialized struct
+ * @param freq      the frequency at which we want to evaluate the phase response
+ */
+double BMMiltiLevelBiquad_phaseResponse(BMMultiLevelBiquad* bqf, double freq){
+    double totalPhaseShift = 0;
+    double w = 2.0 * M_PI * freq / bqf->sampleRate;
+    
+    for (size_t level=0; level<bqf->numLevels; level++) {
+        
+        double b0 = bqf->coefficients_d[5*level];
+        double b1 = bqf->coefficients_d[5*level + 1];
+        double b2 = bqf->coefficients_d[5*level + 2];
+        double a1 = bqf->coefficients_d[5*level + 3];
+        double a2 = bqf->coefficients_d[5*level + 4];
+        
+    // Mathematica prototype:
+    //
+    // biquadPR[w_, b0_, b1_, b2_, a0_, a1_, a2_] :=
+    // -ArcTan[(b0 Sin[0 w] + b1 Sin[1 w] + b2 Sin[2 w]),
+    //         (b0 Cos[0 w] + b1 Cos[1 w] + b2 Cos[2 w])] +
+    //  ArcTan[-(a0 Sin[0 w] + a1 Sin[1 w] + a2 Sin[2 w]),
+    //         -(a0 Cos[0 w] + a1 Cos[1 w] + a2 Cos[2 w])]
+    //
+    //
+        // direct C port from Mathematica:
+//        double sb = b0 * sin(0.0*w) + b1 * sin(1.0*w) + b2 * sin(2*w);
+//        double cb = b0 * cos(0.0*w) + b1 * cos(1.0*w) + b2 * cos(2*w);
+//        double sa = a0 * sin(0.0*w) + a1 * sin(1.0*w) + a2 * sin(2*w);
+//        double ca = a0 * cos(0.0*w) + a1 * cos(1.0*w) + a2 * cos(2*w);
+        //
+        // more efficient C port:
+        double w2 = w * 2.0;
+        double sinw = sin(w);
+        double cosw = cos(w);
+        double sin2w = sin(w2);
+        double cos2w = cos(w2);
+        //
+        double sb =       (b1 * sinw) + (b2 * sin2w);
+        double cb = b0  + (b1 * cosw) + (b2 * cos2w);
+        double sa =       (a1 * sinw) + (a2 * sin2w);
+        double ca = 1.0 + (a1 * cosw) + (a2 * cos2w);
+
+        
+        totalPhaseShift += atan2(sb, cb);
+        totalPhaseShift -= atan2(sa, ca);
+    }
+    
+    // bound the result to [0, 2*pi] and return
+    double twoPi = 2.0 * M_PI;
+    return modf(totalPhaseShift, &twoPi);
+}
+
 
 //#ifdef __cplusplus
 //}

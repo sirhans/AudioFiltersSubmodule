@@ -183,6 +183,16 @@ extern "C" {
     
     void BMMultilevelBiquad_setAllpass1stOrder(BMMultiLevelBiquad* bqf, double c, size_t level);
     
+    /*!
+     *BMMultilevelBiquad_setCriticallyDampedPhaseCompensator
+     *
+     * @abstract        This sets up an allpass filter that has a phase shift identical to the critically damped second order lowpass filter with cutoff at lowpassFC. Note that this is a first order allpass, so it wastes the last two filter coefficients in the biquad. If we need to compensate more than one level of critically damped lowpass filter, it may be better to use a second order version of this function, provided the filter cutoff is such that the allpass coefficients do not lead to a loss of precision.
+     * @param bqf       pointer to an initialized filter struct
+     * @param lowpassFC cutoff frequency of the critically damped lowpass filter whose phase response we want to match.
+     * @param level     the filter level
+     */
+    void BMMultilevelBiquad_setCriticallyDampedPhaseCompensator(BMMultiLevelBiquad * bqf, double lowpassFC, size_t level);
+    
     
     // Calling this sets the filter coefficients at 'level' to bypass.
     // Note that the filter still processes through the bypassed section
@@ -210,7 +220,7 @@ extern "C" {
     /*!
      * BMMultiLevelBiquad_groupDelay
      *
-     * returns the total group delay of all levels of the filter at the specified frequency.
+     * @abstract returns the total group delay of all levels of the filter at the specified frequency.
      *
      * @discussion uses a cookbook formula for group delay of biquad filters, based on the fft derivative method.
      *
@@ -218,6 +228,16 @@ extern "C" {
      * @return the group delay in samples at freq
      */
     double BMMultiLevelBiquad_groupDelay(BMMultiLevelBiquad* bqf, double freq);
+    
+    /*!
+     * BMMiltiLevelBiquad_phaseResponse
+     *
+     * @abstract returns the phase response for all levels of the filter at the specified frequency.
+     * @param bqf        pointer to an initialized struct
+     * @param freq       the frequency at which we want to compute the phase response
+     * @return           the phase shift, in radians, at freq
+     */
+    double BMMiltiLevelBiquad_phaseResponse(BMMultiLevelBiquad* bqf, double freq);
     
     //Call this function to manually disable desired filter level
     void BMMultiLevelBiquad_setActiveOnLevel(BMMultiLevelBiquad* bqf,bool active,size_t level);
