@@ -22,7 +22,7 @@
  * @param hardLimit  require hardLimit > softLimit. Limit abs(output) = hardLimit as input -> abs(infinity)
  * @param numSamples length of input and output arrays
  */
-void BMTanhLimiter(const float* input, float* output, float* softLimit, float* hardLimit, size_t numSamples);
+void BMTanhLimiter(const float* input, float* output, float softLimit, float hardLimit, size_t numSamples);
 
 
 /*!
@@ -35,7 +35,20 @@ void BMTanhLimiter(const float* input, float* output, float* softLimit, float* h
  * @param hardLimit  require hardLimit > softLimit. Limit output = hardLimit as input -> +infinity
  * @param numSamples length of input and output arrays
  */
-void BMTanhLimiterUpper(const float* input, float* output, float* softLimit, float* hardLimit, size_t numSamples);
+void BMTanhLimiterUpper(const float* input, float* output, float softLimit, float hardLimit, size_t numSamples);
+
+
+/*!
+ *BMTanhLimiterUpperSimd
+ *
+ * @abstract  linear from x = -inf to x=y=softLimit, then curved until y=hardLimit
+ * @param input      input array
+ * @param output     output array
+ * @param softLimit  this function is linear for input < softLimit
+ * @param hardLimit  require hardLimit > softLimit. Limit output = hardLimit as input -> +infinity
+ * @param numSamples length of input and output arrays
+ */
+void BMTanhLimiterUpperSimd(const float* input, float* output, float softLimit, float hardLimit, size_t numSamples);
 
 
 /*!
@@ -48,6 +61,6 @@ void BMTanhLimiterUpper(const float* input, float* output, float* softLimit, flo
  * @param hardLimit  require -hardLimit < -softLimit. Limit output = -hardLimit as input -> -infinity
  * @param numSamples length of input and output arrays
  */
-void BMTanhLimiterLower(const float* input, float* output, float* softLimit, float* hardLimit, size_t numSamples);
+void BMTanhLimiterLower(const float* input, float* output, float softLimit, float hardLimit, size_t numSamples);
 
 #endif /* BMTanhLimiter_h */

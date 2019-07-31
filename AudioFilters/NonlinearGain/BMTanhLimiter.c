@@ -14,14 +14,14 @@
 
 
 
-void BMTanhLimiter(const float* input, float* output, float* softLimit, float* hardLimit, size_t numSamples){
-    simd_muladd(<#simd_double4 x#>, <#simd_double4 y#>, <#simd_double4 z#>)
+void BMTanhLimiter(const float* input, float* output, float softLimit, float hardLimit, size_t numSamples){
+    
 }
 
 
 
 
-void BMTanhLimiterUpper(const float* input, float* output, float* softLimit, float* hardLimit, size_t numSamples){
+void BMTanhLimiterUpper(const float* input, float* output, float softLimit, float hardLimit, size_t numSamples){
     assert(hardLimit > softLimit);
     assert(input != output);
     
@@ -31,9 +31,9 @@ void BMTanhLimiterUpper(const float* input, float* output, float* softLimit, flo
     //   Min[(hardLimit-softLimit)Tanh[(x/(hardLimit-softLimit)-softLimit/(hardLimit-softLimit))]+softLimit,x]
 
     //     (x/(hardLimit-softLimit)-softLimit/(hardLimit-softLimit))
-    float scaleUp = (*hardLimit-*softLimit);
+    float scaleUp = (hardLimit-softLimit);
     float scaleDown = 1.0f / scaleUp;
-    float shiftDown = -*softLimit * scaleDown;
+    float shiftDown = -softLimit * scaleDown;
     vDSP_vsmsa(input, 1, &scaleDown, &shiftDown, output, 1, numSamples);
     
     // apply the tanh function
@@ -42,7 +42,7 @@ void BMTanhLimiterUpper(const float* input, float* output, float* softLimit, flo
     
     // shift and scale back into place
     // (hardLimit-softLimit)output + softLimit
-    vDSP_vsmsa(output, 1, &scaleUp, softLimit, output, 1, numSamples);
+    vDSP_vsmsa(output, 1, &scaleUp, &softLimit, output, 1, numSamples);
     
     // The positive side of the tanh function applies a gain reduction, so
     // wherever the output of the tanh function is greater than the input, we
@@ -52,13 +52,13 @@ void BMTanhLimiterUpper(const float* input, float* output, float* softLimit, flo
 }
 
 
-void BMTanhLimiterUpperSimd(const float* input, float* output, float* softLimit, float* hardLimit, size_t numSamples){
+void BMTanhLimiterUpperSimd(const float* input, float* output, float softLimit, float hardLimit, size_t numSamples){
     simd_float4* input4 = (simd_float4*)input;
     simd_float4* output4 = (simd_float4*)output;
-    simd_float4 scaleUp = *hardLimit - *softLimit;
+    simd_float4 scaleUp = hardLimit - softLimit;
     simd_float4 scaleDown = 1.0f / scaleUp;
-    simd_float4 shiftDown = -*softLimit * scaleDown;
-    simd_float4 softLimit4 = *softLimit;
+    simd_float4 shiftDown = -softLimit * scaleDown;
+    simd_float4 softLimit4 = softLimit;
     
     while(numSamples >= 4){
         // (x/(hardLimit-softLimit)-softLimit/(hardLimit-softLimit))
@@ -85,7 +85,7 @@ void BMTanhLimiterUpperSimd(const float* input, float* output, float* softLimit,
     while(numSamples > 0){
         float t = simd_muladd(*input,scaleDown.x,shiftDown.x);
         t = tanhf(t);
-        t = simd_muladd(t, scaleUp.x, *softLimit);
+        t = simd_muladd(t, scaleUp.x, softLimit);
         *output = simd_min(t, *input);
         
         input++;
@@ -96,7 +96,7 @@ void BMTanhLimiterUpperSimd(const float* input, float* output, float* softLimit,
 
 
 
-void BMTanhLimiterLower(const float* input, float* output, float* softLimit, float* hardLimit, size_t numSamples){
+void BMTanhLimiterLower(const float* input, float* output, float softLimit, float hardLimit, size_t numSamples){
     assert(hardLimit > softLimit);
     assert(input != output);
     
@@ -106,9 +106,9 @@ void BMTanhLimiterLower(const float* input, float* output, float* softLimit, flo
     //    Max[(hardLimit-softLimit)Tanh[(x/(hardLimit-softLimit)+softLimit/(hardLimit-softLimit))]-softLimit,x]
 
     //     (x/(hardLimit-softLimit)+softLimit/(hardLimit-softLimit))
-    float scaleUp = (*hardLimit-*softLimit);
+    float scaleUp = (hardLimit-softLimit);
     float scaleDown = 1.0f / scaleUp;
-    float shiftUp = *softLimit * scaleDown;
+    float shiftUp = softLimit * scaleDown;
     vDSP_vsmsa(input, 1, &scaleDown, &shiftUp, output, 1, numSamples);
     
     // apply the tanh function
@@ -117,7 +117,7 @@ void BMTanhLimiterLower(const float* input, float* output, float* softLimit, flo
     
     // shift and scale back into place
     // (hardLimit-softLimit)output - softLimit
-    float shiftDown = -*softLimit;
+    float shiftDown = -softLimit;
     vDSP_vsmsa(output, 1, &scaleUp, &shiftDown, output, 1, numSamples);
     
     // The negative side of the tanh function takes the gain closer to zero, so
