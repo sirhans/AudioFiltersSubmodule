@@ -11,6 +11,20 @@
 
 #include <stdio.h>
 
+
+/*!
+ *BMTanhLimiter
+ *
+ * @abstract  linear from x = y = -softLimit to +infinity, curved to clipping for x < -softLimit until y=-hardLimit
+ * @param input      input array
+ * @param output     output array
+ * @param softLimit  this function is linear for -softLimit < input < softLimit
+ * @param hardLimit  require hardLimit > softLimit. Limit abs(output) = hardLimit as input -> abs(infinity)
+ * @param numSamples length of input and output arrays
+ */
+void BMTanhLimiter(const float* input, float* output, float* softLimit, float* hardLimit, size_t numSamples);
+
+
 /*!
  *BMTanhLimiterUpper
  *

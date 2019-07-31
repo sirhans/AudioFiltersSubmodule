@@ -9,10 +9,21 @@
 #include "BMTanhLimiter.h"
 #include <Accelerate/Accelerate.h>
 #include <assert.h>
+#include <simd/simd.h>
+
+
+
+
+void BMTanhLimiter(const float* input, float* output, float* softLimit, float* hardLimit, size_t numSamples){
+    simd_muladd(<#simd_double4 x#>, <#simd_double4 y#>, <#simd_double4 z#>)
+}
+
+
 
 
 void BMTanhLimiterUpper(const float* input, float* output, float* softLimit, float* hardLimit, size_t numSamples){
     assert(hardLimit > softLimit);
+    assert(input != output);
     
     // Mathematica prototype:
     //
@@ -41,8 +52,54 @@ void BMTanhLimiterUpper(const float* input, float* output, float* softLimit, flo
 }
 
 
+void BMTanhLimiterUpperSimd(const float* input, float* output, float* softLimit, float* hardLimit, size_t numSamples){
+    simd_float4* input4 = (simd_float4*)input;
+    simd_float4* output4 = (simd_float4*)output;
+    simd_float4 scaleUp = *hardLimit - *softLimit;
+    simd_float4 scaleDown = 1.0f / scaleUp;
+    simd_float4 shiftDown = -*softLimit * scaleDown;
+    simd_float4 softLimit4 = *softLimit;
+    
+    while(numSamples >= 4){
+        // (x/(hardLimit-softLimit)-softLimit/(hardLimit-softLimit))
+        // scale and shift down
+        simd_float4 t = simd_muladd(*input4, scaleDown, shiftDown);
+        
+        // apply the tanh function
+        t = _simd_tanh_f4(t);
+        
+        // scale and shift back into place
+        t = simd_muladd(t, scaleUp, softLimit4);
+        
+        // take the min of input and output
+        *output4 = simd_min(t, *input4);
+        
+        input4++;
+        output4++;
+        numSamples -= 4;
+    }
+    
+    // finish up if there are any samples left not divisible by 4
+    output = (float*)output4;
+    input = (float*)input4;
+    while(numSamples > 0){
+        float t = simd_muladd(*input,scaleDown.x,shiftDown.x);
+        t = tanhf(t);
+        t = simd_muladd(t, scaleUp.x, *softLimit);
+        *output = simd_min(t, *input);
+        
+        input++;
+        output++;
+        numSamples--;
+    }
+}
+
+
 
 void BMTanhLimiterLower(const float* input, float* output, float* softLimit, float* hardLimit, size_t numSamples){
+    assert(hardLimit > softLimit);
+    assert(input != output);
+    
     // Mathematica prototype:
     //
     // TanhLimitLower[x_,softLimit_,hardLimit_] :=
