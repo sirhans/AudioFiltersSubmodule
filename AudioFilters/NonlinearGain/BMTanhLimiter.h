@@ -63,4 +63,17 @@ void BMTanhLimiterUpperSimd(const float* input, float* output, float softLimit, 
  */
 void BMTanhLimiterLower(const float* input, float* output, float softLimit, float hardLimit, size_t numSamples);
 
+
+/*!
+ *BMTanhLimiterLower
+ *
+ * @abstract  linear from x = y = -softLimit to +infinity, curved to clipping for x < -softLimit until y=-hardLimit
+ * @param input      input array
+ * @param output     output array
+ * @param softLimit  this function is linear for input > -softLimit. NOTE THE NEGATIVE SIGN HERE!!!
+ * @param hardLimit  require -hardLimit < -softLimit. Limit output = -hardLimit as input -> -infinity
+ * @param numSamples length of input and output arrays
+ */
+void BMTanhLimiterLowerSimd(const float* input, float* output, float softLimit, float hardLimit, size_t numSamples);
+
 #endif /* BMTanhLimiter_h */
