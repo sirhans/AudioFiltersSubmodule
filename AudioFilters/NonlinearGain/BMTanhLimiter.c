@@ -15,8 +15,58 @@
 
 
 void BMTanhLimiter(const float* input, float* output, float softLimit, float hardLimit, size_t numSamples){
-    BMTanhLimiterUpperSimd(input, output, softLimit, hardLimit, numSamples);
-    BMTanhLimiterLowerSimd(output, output, softLimit, hardLimit, numSamples);
+
+    simd_float4* input4 = (simd_float4*)input;
+    simd_float4* output4 = (simd_float4*)output;
+    simd_float4 scaleUp = hardLimit - softLimit;
+    simd_float4 scaleDown = 1.0f / scaleUp;
+    simd_float4 shiftDown = -softLimit * scaleDown;
+    simd_float4 softLimit4 = softLimit;
+    
+    while(numSamples >= 4){
+        // save the sign of the input
+        simd_float4 sign = simd_sign(*input4);
+        
+        // make the input positive so we can use the positive side limiter code
+        simd_float4 t = simd_abs(*input4);
+        
+        // (x/(hardLimit-softLimit)-softLimit/(hardLimit-softLimit))
+        // scale and shift down
+        t = simd_muladd(*input4, scaleDown, shiftDown);
+        
+        // apply the tanh function
+        t = _simd_tanh_f4(t);
+        
+        // scale and shift back into place
+        t = simd_muladd(t, scaleUp, softLimit4);
+        
+        // take the min of input and output
+        t = simd_min(t, *input4);
+        
+        // restore the sign and output
+        *output4 = t * sign;
+        
+        input4++;
+        output4++;
+        numSamples -= 4;
+    }
+    
+    // finish up if there are any samples left not divisible by 4
+    output = (float*)output4;
+    input = (float*)input4;
+    while(numSamples > 0){
+        float sign = simd_sign(*input);
+        float t = fabsf(*input);
+        t = simd_muladd(*input,scaleDown.x,shiftDown.x);
+        t = tanhf(t);
+        t = simd_muladd(t, scaleUp.x, softLimit);
+        t = simd_min(t, *input);
+        *output = sign * t;
+        
+        input++;
+        output++;
+        numSamples--;
+    }
 }
 
 
