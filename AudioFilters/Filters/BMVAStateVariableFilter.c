@@ -19,21 +19,23 @@ void BMVAStateVariableFilter_processBufferBShelf(BMVAStateVariableFilter* This,s
 void BMVAStateVariableFilter_processBufferNotch(BMVAStateVariableFilter* This,simd_float2* input,  const size_t numSamples);
 void BMVAStateVariableFilter_processBufferAP(BMVAStateVariableFilter* This,simd_float2* input,  const size_t numSamples);
 void BMVAStateVariableFilter_processBufferPeak(BMVAStateVariableFilter* This,simd_float2* input,  const size_t numSamples);
+void BMVAStateVariableFilter_calcFilter(BMVAStateVariableFilter* This);
 
 void BMVAStateVariableFilter_init(BMVAStateVariableFilter* This,bool isStereo,size_t sRate,SVFType type){
     This->sampleRate = sRate;
     This->filterType = type;
     This->channelCount = isStereo ? 2 : 1;
-    This->gCoeff = 1.0f;
-    This->RCoeff = 1.0f;
-    This->KCoeff = 0.0f;
     
+    This->shelfGain = 0;
     This->cutoffFreq = 1000.0f;
-    This->Q = resonanceToQ(0.5);
+    This->Q = 1.0f;
+    
+    This->needUpdate = true;
+    BMVAStateVariableFilter_calcFilter(This);
     
     
-    This->z1_A[0] = This->z2_A[0] = 0.0f;
-    This->z1_A[1] = This->z2_A[1] = 0.0f;
+    This->z1[0] = This->z2[0] = 0.0f;
+    This->z1[1] = This->z2[1] = 0.0f;
     
     This->lpBuffer = malloc(sizeof(simd_float2)*BM_BUFFER_CHUNK_SIZE);
     This->hpBuffer = malloc(sizeof(simd_float2)*BM_BUFFER_CHUNK_SIZE);
@@ -44,6 +46,8 @@ void BMVAStateVariableFilter_init(BMVAStateVariableFilter* This,bool isStereo,si
     This->bshelfBuffer = malloc(sizeof(simd_float2)*BM_BUFFER_CHUNK_SIZE);
     This->peakBuffer = malloc(sizeof(simd_float2)*BM_BUFFER_CHUNK_SIZE);
     This->interleaveBuffer = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE*2);
+    
+    This->active = true;
 }
 
 void BMVAStateVariableFilter_destroy(BMVAStateVariableFilter* This){
@@ -76,87 +80,64 @@ void BMVAStateVariableFilter_setFilterType(BMVAStateVariableFilter* This,SVFType
     This->filterType = type;
 }
 
+void BMVAStateVariableFilter_setFilter(BMVAStateVariableFilter* This,const int newType, const float fc,const float newQ, const float gainDB)
+{
+    This->filterType = newType;
+    This->cutoffFreq = fc;
+    This->Q = newQ;
+    This->shelfGain = BM_DB_TO_GAIN(gainDB);
+    This->needUpdate = true;
+}
+
+
 void BMVAStateVariableFilter_calcFilter(BMVAStateVariableFilter* This)
 {
     if (This->active) {
-        
-        // prewarp the cutoff (for bilinear-transform filters)
-        float wd = This->cutoffFreq * 2.0f * M_PI;
-        float T = 1.0f / This->sampleRate;
-        float wa = (2.0f / T) * tan(wd * T / 2.0f);
-        
-        // Calculate g (gain element of integrator)
-        This->gCoeff = wa * T / 2.0f;            // Calculate g (gain element of integrator)
-        
-        // Calculate Zavalishin's R from Q (referred to as damping parameter)
-        This->RCoeff = 1.0f / (2.0f * This->Q);
-        
-        // Gain for BandShelving filter
-        This->KCoeff = This->shelfGain;
+        if(This->needUpdate){
+            This->needUpdate = false;
+            // prewarp the cutoff (for bilinear-transform filters)
+            float wd = This->cutoffFreq * 2.0f * M_PI;
+            float T = 1.0f / This->sampleRate;
+            float wa = (2.0f / T) * tan(wd * T / 2.0f);
+            
+            // Calculate g (gain element of integrator)
+            This->gCoeff = wa * T / 2.0f;            // Calculate g (gain element of integrator)
+            
+            // Calculate Zavalishin's R from Q (referred to as damping parameter)
+            This->RCoeff = 1.0f / (2.0f * This->Q);
+            
+            // Gain for BandShelving filter
+            This->KCoeff = This->shelfGain;
+            
+            This->hpMultiFactor = 1.0f / (1.0f + (2.0f * This->RCoeff * This->gCoeff) + This->gCoeff * This->gCoeff);
+        }
     }
 }
 
-void BMVAStateVariableFilter_setCutoffPitch(BMVAStateVariableFilter* This,const float newCutoffPitch)
+void BMVAStateVariableFilter_setFC(BMVAStateVariableFilter* This,const float newFC)
 {
-    if (This->active) {
-        This->cutoffFreq = pitchToFreq(newCutoffPitch);
-        //cutoffLinSmooth.setValue(cutoffFreq);
-        BMVAStateVariableFilter_calcFilter(This);
-    }
-}
-
-void BMVAStateVariableFilter_setCutoffFreq(BMVAStateVariableFilter* This,const float newCutoffFreq)
-{
-    if (This->active) {
-        This->cutoffFreq = newCutoffFreq;
-        BMVAStateVariableFilter_calcFilter(This);
-    }
-}
-
-void BMVAStateVariableFilter_setResonance(BMVAStateVariableFilter* This,const float newResonance)
-{
-    if (This->active) {
-        This->Q = resonanceToQ(newResonance);
-        BMVAStateVariableFilter_calcFilter(This);
-    }
+    This->cutoffFreq = newFC;
+    This->needUpdate = true;
 }
 
 void BMVAStateVariableFilter_setQ(BMVAStateVariableFilter* This,const float newQ)
 {
-    if (This->active) {
-        This->Q = newQ;
-        BMVAStateVariableFilter_calcFilter(This);
-    }
+    This->Q = newQ;
+    This->needUpdate = true;
 }
 
-void BMVAStateVariableFilter_setShelfGain(BMVAStateVariableFilter* This,const float newGain)
+void BMVAStateVariableFilter_setGain(BMVAStateVariableFilter* This,const float gainDB)
 {
-    if (This->active) {
-        This->shelfGain = newGain;
-        BMVAStateVariableFilter_calcFilter(This);
-    }
+    This->shelfGain = BM_DB_TO_GAIN(gainDB);
+    This->needUpdate = true;
 }
 
-void BMVAStateVariableFilter_setFilter(BMVAStateVariableFilter* This,const int newType, const float newCutoffFreq,const float newResonance, const float newShelfGain)
-{
-    This->filterType = newType;
-    This->cutoffFreq = newCutoffFreq;
-    This->Q = resonanceToQ(newResonance);
-    This->shelfGain = newShelfGain;
-    BMVAStateVariableFilter_calcFilter(This);
-}
 
 void BMVAStateVariableFilter_setSampleRate(BMVAStateVariableFilter* This,const float newSampleRate)
 {
     This->sampleRate = newSampleRate;
-    //cutoffLinSmooth.reset(sampleRate, smoothTimeMs);
-    BMVAStateVariableFilter_calcFilter(This);
+    This->needUpdate = true;
 }
-
-/*void VAStateVariableFilter::setSmoothingTimeInMs(const float & newSmoothingTimeMs)
- {
- smoothTimeMs = newSmoothingTimeMs;
- }*/
 
 void BMVAStateVariableFilter_setIsActive(BMVAStateVariableFilter* This,bool isActive)
 {
@@ -175,6 +156,9 @@ void BMVAStateVariableFilter_processBufferStereo(BMVAStateVariableFilter* This,f
 {
     // Test if filter is active. If not, bypass it
     if (This->active) {
+        //Prepare coefficient
+        BMVAStateVariableFilter_calcFilter(This);
+        
         for(int channelIndex = 0;channelIndex<This->channelCount;channelIndex++){
             size_t sampleProcessed = 0;
             float zero = 0;
@@ -226,15 +210,15 @@ inline void BMVAStateVariableFilter_processBufferLPBPHP(BMVAStateVariableFilter*
     for (int i = 0; i < numSamples; i++) {
     
         // Filter processing:
-        This->hpBuffer[i] = (input[i] - (2.0f * This->RCoeff + This->gCoeff) * This->z1_A - This->z2_A)
-        / (1.0f + (2.0f * This->RCoeff * This->gCoeff) + This->gCoeff * This->gCoeff);
+        This->hpBuffer[i] = (input[i] - (2.0f * This->RCoeff + This->gCoeff) * This->z1 - This->z2)
+        * This->hpMultiFactor;
         
-        This->bpBuffer[i] = This->hpBuffer[i] * This->gCoeff + This->z1_A;
+        This->bpBuffer[i] = This->hpBuffer[i] * This->gCoeff + This->z1;
         
-        This->lpBuffer[i] = This->bpBuffer[i] * This->gCoeff + This->z2_A;
+        This->lpBuffer[i] = This->bpBuffer[i] * This->gCoeff + This->z2;
         
-        This->z1_A = This->gCoeff * This->hpBuffer[i] + This->bpBuffer[i];        // unit delay (state variable)
-        This->z2_A = This->gCoeff * This->bpBuffer[i] + This->lpBuffer[i];          // unit delay (state variable)
+        This->z1 = This->gCoeff * This->hpBuffer[i] + This->bpBuffer[i];        // unit delay (state variable)
+        This->z2 = This->gCoeff * This->bpBuffer[i] + This->lpBuffer[i];          // unit delay (state variable)
     }
 }
 

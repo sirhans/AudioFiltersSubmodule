@@ -43,9 +43,10 @@ typedef struct BMVAStateVariableFilter {
     float gCoeff;        // gain element
     float RCoeff;        // feedback damping element
     float KCoeff;        // shelf gain element
+    float hpMultiFactor;
     
-    simd_float2 z1_A;
-    simd_float2 z2_A;
+    simd_float2 z1;
+    simd_float2 z2;
     
     simd_float2* lpBuffer;
     simd_float2* bpBuffer;
@@ -56,6 +57,8 @@ typedef struct BMVAStateVariableFilter {
     simd_float2* apBuffer;
     simd_float2* peakBuffer;
     float* interleaveBuffer;
+    
+    bool needUpdate;
 } BMVAStateVariableFilter;
 
     void BMVAStateVariableFilter_init(BMVAStateVariableFilter* This,bool isStereo,size_t sRate,SVFType type);
@@ -64,6 +67,13 @@ typedef struct BMVAStateVariableFilter {
     
     void BMVAStateVariableFilter_destroy(BMVAStateVariableFilter* This);
     
+    void BMVAStateVariableFilter_setFC(BMVAStateVariableFilter* This,const float newFC);
+    void BMVAStateVariableFilter_setQ(BMVAStateVariableFilter* This,const float newQ);
+    void BMVAStateVariableFilter_setGain(BMVAStateVariableFilter* This,const float gainDB);
+    void BMVAStateVariableFilter_setFilterType(BMVAStateVariableFilter* This,SVFType type);
+    void BMVAStateVariableFilter_setSampleRate(BMVAStateVariableFilter* This,const float newSampleRate);
+    
+    void BMVAStateVariableFilter_setFilter(BMVAStateVariableFilter* This,const int newType, const float fc,const float newQ, const float gainDB);
     
 #ifdef __cplusplus
 }
