@@ -44,21 +44,17 @@ extern "C" {
     // process a mono buffer of samples
     void BMMultiLevelBiquad_processBufferMono(BMMultiLevelBiquad* bqf, const float* input, float* output, size_t numSamples);
     
-    /*
-     * init must be called once before using the filter.  To change the number of
-     * levels in the fitler, call destroy first, then call this function with
-     * the new number of levels
+    /*!
+     *BMMultiLevelBiquad_init
+     * @Abstract init must be called once before using the filter.  To change the number of levels in the fitler, call destroy first, then call this function with the new number of levels
      *
-     * monoRealTimeUpdate: If you are updating coefficients of a MONO filter in
-     *                     realtime, set this to true. Processing of audio is
-     *                     slightly slower, but updates can happen in realtime.
-     *                     This setting has no effect on stereo filters.
-     *                     This setting has no effect if the OS does not support
-     *                     realtime updates of vDSP_biquadm filter coefficients.
+     * @param bqf pointer to an initialized filter struct
+     * @param numLevels the number of biquad filters in the cascade
+     * @param sampleRate audio sample rate
+     * @param isStere set true for stereo, false for mono
+     * @param monoRealTimeUpdate: If you are updating coefficients of a MONO filter in realtime, set this to true. Processing of audio is slightly slower, but updates can happen in realtime. This setting has no effect on stereo filters. This setting has no effect if the OS does not support realtime updates of vDSP_biquadm filter coefficients.
      *
-     *smoothUpdate :    When BMMultilevelBiquad is init with smooth updates on,
-     *                  the update function will call setTargetsDouble to enable smooth update;
-     *                  and when it's off it will call setCoefficientsDouble
+     * @param smoothUpdate :    When BMMultilevelBiquad is init with smooth updates on, the update function will call setTargetsDouble to enable smooth update; and when it's off it will call setCoefficientsDouble.
      *
      */
     void BMMultiLevelBiquad_init(BMMultiLevelBiquad* bqf,
