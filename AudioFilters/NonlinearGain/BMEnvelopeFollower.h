@@ -110,6 +110,18 @@ void BMReleaseFilter_processBuffer(BMReleaseFilter* This,
                                    float* output,
                                    size_t numSamples);
 
+
+/*!
+ * BMReleaseFilter_processBufferNegative
+ *
+ * @abstract inverts the signal before and after processing
+ */
+void BMReleaseFilter_processBufferNegative(BMReleaseFilter* This,
+                                   const float* input,
+                                   float* output,
+                                   size_t numSamples);
+
+
 /*!
  * BMAttackFilter_setCutoff
  */

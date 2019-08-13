@@ -185,6 +185,17 @@ void BMAttackFilter_processBuffer(BMAttackFilter* This,
 
 
 
+void BMReleaseFilter_processBufferNegative(BMReleaseFilter* This,
+                                   const float* input,
+                                   float* output,
+                                   size_t numSamples){
+    // invert the sign of the signal
+    vDSP_vneg(input, 1, output, 1, numSamples);
+    BMReleaseFilter_processBuffer(This, output, output, numSamples);
+    vDSP_vneg(output, 1, output, 1, numSamples);
+}
+
+
 
 void BMReleaseFilter_processBuffer(BMReleaseFilter* This,
                                    const float* input,
