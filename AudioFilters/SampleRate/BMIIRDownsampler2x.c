@@ -17,6 +17,8 @@
 #include "BMInterleaver.h"
 #include "Constants.h"
 
+#define BM_DOWNSAMPLER_CHUNK_SIZE BM_BUFFER_CHUNK_SIZE * 4
+
 // forward declaration of internal function
 double* BMIIRDownsampler2x_genCoefficients(BMIIRDownsampler2x* This, float minStopbandAttenuationDb, float maxTransitionBandwidth);
 
@@ -45,11 +47,11 @@ size_t BMIIRDownsampler2x_init (BMIIRDownsampler2x* This,
     free(coefficientArray);
     
     // allocate memory for buffers
-    This->b1L = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-    This->b2L = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+    This->b1L = malloc(sizeof(float)*BM_DOWNSAMPLER_CHUNK_SIZE);
+    This->b2L = malloc(sizeof(float)*BM_DOWNSAMPLER_CHUNK_SIZE);
     if(stereo){
-        This->b1R = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-        This->b2R = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+        This->b1R = malloc(sizeof(float)*BM_DOWNSAMPLER_CHUNK_SIZE);
+        This->b2R = malloc(sizeof(float)*BM_DOWNSAMPLER_CHUNK_SIZE);
     } else {
         This->b2R = NULL;
         This->b2R = NULL;
@@ -170,7 +172,7 @@ void BMIIRDownsampler2x_processBufferMono (BMIIRDownsampler2x* This, const float
     
     // chunk processing
     while(numSamplesIn > 0){
-        size_t samplesProcessing = BM_MIN(BM_BUFFER_CHUNK_SIZE*2, numSamplesIn);
+        size_t samplesProcessing = BM_MIN(BM_DOWNSAMPLER_CHUNK_SIZE*2, numSamplesIn);
         
         // copy even input samples to even, odd to odd
         BMDeInterleave(input, even, odd, samplesProcessing);
@@ -189,5 +191,45 @@ void BMIIRDownsampler2x_processBufferMono (BMIIRDownsampler2x* This, const float
         numSamplesIn -= samplesProcessing;
         input += samplesProcessing;
         output += samplesProcessing / 2;
+    }
+}
+
+
+
+void BMIIRDownsampler2x_processBufferStereo (BMIIRDownsampler2x* This, const float* inputL, const float* inputR, float* outputL, float* outputR, size_t numSamplesIn){
+    assert(This->stereo);
+    assert (outputL != inputL);
+    assert (outputR != inputR);
+    
+    float* evenL = This->b1L;
+    float* oddL = This->b2L;
+    float* evenR = This->b1R;
+    float* oddR = This->b2R;
+    
+    // chunk processing
+    while(numSamplesIn > 0){
+        size_t samplesProcessing = BM_MIN(BM_DOWNSAMPLER_CHUNK_SIZE*2, numSamplesIn);
+        
+        // copy even input samples to even, odd to odd
+        BMDeInterleave(inputL, evenL, oddL, samplesProcessing);
+        BMDeInterleave(inputR, evenR, oddR, samplesProcessing);
+        
+        // filter the odd-indexed inputs through the even-indexed filters
+        BMMultiLevelBiquad_processBufferStereo(&This->even, oddL, oddR, oddL, oddR, samplesProcessing/2);
+        
+        // filter the even-indexed inputs through the odd-indexed filters
+        BMMultiLevelBiquad_processBufferStereo(&This->odd, evenL, evenR, evenL, evenR, samplesProcessing/2);
+        
+        // sum the even and odd outputs into the main output and divide by two
+        float half = 0.5;
+        vDSP_vasm(evenL, 1, oddL, 1, &half, outputL, 1, samplesProcessing/2);
+        vDSP_vasm(evenR, 1, oddR, 1, &half, outputR, 1, samplesProcessing/2);
+        
+        // advance pointers
+        numSamplesIn -= samplesProcessing;
+        inputL += samplesProcessing;
+        outputL += samplesProcessing / 2;
+        inputR += samplesProcessing;
+        outputR += samplesProcessing / 2;
     }
 }

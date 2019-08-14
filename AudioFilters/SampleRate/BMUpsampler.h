@@ -46,6 +46,19 @@ extern "C" {
     void BMUpsampler_processBufferMono(BMUpsampler* This, const float* input, float* output, size_t numSamplesIn);
 
     
+    /*!
+     *BMUpsampler_processBufferStereo
+     * @abstract upsample a buffer that contains a single channel of audio samples
+     *
+     * @param inputL    length = numSamplesIn
+     * @param inputR    length = numSamplesIn
+     * @param outputL   length = numSamplesIn * upsampleFactor
+     * @param outputR   length = numSamplesIn * upsampleFactor
+     * @param numSamplesIn  number of input samples to process
+     */
+    void BMUpsampler_processBufferStereo(BMUpsampler* This, const float* inputL, const float* inputR, float* outputL, float* outputR, size_t numSamplesIn);
+    
+    
     void BMUpsampler_free(BMUpsampler* This);
     
     

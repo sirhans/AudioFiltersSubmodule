@@ -43,5 +43,7 @@ void BMIIRDownsampler2x_setCoefs (BMIIRDownsampler2x* This, const double* coef_a
 
 void BMIIRDownsampler2x_processBufferMono (BMIIRDownsampler2x* This, const float* input, float* output, size_t numSamplesIn);
 
+void BMIIRDownsampler2x_processBufferStereo (BMIIRDownsampler2x* This, const float* inputL, const float* inputR, float* outputL, float* outputR, size_t numSamplesIn);
+
 
 #endif /* BMIIRDownsampler2x_h */
