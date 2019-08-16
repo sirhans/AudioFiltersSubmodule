@@ -36,7 +36,7 @@ extern "C" {
     
     
     void BMSmoothGain_processBuffer(BMSmoothGain* This,
-                                    float* inputL, float* inputR,
+                                    const float* inputL, const float* inputR,
                                     float* outputL, float* outputR,
                                     size_t numSamples){
         
