@@ -34,6 +34,8 @@ extern "C" {
      */
     void BMNoiseGate_init(BMNoiseGate* this,float thresholdDb,float decayTimeSeconds,float sampleRate);
     
+    
+    
     /*!
      *BMNoiseGate_processMono
      */

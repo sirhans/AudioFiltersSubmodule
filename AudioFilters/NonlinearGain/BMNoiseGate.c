@@ -17,12 +17,15 @@ extern "C" {
 #include <Accelerate/Accelerate.h>
 
     
+#define BM_NOISE_GATE_ATTACK_TIME 0.005
+    
     
 
     void BMNoiseGate_init(BMNoiseGate* This,float thresholdDb,float decayTimeSeconds,float sampleRate){
-        BMEnvelopeFollower_init(&This->envFollower, sampleRate);
+        BMEnvelopeFollower_initWithCustomNumStages(&This->envFollower, 3, 3, sampleRate);
         BMNoiseGate_setThreshold(This, thresholdDb);
         BMNoiseGate_setDecayTime(This, decayTimeSeconds);
+        BMNoiseGate_setAttackTime(This, BM_NOISE_GATE_ATTACK_TIME);
         This->lastState = 0.0f;
     }
     
