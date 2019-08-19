@@ -11,6 +11,7 @@
 
 #include <Accelerate/Accelerate.h>
 
+
 typedef struct BMQuadraticThreshold {
     float lPlusW, lMinusW;
     float coefficients [3];

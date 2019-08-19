@@ -25,23 +25,44 @@ extern "C" {
         BMEnvelopeFollower envFollower;
     } BMNoiseGate;
 
+    /*!
+     *BMNoiseGate_init
+     *
+     * @param thresholdDb       when the volume drops below this threshold the noise gate switches into release mode
+     * @param decayTimeSeconds  time from when the volume drops below the threshold until the noiseGate is about 95% closed
+     * @param sampleRate        sample rate
+     */
+    void BMNoiseGate_init(BMNoiseGate* this,float thresholdDb,float decayTimeSeconds,float sampleRate);
     
-    void BMNoiseGate_init(BMNoiseGate* this,float thresholdDb,float decayTime,float sampleRate);
-    
+    /*!
+     *BMNoiseGate_processMono
+     */
     void BMNoiseGate_processMono(BMNoiseGate* this,
                                  const float* input,
                                  float* output,
                                  size_t numSamplesIn);
     
+    /*!
+     *BMNoiseGate_processStereo
+     */
     void BMNoiseGate_processStereo(BMNoiseGate* this,
                                    const float* inputL, const float* inputR,
                                    float* outputL, float* outputR,
                                    size_t numSamplesIn);
     
+    /*!
+     *BMNoiseGate_setDecayTime
+     */
     void BMNoiseGate_setDecayTime(BMNoiseGate* this,float decayTimeSeconds);
     
+    /*!
+     *BMNoiseGate_setAttackTime
+     */
     void BMNoiseGate_setAttackTime(BMNoiseGate* this,float attackTimeSeconds);
     
+    /*!
+     *BMNoiseGate_setThreshold
+     */
     void BMNoiseGate_setThreshold(BMNoiseGate* this,float thresholdDb);
     
     /*!

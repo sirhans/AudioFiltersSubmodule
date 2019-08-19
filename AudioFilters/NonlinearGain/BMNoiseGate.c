@@ -19,10 +19,10 @@ extern "C" {
     
     
 
-    void BMNoiseGate_init(BMNoiseGate* This,float thresholdDb,float decayTime,float sampleRate){
+    void BMNoiseGate_init(BMNoiseGate* This,float thresholdDb,float decayTimeSeconds,float sampleRate){
         BMEnvelopeFollower_init(&This->envFollower, sampleRate);
         BMNoiseGate_setThreshold(This, thresholdDb);
-        BMNoiseGate_setDecayTime(This, decayTime);
+        BMNoiseGate_setDecayTime(This, decayTimeSeconds);
         This->lastState = 0.0f;
     }
     
@@ -39,7 +39,7 @@ extern "C" {
         int numSamplesI = (int)numSamples;
         
         // rectify
-        vvfabsf(This->buffer, This->buffer, &numSamplesI);
+        vvfabsf(This->buffer, input, &numSamplesI);
         
         // shift so that threshold is at 0
         float negThreshold = -This->thresholdGain;
