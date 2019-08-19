@@ -55,8 +55,9 @@ typedef struct BMAttackFilter {
 
 typedef struct BMEnvelopeFollower {
     // filters for standandard envelopes
-    BMReleaseFilter releaseFilters [BMENV_NUM_STAGES];
-    BMAttackFilter  attackFilters [BMENV_NUM_STAGES];
+    BMReleaseFilter* releaseFilters;
+    BMAttackFilter*  attackFilters;
+    size_t numReleaseStages, numAttackStages;
     bool processAttack;
 } BMEnvelopeFollower;
 
@@ -73,6 +74,21 @@ void BMEnvelopeFollower_processBuffer(BMEnvelopeFollower* This,
  * BMEnvelopeFollower_init
  */
 void BMEnvelopeFollower_init(BMEnvelopeFollower* This, float sampleRate);
+
+
+/*!
+ * BMEnvelopeFollower_free
+ */
+void BMEnvelopeFollower_free(BMEnvelopeFollower* This);
+
+
+
+/*!
+ * BMEnvelopeFollower_initWithCustomNumStages
+ */
+void BMEnvelopeFollower_initWithCustomNumStages(BMEnvelopeFollower* This, size_t numReleaseStages, size_t numAttackStages, float sampleRate);
+
+
 
 /*!
  * BMEnvelopeFollower_setAttackTime
