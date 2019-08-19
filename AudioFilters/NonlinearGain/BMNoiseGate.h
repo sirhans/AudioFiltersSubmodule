@@ -29,10 +29,9 @@ extern "C" {
      *BMNoiseGate_init
      *
      * @param thresholdDb       when the volume drops below this threshold the noise gate switches into release mode
-     * @param decayTimeSeconds  time from when the volume drops below the threshold until the noiseGate is about 95% closed
      * @param sampleRate        sample rate
      */
-    void BMNoiseGate_init(BMNoiseGate* this,float thresholdDb,float decayTimeSeconds,float sampleRate);
+    void BMNoiseGate_init(BMNoiseGate* this, float thresholdDb, float sampleRate);
     
     
     
@@ -53,9 +52,9 @@ extern "C" {
                                    size_t numSamplesIn);
     
     /*!
-     *BMNoiseGate_setDecayTime
+     *BMNoiseGate_setReleaseTime
      */
-    void BMNoiseGate_setDecayTime(BMNoiseGate* this,float decayTimeSeconds);
+    void BMNoiseGate_setReleaseTime(BMNoiseGate* this,float releaseTimeSeconds);
     
     /*!
      *BMNoiseGate_setAttackTime
