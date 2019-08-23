@@ -93,8 +93,8 @@ void BMSimpleDelayStereo_process(BMSimpleDelayStereo* This,
         memcpy(writePointerR,inputR,sizeof(float)*samplesProcessing);
         
         // mark as written to the region we just filled with data
-        TPCircularBufferProduce(&This->bufferL, samplesProcessing);
-        TPCircularBufferProduce(&This->bufferR, samplesProcessing);
+        TPCircularBufferProduce(&This->bufferL, sizeof(float)*samplesProcessing);
+        TPCircularBufferProduce(&This->bufferR, sizeof(float)*samplesProcessing);
         
         // get a read pointer
         float* readPointerL = TPCircularBufferTail(&This->bufferL, &availableBytes);

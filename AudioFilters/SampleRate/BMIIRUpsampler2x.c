@@ -17,6 +17,8 @@
 #include "BMInterleaver.h"
 #include "Constants.h"
 
+#define BM_UPSAMPLER_CHUNK_SIZE BM_BUFFER_CHUNK_SIZE * 4
+
 
 
 // forward declaration of internal function
@@ -54,11 +56,11 @@ size_t BMIIRUpsampler2x_init (BMIIRUpsampler2x* This,
     free(coefficientArray);
     
     // allocate memory for buffers
-    This->b1L = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-    This->b2L = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+    This->b1L = malloc(sizeof(float)*BM_UPSAMPLER_CHUNK_SIZE);
+    This->b2L = malloc(sizeof(float)*BM_UPSAMPLER_CHUNK_SIZE);
     if(stereo){
-        This->b1R = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-        This->b2R = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+        This->b1R = malloc(sizeof(float)*BM_UPSAMPLER_CHUNK_SIZE);
+        This->b2R = malloc(sizeof(float)*BM_UPSAMPLER_CHUNK_SIZE);
     } else {
         This->b2R = NULL;
         This->b2R = NULL;
@@ -174,7 +176,7 @@ void BMIIRUpsampler2x_processBufferMono(BMIIRUpsampler2x* This, const float* inp
     
     // chunk processing
     while(numSamplesIn > 0){
-        size_t samplesProcessing = BM_MIN(BM_BUFFER_CHUNK_SIZE, numSamplesIn);
+        size_t samplesProcessing = BM_MIN(BM_UPSAMPLER_CHUNK_SIZE, numSamplesIn);
         
         // filter the inputs through the even-indexed filters
         BMMultiLevelBiquad_processBufferMono(&This->even, input, even, samplesProcessing);
@@ -190,5 +192,42 @@ void BMIIRUpsampler2x_processBufferMono(BMIIRUpsampler2x* This, const float* inp
         numSamplesIn -= samplesProcessing;
         input += samplesProcessing;
         output += samplesProcessing * 2;
+    }
+}
+
+
+
+
+void BMIIRUpsampler2x_processBufferStereo (BMIIRUpsampler2x* This, const float* inputL, const float* inputR, float* outputL, float* outputR, size_t numSamplesIn){
+    assert(This->stereo);
+    assert(inputL != outputL);
+    assert(inputR != outputR);
+    
+    float* evenL = This->b1L;
+    float* oddL = This->b2L;
+    float* evenR = This->b1R;
+    float* oddR = This->b2R;
+    
+    // chunk processing
+    while(numSamplesIn > 0){
+        size_t samplesProcessing = BM_MIN(BM_UPSAMPLER_CHUNK_SIZE, numSamplesIn);
+        
+        // filter the inputs through the even-indexed filters
+        BMMultiLevelBiquad_processBufferStereo(&This->even, inputL, inputR, evenL, evenR, samplesProcessing);
+        
+        // filter the inputs through the odd-indexed filters
+        BMMultiLevelBiquad_processBufferStereo(&This->odd, inputL, inputR, oddL, oddR, samplesProcessing);
+        
+        // the even and odd signals are now in quadrature phase.
+        // interleave the even and odd samples into one array
+        BMInterleave(evenL, oddL, outputL, samplesProcessing);
+        BMInterleave(evenR, oddR, outputR, samplesProcessing);
+        
+        // advance pointers
+        numSamplesIn -= samplesProcessing;
+        inputL += samplesProcessing;
+        outputL += samplesProcessing * 2;
+        inputR += samplesProcessing;
+        outputR += samplesProcessing * 2;
     }
 }

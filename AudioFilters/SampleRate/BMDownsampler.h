@@ -35,14 +35,30 @@ extern "C" {
     
     
     
-    /*
-     * upsample a buffer that contains a single channel of audio samples
+    /*!
+     *BMDownsampler_processBufferMono
+     *
+     * @absract upsample a buffer that contains a single channel of audio samples
      *
      * @param input    length = numSamplesIn
      * @param output   length = numSamplesIn / upsampleFactor
      * @param numSamplesIn  number of input samples to process
      */
-    void BMDownsampler_processBufferMono(BMDownsampler* This, float* input, float* output, size_t numSamplesin);
+    void BMDownsampler_processBufferMono(BMDownsampler* This, float* input, float* output, size_t numSamplesIn);
+    
+    
+    /*!
+     *BMDownsampler_processBufferStereo
+     *
+     * @absract upsample a buffer that contains a single channel of audio samples
+     *
+     * @param inputL    length = numSamplesIn
+     * @param inputR    length = numSamplesIn
+     * @param outputL   length = numSamplesIn / upsampleFactor
+     * @param outputR   length = numSamplesIn / upsampleFactor
+     * @param numSamplesIn  number of input samples to process
+     */
+    void BMDownsampler_processBufferStereo(BMDownsampler* This, float* inputL, float* inputR, float* outputL, float* outputR, size_t numSamplesIn);
     
     
     void BMDownsampler_free(BMDownsampler* This);

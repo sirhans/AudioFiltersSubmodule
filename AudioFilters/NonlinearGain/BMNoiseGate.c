@@ -17,12 +17,16 @@ extern "C" {
 #include <Accelerate/Accelerate.h>
 
     
+#define BM_NOISE_GATE_ATTACK_TIME 0.003
+#define BM_NOISE_GATE_RELEASE_TIME 1.0 / 10.0
+    
     
 
-    void BMNoiseGate_init(BMNoiseGate* This,float thresholdDb,float decayTime,float sampleRate){
-        BMEnvelopeFollower_init(&This->envFollower, sampleRate);
+    void BMNoiseGate_init(BMNoiseGate* This, float thresholdDb, float sampleRate){
+        BMEnvelopeFollower_initWithCustomNumStages(&This->envFollower, 3, 3, sampleRate);
         BMNoiseGate_setThreshold(This, thresholdDb);
-        BMNoiseGate_setDecayTime(This, decayTime);
+        BMNoiseGate_setReleaseTime(This, BM_NOISE_GATE_RELEASE_TIME);
+        BMNoiseGate_setAttackTime(This, BM_NOISE_GATE_ATTACK_TIME);
         This->lastState = 0.0f;
     }
     
@@ -39,7 +43,7 @@ extern "C" {
         int numSamplesI = (int)numSamples;
         
         // rectify
-        vvfabsf(This->buffer, This->buffer, &numSamplesI);
+        vvfabsf(This->buffer, input, &numSamplesI);
         
         // shift so that threshold is at 0
         float negThreshold = -This->thresholdGain;
@@ -140,8 +144,8 @@ extern "C" {
     
     
     
-    void BMNoiseGate_setDecayTime(BMNoiseGate* This,float decayTimeSeconds){
-        BMEnvelopeFollower_setReleaseTime(&This->envFollower, decayTimeSeconds);
+    void BMNoiseGate_setReleaseTime(BMNoiseGate* This,float releaseTimeSeconds){
+        BMEnvelopeFollower_setReleaseTime(&This->envFollower, releaseTimeSeconds);
     }
     
     

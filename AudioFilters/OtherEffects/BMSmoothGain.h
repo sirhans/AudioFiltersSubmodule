@@ -45,7 +45,7 @@ extern "C" {
      * @param outputR     right channel output buffer length >= numSamples
      */
     void BMSmoothGain_processBuffer(BMSmoothGain* This,
-                                    float* inputL, float* inputR,
+                                    const float* inputL, const float* inputR,
                                     float* outputL, float* outputR,
                                     size_t numSamples);
     

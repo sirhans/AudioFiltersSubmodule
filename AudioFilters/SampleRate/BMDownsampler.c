@@ -15,7 +15,7 @@ extern "C" {
 #include "BMPolyphaseIIR2Designer.h"
 #include "Constants.h"
     
-#define BM_DOWNSAMPLER_STAGE0_TRANSITION_BANDWIDTH 0.025
+#define BM_DOWNSAMPLER_STAGE0_TRANSITION_BANDWIDTH 0.070
 #define BM_DOWNSAMPLER_STOPBAND_ATTENUATION_DB 110.0
     
     
@@ -120,6 +120,62 @@ extern "C" {
     }
     
     
+    
+    void BMDownsampler_processBufferStereo(BMDownsampler* This, float* inputL, float* inputR, float* outputL, float* outputR, size_t numSamplesIn){
+        // the input length must be divisible by the downsample factor
+        assert(numSamplesIn % This->downsampleFactor == 0);
+        
+        while(numSamplesIn > 0){
+            size_t samplesProcessing = BM_MIN(numSamplesIn, BM_BUFFER_CHUNK_SIZE*This->downsampleFactor);
+            size_t inputSize = samplesProcessing;
+            
+            if(This->numStages == 1){
+                BMIIRDownsampler2x_processBufferStereo(&This->downsamplers2x[0], inputL, inputR, outputL, outputR, inputSize);
+            }
+            
+            // if there is more than one stage
+            else {
+                // we have only one buffer and the process functions don't work in place
+                // so we have to alternate between using the internal buffer and using
+                // the output array as a buffer
+                bool outputToBuffer1 = This->numStages % 2 == 0;
+                
+                // process stage 0
+                if(outputToBuffer1)
+                    BMIIRDownsampler2x_processBufferStereo(&This->downsamplers2x[0], inputL, inputR, This->bufferL1, This->bufferR1, inputSize);
+                else
+                    BMIIRDownsampler2x_processBufferStereo(&This->downsamplers2x[0], inputL, inputR, This->bufferL2, This->bufferR2, inputSize);
+                outputToBuffer1 = !outputToBuffer1;
+                
+                // process other stages if they are available
+                for(size_t i=1; i<This->numStages-1; i++){
+                    inputSize /= 2;
+                    
+                    // alternate between caching in the buffer and in the output for even and odd numbered stages;
+                    if(outputToBuffer1)
+                        BMIIRDownsampler2x_processBufferStereo(&This->downsamplers2x[i], This->bufferL2, This->bufferR2, This->bufferL1, This->bufferR1, inputSize);
+                    else {
+                        BMIIRDownsampler2x_processBufferStereo(&This->downsamplers2x[i], This->bufferL1, This->bufferR1, This->bufferL2, This->bufferR2, inputSize);
+                    }
+                    outputToBuffer1 = !outputToBuffer1;
+                }
+                
+                // when we reach the last stage, output straight to the output buffer
+                inputSize /= 2;
+                if(outputToBuffer1)
+                    BMIIRDownsampler2x_processBufferStereo(&This->downsamplers2x[This->numStages-1], This->bufferL2, This->bufferR2, outputL, outputR, inputSize);
+                else
+                    BMIIRDownsampler2x_processBufferStereo(&This->downsamplers2x[This->numStages-1], This->bufferL1, This->bufferR1, outputL, outputR, inputSize);
+                
+            }
+            
+            numSamplesIn -= samplesProcessing;
+            inputL += samplesProcessing;
+            inputR += samplesProcessing;
+            outputL += samplesProcessing/This->downsampleFactor;
+            outputR += samplesProcessing/This->downsampleFactor;
+        }
+    }
     
     
     

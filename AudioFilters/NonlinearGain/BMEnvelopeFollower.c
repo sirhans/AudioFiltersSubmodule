@@ -111,6 +111,7 @@ void BMAttackFilter_init(BMAttackFilter* This, float fc, float sampleRate){
     This->previousOutputGradient = 0.0f;
     This->previousOutputValue = 0.0f;
     This->attackMode = false;
+    This->ic1 = This->ic2 = 0;
     
     BMAttackFilter_setCutoff(This, fc);
 }
@@ -125,6 +126,7 @@ void BMReleaseFilter_init(BMReleaseFilter* This, float fc, float sampleRate){
     This->g = 0.0f;
     This->previousOutputValue = 0.0f;
     This->attackMode = false;
+    This->ic1 = This->ic2 = 0;
     
     BMReleaseFilter_setCutoff(This, fc);
 }
@@ -185,6 +187,17 @@ void BMAttackFilter_processBuffer(BMAttackFilter* This,
 
 
 
+void BMReleaseFilter_processBufferNegative(BMReleaseFilter* This,
+                                   const float* input,
+                                   float* output,
+                                   size_t numSamples){
+    // invert the sign of the signal
+    vDSP_vneg(input, 1, output, 1, numSamples);
+    BMReleaseFilter_processBuffer(This, output, output, numSamples);
+    vDSP_vneg(output, 1, output, 1, numSamples);
+}
+
+
 
 void BMReleaseFilter_processBuffer(BMReleaseFilter* This,
                                    const float* input,
@@ -237,18 +250,54 @@ void BMReleaseFilter_processBuffer(BMReleaseFilter* This,
 
 
 void BMEnvelopeFollower_init(BMEnvelopeFollower* This, float sampleRate){
+    BMEnvelopeFollower_initWithCustomNumStages(This, BMENV_NUM_STAGES, BMENV_NUM_STAGES, sampleRate);
+}
+
+
+
+
+
+void BMEnvelopeFollower_free(BMEnvelopeFollower* This){
+    free(This->attackFilters);
+    free(This->releaseFilters);
+    This->attackFilters = NULL;
+    This->releaseFilters = NULL;
+}
+
+
+
+
+void BMEnvelopeFollower_initWithCustomNumStages(BMEnvelopeFollower* This,
+                                                size_t numReleaseStages,
+                                                size_t numAttackStages,
+                                                float sampleRate){
+    // there must be at least one release filter
+    assert(numReleaseStages > 0);
+    assert(numAttackStages >= 0);
     
-    float attackFc = ARTimeToCutoffFrequency(BMENV_ATTACK_TIME, BMENV_NUM_STAGES);
-    float releaseFc = ARTimeToCutoffFrequency(BMENV_RELEASE_TIME, BMENV_NUM_STAGES);
+    // don't process the attack filters if there aren't any
+    if (numAttackStages == 0) This->processAttack = false;
+    
+    // remember how many stages we have
+    This->numAttackStages = numAttackStages;
+    This->numReleaseStages = numReleaseStages;
+    
+    // set the attack and release filter cutoff frequencies, adjusted for the
+    // number of stages
+    float releaseFc = ARTimeToCutoffFrequency(BMENV_RELEASE_TIME, This->numReleaseStages);
+    float attackFc = 1.0f;
+    if(numAttackStages > 0)
+        attackFc = ARTimeToCutoffFrequency(BMENV_ATTACK_TIME, This->numAttackStages);
+    
+    // allocate memory for the filter structs
+    This->attackFilters = malloc(sizeof(BMAttackFilter)*This->numAttackStages);
+    This->releaseFilters = malloc(sizeof(BMReleaseFilter)*This->numReleaseStages);
     
     // initialize all the filters
-    for(size_t i=0; i<BMENV_NUM_STAGES; i++){
+    for(size_t i=0; i<This->numAttackStages; i++)
         BMAttackFilter_init(&This->attackFilters[i], attackFc, sampleRate);
+    for(size_t i=0; i<This->numReleaseStages; i++)
         BMReleaseFilter_init(&This->releaseFilters[i], releaseFc, sampleRate);
-    }
-    
-    
-    
 }
 
 
@@ -259,15 +308,15 @@ void BMEnvelopeFollower_setAttackTime(BMEnvelopeFollower* This, float attackTime
     assert(attackTime >= 0.0f);
     
     // if the attack time is zero, don't process the attack at all
-    if(attackTime == 0.0f){
+    if(attackTime == 0.0f || This->numAttackStages == 0){
         This->processAttack = false;
     }
     
     // for non-zero attack time, set the attack filter frequency
     else {
-        float attackFc = ARTimeToCutoffFrequency(attackTime,BMENV_NUM_STAGES);
+        float attackFc = ARTimeToCutoffFrequency(attackTime,This->numAttackStages);
         This->processAttack = true;
-        for(size_t i=0; i<BMENV_NUM_STAGES; i++)
+        for(size_t i=0; i<This->numAttackStages; i++)
             BMAttackFilter_setCutoff(&This->attackFilters[i],attackFc);
     }
 }
@@ -277,9 +326,9 @@ void BMEnvelopeFollower_setAttackTime(BMEnvelopeFollower* This, float attackTime
 
 void BMEnvelopeFollower_setReleaseTime(BMEnvelopeFollower* This, float releaseTimeSeconds){
     
-    float releaseFc = ARTimeToCutoffFrequency(releaseTimeSeconds,BMENV_NUM_STAGES);
+    float releaseFc = ARTimeToCutoffFrequency(releaseTimeSeconds,This->numReleaseStages);
     
-    for(size_t i=0; i<BMENV_NUM_STAGES; i++)
+    for(size_t i=0; i<This->numReleaseStages; i++)
         BMReleaseFilter_setCutoff(&This->releaseFilters[i],releaseFc);
 }
 
@@ -290,12 +339,12 @@ void BMEnvelopeFollower_processBuffer(BMEnvelopeFollower* This, const float* inp
     
     // process all the release filters in series
     BMReleaseFilter_processBuffer(&This->releaseFilters[0], input, output, numSamples);
-    for(size_t i=1; i<BMENV_NUM_STAGES; i++)
+    for(size_t i=1; i<This->numReleaseStages; i++)
         BMReleaseFilter_processBuffer(&This->releaseFilters[i], output, output, numSamples);
 
-    if(This->processAttack){
+    if(This->numAttackStages > 0){
         // process all the attack filters in series
-        for(size_t i=0; i<BMENV_NUM_STAGES; i++)
+        for(size_t i=0; i<This->numAttackStages; i++)
             BMAttackFilter_processBuffer(&This->attackFilters[i], output, output, numSamples);
     }
 }

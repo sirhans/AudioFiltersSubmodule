@@ -16,7 +16,7 @@ extern "C" {
 #include "BMPolyphaseIIR2Designer.h"
 #include "Constants.h"
     
-#define BM_UPSAMPLER_STAGE0_TRANSITION_BANDWIDTH 0.025
+#define BM_UPSAMPLER_STAGE0_TRANSITION_BANDWIDTH 0.070
 #define BM_UPSAMPLER_STOPBAND_ATTENUATION_DB 110.0
 
     
@@ -97,6 +97,45 @@ extern "C" {
     }
 
     
+    
+    void BMUpsampler_processBufferStereo(BMUpsampler* This, const float* inputL, const float* inputR, float* outputL, float* outputR, size_t numSamplesIn){
+        
+        while(numSamplesIn > 0){
+            size_t samplesProcessing = BM_MIN(numSamplesIn, BM_BUFFER_CHUNK_SIZE);
+            size_t inputSize = samplesProcessing;
+            
+            // we have only one buffer and the process functions don't work in place
+            // so we have to alternate between using the internal buffer and using
+            // the output array as a buffer
+            bool outputToBuffer = This->numStages % 2 == 0;
+            
+            // process stage 0
+            if(outputToBuffer)
+                BMIIRUpsampler2x_processBufferStereo(&This->upsamplers2x[0], inputL, inputR, This->bufferL, This->bufferR, inputSize);
+            else
+                BMIIRUpsampler2x_processBufferStereo(&This->upsamplers2x[0], inputL, inputR, outputL, outputR, inputSize);
+            outputToBuffer = !outputToBuffer;
+            
+            // process other stages if they are available
+            for(size_t i=1; i<This->numStages; i++){
+                inputSize *= 2;
+                
+                // alternate between caching in the buffer and in the output for even and odd numbered stages;
+                if(outputToBuffer)
+                    BMIIRUpsampler2x_processBufferStereo(&This->upsamplers2x[i], outputL, outputR, This->bufferL, This->bufferR, inputSize);
+                else {
+                    BMIIRUpsampler2x_processBufferStereo(&This->upsamplers2x[i], This->bufferL, This->bufferR, outputL, outputR, inputSize);
+                }
+                outputToBuffer = !outputToBuffer;
+            }
+            
+            numSamplesIn -= samplesProcessing;
+            inputL += samplesProcessing;
+            inputR += samplesProcessing;
+            outputL += samplesProcessing*This->upsampleFactor;
+            outputR += samplesProcessing*This->upsampleFactor;
+        }
+    }
     
     
     
