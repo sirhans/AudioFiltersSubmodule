@@ -1451,8 +1451,8 @@ void BMMultiLevelBiquad_setLegendreLPSection(BMMultiLevelBiquad* bqf,
     
     // compute the warped cutoff frequency of the analog prototype to
     // prepare for s to z domain transformation.
-    float fcInRadians = fc/bqf->sampleRate;
-    float warpedAnalogFc = tan(0.5*fcInRadians);
+    double fcInRadians = M_PI * (fc / (bqf->sampleRate/2.0));
+    double warpedAnalogFc = tan(0.5*fcInRadians);
     
     // warp the frequency of the s-domain prototype
     float sDomainCoefficientsWarped [6];
@@ -1654,14 +1654,17 @@ void BMMultiLevelBiquad_setCriticallyDampedLPSection(BMMultiLevelBiquad* bqf,
                                                      double fc,
                                                      size_t level,
                                                      size_t filterOrder){
-    // \omega_0 = \frac{\omega_c}{\sqrt{2^\frac{1}{n} - 1}}
-    float fcShifted = fc / sqrtf(powf(2.0f, 1.0f/filterOrder) - 1.0f);
+    
+//    // shift the cutoff frequency following formula 2 of the following paper:
+//    // https://www.researchgate.net/publication/9043065_Design_and_responses_of_Butterworth_and_critically_damped_digital_filters
+//    // \omega_0 = \frac{\omega_c}{\sqrt{2^\frac{1}{n} - 1}}
+//    float fcShifted = fc / sqrtf(powf(2.0f, 1.0f/(2.0*filterOrder)) - 1.0f);
     
     // critically damped second order filter has Q of 0.5
     float Q = 0.5;
     
     for(size_t i = 0; i<filterOrder/2; i++)
-        BMMultiLevelBiquad_setLowPassQ12db(bqf, fcShifted, Q, level);
+        BMMultiLevelBiquad_setLowPassQ12db(bqf, fc, Q, level);
 }
 
 

@@ -15,8 +15,10 @@ extern "C" {
 #include "BMPolyphaseIIR2Designer.h"
 #include "Constants.h"
     
-#define BM_DOWNSAMPLER_STAGE0_TRANSITION_BANDWIDTH 0.070
+#define BM_DOWNSAMPLER_STAGE0_TRANSITION_BANDWIDTH 0.25
 #define BM_DOWNSAMPLER_STOPBAND_ATTENUATION_DB 110.0
+#define BM_DOWNSAMPLER_ANTIRINGING_FILTER_NUMLEVELS 5
+#define BM_DOWNSAMPLER_ANTIRINGING_FILTER_FC 22500.0
     
     
     
@@ -52,6 +54,9 @@ extern "C" {
             This->bufferR1 = NULL;
             This->bufferR2 = NULL;
         }
+        
+        BMMultiLevelBiquad_init(&This->antiRingingFilter, BM_DOWNSAMPLER_ANTIRINGING_FILTER_NUMLEVELS, 96000.0, true, false, false);
+        BMMultiLevelBiquad_setLegendreLP(&This->antiRingingFilter, BM_DOWNSAMPLER_ANTIRINGING_FILTER_FC, 0, BM_DOWNSAMPLER_ANTIRINGING_FILTER_NUMLEVELS);
     }
     
     
@@ -162,10 +167,14 @@ extern "C" {
                 
                 // when we reach the last stage, output straight to the output buffer
                 inputSize /= 2;
-                if(outputToBuffer1)
+                if(outputToBuffer1){
+                    BMMultiLevelBiquad_processBufferStereo(&This->antiRingingFilter, This->bufferL2, This->bufferR2, This->bufferL2, This->bufferR2, inputSize);
                     BMIIRDownsampler2x_processBufferStereo(&This->downsamplers2x[This->numStages-1], This->bufferL2, This->bufferR2, outputL, outputR, inputSize);
-                else
+                }
+                else{
+                    BMMultiLevelBiquad_processBufferStereo(&This->antiRingingFilter, This->bufferL1, This->bufferR1, This->bufferL1, This->bufferR1, inputSize);
                     BMIIRDownsampler2x_processBufferStereo(&This->downsamplers2x[This->numStages-1], This->bufferL1, This->bufferR1, outputL, outputR, inputSize);
+                }
                 
             }
             
@@ -184,6 +193,8 @@ extern "C" {
         // free internal memory for each 2x stage
         for(size_t i=0; i<This->numStages; i++)
             BMIIRDownsampler2x_free(&This->downsamplers2x[i]);
+        
+        BMMultiLevelBiquad_destroy(&This->antiRingingFilter);
         
         // free the stages array
         free(This->downsamplers2x);

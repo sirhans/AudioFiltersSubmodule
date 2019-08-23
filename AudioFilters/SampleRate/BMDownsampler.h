@@ -16,9 +16,11 @@ extern "C" {
     
 #include <MacTypes.h>
 #include "BMIIRDownsampler2x.h"
+#include "BMMultiLevelBiquad.h"
     
     typedef struct BMDownsampler {
         BMIIRDownsampler2x* downsamplers2x;
+        BMMultiLevelBiquad antiRingingFilter;
         float *bufferL1, *bufferR1, *bufferL2, *bufferR2;
         size_t numStages, downsampleFactor;
         bool stereo;
