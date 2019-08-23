@@ -50,7 +50,7 @@ void BMMultiLevelSVF_init(BMMultiLevelSVF* This,int numLevels,float sampleRate,
 
 void BMMultiLevelSVF_free(BMMultiLevelSVF* This){
     
-    for(int i=0;i<This->numLevels*This->numChannels;i++){
+    for(int i=0;i<This->numLevels;i++){
         free(This->a[i]);
         This->a[i] = NULL;
 //        This->a[i] = malloc(sizeof(float) * SVF_Param_Count);
