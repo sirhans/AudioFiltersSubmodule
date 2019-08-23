@@ -62,7 +62,7 @@ size_t BMIIRUpsampler2x_init (BMIIRUpsampler2x* This,
         This->b1R = malloc(sizeof(float)*BM_UPSAMPLER_CHUNK_SIZE);
         This->b2R = malloc(sizeof(float)*BM_UPSAMPLER_CHUNK_SIZE);
     } else {
-        This->b2R = NULL;
+        This->b1R = NULL;
         This->b2R = NULL;
     }
     
