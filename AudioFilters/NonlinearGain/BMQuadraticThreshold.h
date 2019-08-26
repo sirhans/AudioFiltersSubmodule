@@ -19,16 +19,25 @@ typedef struct BMQuadraticThreshold {
 } BMQuadraticThreshold;
 
 
+/*!
+ *BMQuadraticThreshold_initLower
+ *
+ * @param threshold   the output will not go below this value
+ * @prarm width       the output will be curved between threshold - width and threshold + width
+ */
 void BMQuadraticThreshold_initLower(BMQuadraticThreshold* This, float threshold, float width);
+
+
+/*!
+ *BMQuadraticThreshold_initUpper
+ *
+ * @param threshold   the output will not go above this value
+ * @prarm width       the output will be curved between threshold - width and threshold + width
+ */
 void BMQuadraticThreshold_initUpper(BMQuadraticThreshold* This, float threshold, float width);
 
 
-/*
- * Mathematica code:
- *
- * qThreshold[x_, l_, w_] :=
- *       If[x < l - w, l, If[x > l + w, x, (- l x + (l + w + x)^2/4)/w]]
- */
+
 void BMQuadraticThreshold_lowerBuffer(BMQuadraticThreshold* This,
                                    const float* input,
                                    float* output,
