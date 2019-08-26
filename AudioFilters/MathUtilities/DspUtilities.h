@@ -18,6 +18,8 @@ Author:  Jordan Harris
 #ifndef DSP_UTILITIES
 #define DSP_UTILITIES
 
+#include "BMIntegerMath.h"
+
 //#include <cmath>
 
 //==============================================================================
@@ -102,7 +104,7 @@ double parCtrlShaper(double input, double bend)
     // clip input and bend because the shaper only works in that range.
     input = clipMinMax(input, -1.0, 1.0);
     bend = clipMinMax(bend, -1.0, 1.0);
-    return input * ((bend + 1) - abs(input) * bend);
+    return input * ((bend + 1) - absi(input) * bend);
 }
 
 //==============================================================================

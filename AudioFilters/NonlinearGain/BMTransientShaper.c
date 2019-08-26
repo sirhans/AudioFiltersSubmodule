@@ -8,6 +8,8 @@
 
 #include "BMTransientShaper.h"
 #include <assert.h>
+#include <Accelerate/Accelerate.h>
+#include "BMIntegerMath.h"
 
 
 // set defaults for transient shaper
