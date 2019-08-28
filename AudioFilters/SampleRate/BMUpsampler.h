@@ -16,9 +16,11 @@ extern "C" {
     
 #include <MacTypes.h>
 #include "BMIIRUpsampler2x.h"
+#include "BMMultiLevelBiquad.h"
     
     typedef struct BMUpsampler {
         BMIIRUpsampler2x* upsamplers2x;
+        BMMultiLevelBiquad secondStageAAFilter;
         float *bufferL, *bufferR;
         size_t numStages, upsampleFactor;
     } BMUpsampler;

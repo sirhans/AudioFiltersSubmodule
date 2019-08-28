@@ -499,16 +499,16 @@ void BMMultiLevelBiquad_setHighShelfFirstOrder(BMMultiLevelBiquad* bqf, float fc
         {
             double gamma = tanf(M_PI * fc / bqf->sampleRate);
             double one_over_denominator;
-            if(gainV>1){
-                one_over_denominator = 1.0f / (gamma + 1);
+            if(gainV>1.0f){
+                one_over_denominator = 1.0f / (gamma + 1.0f);
                 *b0 = (gamma + gainV) * one_over_denominator;
                 *b1 = (gamma - gainV) * one_over_denominator;
-                *a1 = (gamma - 1) * one_over_denominator;
+                *a1 = (gamma - 1.0f) * one_over_denominator;
             }else{
-                one_over_denominator = 1.0f / (gamma*gainV + 1);
-                *b0 = gainV*(gamma + 1) * one_over_denominator;
-                *b1 = gainV*(gamma - 1) * one_over_denominator;
-                *a1 = (gainV*gamma - 1) * one_over_denominator;
+                one_over_denominator = 1.0f / (gamma*gainV + 1.0f);
+                *b0 = gainV*(gamma + 1.0f) * one_over_denominator;
+                *b1 = gainV*(gamma - 1.0f) * one_over_denominator;
+                *a1 = (gainV*gamma - 1.0f) * one_over_denominator;
             }
             
             *b2 = 0.0f;
@@ -518,6 +518,50 @@ void BMMultiLevelBiquad_setHighShelfFirstOrder(BMMultiLevelBiquad* bqf, float fc
     
     BMMultiLevelBiquad_queueUpdate(bqf);
 }
+
+
+
+
+
+void BMMultiLevelBiquad_setLowShelfFirstOrder(BMMultiLevelBiquad* bqf, float fc, float gain_db, size_t level){
+    assert(level < bqf->numLevels);
+    
+    // for left and right channels, set coefficients
+    for(size_t i=0; i < bqf->numChannels; i++){
+        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+        double* b1 = b0 + 1;
+        double* b2 = b0 + 2;
+        double* a1 = b0 + 3;
+        double* a2 = b0 + 4;
+        
+        float gainV = BM_DB_TO_GAIN(gain_db);
+        
+        // if the gain is nontrivial
+        {
+            double gamma = tanf(M_PI * fc / bqf->sampleRate);
+            double one_over_denominator;
+            if(gainV>1.0f){
+                one_over_denominator = 1.0f / (gamma + 1.0f);
+                *b0 = (gamma * gainV + 1.0f) * one_over_denominator;
+                *b1 = (gamma * gainV - 1.0f) * one_over_denominator;
+                *a1 = (gamma - 1.0f) * one_over_denominator;
+            }else{
+                one_over_denominator = 1.0f / (gamma + gainV);
+                *b0 = gainV*(gamma + 1.0f) * one_over_denominator;
+                *b1 = gainV*(gamma - 1.0f) * one_over_denominator;
+                *a1 = (gamma - gainV) * one_over_denominator;
+            }
+            
+            *b2 = 0.0f;
+            *a2 = 0.0f;
+        }
+    }
+    
+    BMMultiLevelBiquad_queueUpdate(bqf);
+}
+
+
+
 
 
 
@@ -1451,8 +1495,8 @@ void BMMultiLevelBiquad_setLegendreLPSection(BMMultiLevelBiquad* bqf,
     
     // compute the warped cutoff frequency of the analog prototype to
     // prepare for s to z domain transformation.
-    float fcInRadians = fc/bqf->sampleRate;
-    float warpedAnalogFc = tan(0.5*fcInRadians);
+    double fcInRadians = M_PI * (fc / (bqf->sampleRate/2.0));
+    double warpedAnalogFc = tan(0.5*fcInRadians);
     
     // warp the frequency of the s-domain prototype
     float sDomainCoefficientsWarped [6];
@@ -1654,14 +1698,17 @@ void BMMultiLevelBiquad_setCriticallyDampedLPSection(BMMultiLevelBiquad* bqf,
                                                      double fc,
                                                      size_t level,
                                                      size_t filterOrder){
-    // \omega_0 = \frac{\omega_c}{\sqrt{2^\frac{1}{n} - 1}}
-    float fcShifted = fc / sqrtf(powf(2.0f, 1.0f/filterOrder) - 1.0f);
+    
+//    // shift the cutoff frequency following formula 2 of the following paper:
+//    // https://www.researchgate.net/publication/9043065_Design_and_responses_of_Butterworth_and_critically_damped_digital_filters
+//    // \omega_0 = \frac{\omega_c}{\sqrt{2^\frac{1}{n} - 1}}
+//    float fcShifted = fc / sqrtf(powf(2.0f, 1.0f/(2.0*filterOrder)) - 1.0f);
     
     // critically damped second order filter has Q of 0.5
     float Q = 0.5;
     
     for(size_t i = 0; i<filterOrder/2; i++)
-        BMMultiLevelBiquad_setLowPassQ12db(bqf, fcShifted, Q, level);
+        BMMultiLevelBiquad_setLowPassQ12db(bqf, fc, Q, level);
 }
 
 

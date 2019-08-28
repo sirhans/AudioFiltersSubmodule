@@ -38,7 +38,12 @@ void BMQuadraticThreshold_initLower(BMQuadraticThreshold* This, float threshold,
 
 
 
-
+/*
+ * Mathematica code:
+ *
+ * qThreshold[x_, l_, w_] :=
+ *       If[x < l - w, l, If[x > l + w, x, (- l x + (l + w + x)^2/4)/w]]
+ */
 void BMQuadraticThreshold_initUpper(BMQuadraticThreshold* This, float threshold, float width){
     This->isUpper = true;
     

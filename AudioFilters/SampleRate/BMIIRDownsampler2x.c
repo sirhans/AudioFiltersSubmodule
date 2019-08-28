@@ -78,18 +78,27 @@ double* BMIIRDownsampler2x_genCoefficients(BMIIRDownsampler2x* This, float minSt
     // required stopband attenuation and transition bandwidth
     This->numCoefficients = BMPolyphaseIIR2Designer_computeNbrCoefsFromProto(minStopbandAttenuationDb, maxTransitionBandwidth);
     
-    // if numCoefficients is not divisible by four, increase to the nearest multiple of four
-    if(This->numCoefficients % 4 != 0)
-        This->numCoefficients += (4 - This->numCoefficients%4);
+    printf("BMDownsampler: numCoefficients before rounding: %zu\n",This->numCoefficients);
+    
+//    // if numCoefficients is not divisible by four, increase to the nearest multiple of four
+//    if(This->numCoefficients % 4 != 0)
+//        This->numCoefficients += (4 - This->numCoefficients%4);
+    
+    // if numCoefficients is not divisible by two, increase to the nearest multiple of two
+    if(This->numCoefficients % 2 != 0)
+        This->numCoefficients += 1;
     
     
     printf("[Downsampler] numCoefficients before rounding: %zu\n",This->numCoefficients);
     
     // Half of the biquad stages are used for even numbered samples and the
-    // rest for odd. The total number of biquad filters is half the number of
+    // rest for odd. The total number of biquad filters is half the number of (first order)
     // coefficients. Therefore the number of biquad stages in each array (even,odd)
     // is numCoefficients / 4
     This->numBiquadStages = This->numCoefficients / 4;
+    // add an extra stage if numCoefficients/2 is odd
+    if(This->numCoefficients/2 % 2 == 1)
+        This->numBiquadStages++;
     
     // generate filter coefficients
     double* coefficientArray = malloc(sizeof(double)*This->numCoefficients);
@@ -150,7 +159,8 @@ void BMIIRDownsampler2x_setCoefs (BMIIRDownsampler2x* This, const double* coef_a
      * noise floor.
      */
     size_t biquadSection = 0;
-    for (size_t i = 0; i < This->numCoefficients/2; i+=2){
+    size_t i;
+    for (i = 0; i < (This->numCoefficients-1)/2; i+=2){
         BMMultilevelBiquad_setAllpass2ndOrder(&This->even,
                                               coef_arr[i],coef_arr[This->numCoefficients - (i+2)],
                                               biquadSection);
@@ -158,6 +168,11 @@ void BMIIRDownsampler2x_setCoefs (BMIIRDownsampler2x* This, const double* coef_a
                                               coef_arr[i+1],coef_arr[This->numCoefficients - (i+1)],
                                               biquadSection);
         biquadSection++;
+    }
+    // if numCoefficients/2 is odd, pick up the last coefficient with a first order section
+    if(i<This->numCoefficients/2){
+        BMMultilevelBiquad_setAllpass1stOrder(&This->even, coef_arr[i], biquadSection);
+        BMMultilevelBiquad_setAllpass1stOrder(&This->odd, coef_arr[i], biquadSection);
     }
 }
 

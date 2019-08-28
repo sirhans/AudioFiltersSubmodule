@@ -16,8 +16,10 @@ extern "C" {
 #include "BMPolyphaseIIR2Designer.h"
 #include "Constants.h"
     
-#define BM_UPSAMPLER_STAGE0_TRANSITION_BANDWIDTH 0.05
+#define BM_UPSAMPLER_STAGE0_TRANSITION_BANDWIDTH 0.07
 #define BM_UPSAMPLER_STOPBAND_ATTENUATION_DB 110.0
+#define BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_NUMLEVELS 4
+#define BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_FC 20500.0
 
     
     
@@ -46,6 +48,9 @@ extern "C" {
             This->bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE*upsampleFactor/2);
         else
             This->bufferR = NULL;
+        
+        BMMultiLevelBiquad_init(&This->secondStageAAFilter, BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_NUMLEVELS, 96000.0, true, false, false);
+        BMMultiLevelBiquad_setLegendreLP(&This->secondStageAAFilter, BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_FC, 0, BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_NUMLEVELS);
     }
     
     
@@ -110,10 +115,14 @@ extern "C" {
             bool outputToBuffer = This->numStages % 2 == 0;
             
             // process stage 0
-            if(outputToBuffer)
+            if(outputToBuffer){
                 BMIIRUpsampler2x_processBufferStereo(&This->upsamplers2x[0], inputL, inputR, This->bufferL, This->bufferR, inputSize);
-            else
+                BMMultiLevelBiquad_processBufferStereo(&This->secondStageAAFilter, This->bufferL, This->bufferR, This->bufferL, This->bufferR, inputSize*2);
+            }
+            else{
                 BMIIRUpsampler2x_processBufferStereo(&This->upsamplers2x[0], inputL, inputR, outputL, outputR, inputSize);
+                BMMultiLevelBiquad_processBufferStereo(&This->secondStageAAFilter, outputL, outputR, outputL, outputR, inputSize*2);
+            }
             outputToBuffer = !outputToBuffer;
             
             // process other stages if they are available
@@ -144,6 +153,8 @@ extern "C" {
         // free internal memory for each 2x stage
         for(size_t i=0; i<This->numStages; i++)
             BMIIRUpsampler2x_free(&This->upsamplers2x[i]);
+        
+        BMMultiLevelBiquad_destroy(&This->secondStageAAFilter);
         
         // free the stages array
         free(This->upsamplers2x);
