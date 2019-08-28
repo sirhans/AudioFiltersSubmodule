@@ -15,7 +15,7 @@ extern "C" {
 #include "BMPolyphaseIIR2Designer.h"
 #include "Constants.h"
     
-#define BM_DOWNSAMPLER_STAGE0_TRANSITION_BANDWIDTH 0.025
+#define BM_DOWNSAMPLER_STAGE0_TRANSITION_BANDWIDTH 0.05
 #define BM_DOWNSAMPLER_STOPBAND_ATTENUATION_DB 110.0
     
     

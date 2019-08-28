@@ -82,6 +82,9 @@ double* BMIIRDownsampler2x_genCoefficients(BMIIRDownsampler2x* This, float minSt
     if(This->numCoefficients % 4 != 0)
         This->numCoefficients += (4 - This->numCoefficients%4);
     
+    
+    printf("[Downsampler] numCoefficients before rounding: %zu\n",This->numCoefficients);
+    
     // Half of the biquad stages are used for even numbered samples and the
     // rest for odd. The total number of biquad filters is half the number of
     // coefficients. Therefore the number of biquad stages in each array (even,odd)
