@@ -170,7 +170,7 @@ void BMIIRUpsampler2x_setCoefs (BMIIRUpsampler2x* This, const double* coef_arr){
     // if numCoefficients/2 is odd, pick up the last coefficient with a first order section
     if(i<This->numCoefficients/2){
         BMMultilevelBiquad_setAllpass1stOrder(&This->even, coef_arr[i], biquadSection);
-        BMMultilevelBiquad_setAllpass1stOrder(&This->odd, coef_arr[i], biquadSection);
+        BMMultilevelBiquad_setAllpass1stOrder(&This->odd, coef_arr[i+1], biquadSection);
     }
 }
 

@@ -8,6 +8,7 @@
 
 #include "BMQuadraticThreshold.h"
 #include <assert.h>
+#include <simd/simd.h>
 
 void BMQuadraticThreshold_initLower(BMQuadraticThreshold* This, float threshold, float width){
     This->isUpper = false;

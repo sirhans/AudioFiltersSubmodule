@@ -21,8 +21,13 @@
 
 typedef struct BMChamberlinSVFStereo {
     simd_float2 i1,i2;
-    float f,q,sampleRate;
+    float f,fPlusq,sampleRate;
 } BMChamberlinSVFStereo;
+
+typedef struct BMChamberlinSVF4 {
+    simd_float4 i1,i2;
+    float f,fPlusq,sampleRate;
+} BMChamberlinSVF4;
 
 
 void BMChamberlinSVFStereo_lowpassBuffer(BMChamberlinSVFStereo* This,
@@ -30,12 +35,32 @@ void BMChamberlinSVFStereo_lowpassBuffer(BMChamberlinSVFStereo* This,
                                         float* outputL, float* outputR,
                                         size_t numSamples);
 
+/*!
+ *BMChamberlinSVF4_lowpassBuffer
+ *
+ * @abstract process four channels simultaneously
+ */
+void BMChamberlinSVF4_lowpassBuffer(BMChamberlinSVF4* This,
+                                    const float* input1, const float* input2,
+                                    const float* input3, const float* input4,
+                                    float* output1, float* output2,
+                                    float* output3, float* output4,
+                                    size_t numSamples);
 
-
+/*!
+ *BMChamberlinSVFStereo_setLowpassQ
+ */
 void BMChamberlinSVFStereo_setLowpassQ(BMChamberlinSVFStereo* This, float fc, float Q);
+
+/*!
+ *BMChamberlinSVF4_setLowpassQ
+ */
+void BMChamberlinSVF4_setLowpassQ(BMChamberlinSVF4* This, float fc, float Q);
 
 
 void BMChamberlinSVFStereo_init(BMChamberlinSVFStereo* This, float sampleRate);
+
+void BMChamberlinSVF4_init(BMChamberlinSVF4* This, float sampleRate);
 
 
 #endif /* BMChamberlinSVF_h */

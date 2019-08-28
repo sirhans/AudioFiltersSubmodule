@@ -13,6 +13,7 @@
 
 #include <stdio.h>
 #include <Accelerate/Accelerate.h>
+#include "BMSmoothGain.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,13 +28,14 @@ extern "C" {
         float* coefficients_f;
         
         // static memory
-        float currentGain;
-        float desiredGain;
+        //float currentGain;
+        //float desiredGain;
         size_t numLevels;
         size_t numChannels;
         double sampleRate;
         bool needsUpdate, useRealTimeUpdate, useBiquadm,useSmoothUpdate,needUpdateActiveLevels;
         bool *activeLevels;
+        BMSmoothGain gain, gain2;
     } BMMultiLevelBiquad;
     
     

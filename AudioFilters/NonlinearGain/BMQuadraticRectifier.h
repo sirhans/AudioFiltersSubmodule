@@ -27,12 +27,26 @@ typedef struct BMQuadraticRectifier {
 } BMQuadraticRectifier;
 
 
+/*!
+ *BMQuadraticRectifier_init
+ */
 void BMQuadraticRectifier_init(BMQuadraticRectifier* This, float kneeWidth);
 
 
+/*!
+ *BMQuadraticRectifier_processBuffer
+ */
 void BMQuadraticRectifier_processBuffer(BMQuadraticRectifier* This,
                                         const float* input,
                                         float* outputPos, float* outputNeg,
                                         size_t numSamples);
+/*!
+ *BMQuadraticRectifier_processBufferStereo
+ */
+void BMQuadraticRectifier_processBufferStereo(BMQuadraticRectifier* This,
+                                              const float* inputL, const float* inputR,
+                                              float* outputPosL, float* outputNegL,
+                                              float* outputPosR, float* outputNegR,
+                                              size_t numSamples);
 
 #endif /* BMQuadraticRectifier_h */

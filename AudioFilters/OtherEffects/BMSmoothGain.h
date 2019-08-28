@@ -49,6 +49,18 @@ extern "C" {
                                     float* outputL, float* outputR,
                                     size_t numSamples);
     
+    /*!
+     * BMSmoothGain_processBufferMono
+     *
+     * @param This        pointer to an initialized BMSmoothGain struct
+     * @param input       input buffer length >= numSamples
+     * @param output      output buffer length >= numSamples
+     */
+    void BMSmoothGain_processBufferMono(BMSmoothGain* This,
+                                        const float* input,
+                                        float* output,
+                                        size_t numSamples);
+    
     
     /*!
      * BMSmoothGain_setGainDb
@@ -57,6 +69,16 @@ extern "C" {
      * @param gainDb      new target gain in decibels to be approached smoothly
      */
     void BMSmoothGain_setGainDb(BMSmoothGain* This, float gainDb);
+    
+    
+    
+    /*!
+     *BMSmoothGain_getGainLinear
+     *
+     * @abstract   returns the linear (voltage scale) gain 
+     */
+    float BMSmoothGain_getGainLinear(BMSmoothGain* This);
+    
     
     
     

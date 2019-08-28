@@ -56,97 +56,99 @@ bool BMMultiLevelBiquad_OSSupportsRealtimeUpdate();
 
 
 
+
+
 void BMMultiLevelBiquad_processBufferStereo(BMMultiLevelBiquad* bqf, const float* inL, const float* inR, float* outL, float* outR, size_t numSamples){
     // this function is only for two channel filtering
     assert(bqf->numChannels == 2);
     
-    size_t sampleProcessed = 0;
-    while(sampleProcessed<numSamples){
-        size_t sampleProcessing = MIN(BM_BUFFER_CHUNK_SIZE, numSamples - sampleProcessed);
-        
-        // update filter coefficients if necessary
-        if (bqf->needsUpdate) BMMultiLevelBiquad_updateNow(bqf);
-        
-        //Levels
-        BMMultiLevelBiquad_updateLevels(bqf);
-        
-        // link the two input buffers into a single multidimensional array
-        const float* twoChannelInput [2];
-        twoChannelInput[0] = inL+sampleProcessed;
-        twoChannelInput[1] = inR+sampleProcessed;
-        
-        // link the two input buffers into a single multidimensional array
-        float* twoChannelOutput [2];
-        twoChannelOutput[0] = outL+sampleProcessed;
-        twoChannelOutput[1] = outR+sampleProcessed;
-        
-        // apply a multilevel biquad filter to both channels
-        vDSP_biquadm(bqf->multiChannelFilterSetup, (const float* _Nonnull * _Nonnull)twoChannelInput, 1, twoChannelOutput, 1, sampleProcessing);
-        
-        // apply gain to both channels
-        if(bqf->currentGain!=bqf->desiredGain){
-            //There is a change in gain -> we need rampGain to make it go smoothly
-            float rampV = (bqf->desiredGain - bqf->currentGain)/sampleProcessing;
-            
-            vDSP_vrampmul2(outL+sampleProcessed, outR+sampleProcessed, 1, &bqf->currentGain, &rampV, outL+sampleProcessed, outR+sampleProcessed, 1, sampleProcessing);
-            
-            bqf->currentGain = bqf->desiredGain;
-        }else{
-            vDSP_vsmul(outL+sampleProcessed, 1, &bqf->currentGain, outL+sampleProcessed, 1, sampleProcessing);
-            vDSP_vsmul(outR+sampleProcessed, 1, &bqf->currentGain, outR+sampleProcessed, 1, sampleProcessing);
-        }
-        
-        sampleProcessed += sampleProcessing;
-    }
+    // update filter coefficients if necessary
+    if (bqf->needsUpdate) BMMultiLevelBiquad_updateNow(bqf);
+    
+    //Levels
+    BMMultiLevelBiquad_updateLevels(bqf);
+    
+    // link the two input buffers into a single multidimensional array
+    const float* twoChannelInput [2] = {inL, inR};
+    
+    // link the two output buffers into a single multidimensional array
+    float* twoChannelOutput [2] = {outL, outR};
+    
+    // apply a multilevel biquad filter to both channels
+    vDSP_biquadm(bqf->multiChannelFilterSetup, (const float* _Nonnull * _Nonnull)twoChannelInput, 1, twoChannelOutput, 1, numSamples);
+    
+    BMSmoothGain_processBuffer(&bqf->gain, outL, outR, outL, outR, numSamples);
 }
+
+
+
+
+
+
+void BMMultiLevelBiquad_processBuffer4(BMMultiLevelBiquad* bqf,
+                                       const float* in1, const float* in2, const float* in3, const float* in4,
+                                       float* out1, float* out2, float* out3, float* out4,
+                                       size_t numSamples){
+    // this function is only for two channel filtering
+    assert(bqf->numChannels == 2);
+    
+    // update filter coefficients if necessary
+    if (bqf->needsUpdate) BMMultiLevelBiquad_updateNow(bqf);
+    
+    //Levels
+    BMMultiLevelBiquad_updateLevels(bqf);
+    
+    // link the two input buffers into a single multidimensional array
+    const float* fourChannelInput [4] = {in1, in2, in3, in4};
+    
+    // link the two output buffers into a single multidimensional array
+    float* fourChannelOutput [4] = {out1, out2, out3, out4};
+    
+    
+    // apply a multilevel biquad filter to both channels
+    vDSP_biquadm(bqf->multiChannelFilterSetup, (const float* _Nonnull * _Nonnull)fourChannelInput, 1, fourChannelOutput, 1, numSamples);
+    
+    // apply a gain adjustment
+    BMSmoothGain_processBuffer(&bqf->gain, out1, out2, out1, out2, numSamples);
+    BMSmoothGain_processBuffer(&bqf->gain2, out3, out4, out3, out4, numSamples);
+}
+
+
+
+
 
 void BMMultiLevelBiquad_processBufferMono(BMMultiLevelBiquad* bqf, const float* input, float* output, size_t numSamples){
     
     // this function is only for single channel filtering
     assert(bqf->numChannels == 1);
     
-    size_t sampleProcessed = 0;
-    while(sampleProcessed<numSamples){
-        size_t sampleProcessing = MIN(BM_BUFFER_CHUNK_SIZE, numSamples - sampleProcessed);
+    
+    // update filter coefficients if necessary
+    if (bqf->needsUpdate) BMMultiLevelBiquad_updateNow(bqf);
+    
+    //Levels
+    BMMultiLevelBiquad_updateLevels(bqf);
+    
+    // if using the multiChannel filter for single channel processing
+    if(bqf->useBiquadm){
+        // biquadm requires arrays of pointers as input and output
+        const float* inputP [1] = {input};
+        float* outputP [1] = {output};
         
-        // update filter coefficients if necessary
-        if (bqf->needsUpdate) BMMultiLevelBiquad_updateNow(bqf);
+        // apply a multiChannel biquad filter
+        vDSP_biquadm(bqf->multiChannelFilterSetup, (const float* _Nonnull * _Nonnull)inputP, 1, outputP, 1, numSamples);
         
-        //Levels
-        BMMultiLevelBiquad_updateLevels(bqf);
         
-        // if using the multiChannel filter for single channel processing
-        if(bqf->useBiquadm){
-            // biquadm requires arrays of pointers as input and output
-            const float* inputP [1];
-            float* outputP [1];
-            inputP[0]  = input+sampleProcessed;
-            outputP[0] = output+sampleProcessed;
-            
-            // apply a multiChannel biquad filter
-            vDSP_biquadm(bqf->multiChannelFilterSetup, (const float* _Nonnull * _Nonnull)inputP, 1, outputP, 1, sampleProcessing);
-            
-            
-            // if using the single channel filter
-        } else {
-            vDSP_biquad(bqf->singleChannelFilterSetup, bqf->monoDelays, input+sampleProcessed, 1, output+sampleProcessed, 1, sampleProcessing);
-        }
-        
-        if(bqf->currentGain!=bqf->desiredGain){
-            //There is a change in gain -> we need rampGain to make it go smoothly
-            float rampV = (bqf->desiredGain - bqf->currentGain)/sampleProcessing;
-            
-            vDSP_vrampmul(output+sampleProcessed, 1, &bqf->currentGain, &rampV, output+sampleProcessed, 1, sampleProcessing);
-            
-            bqf->currentGain = bqf->desiredGain;
-        }else{
-            // apply gain
-            vDSP_vsmul(output+sampleProcessed, 1, &bqf->currentGain, output+sampleProcessed, 1, sampleProcessing);
-        }
-        
-        sampleProcessed += sampleProcessing;
+        // if using the single channel filter
+    } else {
+        vDSP_biquad(bqf->singleChannelFilterSetup, bqf->monoDelays, input, 1, output, 1, numSamples);
     }
+    
+    BMSmoothGain_processBufferMono(&bqf->gain, input, output, numSamples);
 }
+
+
+
 
 
 // Find out if the OS supports vDSP_biquadm updates in realtime
@@ -162,6 +164,10 @@ bool BMMultiLevelBiquad_OSSupportsRealtimeUpdate(){
     
     return OSSupportsRealtimeUpdate;
 }
+
+
+
+
 
 void BMMultiLevelBiquad_init(BMMultiLevelBiquad* bqf,
                              size_t numLevels,
@@ -220,23 +226,72 @@ void BMMultiLevelBiquad_init(BMMultiLevelBiquad* bqf,
         BMMultiLevelBiquad_setBypass(bqf, i);
     }
     
-    
-    
     // set 0db of gain
-    bqf->currentGain = BM_DB_TO_GAIN(0.0);
+    BMSmoothGain_init(&bqf->gain, sampleRate);
+    BMSmoothGain_init(&bqf->gain2, sampleRate);
     BMMultiLevelBiquad_setGain(bqf,0.0);
     
     // setup filter struct
     BMMultiLevelBiquad_create(bqf);
 }
 
-void BMMultiLevelBiquad_setGain(BMMultiLevelBiquad* bqf, float gain_db){
-    bqf->desiredGain = BM_DB_TO_GAIN(gain_db);
+
+
+
+
+void BMMultiLevelBiquad_init4(BMMultiLevelBiquad* bqf,
+                             size_t numLevels,
+                             float sampleRate,
+                             bool monoRealTimeUpdate,
+                             bool smoothUpdate){
+    
+    // init as stereo to make use of the code that is in the existing init function
+    BMMultiLevelBiquad_init(bqf, numLevels, sampleRate, true, monoRealTimeUpdate, smoothUpdate);
+    
+    // change the number of channels to 4
+    bqf->numChannels = 4;
+    
+    // Allocate memory for 5 coefficients per filter,
+    // 2 filters per level (left and right channels)
+    free(bqf->coefficients_d);
+    bqf->coefficients_d = malloc(numLevels*5*bqf->numChannels*sizeof(double));
+    
+    // repeat the allocation for floating point coefficients. We need
+    // both double and float to support realtime updates
+    free(bqf->coefficients_f);
+    bqf->coefficients_f = malloc(numLevels*5*bqf->numChannels*sizeof(float));
+    
+    
+    // start with all levels on bypass
+    for (size_t i=0; i<numLevels; i++) {
+        BMMultiLevelBiquad_setBypass(bqf, i);
+    }
+    
+    // set 0db of gain
+    BMMultiLevelBiquad_setGain(bqf,0.0f);
+    
+    // update the filter struct
+    BMMultiLevelBiquad_recreate(bqf);
 }
+
+
+
+
+
+void BMMultiLevelBiquad_setGain(BMMultiLevelBiquad* bqf, float gain_db){
+    BMSmoothGain_setGainDb(&bqf->gain, gain_db);
+    BMSmoothGain_setGainDb(&bqf->gain2, gain_db);
+}
+
+
+
 
 void BMMultiLevelBiquad_queueUpdate(BMMultiLevelBiquad* bqf){
     bqf->needsUpdate = true;
 }
+
+
+
 
 inline void BMMultiLevelBiquad_updateNow(BMMultiLevelBiquad* bqf){
     
@@ -1744,7 +1799,7 @@ inline DSPDoubleComplex BMMultiLevelBiquad_tfEval(BMMultiLevelBiquad* bqf, DSPDo
     
     DSPDoubleComplex z2 = DSPDoubleComplex_cmul(z, z);
     
-    DSPDoubleComplex out = DSPDoubleComplex_init(bqf->desiredGain, 0.0);
+    DSPDoubleComplex out = DSPDoubleComplex_init(BMSmoothGain_getGainLinear(&bqf->gain), 0.0);
     
     
     for (size_t level = 0; level < bqf->numLevels; level++) {
@@ -1782,7 +1837,7 @@ inline DSPDoubleComplex BMMultiLevelBiquad_tfEvalAtLevel(BMMultiLevelBiquad* bqf
     
     DSPDoubleComplex z2 = DSPDoubleComplex_cmul(z, z);
     
-    DSPDoubleComplex out = DSPDoubleComplex_init(bqf->desiredGain, 0.0);
+    DSPDoubleComplex out = DSPDoubleComplex_init(BMSmoothGain_getGainLinear(&bqf->gain), 0.0);
     
     // both channels are the same so we just check the left one
     size_t channel = 0;

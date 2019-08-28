@@ -88,8 +88,7 @@ double* BMIIRDownsampler2x_genCoefficients(BMIIRDownsampler2x* This, float minSt
     if(This->numCoefficients % 2 != 0)
         This->numCoefficients += 1;
     
-    
-    printf("[Downsampler] numCoefficients before rounding: %zu\n",This->numCoefficients);
+    printf("Downsampler: numCoefficients after rounding: %zu\n",This->numCoefficients);
     
     // Half of the biquad stages are used for even numbered samples and the
     // rest for odd. The total number of biquad filters is half the number of (first order)
@@ -172,7 +171,7 @@ void BMIIRDownsampler2x_setCoefs (BMIIRDownsampler2x* This, const double* coef_a
     // if numCoefficients/2 is odd, pick up the last coefficient with a first order section
     if(i<This->numCoefficients/2){
         BMMultilevelBiquad_setAllpass1stOrder(&This->even, coef_arr[i], biquadSection);
-        BMMultilevelBiquad_setAllpass1stOrder(&This->odd, coef_arr[i], biquadSection);
+        BMMultilevelBiquad_setAllpass1stOrder(&This->odd, coef_arr[i+1], biquadSection);
     }
 }
 

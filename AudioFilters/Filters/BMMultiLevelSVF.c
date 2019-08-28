@@ -149,7 +149,7 @@ inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF* This,
         float v3 = input[i] - This->ic2eq[icLvl];
         float v1 = This->a[level][0]*This->ic1eq[icLvl] + This->a[level][1]*v3;
         float v2 = This->ic2eq[icLvl] + This->a[level][1]*This->ic1eq[icLvl] + This->a[level][2] * v3;
-        This->ic1eq[icLvl] = 2* v1 - This->ic1eq[icLvl];
+        This->ic1eq[icLvl] = 2*v1 - This->ic1eq[icLvl];
         This->ic2eq[icLvl] = 2*v2 - This->ic2eq[icLvl];
         output[i] = This->m[level][0] * input[i] + This->m[level][1] * v1 + This->m[level][2]*v2;
     }

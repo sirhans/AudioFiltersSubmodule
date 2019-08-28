@@ -63,7 +63,7 @@ extern "C" {
             
             // process only until we reach the target, or reach the end of the
             // buffer, whichever comes first
-            size_t geometricFadeLength = MIN(samplesTillTarget+1, numSamples);
+            size_t geometricFadeLength = MIN(samplesTillTarget, numSamples);
             
             // fade geometrically, stopping at the sample nearest the target
             size_t i=0;
@@ -100,8 +100,96 @@ extern "C" {
         
         // if we aren't in transition, apply the gain by simple multiplication
         else {
-            vDSP_vsmul(inputL, 1, &This->gain, outputL, 1, numSamples);
-            vDSP_vsmul(inputR, 1, &This->gain, outputR, 1, numSamples);
+            // if the gain is doing something, multiply
+            if( fabsf(This->gain - 1.0f) > 0.0001){
+                vDSP_vsmul(inputL, 1, &This->gain, outputL, 1, numSamples);
+                vDSP_vsmul(inputR, 1, &This->gain, outputR, 1, numSamples);
+            }
+            // otherwise just copy
+            else {
+                // check that the arrays are not in place; if they are, do nothing
+                if (inputL != outputL || inputR != outputR){
+                    memcpy(outputL,inputL,sizeof(float)*numSamples);
+                    memcpy(outputR,inputR,sizeof(float)*numSamples);
+                }
+            }
+        }
+    }
+    
+    
+    
+    
+    void BMSmoothGain_processBufferMono(BMSmoothGain* This,
+                                        const float* input,
+                                        float* output,
+                                        size_t numSamples){
+        // if we are now transitioning to a new gain setting, fade geometrically
+        if(This->inTransition){
+            
+            // update the gain target in case there was a change while the last
+            // buffer was processing
+            This->gainTarget = This->nextGainTarget;
+            
+            // what multiplier would get us to the target gain?
+            float ratioToTarget = This->gainTarget / This->gain;
+            
+            // how many samples of multiplication by the perSampleRatio will
+            // it take to get us to that multiplier?
+            int samplesTillTarget = log2(ratioToTarget) / log2(This->perSampleRatioUp);
+            
+            // if we are increasing the gain, use the increasing ratio (> 1)
+            // otherwise use the decreasing ratio (< 1)
+            float perSampleRatio = samplesTillTarget > 0 ? This->perSampleRatioUp : This->perSampleRatioDown;
+            
+            // samplesTillTarget can be negative here. We only want positive values
+            samplesTillTarget = abs(samplesTillTarget);
+            
+            // process only until we reach the target, or reach the end of the
+            // buffer, whichever comes first
+            size_t geometricFadeLength = MIN(samplesTillTarget, numSamples);
+            
+            // fade geometrically, stopping at the sample nearest the target
+            size_t i=0;
+            while (i < geometricFadeLength) {
+                This->gain *= perSampleRatio;
+                output[i] = input[i] * This->gain;
+                i++;
+            }
+            
+            // in case the geometric series above didn't stop near the target,
+            // approach it asymptotically until we get within the tolerance.
+            float error = This->gainTarget - This->gain;
+            float tolerance = 0.00001;
+            while (i < numSamples  &&  error > tolerance){
+                This->gain += 0.05f * error;
+                output[i] = input[i] * This->gain;
+                error = This->gainTarget - This->gain;
+                i++;
+            }
+            
+            // if we are finished, exit the transition state
+            if(fabs(error) <= tolerance)
+                This->inTransition = false;
+            
+            // if there are still samples left to be copied, finish them up
+            if (i < numSamples) {
+                size_t samplesLeft = numSamples - i;
+                vDSP_vsmul(input+i, 1, &This->gain, output+i, 1, samplesLeft);
+            }
+        }
+        
+        // if we aren't in transition, apply the gain by simple multiplication
+        else {
+            // if the gain is doing something, multiply
+            if( fabsf(This->gain - 1.0f) > 0.0001){
+                vDSP_vsmul(input, 1, &This->gain, output, 1, numSamples);
+            }
+            // otherwise just copy
+            else {
+                // check that the arrays are not in place; if they are, do nothing
+                if (input != output){
+                    memcpy(output,input,sizeof(float)*numSamples);                }
+            }
         }
     }
     
@@ -125,6 +213,12 @@ extern "C" {
     
     float BMSmoothGain_getGainDb(BMSmoothGain* This){
         return BM_GAIN_TO_DB(This->gainTarget);
+    }
+    
+    
+    
+    float BMSmoothGain_getGainLinear(BMSmoothGain* This){
+        return This->gainTarget;
     }
     
     

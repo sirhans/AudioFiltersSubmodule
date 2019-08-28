@@ -27,7 +27,6 @@ void BMQuadraticLimiter_processBufferMono(BMQuadraticLimiter* This,
 
 void BMQuadraticLimiter_processBufferStereo(BMQuadraticLimiter* This,
                                             const float* inputL, const float* inputR,
-                                            float* buffer,
                                             float* outputL, float* outputR,
                                             size_t numSamples);
 
