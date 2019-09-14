@@ -25,6 +25,9 @@ extern "C" {
     
     // forward declarations
     static void BMFastHadamard16(const float* input, float* output, float* temp16);
+    static void BMFastHadamard8(const float* input, float* output, float* temp8);
+    static void BMFastHadamard4(const float* input, float* output, float* temp4);
+    static void BMFastHadamard2(const float* input, float* output);
     
     
     
@@ -57,9 +60,8 @@ extern "C" {
                                         size_t length){
         // length must be a power of 2
         assert(BMPowerOfTwoQ(length));
-        // length must be at least 16 because we hard-code the
-        // base case at order 16.
-        assert(length >= 16);
+        // length must be at least 2
+        assert(length >= 2);
         
         size_t partitionSize = length;
         float* tmpIn = input;
@@ -89,9 +91,24 @@ extern "C" {
             partitionSize >>= 1;
         }
         
-        // base case
-        for (size_t i = 0; i < length; i += 16)
-            BMFastHadamard16(tmpIn + i, output + i, tmpOut);
+        // base cases
+        if(partitionSize >= 16) {
+            for(size_t i=0; i<length; i+=16)
+                BMFastHadamard16(tmpIn + i, output + i, tmpOut);
+            return;
+        }
+        if(partitionSize == 8){
+            BMFastHadamard8(tmpIn, output, tmpOut);
+            return;
+        }
+        if(partitionSize == 4){
+            BMFastHadamard4(tmpIn, output, tmpOut);
+            return;
+        }
+        if(partitionSize == 2){
+            BMFastHadamard2(tmpIn, output);
+            return;
+        }
     }
     
     
@@ -233,7 +250,126 @@ extern "C" {
         output[14] = temp16[14] + temp16[15];
         output[15] = temp16[14] - temp16[15];
     }
+    
+    
+    
+    
+    
+    
+    
+    
+    /*
+     * Fast Hadamard transform of length 8
+     *   works in place.
+     *
+     * @param input   an array of 8 floats
+     * @param output  an array of 8 floats
+     * @param temp8  an array of 8 floats that will be over-written
+     *
+     */
+    static inline void BMFastHadamard8(const float* input, float* output, float* temp8){
+        
+        
+        // hard-coded version:
+        
+        // level 2
+        //+
+        output[0] = input[0] + input[4];
+        output[1] = input[1] + input[5];
+        output[2] = input[2] + input[6];
+        output[3] = input[3] + input[7];
+        //-
+        output[4] = input[0] - input[4];
+        output[5] = input[1] - input[5];
+        output[6] = input[2] - input[6];
+        output[7] = input[3] - input[7];
+        
+        
+        // level 3
+        // +
+        temp8[0] = output[0] + output[2];
+        temp8[1] = output[1] + output[3];
+        // -
+        temp8[2] = output[0] - output[2];
+        temp8[3] = output[1] - output[3];
+        
+        // +
+        temp8[4] = output[4] + output[6];
+        temp8[5] = output[5] + output[7];
+        // -
+        temp8[6] = output[4] - output[6];
+        temp8[7] = output[5] - output[7];
+        
+        
+        // level 4
+        output[0] = temp8[0] + temp8[1];
+        output[1] = temp8[0] - temp8[1];
+        output[2] = temp8[2] + temp8[3];
+        output[3] = temp8[2] - temp8[3];
+        
+        output[4] = temp8[4] + temp8[5];
+        output[5] = temp8[4] - temp8[5];
+        output[6] = temp8[6] + temp8[7];
+        output[7] = temp8[6] - temp8[7];
+    }
 
+
+    
+    
+    
+    
+    /*
+     * Fast Hadamard transform of length 4
+     *   works in place.
+     *
+     * @param input   an array of 4 floats
+     * @param output  an array of 4 floats
+     * @param temp4  an array of 4 floats that will be over-written
+     *
+     */
+    static inline void BMFastHadamard4(const float* input, float* output, float* temp4){
+        
+        
+        // hard-coded version:
+        
+        // level 3
+        // +
+        temp4[0] = input[0] + input[2];
+        temp4[1] = input[1] + input[3];
+        // -
+        temp4[2] = input[0] - input[2];
+        temp4[3] = input[1] - input[3];
+
+        
+        
+        // level 4
+        output[0] = temp4[0] + temp4[1];
+        output[1] = temp4[0] - temp4[1];
+        output[2] = temp4[2] + temp4[3];
+        output[3] = temp4[2] - temp4[3];
+    }
+    
+    
+    
+    
+    
+    /*
+     * Fast Hadamard transform of length 2
+     *   works in place.
+     *
+     * @param input   an array of 2 floats
+     * @param output  an array of 2 floats
+     *
+     */
+    static inline void BMFastHadamard2(const float* input, float* output){
+        
+        
+        // hard-coded version
+        
+        // level 4
+        output[0] = input[0] + input[1];
+        output[1] = input[0] - input[1];
+    }
 
     
     
