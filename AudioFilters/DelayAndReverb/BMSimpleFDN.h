@@ -22,6 +22,17 @@ typedef struct BMSimpleFDN {
 } BMSimpleFDN;
 
 
+/*!
+ *BMSimpleFDN_init
+ *
+ * @param This                  pointer to initialised struct
+ * @param sampleRate            sample rate
+ * @param numDelays             number of delays in the network
+ * @param method                (enum) method for setting delay times
+ * @param minDelayTimeSeconds   shortest possible delay time
+ * @param maxDelayTimeSeconds   longest possible delay time
+ * @param RT60DecayTimeSeconds  RT60 decay time
+ */
 void BMSimpleFDN_init(BMSimpleFDN* This,
                       float sampleRate,
                       size_t numDelays,
@@ -37,6 +48,14 @@ void BMSimpleFDN_processBuffer(BMSimpleFDN* This,
                                size_t numSamples);
 
 
+
+/*!
+ *BMSimpleFDN_impulseResponse
+ *
+ * @param This          pointer to initialised struct
+ * @param IR            pointer to an array of length numSamples
+ * @param numSamples    length of the array IR
+ */
 void BMSimpleFDN_impulseResponse(BMSimpleFDN* This, float* IR, size_t numSamples);
 
 

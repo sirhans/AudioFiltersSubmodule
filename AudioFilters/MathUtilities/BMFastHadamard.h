@@ -92,7 +92,7 @@ extern "C" {
         }
         
         // base cases
-        if(partitionSize >= 16) {
+        if(partitionSize == 16) {
             for(size_t i=0; i<length; i+=16)
                 BMFastHadamard16(tmpIn + i, output + i, tmpOut);
             return;
@@ -269,9 +269,6 @@ extern "C" {
      */
     static inline void BMFastHadamard8(const float* input, float* output, float* temp8){
         
-        
-        // hard-coded version:
-        
         // level 2
         //+
         output[0] = input[0] + input[4];
@@ -329,9 +326,6 @@ extern "C" {
      */
     static inline void BMFastHadamard4(const float* input, float* output, float* temp4){
         
-        
-        // hard-coded version:
-        
         // level 3
         // +
         temp4[0] = input[0] + input[2];
@@ -362,9 +356,6 @@ extern "C" {
      *
      */
     static inline void BMFastHadamard2(const float* input, float* output){
-        
-        
-        // hard-coded version
         
         // level 4
         output[0] = input[0] + input[1];

@@ -18,6 +18,7 @@
 float BMSimpleFDN_gainFromRT60(float rt60, float delayTime);
 void BMSimpleFDN_randomShuffle(float* A, size_t length);
 void BMSimpleFDN_randomSigns(float* A, size_t length);
+inline float BMSimpleFDN_processSample(BMSimpleFDN* This, float input);
 
 
 
@@ -35,7 +36,7 @@ void BMSimpleFDN_velvetNoiseDelayTimes(BMSimpleFDN* This){
     float delaySpacing = delayTimeRange / (float)(This->numDelays);
     
     // ensure that delay times can be assigned without duplication
-    assert(delaySpacing > This->numDelays);
+    assert(delaySpacing * This->sampleRate > This->numDelays);
 
     for(size_t i=0; i<This->numDelays; i++){
         // place the delays at even intervals between min and max
@@ -46,7 +47,7 @@ void BMSimpleFDN_velvetNoiseDelayTimes(BMSimpleFDN* This){
         delayLengthsFloat[i] += jitter;
         
         // convert from float to uint
-        This->delayLengths[i] = (size_t)delayLengthsFloat[i];
+        This->delayLengths[i] = (size_t)(delayLengthsFloat[i] * This->sampleRate);
     }
     
     // ensure that no two delays have been rounded to the same number
@@ -86,7 +87,7 @@ void BMSimpleFDN_init(BMSimpleFDN* This,
     This->delayLengths = malloc(sizeof(size_t) * numDelays);
     This->delays = malloc(sizeof(float*) * numDelays);
     This->attenuationCoefficients = malloc(sizeof(float) * numDelays);
-    This->rwIndices = malloc(sizeof(size_t) * numDelays);
+    This->rwIndices = calloc(numDelays, sizeof(size_t));
     This->outputTapSigns = malloc(sizeof(float) * numDelays);
     This->buffer1 = malloc(sizeof(float) * 3 * numDelays);
     This->buffer2 = This->buffer1 + numDelays;
@@ -122,31 +123,37 @@ void BMSimpleFDN_init(BMSimpleFDN* This,
 
 
 
-
-inline float BMSimpleFDN_processSample(BMSimpleFDN* This, float input){
+float BMSimpleFDN_processSample(BMSimpleFDN* This, float input){
     float output = 0;
     
+    // read from the delays
     for(size_t i=0; i<This->numDelays; i++){
         // read output from each delay into a temp buffer
-        This->buffer1[i] = This->delays[i][This->rwIndices[i]];
+        float readSample = This->delays[i][This->rwIndices[i]];
         
-        // attenuate the output from each delay
-        This->buffer1[i] *= This->attenuationCoefficients[i];
+        // attenuate and write to buffer1
+        This->buffer1[i] = readSample * This->attenuationCoefficients[i];
         
         // sum to output
         output += This->buffer1[i] * This->outputTapSigns[i];
-        
-        // mix the feedback
-        BMFastHadamardTransform(This->buffer1, This->buffer1, This->buffer2, This->buffer3, This->numDelays);
-        
+    }
+    
+    
+    // mix the feedback
+    BMFastHadamardTransform(This->buffer1, This->buffer1, This->buffer2, This->buffer3, This->numDelays);
+    
+    
+    // write back to the delays
+    for(size_t i=0; i<This->numDelays; i++){
         // mix input with feedback and write into the delays
         This->delays[i][This->rwIndices[i]] = input + This->buffer1[i];
         
         // advance the delay indices and wrap to zero if at the end
-        This->rwIndices[i] += 1;
-        if(!(This->rwIndices[i] < This->delayLengths[i]))
+        This->rwIndices[i]++;
+        if(This->rwIndices[i] >= This->delayLengths[i])
             This->rwIndices[i] = 0;
     }
+    
     
     return output;
 }
@@ -178,10 +185,10 @@ void BMSimpleFDN_processBuffer(BMSimpleFDN* This,
 // This formula comes from solving EQ 11.33 in DESIGNING AUDIO EFFECT PLUG-INS IN C++ by Will Pirkle
 // which is attributed to Jot, originally.
 float BMSimpleFDN_gainFromRT60(float rt60, float delayTime){
-    if(rt60 != FLT_MAX)
-        return powf(10.0, (-3.0 * delayTime) / rt60 );
+    if(rt60 == FLT_MAX)
+        return 1.0f;
     else
-        return 1.0;
+        return powf(10.0f, (-3.0f * delayTime) / rt60 );
 }
 
 

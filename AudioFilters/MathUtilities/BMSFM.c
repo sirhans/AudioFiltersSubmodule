@@ -29,8 +29,11 @@ void BMSFM_free(BMSFM* This){
 float BMGeometricMean(float* input, size_t inputLength){
     // find the sum of the logs of all elements
     float logSum = 0.0f;
-    for(size_t i=0; i<inputLength; i++)
+    for(size_t i=0; i<inputLength; i++){
         logSum += log2f(input[i]);
+        if(input[i]==0)
+            printf("zero");
+    }
     
     return powf(2.0f,logSum/(float)inputLength);
 }
@@ -42,10 +45,12 @@ float BMSFM_process(BMSFM* This, float* input, size_t inputLength){
     // take the abs fft, with nyquist and DC combined into a single term
     BMFFT_absFFTCombinedDCNQ(&This->fft, input, This->buffer, inputLength);
     
-    float geometricMean = BMGeometricMean(This->buffer, inputLength);
+    size_t outputLength = inputLength / 2;
+    
+    float geometricMean = BMGeometricMean(This->buffer, outputLength);
     
     float arithmeticMean;
-    vDSP_meanv(This->buffer, 1, &arithmeticMean, inputLength/2);
+    vDSP_meanv(This->buffer, 1, &arithmeticMean, outputLength);
     
     return geometricMean / arithmeticMean;
 }
