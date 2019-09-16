@@ -51,6 +51,44 @@ extern "C" {
     
     
     
+    
+    /*!
+     *gcd_ui
+     *
+     * @returns the greatest common divisor of a and b
+     */
+    static size_t gcd_ui(size_t a, size_t b)
+    {
+        while (b != 0)
+        {
+            size_t t = b;
+            b = a % b;
+            a = t;
+        }
+        return a;
+    }
+    
+    
+    
+    
+    
+    /*!
+     *gcd_i
+     *
+     * @returns the greatest common divisor of a and b
+     */
+    static int gcd_i (int a, int b){
+        int c;
+        while ( a != 0 ) {
+            c = a; a = b%a; b = c;
+        }
+        return b;
+    }
+    
+    
+    
+    
+    
     /*
      * a^b
      *

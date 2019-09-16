@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <Accelerate/Accelerate.h>
 #include "BMFastHadamard.h"
+#include "BMIntegerMath.h"
 
 
 
@@ -63,6 +64,118 @@ void BMSimpleFDN_velvetNoiseDelayTimes(BMSimpleFDN* This){
 };
 
 
+/*!
+ *containsX
+ *
+ * @returns true if X is found in the first numElements of A
+ */
+bool containsX(size_t* A, size_t x, size_t numElements){
+    
+    // return true if x is equal to any of the first numElements
+    for(size_t i=0; i<numElements; i++)
+        if(A[i]==x)
+            return true;
+    
+    // return false if not found
+    return false;
+}
+
+
+
+
+
+
+/*!
+ *containsCommonFactor
+ *
+ * @returns true if X has a non-trivial common factor with any of the first numElements of A
+ */
+bool containsCommonFactor(size_t* A, size_t x, size_t numElements){
+    
+    // return true if x is equal to any of the first numElements
+    for(size_t i=0; i<numElements; i++)
+        if(gcd_ui(A[i],x) != 1)
+            return true;
+    
+    // return false if not found
+    return false;
+}
+
+
+
+
+void BMSimpleFDN_randomDelayTimes(BMSimpleFDN* This){
+    
+    // convert min and max delay from seconds to samples
+    size_t minDelay = This->minDelayS * This->sampleRate;
+    size_t maxDelay = This->maxDelayS * This->sampleRate;
+    
+    // find the range of delay times in samples
+    size_t delayRange = maxDelay - minDelay;
+    
+    // assert that there are enough integers between min and max to give each
+    // delay a unique length
+    assert(delayRange >= This->numDelays);
+    
+    // generate the first delay time randomly
+    This->delayLengths[0] = minDelay + (arc4random() % (delayRange + 1));
+    
+    // generate the remaining random delay lengths
+    for(size_t i=1; i<This->numDelays; i++){
+        bool generatedUniqueNewEntry = false;
+        while(!generatedUniqueNewEntry){
+            // generate a new random delay in the specified range
+            This->delayLengths[i] = minDelay + (arc4random() % (delayRange + 1));
+            // if the entry we just generated is unique, stop searching
+            if(!containsX(This->delayLengths,This->delayLengths[i],i-1))
+                generatedUniqueNewEntry = true;
+        }
+    }
+    
+    // randomly assign delay tap signs
+    BMSimpleFDN_randomSigns(This->outputTapSigns, This->numDelays);
+}
+
+
+
+
+
+
+void BMSimpleFDN_relativelyPrimeDelayTimes(BMSimpleFDN* This){
+    
+    // convert min and max delay from seconds to samples
+    size_t minDelay = This->minDelayS * This->sampleRate;
+    size_t maxDelay = This->maxDelayS * This->sampleRate;
+    
+    // find the range of delay times in samples
+    size_t delayRange = maxDelay - minDelay;
+    
+    // assert that there are enough integers between min and max to give each
+    // delay a unique length
+    assert(delayRange >= This->numDelays);
+    
+    // generate the first delay time randomly
+    This->delayLengths[0] = minDelay + (arc4random() % (delayRange + 1));
+    
+    // generate random delay lengths
+    for(size_t i=1; i<This->numDelays; i++){
+        bool generatedUniqueNewEntry = false;
+        while(!generatedUniqueNewEntry){
+            // generate a new random delay in the specified range
+            This->delayLengths[i] = minDelay + (arc4random() % (delayRange + 1));
+            // if the entry we just generated is relatively prime to all the
+            // previous ones, stop
+            if(!containsCommonFactor(This->delayLengths,This->delayLengths[i],i-1))
+                generatedUniqueNewEntry = true;
+        }
+    }
+    
+    // randomly assign delay tap signs
+    BMSimpleFDN_randomSigns(This->outputTapSigns, This->numDelays);
+}
+
+
+
 
 
 
@@ -96,6 +209,10 @@ void BMSimpleFDN_init(BMSimpleFDN* This,
     // compute delay times according to the specified method
     if(method == DTM_VELVETNOISE)
         BMSimpleFDN_velvetNoiseDelayTimes(This);
+    if(method == DTM_RANDOM)
+        BMSimpleFDN_randomDelayTimes(This);
+    if(method == DTM_RELATIVEPRIME)
+        BMSimpleFDN_relativelyPrimeDelayTimes(This);
     
     // count the total delay memory
     size_t totalDelay=0;

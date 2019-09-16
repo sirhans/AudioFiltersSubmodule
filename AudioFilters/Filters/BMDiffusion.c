@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "BMIntegerMath.h"
 
 #define dtFactor 2.85
 
@@ -18,13 +19,7 @@ float BMNestedAllPass2_processSample(BMNestedAllPass2* this,float x);
 float BMNestedAllPass3_processSample(BMNestedAllPass3* this,float x);
 void calculateDelayTime(int dt1,int* dt2,int* dt3);
 
-int gcd (int a, int b){
-    int c;
-    while ( a != 0 ) {
-        c = a; a = b%a; b = c;
-    }
-    return b;
-}
+
 
 void BMAllPassFilter_init(BMAllPassFilter* this,size_t delaySamples,float decayAmount){
     this->delayLine = malloc(sizeof(float)*(delaySamples+1));
@@ -250,11 +245,11 @@ void calculateDelayTime(int dt1,int* dt2,int* dt3){
     //Find dt2 so dt2 & dt1 are relatively prime
     while(true){
         //Check dt2 & dt1 relatively prime
-        if(gcd(assumeDT2+fluct, dt1)==1){
+        if(gcd_i(assumeDT2+fluct, dt1)==1){
             *dt2 = assumeDT2 + fluct;
             break;
         }
-        if(gcd(assumeDT2-fluct, dt1)==1){
+        if(gcd_i(assumeDT2-fluct, dt1)==1){
             *dt2 = assumeDT2 - fluct;
             break;
         }
@@ -264,11 +259,11 @@ void calculateDelayTime(int dt1,int* dt2,int* dt3){
     fluct = 0;
     while(true){
         //Check dt2 & dt3 relatively prime
-        if(gcd(assumeDT3+fluct, dt1)==1&&gcd(assumeDT3+fluct, *dt2)==1){
+        if(gcd_i(assumeDT3+fluct, dt1)==1&&gcd_i(assumeDT3+fluct, *dt2)==1){
             *dt3 = assumeDT3 + fluct;
             break;
         }
-        if(gcd(assumeDT3-fluct, dt1)==1&&gcd(assumeDT3-fluct, *dt2)==1){
+        if(gcd_i(assumeDT3-fluct, dt1)==1&&gcd_i(assumeDT3-fluct, *dt2)==1){
             *dt3 = assumeDT3 - fluct;
             break;
         }
