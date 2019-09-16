@@ -47,6 +47,9 @@ float BMSFM_process(BMSFM* This, float* input, size_t inputLength){
     
     size_t outputLength = inputLength / 2;
     
+    // square the result
+    vDSP_vsq(This->buffer, 1, This->buffer, 1, outputLength);
+    
     float geometricMean = BMGeometricMean(This->buffer, outputLength);
     
     float arithmeticMean;
