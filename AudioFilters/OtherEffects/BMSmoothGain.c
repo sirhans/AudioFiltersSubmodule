@@ -11,10 +11,10 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-    #include "BMSmoothGain.h"
-    #include <Accelerate/Accelerate.h>
-    #include "Constants.h"
+    
+#include "BMSmoothGain.h"
+#include <Accelerate/Accelerate.h>
+#include "Constants.h"
     
     // returns the ratio that would affect a gain change of dB if applied
     // geometrically over a period of numSamples
@@ -63,7 +63,7 @@ extern "C" {
             
             // process only until we reach the target, or reach the end of the
             // buffer, whichever comes first
-            size_t geometricFadeLength = MIN(samplesTillTarget, numSamples);
+            size_t geometricFadeLength = BM_MIN(samplesTillTarget, numSamples);
             
             // fade geometrically, stopping at the sample nearest the target
             size_t i=0;
@@ -146,7 +146,7 @@ extern "C" {
             
             // process only until we reach the target, or reach the end of the
             // buffer, whichever comes first
-            size_t geometricFadeLength = MIN(samplesTillTarget, numSamples);
+            size_t geometricFadeLength = BM_MIN(samplesTillTarget, numSamples);
             
             // fade geometrically, stopping at the sample nearest the target
             size_t i=0;
@@ -199,6 +199,8 @@ extern "C" {
     void BMSmoothGain_setGainDb(BMSmoothGain* This, float gainDb){
         // convert dB scale to linear scale gain
         float gain = BM_DB_TO_GAIN(gainDb);
+        
+        if(gainDb == FLT_MIN) gain = 0.0f;
         
         // if this is a legitimate gain change, set the new target and switch to
         // transition state
