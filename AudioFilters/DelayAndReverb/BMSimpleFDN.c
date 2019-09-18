@@ -27,41 +27,41 @@ inline float BMSimpleFDN_processSample(BMSimpleFDN* This, float input);
 
 void BMSimpleFDN_velvetNoiseDelayTimes(BMSimpleFDN* This){
     
-    // allocate an array to compute delay times in seconds as floating point numbers
-    float* delayLengthsFloat = malloc(sizeof(float) * This->numDelays);
+//    // allocate an array to compute delay times in seconds as floating point numbers
+//    float* delayLengthsFloat = malloc(sizeof(float) * This->numDelays);
     
     // find out what spacing the delays should have to put them in the range
     // between minDelay and maxDelay. The last should never exceed max delay and
     // the first can not be before min delay.
     float delayTimeRange = (This->maxDelayS - This->minDelayS);
     float delaySpacing = delayTimeRange / (float)(This->numDelays);
+    size_t minDelaySamples = This->minDelayS * This->sampleRate;
     
     // ensure that delay times can be assigned without duplication
-    assert(delaySpacing * This->sampleRate > This->numDelays);
-
-    for(size_t i=0; i<This->numDelays; i++){
-        // place the delays at even intervals between min and max
-        delayLengthsFloat[i] = (float)i * delaySpacing;
-        
-        // move each delay back by a random number between 0 and delaySpacing
-        float jitter = delaySpacing * (float)arc4random() / (float)UINT32_MAX;
-        delayLengthsFloat[i] += jitter;
-        
-        // convert from float to uint
-        This->delayLengths[i] = (size_t)(delayLengthsFloat[i] * This->sampleRate);
-    }
+    assert(delayTimeRange * This->sampleRate >= This->numDelays);
     
-    // ensure that no two delays have been rounded to the same number
-    for(size_t i=0; i<This->numDelays-1; i++)
-        if(This->delayLengths[i+1] == This->delayLengths[i])
-            This->delayLengths[i+1] += 1;
+    // assign evenly spaced delay times
+    for(size_t i=0; i<This->numDelays; i++)
+        This->delayLengths[i] = minDelaySamples + (size_t)(delaySpacing*This->sampleRate * (float)i);
+
+    // randomly jitter the delay times
+    for(size_t i=0; i<This->numDelays-1; i++){
+        // find the distance between the ith delay and its next neighbor
+        size_t range = This->delayLengths[i+1] - This->delayLengths[i];
+        
+        // generate a random number in range
+        size_t jitter = arc4random() % range;
+        
+        This->delayLengths[i] += jitter;
+    }
+    // randomly jitter the last delay time
+    size_t jitter = arc4random() % ((size_t)(This->maxDelayS*This->sampleRate) - This->delayLengths[This->numDelays]);
+    This->delayLengths[This->numDelays] += jitter;
     
     // randomly assign delay tap signs
     BMSimpleFDN_randomSigns(This->outputTapSigns, This->numDelays);
-    
-    // free temporary memory
-    free(delayLengthsFloat);
-};
+}
+
 
 
 /*!
