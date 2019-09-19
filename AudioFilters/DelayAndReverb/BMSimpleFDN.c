@@ -13,6 +13,7 @@
 #include "BMFastHadamard.h"
 #include "BMIntegerMath.h"
 
+#define UNIQUESUMS_ATTEMPTS_LIMIT 5000
 
 
 // forward declarations
@@ -26,9 +27,6 @@ inline float BMSimpleFDN_processSample(BMSimpleFDN* This, float input);
 
 
 void BMSimpleFDN_velvetNoiseDelayTimes(BMSimpleFDN* This){
-    
-//    // allocate an array to compute delay times in seconds as floating point numbers
-//    float* delayLengthsFloat = malloc(sizeof(float) * This->numDelays);
     
     // find out what spacing the delays should have to put them in the range
     // between minDelay and maxDelay. The last should never exceed max delay and
@@ -55,12 +53,61 @@ void BMSimpleFDN_velvetNoiseDelayTimes(BMSimpleFDN* This){
         This->delayLengths[i] += jitter;
     }
     // randomly jitter the last delay time
-    size_t jitter = arc4random() % ((size_t)(This->maxDelayS*This->sampleRate) - This->delayLengths[This->numDelays]);
-    This->delayLengths[This->numDelays] += jitter;
+    size_t maxDelayLength = This->maxDelayS * This->sampleRate;
+    size_t jitter = arc4random() % (maxDelayLength - This->delayLengths[This->numDelays-2]);
+    This->delayLengths[This->numDelays-1] += jitter;
     
     // randomly assign delay tap signs
     BMSimpleFDN_randomSigns(This->outputTapSigns, This->numDelays);
 }
+
+
+
+
+void BMSimpleFDN_logVelvetNoiseDelayTimes(BMSimpleFDN* This){
+    
+    // find out what spacing the delays should have to put them in the range
+    // between minDelay and maxDelay. The last should never exceed max delay and
+    // the first can not be before min delay.
+    float delayTimeRangeRatio = This->maxDelayS/This->minDelayS;
+    double delayCommonRatio = pow(delayTimeRangeRatio, 1.0/(double)This->numDelays);
+    
+    // ensure that delay times can be assigned without duplication
+    assert((This->maxDelayS - This->minDelayS) * This->sampleRate >= This->numDelays);
+    
+    // assign logarithmically spaced delay times
+    for(size_t i=0; i<This->numDelays; i++){
+        double delayTimeSeconds = This->minDelayS * pow(delayCommonRatio,(double)i);
+        This->delayLengths[i] = delayTimeSeconds * This->sampleRate;
+    }
+    
+    // ensure that no two delays have the same length
+    for(size_t i=0; i<This->numDelays; i++)
+        for(size_t j=0; j<i; j++)
+            if(This->delayLengths[j] == This->delayLengths[i])
+                This->delayLengths[i] = This->delayLengths[j] + 1;
+    
+    // randomly jitter the delay times
+    for(size_t i=0; i<This->numDelays-1; i++){
+        // find the distance between the ith delay and its next neighbor
+        size_t range = This->delayLengths[i+1] - This->delayLengths[i];
+        
+        // generate a random number in range
+        size_t jitter = arc4random() % range;
+        
+        This->delayLengths[i] += jitter;
+    }
+    // randomly jitter the last delay time
+    size_t maxDelayLength = This->maxDelayS * This->sampleRate;
+    size_t range = maxDelayLength - This->delayLengths[This->numDelays - 2];
+    size_t jitter = arc4random() % range;
+    This->delayLengths[This->numDelays - 1] += jitter;
+    
+    // randomly assign delay tap signs
+    BMSimpleFDN_randomSigns(This->outputTapSigns, This->numDelays);
+}
+
+
 
 
 
@@ -92,7 +139,7 @@ bool containsX(size_t* A, size_t x, size_t numElements){
  */
 bool containsCommonFactor(size_t* A, size_t x, size_t numElements){
     
-    // return true if x is equal to any of the first numElements
+    // return true if x shares a common factor with any of the first numElements
     for(size_t i=0; i<numElements; i++)
         if(gcd_ui(A[i],x) != 1)
             return true;
@@ -127,7 +174,7 @@ void BMSimpleFDN_randomDelayTimes(BMSimpleFDN* This){
             // generate a new random delay in the specified range
             This->delayLengths[i] = minDelay + (arc4random() % (delayRange + 1));
             // if the entry we just generated is unique, stop searching
-            if(!containsX(This->delayLengths,This->delayLengths[i],i-1))
+            if(!containsX(This->delayLengths,This->delayLengths[i],i))
                 generatedUniqueNewEntry = true;
         }
     }
@@ -136,6 +183,52 @@ void BMSimpleFDN_randomDelayTimes(BMSimpleFDN* This){
     BMSimpleFDN_randomSigns(This->outputTapSigns, This->numDelays);
 }
 
+
+
+
+
+size_t randomPrimeInRange(size_t min, size_t max){
+    size_t random = 6;
+    while(!isPrimeMr(random))
+        random = min + arc4random() % (max-min + 1);
+    return random;
+}
+
+
+
+
+
+void BMSimpleFDN_randomPrimesDelayTimes(BMSimpleFDN* This){
+    
+    // convert min and max delay from seconds to samples
+    size_t minDelay = This->minDelayS * This->sampleRate;
+    size_t maxDelay = This->maxDelayS * This->sampleRate;
+    
+    // find the range of delay times in samples
+    size_t delayRange = maxDelay - minDelay;
+    
+    // assert that there are enough integers between min and max to give each
+    // delay a unique length
+    assert(delayRange >= This->numDelays);
+    
+    // generate the first delay time randomly
+    This->delayLengths[0] = minDelay + (arc4random() % (delayRange + 1));
+    
+    // generate the remaining random delay lengths
+    for(size_t i=1; i<This->numDelays; i++){
+        bool generatedUniqueNewEntry = false;
+        while(!generatedUniqueNewEntry){
+            // generate a new random delay in the specified range
+            This->delayLengths[i] = randomPrimeInRange(minDelay,maxDelay);
+            // if the entry we just generated is unique, stop searching
+            if(!containsX(This->delayLengths,This->delayLengths[i],i))
+                generatedUniqueNewEntry = true;
+        }
+    }
+    
+    // randomly assign delay tap signs
+    BMSimpleFDN_randomSigns(This->outputTapSigns, This->numDelays);
+}
 
 
 
@@ -165,7 +258,7 @@ void BMSimpleFDN_relativelyPrimeDelayTimes(BMSimpleFDN* This){
             This->delayLengths[i] = minDelay + (arc4random() % (delayRange + 1));
             // if the entry we just generated is relatively prime to all the
             // previous ones, stop
-            if(!containsCommonFactor(This->delayLengths,This->delayLengths[i],i-1))
+            if(!containsCommonFactor(This->delayLengths,This->delayLengths[i],i))
                 generatedUniqueNewEntry = true;
         }
     }
@@ -174,6 +267,116 @@ void BMSimpleFDN_relativelyPrimeDelayTimes(BMSimpleFDN* This){
     BMSimpleFDN_randomSigns(This->outputTapSigns, This->numDelays);
 }
 
+
+
+
+
+
+/*!
+ *containsRedundantSum
+ *
+ * @returns true if x + A[i] = A[j] + A[k], for some i,j,k
+ */
+bool containsRedundantSum(size_t* A, size_t x, size_t numElements){
+    
+    // allocate memory to store the sum of x with all other elements
+    size_t *xSums = malloc(sizeof(size_t) * numElements);
+    
+    // compute the sum of x with all other elements
+    for(size_t i=0; i<numElements; i++)
+        xSums[i] = x + A[i];
+    
+    // compute the sum of all other elements with themselves
+    for(size_t i=0; i<numElements; i++)
+        for(size_t j=0; j<=i; j++)
+            if(containsX(xSums, A[i] + A[j], numElements)){
+                free(xSums);
+                return true;
+            }
+    
+    
+    // return false if not found
+    free(xSums);
+    return false;
+}
+
+
+
+
+/*!
+ *containsRedundantCFSum
+ *
+ * @returns true if gcd(x + A[i], A[j] + A[k]) > 1, for some i,j,k
+ */
+bool containsRedundantCFSum(size_t* A, size_t x, size_t numElements){
+    
+    // allocate memory to store the sum of x with all other elements
+    size_t *xSums = malloc(sizeof(size_t) * numElements);
+    
+    // compute the sum of x with all other elements
+    for(size_t i=0; i<numElements; i++)
+        xSums[i] = x + A[i];
+    
+    // check for common factors between xSums ans all other existing delayTimes
+    for(size_t i=0; i<numElements; i++)
+        for(size_t j=0; j<=i; j++)
+            if(containsCommonFactor(xSums, A[i] + A[j], numElements)){
+                free(xSums);
+                return true;
+            }
+    
+    
+    // return false if not found
+    free(xSums);
+    return false;
+}
+
+
+
+
+void BMSimpleFDN_uniqueSumsDelayTimes(BMSimpleFDN* This){
+    
+    // convert min and max delay from seconds to samples
+    size_t minDelay = This->minDelayS * This->sampleRate;
+    size_t maxDelay = This->maxDelayS * This->sampleRate;
+    
+    // find the range of delay times in samples
+    size_t delayRange = maxDelay - minDelay;
+    
+    // assert that there are enough integers between min and max to give each
+    // delay a unique length
+    assert(delayRange >= This->numDelays);
+    
+    // generate the first delay time randomly
+    This->delayLengths[0] = minDelay + (arc4random() % (delayRange + 1));
+    
+    // generate random delay lengths
+    bool done = false;
+    while(!done){
+        bool stuck = false;
+        size_t attempts = 0;
+        for(size_t i=1; i<This->numDelays && !stuck; i++){
+            bool generatedUniqueNewEntry = false;
+            while(!generatedUniqueNewEntry & !stuck){
+                // generate a new random delay in the specified range
+                This->delayLengths[i] = minDelay + (arc4random() % (delayRange + 1));
+                // if the entry we just generated is relatively prime to all the
+                // previous ones, stop
+                if(!containsRedundantSum(This->delayLengths,This->delayLengths[i],i))
+                    generatedUniqueNewEntry = true;
+                else
+                    attempts++;
+                if(attempts > UNIQUESUMS_ATTEMPTS_LIMIT)
+                    stuck = true;
+            }
+        }
+        if(!stuck)
+            done = true;
+    }
+    
+    // randomly assign delay tap signs
+    BMSimpleFDN_randomSigns(This->outputTapSigns, This->numDelays);
+}
 
 
 
@@ -213,6 +416,13 @@ void BMSimpleFDN_init(BMSimpleFDN* This,
         BMSimpleFDN_randomDelayTimes(This);
     if(method == DTM_RELATIVEPRIME)
         BMSimpleFDN_relativelyPrimeDelayTimes(This);
+    if(method == DTM_LOGVELVETNOISE)
+        BMSimpleFDN_logVelvetNoiseDelayTimes(This);
+    if(method == DTM_UNIQUESUMS)
+        BMSimpleFDN_uniqueSumsDelayTimes(This);
+    if(method == DTM_RANDOMPRIMES)
+        BMSimpleFDN_randomPrimesDelayTimes(This);
+
     
     // count the total delay memory
     size_t totalDelay=0;
