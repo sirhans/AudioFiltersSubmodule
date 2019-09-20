@@ -14,6 +14,7 @@
 
 #include <stdio.h>
 #include <math.h>
+#include "incbeta.h" // incomplete beta function implementation Copyright (c) 2016, 2017 Lewis Van Winkle
 
 
 static double BM_B(double alpha, double beta){
@@ -27,6 +28,18 @@ static double BM_betaPDF(double x, double alpha, double beta){
     double B = BM_B(alpha,beta);
     return pow(x,alpha - 1.0) * pow(1.0 - x, beta - 1.0) / B;
 }
+
+
+
+
+/*!
+ *BM_betaCDF
+ */
+static double BM_betaCDF(double x, double alpha, double beta){
+    // the beta CDF is given by the regularised incomplete beta function:
+    return incbeta(alpha, beta, x);
+}
+
 
 
 // https://en.wikipedia.org/wiki/Beta_distribution#Mean_absolute_deviation_around_the_mean
