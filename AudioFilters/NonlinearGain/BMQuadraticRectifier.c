@@ -34,11 +34,6 @@ void BMQuadraticRectifier_processBufferStereo(BMQuadraticRectifier* This,
                                               float* outputPosL, float* outputNegL,
                                               float* outputPosR, float* outputNegR,
                                               size_t numSamples){
-    
-//    BMQuadraticThreshold_lowerBuffer(&This->qtPos, inputL, outputPosL, numSamples);
-//    BMQuadraticThreshold_upperBuffer(&This->qtNeg, inputL, outputNegL, numSamples);
-//    BMQuadraticThreshold_lowerBuffer(&This->qtPos, inputR, outputPosR, numSamples);
-//    BMQuadraticThreshold_upperBuffer(&This->qtNeg, inputR, outputNegR, numSamples);
 
     for(size_t i=0; i<numSamples; i++){
         simd_float2 in = {inputL[i],inputR[i]};
