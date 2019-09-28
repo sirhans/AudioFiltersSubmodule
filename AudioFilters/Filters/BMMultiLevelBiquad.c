@@ -109,8 +109,8 @@ void BMMultiLevelBiquad_processBuffer4(BMMultiLevelBiquad* bqf,
     vDSP_biquadm(bqf->multiChannelFilterSetup, (const float* _Nonnull * _Nonnull)fourChannelInput, 1, fourChannelOutput, 1, numSamples);
     
     // apply a gain adjustment
-    BMSmoothGain_processBuffer(&bqf->gain, out1, out2, out1, out2, numSamples);
-    BMSmoothGain_processBuffer(&bqf->gain2, out3, out4, out3, out4, numSamples);
+    float *outputs [4] = {out1, out2, out3, out4};
+    BMSmoothGain_processBuffers(&bqf->gain, outputs, outputs, 4, numSamples);
 }
 
 
