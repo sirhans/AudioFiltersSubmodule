@@ -23,13 +23,16 @@ void BMShortSimpleDelay_process(BMShortSimpleDelay* This,
                                 size_t numSamples){
     assert(This->numChannels >= numChannels);
     
+    // does not work in place
+    assert(inputs[0] != outputs[0]);
+    
     if(numSamples < This->delayLength){
         printf("Warning: BMShortSimpleDelay is inefficient when the delay time is ");
         printf("longer than the audio buffer size. Consider using BMSimpleDelay ");
         printf("instead. Buffer size: %zu, Delay length: %zu.\n", numSamples, This->delayLength);
     }
     
-    for(size_t i=0; i<This->numChannels; i++){
+    for(size_t i=0; i<numChannels; i++){
         // when the audio buffer length is longer than the delay we can copy
         // part of the audio directly from input to output. The remaining part
         // waits in the buffer until the next call.
