@@ -40,10 +40,22 @@ extern "C" {
     
     
     
-    // process a stereo buffer of samples
+    /*!
+     *BMMultiLevelBiquad_processBufferStereo
+     */
     void BMMultiLevelBiquad_processBufferStereo(BMMultiLevelBiquad* bqf, const float* inL, const float* inR, float* outL, float* outR, size_t numSamples);
+
+    /*!
+     *BMMultiLevelBiquad_processBuffer4
+     */
+    void BMMultiLevelBiquad_processBuffer4(BMMultiLevelBiquad* bqf,
+                                           const float* in1, const float* in2, const float* in3, const float* in4,
+                                           float* out1, float* out2, float* out3, float* out4,
+                                           size_t numSamples);
     
-    // process a mono buffer of samples
+    /*!
+     *BMMultiLevelBiquad_processBufferMono
+     */
     void BMMultiLevelBiquad_processBufferMono(BMMultiLevelBiquad* bqf, const float* input, float* output, size_t numSamples);
     
     /*!
@@ -65,6 +77,23 @@ extern "C" {
                                  bool isStereo,
                                  bool monoRealTimeUpdate,
                                  bool smoothUpdate);
+
+
+    /*!
+     *BMMultiLevelBiquad_init
+     * @Abstract init must be called once before using the filter.  To change the number of levels in the fitler, call destroy first, then call this function with the new number of levels
+     *
+     * @param bqf           pointer to an initialized filter struct
+     * @param numLevels     the number of biquad filters in the cascade
+     * @param sampleRate    audio sample rate
+     * @param smoothUpdate  When BMMultilevelBiquad is init with smooth updates on, the update function will call setTargetsDouble to enable smooth update; and when it's off it will call setCoefficientsDouble.
+     *
+     */
+    void BMMultiLevelBiquad_init4(BMMultiLevelBiquad* bqf,
+                                  size_t numLevels,
+                                  float sampleRate,
+                                  bool smoothUpdate);
+
     
     // free up memory objects
     void BMMultiLevelBiquad_destroy(BMMultiLevelBiquad* bqf);

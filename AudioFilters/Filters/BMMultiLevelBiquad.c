@@ -89,8 +89,8 @@ void BMMultiLevelBiquad_processBuffer4(BMMultiLevelBiquad* bqf,
                                        const float* in1, const float* in2, const float* in3, const float* in4,
                                        float* out1, float* out2, float* out3, float* out4,
                                        size_t numSamples){
-    // this function is only for two channel filtering
-    assert(bqf->numChannels == 2);
+    // this function is only for four channel filtering
+    assert(bqf->numChannels == 4);
     
     // update filter coefficients if necessary
     if (bqf->needsUpdate) BMMultiLevelBiquad_updateNow(bqf);
@@ -238,15 +238,16 @@ void BMMultiLevelBiquad_init(BMMultiLevelBiquad* bqf,
 
 
 
-
+/*!
+ *BMMultiLevelBiquad_init4
+ */
 void BMMultiLevelBiquad_init4(BMMultiLevelBiquad* bqf,
                              size_t numLevels,
                              float sampleRate,
-                             bool monoRealTimeUpdate,
                              bool smoothUpdate){
     
     // init as stereo to make use of the code that is in the existing init function
-    BMMultiLevelBiquad_init(bqf, numLevels, sampleRate, true, monoRealTimeUpdate, smoothUpdate);
+    BMMultiLevelBiquad_init(bqf, numLevels, sampleRate, true, false, smoothUpdate);
     
     // change the number of channels to 4
     bqf->numChannels = 4;
