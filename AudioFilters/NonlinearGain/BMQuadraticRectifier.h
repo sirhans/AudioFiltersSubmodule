@@ -24,6 +24,7 @@
 
 typedef struct BMQuadraticRectifier {
     BMQuadraticThreshold qtPos, qtNeg;
+    
 } BMQuadraticRectifier;
 
 
@@ -48,5 +49,11 @@ void BMQuadraticRectifier_processBufferStereo(BMQuadraticRectifier* This,
                                               float* outputPosL, float* outputNegL,
                                               float* outputPosR, float* outputNegR,
                                               size_t numSamples);
+
+void BMQuadraticRectifier_processBufferStereoVDSP(BMQuadraticRectifier* This,
+const float* inputL, const float* inputR,
+float* outputPosL, float* outputNegL,
+float* outputPosR, float* outputNegR,
+                                                  size_t numSamples);
 
 #endif /* BMQuadraticRectifier_h */

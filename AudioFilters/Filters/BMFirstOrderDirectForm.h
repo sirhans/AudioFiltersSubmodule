@@ -20,13 +20,24 @@ typedef struct BMFirstOrderDirectForm {
 } BMFirstOrderDirectForm;
 
 /*!
- *BMFirstOrderDirectForm_process
+ *BMFirstOrderDirectForm_processM
  */
-void BMFirstOrderDirectForm_process(BMFirstOrderDirectForm* This,
+void BMFirstOrderDirectForm_processM(BMFirstOrderDirectForm* This,
                                            const float** input,
                                            float** output,
                                            size_t numChannels,
                                            size_t numSamples);
+
+
+/*!
+ *BMFirstOrderDirectForm_process1
+ */
+void BMFirstOrderDirectForm_process1(BMFirstOrderDirectForm* This,
+                                           const float* input,
+                                           float* output,
+                                           size_t numSamples);
+
+
 /*!
  *BMFirstOrderDirectForm_init
  *

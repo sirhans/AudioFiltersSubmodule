@@ -11,9 +11,9 @@
 
 
 /*!
- *BMFirstOrderDirectForm_process
+ *BMFirstOrderDirectForm_processM
  */
-void BMFirstOrderDirectForm_process(BMFirstOrderDirectForm* This,
+void BMFirstOrderDirectForm_processM(BMFirstOrderDirectForm* This,
                                     const float** input,
                                     float** output,
                                     size_t numChannels,
@@ -47,6 +47,20 @@ void BMFirstOrderDirectForm_process(BMFirstOrderDirectForm* This,
             output[3][i] = This->z1_f4.w;
         }
     }
+}
+
+
+
+void BMFirstOrderDirectForm_process1(BMFirstOrderDirectForm* This,
+                                    const float* input,
+                                    float* output,
+                                    size_t numSamples){
+    
+        for(size_t i=0; i<numSamples; i++){
+            output[i] = input[i] * This->b0_f + This->az_f * This->b1_f + This->z1_f * This->a1_f;
+            This->z1_f = output[i];
+            This->az_f = input[i];
+        }
 }
 
 
