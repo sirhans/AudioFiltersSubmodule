@@ -1,26 +1,47 @@
 //
-//  BMFirstOrderLowpassDirectForm.h
+//  BMFirstOrderDirectForm.h
 //  SaturatorAU
 //
 //  Created by hans anderson on 9/29/19.
-//  Copyright © 2019 bluemangoo. All rights reserved.
+//  Anyone may use this file without restrictions of any kind
 //
 
-#ifndef BMFirstOrderLowpassDirectForm_h
-#define BMFirstOrderLowpassDirectForm_h
+#ifndef BMFirstOrderDirectForm_h
+#define BMFirstOrderDirectForm_h
 
 #include <stdio.h>
 #include <simd/simd.h>
 
-typedef struct BMFirstOrderLowpassDirectForm {
-    float z1_f, b0_f, b1_f, a1_f;
-    simd_float2 z1_f2, b0_f2, b1_f2, a1_f2;
-    simd_float4 z1_f4, b0_f4, b1_f4, a1_f4;
+typedef struct BMFirstOrderDirectForm {
+    float z1_f, b0_f, b1_f, a1_f, az_f;
+    simd_float2 z1_f2, b0_f2, b1_f2, a1_f2, az_f2;
+    simd_float4 z1_f4, b0_f4, b1_f4, a1_f4, az_f4;
     float sampleRate;
-} BMFirstOrderLowpassDirectForm;
+} BMFirstOrderDirectForm;
+
+/*!
+ *BMFirstOrderDirectForm_process
+ */
+void BMFirstOrderDirectForm_process(BMFirstOrderDirectForm* This,
+                                           const float** input,
+                                           float** output,
+                                           size_t numChannels,
+                                           size_t numSamples);
+/*!
+ *BMFirstOrderDirectForm_init
+ *
+ * @abstract this only sets the delays to zero and sets the sample rate. after calling it you still need to set a filter type.
+ */
+void BMFirstOrderDirectForm_init(BMFirstOrderDirectForm* This, float sampleRate);
 
 
-void BMFirstOrderLowpassDirectForm_process(BMFirstOrderLowpassDirectForm* This,
-                                           )
+
+/*!
+ *BMFirstOrderDirectForm_setLowpass
+ */
+void BMFirstOrderDirectForm_setLowpass(BMFirstOrderDirectForm* This, float fc);
+
+
+
 
 #endif /* BMFirstOrderLowpassDirectForm_h */
