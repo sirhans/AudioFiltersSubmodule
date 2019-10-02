@@ -8,8 +8,8 @@
 
 #include "BMVocalRemover.h"
 
-#define BM_VOCAL_REMOVER_CROSSOVER_FC 150.0f
-#define BM_VOCAL_REMOVER_FOURTH_ORDER_CROSSOVER false
+#define BM_VOCAL_REMOVER_CROSSOVER_FC 300.0f
+#define BM_VOCAL_REMOVER_FOURTH_ORDER_CROSSOVER true
 
 /*!
  *BMVocalRemover_init
