@@ -126,7 +126,7 @@ extern "C" {
      * @param numSamples - number of samples to process. all arrays must have at least this length
      */
     void BMCrossover_processStereo(BMCrossover* This,
-                                   float* inL, float* inR,
+                                   const float* inL, const float* inR,
                                    float* lowpassL, float* lowpassR,
                                    float* highpassL, float* highpassR,
                                    size_t numSamples){
