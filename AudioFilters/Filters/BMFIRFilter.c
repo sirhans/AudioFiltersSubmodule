@@ -62,7 +62,7 @@ extern "C" {
          * iteration of the filter
          */
         // get the head pointer
-        int availableBytes;
+        uint32_t availableBytes;
         float* head = TPCircularBufferHead(&This->inputBuffer, &availableBytes);
         
         // confirm that the buffer has space as requested
@@ -90,7 +90,7 @@ extern "C" {
         while (numSamples > 0){
             
             // get the write pointer for the buffer
-            int bytesAvailable;
+            uint32_t bytesAvailable;
             float* head = TPCircularBufferHead(&This->inputBuffer, &bytesAvailable);
             
             // convert units from bytes to samples to get the size of the
@@ -145,11 +145,11 @@ extern "C" {
     void BMFIRFilter_free(BMFIRFilter* This){
         TPCircularBufferCleanup(&This->inputBuffer);
         
-        free(&This->coefficients);
+        free(This->coefficients);
         This->coefficients = NULL;
         
         if(This->symmetricFilterKernel){
-            free(&This->convolverTempBuffer);
+            free(This->convolverTempBuffer);
             This->convolverTempBuffer = NULL;
         }
     }
