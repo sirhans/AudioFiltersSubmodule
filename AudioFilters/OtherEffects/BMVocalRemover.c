@@ -33,9 +33,9 @@ void BMVocalRemover_free(BMVocalRemover *This){
 
 
 /*!
-*BMVocalRevmover_process
+*BMVocalRemover_process
 */
-void BMVocalRevmover_process(BMVocalRemover *This,
+void BMVocalRemover_process(BMVocalRemover *This,
                              const float *inL, const float *inR,
                              float *outL, float *outR,
                              size_t numSamples){
