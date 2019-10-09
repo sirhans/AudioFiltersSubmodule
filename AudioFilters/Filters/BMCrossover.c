@@ -16,8 +16,9 @@ extern "C" {
 #include "BMCrossover.h"
 #include <assert.h>
     
-    /*
-     * This function must be called prior to use
+    /*!
+     *BMCrossover_init
+     * @abstract This function must be called prior to use
      *
      * @param cutoff      - cutoff frequency in hz
      * @param sampleRate  - sample rate in hz
