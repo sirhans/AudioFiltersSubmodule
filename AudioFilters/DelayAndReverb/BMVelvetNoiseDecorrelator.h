@@ -2,8 +2,9 @@
 //  BMVelvetNoiseDecorrelator.h
 //  Saturator
 //
-//  Created by TienNM on 12/4/17.
-//  Copyright © 2017 TienNM. All rights reserved.
+//  Created by TienNM on 12/4/17
+//  Rewritten by Hans on 9 October 2019
+//  Anyone may use this file without restrictions
 //
 
 #ifndef BMVelvetNoiseDecorrelator_h
@@ -12,28 +13,57 @@
 #include <stdio.h>
 #include "BMMultiTapDelay.h"
 
+
 typedef struct BMVelvetNoiseDecorrelator {
-    int numChannels;
-    size_t* delayTimesL; // time between each impulse in velvet noise decorrelator
-    size_t* delayTimesR;
-    float* gainsL; //Gain is either 1 or -1
-    float* gainsR;
     BMMultiTapDelay multiTapDelay;
-    bool updateDLNT;
-    float msDelayTime;
-    int numImpulse;
     float sampleRate;
-    float decayTimeMS;
 } BMVelvetNoiseDecorrelator;
 
-void BMVelvetNoiseDecorrelator_init(BMVelvetNoiseDecorrelator* this,
-                                    bool isStereo,
-                                    float msDelayTime, float msMaxDelayTime,
-                                    int numImpulse, int maxNumTaps,
-                                    float sampleRate, float decayTime);
-void BMVelvetNoiseDecorrelator_free(BMVelvetNoiseDecorrelator* this);
-void BMVelvetNoiseDecorrelator_setDelayTimeNumTap(BMVelvetNoiseDecorrelator* this,float msDelayTime,int numImpulse,float sampleRate,float decayTimeMS);
-void BMVelvetNoiseDecorrelator_processBufferMono(BMVelvetNoiseDecorrelator* this,float* input,float* output,size_t length);
-void BMVelvetNoiseDecorrelator_processBufferStereo(BMVelvetNoiseDecorrelator* this,float* inputL,float* inputR,float* outputL,float* outputR,size_t length);
+
+
+
+/*!
+ *BMVelvetNoiseDecorrelator_init
+ */
+void BMVelvetNoiseDecorrelator_init(BMVelvetNoiseDecorrelator* This,
+                                    float maxDelaySeconds,
+                                    size_t maxTapsPerChannel,
+                                    float rt60DecayTimeSeconds,
+									float wetMix,
+                                    float sampleRate);
+
+
+
+
+/*!
+ *BMVelvetNoiseDecorrelator_free
+ */
+void BMVelvetNoiseDecorrelator_free(BMVelvetNoiseDecorrelator* This);
+
+
+
+
+
+/*!
+ *BMVelvetNoiseDecorrelator_update
+ */
+void BMVelvetNoiseDecorrelator_update(BMVelvetNoiseDecorrelator* This,
+									  float diffusionSeconds,
+									  size_t tapsPerChannel,
+									  float rt60DecayTimeSeconds,
+									  float wetMix);
+
+
+
+/*!
+ *BMVelvetNoiseDecorrelator_processBufferStereo
+ */
+void BMVelvetNoiseDecorrelator_processBufferStereo(BMVelvetNoiseDecorrelator* This,
+                                                   float* inputL,
+                                                   float* inputR,
+                                                   float* outputL,
+                                                   float* outputR,
+                                                   size_t length);
+
 
 #endif /* BMVelvetNoiseDecorrelator_h */

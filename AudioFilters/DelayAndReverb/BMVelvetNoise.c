@@ -14,12 +14,13 @@ extern "C" {
 
 #include "BMVelvetNoise.h"
 #include <stdlib.h>
-    /*
-     * Set tap indices using Velvet Noise method
+	
+    /*!
+	 *BMVelvetNoise_setTapIndices
      *
-     * (See: "Reverberation modeling using velvet noise" by M. Karjalainen
-     * and Hanna Järveläinen.
-     * https://www.researchgate.net/publication/283247924_Reverberation_modeling_using_velvet_noise
+	 * @abstract Set tap indices using Velvet Noise method
+     *
+     * @notes (See: "Reverberation modeling using velvet noise" by M. Karjalainen and Hanna Järveläinen. https://www.researchgate.net/publication/283247924_Reverberation_modeling_using_velvet_noise
      *
      * @param startTimeMS   the first tap time will start soon after this
      * @param endTimeMS     the last tap will end before this time
@@ -56,6 +57,21 @@ extern "C" {
         free(t);
     }
 
+	
+    /*!
+	 *BMVelvetNoise_setTapIndicesNA
+     *
+	 * @abstract Set tap indices using Velvet Noise method, with a temp array passed in to avoid memory allocation so that the function can be used in real time on the audio thread
+     *
+     * @notes (See: "Reverberation modeling using velvet noise" by M. Karjalainen and Hanna Järveläinen. https://www.researchgate.net/publication/283247924_Reverberation_modeling_using_velvet_noise
+     *
+     * @param startTimeMS   the first tap time will start soon after this
+     * @param endTimeMS     the last tap will end before this time
+     * @param indicesOut    array of indices for setting delay taps
+	 * @param tempStorage   a temp array of length numTaps
+     * @param sampleRate    sample rate of the audio system
+     * @param numTaps       length of indicesOut
+     */
     void BMVelvetNoise_setTapIndicesNA(float startTimeMS,
                                        float endTimeMS,
                                        size_t* indicesOut,
@@ -77,6 +93,9 @@ extern "C" {
         }
     }
     
+	
+	
+	
     /*
      * Swap the values at positions i and j in the array A
      */
@@ -102,9 +121,10 @@ extern "C" {
     
     
     
-    /*
-     * Set the values in tapSigns randomly to -1 and 1, with an equal
-     * number of + and - values.
+    /*!
+	 *BMVelvetNoise_setTapSigns
+	 *
+     * @abstract Set the values in tapSigns randomly to -1 and 1, with an equal number of + and - values.
      *
      * @param tapSigns   input array
      * @param numTaps    length of tapSigns
