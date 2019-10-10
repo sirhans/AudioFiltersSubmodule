@@ -64,7 +64,7 @@ extern "C" {
     /*
      * Free memory used by the filters
      */
-    void BMCrossover_destroy(BMCrossover* This){
+    void BMCrossover_free(BMCrossover* This){
         BMMultiLevelBiquad_destroy(&This->lp);
         BMMultiLevelBiquad_destroy(&This->hp);
     }
@@ -230,8 +230,21 @@ extern "C" {
         
         
         BMCrossover3way_setCutoff1(This, cutoff1);
-        BMCrossover3way_setCutoff2(This, cutoff1);
+        BMCrossover3way_setCutoff2(This, cutoff2);
     }
+    
+    
+    
+    /*!
+     *BMCrossover3way_free
+     */
+    void BMCrossover3way_free(BMCrossover3way* This){
+        BMMultiLevelBiquad_destroy(&This->low);
+        BMMultiLevelBiquad_destroy(&This->midAndHigh);
+        BMMultiLevelBiquad_destroy(&This->mid);
+        BMMultiLevelBiquad_destroy(&This->high);
+    }
+    
     
     
     
@@ -301,6 +314,84 @@ extern "C" {
     }
     
     
+    
+    /*!
+     *BMCrossover4way_init
+     * @abstract This function must be called prior to use
+     *
+     * @param cutoff1     - cutoff frequency between bands 1 and 2 in hz
+     * @param cutoff2     - cutoff frequency between bands 2 and 3 in hz
+     * @param cutoff3     - cutoff frequency between bands 2 and 3 in hz
+     * @param sampleRate  - sample rate in hz
+     * @param fourthOrder - true: 4th order, false: 2nd order
+     * @param stereo      - true: stereo, false: mono
+     */
+    void BMCrossover4way_init(BMCrossover4way* This,
+                              float cutoff1,
+                              float cutoff2,
+                              float cutoff3,
+                              float sampleRate,
+                              bool fourthOrder,
+                              bool stereo){
+        
+        This->fourthOrder = fourthOrder;
+        This->stereo      = stereo;
+        
+        
+        // we need one biquad section for 2nd order; two for 4th
+        size_t levelsPerFilter = fourthOrder ? 2:1;
+        
+        
+        // initialise the filters
+        BMMultiLevelBiquad_init(&This->band1,
+                                3*levelsPerFilter,
+                                sampleRate,
+                                stereo,
+                                false,false);
+        BMMultiLevelBiquad_init(&This->bands2to4,
+                                levelsPerFilter,
+                                sampleRate,
+                                stereo,
+                                false,false);
+        BMMultiLevelBiquad_init(&This->band2,
+                                2*levelsPerFilter,
+                                sampleRate,
+                                stereo,
+                                false,false);
+        BMMultiLevelBiquad_init(&This->bands3to4,
+                                levelsPerFilter,
+                                sampleRate,
+                                stereo,
+                                false,false);
+        BMMultiLevelBiquad_init(&This->band3,
+                                levelsPerFilter,
+                                sampleRate,
+                                stereo,
+                                false,false);
+        BMMultiLevelBiquad_init(&This->band4,
+                                levelsPerFilter,
+                                sampleRate,
+                                stereo,
+                                false,false);
+        
+        
+        BMCrossover4way_setCutoff1(This, cutoff1);
+        BMCrossover4way_setCutoff2(This, cutoff2);
+        BMCrossover4way_setCutoff3(This, cutoff3);
+    }
+    
+    
+    /*!
+     *BMCrossover4way_free
+     */
+    void BMCrossover4way_free(BMCrossover4way* This){
+        BMMultiLevelBiquad_destroy(&This->band1);
+        BMMultiLevelBiquad_destroy(&This->band2);
+        BMMultiLevelBiquad_destroy(&This->band3);
+        BMMultiLevelBiquad_destroy(&This->band4);
+        BMMultiLevelBiquad_destroy(&This->bands2to4);
+        BMMultiLevelBiquad_destroy(&This->bands3to4);
+    }
     
     
     void BMCrossover4way_setCutoff1(BMCrossover4way *This, float fc){

@@ -32,17 +32,21 @@ void BMMonoToStereo_init(BMMonoToStereo *This, float sampleRate){
 	
 	// initialise a pair of crossover filters that will isolate only the midrange
 	// frequencies for mono-to-stereo conversion
-	BMCrossover_init(&This->lowCrossover, BM_MTS_LOW_CROSSOVER_FC, sampleRate, false, true);
-	BMCrossover_init(&This->highCrossover, BM_MTS_HIGH_CROSSOVER_FC, sampleRate, false, true);
+    BMCrossover3way_init(&This->crossover,
+                         BM_MTS_LOW_CROSSOVER_FC,
+                         BM_MTS_HIGH_CROSSOVER_FC,
+                         sampleRate,
+                         false,
+                         true);
 	
 	// allocate memory for buffers
 	size_t numBuffers = 6;
-	This->b1L = malloc(sizeof(float) * BM_BUFFER_CHUNK_SIZE * numBuffers);
-	This->b1R = This->b1L + BM_BUFFER_CHUNK_SIZE;
-	This->b2L = This->b1R + BM_BUFFER_CHUNK_SIZE;
-	This->b2R = This->b2L + BM_BUFFER_CHUNK_SIZE;
-	This->b3L = This->b2R + BM_BUFFER_CHUNK_SIZE;
-	This->b3R = This->b3L + BM_BUFFER_CHUNK_SIZE;
+	This->lowL = malloc(sizeof(float) * BM_BUFFER_CHUNK_SIZE * numBuffers);
+	This->lowR = This->lowL + BM_BUFFER_CHUNK_SIZE;
+	This->midL = This->lowR + BM_BUFFER_CHUNK_SIZE;
+	This->midR = This->midL + BM_BUFFER_CHUNK_SIZE;
+	This->highL = This->midR + BM_BUFFER_CHUNK_SIZE;
+	This->highR = This->highL + BM_BUFFER_CHUNK_SIZE;
 }
 
 
@@ -60,37 +64,28 @@ void BMMonoToStereo_processBuffer(BMMonoToStereo *This,
 	while(numSamples > 0){
 		size_t samplesProcessing = BM_MIN(numSamples, BM_BUFFER_CHUNK_SIZE);
 	
-		// split the low frequencies off and save them for later
-		float *lowL = This->b1L;
-		float *lowR = This->b1R;
-		float *midL = This->b2L;
-		float *midR = This->b2R;
-		BMCrossover_processStereo(&This->lowCrossover,
-								  inputL, inputR,
-								  lowL, lowR, midL, midR,
-								  samplesProcessing);
+		// split low, mid, and high
+		BMCrossover3way_processStereo(&This->crossover,
+                                      inputL, inputR,
+                                      This->lowL, This->lowR,
+                                      This->midL, This->midR,
+                                      This->highL, This->highR,
+                                      samplesProcessing);
 		
-		// split the high frequencies off and save them for later
-		float *highL = This->b3L;
-		float *highR = This->b3R;
-		BMCrossover_processStereo(&This->highCrossover,
-								  midL, midR,
-								  midL, midR, highL, highR,
-								  samplesProcessing);
 		
 		// process the Velvet Noise Decorrelator on the mid frequencies
 		BMVelvetNoiseDecorrelator_processBufferStereo(&This->vnd,
-													  midL, midR,
-													  midL, midR,
+													  This->midL, This->midR,
+													  This->midL, This->midR,
 													  samplesProcessing);
 		
 		// combine the low and mid back together
-		vDSP_vadd(lowL, 1, midL, 1, midL, 1, samplesProcessing);
-		vDSP_vadd(lowR, 1, midR, 1, midR, 1, samplesProcessing);
+		vDSP_vadd(This->lowL, 1, This->midL, 1, This->midL, 1, samplesProcessing);
+		vDSP_vadd(This->lowR, 1, This->midR, 1, This->midR, 1, samplesProcessing);
 		
 		// combine the mid and high back together
-		vDSP_vadd(midL, 1, highL, 1, outputL, 1, samplesProcessing);
-		vDSP_vadd(midR, 1, highR, 1, outputR, 1, samplesProcessing);
+		vDSP_vadd(This->midL, 1, This->highL, 1, outputL, 1, samplesProcessing);
+		vDSP_vadd(This->midR, 1, This->highR, 1, outputR, 1, samplesProcessing);
 		
 		// advance pointers
 		numSamples -= samplesProcessing;
@@ -110,12 +105,11 @@ void BMMonoToStereo_processBuffer(BMMonoToStereo *This,
  */
 void BMMonoToStereo_free(BMMonoToStereo *This){
 	BMVelvetNoiseDecorrelator_free(&This->vnd);
-	BMCrossover_destroy(&This->lowCrossover);
-	BMCrossover_destroy(&This->highCrossover);
+	BMCrossover3way_free(&This->crossover);
 	
 	// free buffer memory
 	// we only call free once because all buffers were allocated with a single
 	// call to malloc
-	free(This->b1L);
-	This->b1L = NULL;
+	free(This->lowL);
+	This->lowL = NULL;
 }

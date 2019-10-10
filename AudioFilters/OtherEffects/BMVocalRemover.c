@@ -27,7 +27,7 @@ void BMVocalRemover_init(BMVocalRemover *This, float sampleRate){
  *BMVocalRemover_free
  */
 void BMVocalRemover_free(BMVocalRemover *This){
-    BMCrossover_destroy(&This->crossover);
+    BMCrossover_free(&This->crossover);
 }
 
 

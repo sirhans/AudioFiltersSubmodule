@@ -15,9 +15,9 @@
 
 
 typedef struct BMMonoToStereo {
-	BMCrossover lowCrossover, highCrossover;
+    BMCrossover3way crossover;
     BMVelvetNoiseDecorrelator vnd;
-	float *b1L, *b1R, *b2L, *b2R, *b3L, *b3R;
+	float *lowL, *lowR, *midL, *midR, *highL, *highR;
 } BMMonoToStereo;
 
 
