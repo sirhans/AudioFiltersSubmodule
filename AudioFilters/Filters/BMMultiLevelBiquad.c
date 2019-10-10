@@ -1030,9 +1030,9 @@ void BMMultiLevelBiquad_setLinkwitzRileyHP(BMMultiLevelBiquad* bqf, double fc, s
          *
          * Dn[gamma_] := gamma^2 + 2 gamma + 1
          *
-         * b0[gamma_] := 1 / Dn[gamma]
-         * b1[gamma_] := -2 / Dn[gamma]
-         * b2[gamma_] := 1 / Dn[gamma]
+         * b0[gamma_] := -1 / Dn[gamma]
+         * b1[gamma_] := 2 / Dn[gamma]
+         * b2[gamma_] := -1 / Dn[gamma]
          *
          * a1[gamma_] := 2 (gamma^2 - 1) / Dn[gamma]
          * a2[gamma_] := (gamma^2 - 2 gamma + 1) / Dn[gamma]
@@ -1046,9 +1046,9 @@ void BMMultiLevelBiquad_setLinkwitzRileyHP(BMMultiLevelBiquad* bqf, double fc, s
         double two_gamma = gamma * 2.0;
         double one_over_denominator = 1.0 / (gamma_sq + two_gamma + 1.0);
         
-        *b0 = 1.0 * one_over_denominator;
-        *b1 = -2.0 * one_over_denominator;
-        *b2 = *b0;
+        *b0 = -1.0 * one_over_denominator;
+        *b1 = 2.0 * one_over_denominator;
+        *b2 = -1.0 * one_over_denominator;
         
         *a1 = 2.0 * (gamma_sq - 1.0) * one_over_denominator;
         *a2 = (gamma_sq - two_gamma + 1.0) * one_over_denominator;
