@@ -26,12 +26,10 @@ extern "C" {
 #include <Accelerate/Accelerate.h>
 
     
-/*
- * Set tap indices using Velvet Noise method
+/*!
+ *BMVelvetNoise_setTapIndices
  *
- * (See: "Reverberation modeling using velvet noise" by M. Karjalainen
- * and Hanna Järveläinen.
- * https://www.researchgate.net/publication/283247924_Reverberation_modeling_using_velvet_noise
+ * @abstract Set tap indices using Velvet Noise method (See: "Reverberation modeling using velvet noise" by M. Karjalainen and Hanna Järveläinen. https://www.researchgate.net/publication/283247924_Reverberation_modeling_using_velvet_noise
  *
  * @param startTimeMS   the first tap time will start soon after this
  * @param endTimeMS     the last tap will end before this time
@@ -45,7 +43,9 @@ void BMVelvetNoise_setTapIndices(float startTimeMS,
                                  float sampleRate,
                                  size_t numTaps);
 
-//No allocate version
+/*!
+ *BMVelvetNoise_setTapIndicesNA
+ */
 void BMVelvetNoise_setTapIndicesNA(float startTimeMS,
                                    float endTimeMS,
                                    size_t* indicesOut,

@@ -16,8 +16,9 @@ extern "C" {
 #include "BMCrossover.h"
 #include <assert.h>
     
-    /*
-     * This function must be called prior to use
+    /*!
+     *BMCrossover_init
+     * @abstract This function must be called prior to use
      *
      * @param cutoff      - cutoff frequency in hz
      * @param sampleRate  - sample rate in hz
@@ -126,7 +127,7 @@ extern "C" {
      * @param numSamples - number of samples to process. all arrays must have at least this length
      */
     void BMCrossover_processStereo(BMCrossover* This,
-                                   float* inL, float* inR,
+                                   const float* inL, const float* inR,
                                    float* lowpassL, float* lowpassR,
                                    float* highpassL, float* highpassR,
                                    size_t numSamples){

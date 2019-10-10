@@ -23,7 +23,7 @@
 
 
 typedef struct BMQuadraticRectifier {
-    BMQuadraticThreshold qtPos, qtNeg;
+    BMQuadraticThreshold qtPos;
 } BMQuadraticRectifier;
 
 
@@ -33,20 +33,37 @@ typedef struct BMQuadraticRectifier {
 void BMQuadraticRectifier_init(BMQuadraticRectifier* This, float kneeWidth);
 
 
+
 /*!
  *BMQuadraticRectifier_processBuffer
  */
-void BMQuadraticRectifier_processBuffer(BMQuadraticRectifier* This,
+void BMQuadraticRectifier_processBufferVDSP(BMQuadraticRectifier* This,
                                         const float* input,
                                         float* outputPos, float* outputNeg,
                                         size_t numSamples);
+
+
 /*!
- *BMQuadraticRectifier_processBufferStereo
+ *BMQuadraticRectifier_processBufferStereoSIMD
+ *
+ * @notes This is faster on intel
  */
-void BMQuadraticRectifier_processBufferStereo(BMQuadraticRectifier* This,
-                                              const float* inputL, const float* inputR,
-                                              float* outputPosL, float* outputNegL,
-                                              float* outputPosR, float* outputNegR,
-                                              size_t numSamples);
+void BMQuadraticRectifier_processBufferStereoSIMD(BMQuadraticRectifier* This,
+                                                  const float* inputL, const float* inputR,
+                                                  float* outputPosL, float* outputNegL,
+                                                  float* outputPosR, float* outputNegR,
+                                                  size_t numSamples);
+
+
+/*!
+ *BMQuadraticRectifier_processBufferStereoVDSP
+ *
+ *  @notes this is faster on ARM
+ */
+void BMQuadraticRectifier_processBufferStereoVDSP(BMQuadraticRectifier* This,
+                                                  const float* inputL, const float* inputR,
+                                                  float* outputPosL, float* outputNegL,
+                                                  float* outputPosR, float* outputNegR,
+                                                  size_t numSamples);
 
 #endif /* BMQuadraticRectifier_h */

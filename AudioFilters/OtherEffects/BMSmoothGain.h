@@ -60,7 +60,23 @@ extern "C" {
                                         const float* input,
                                         float* output,
                                         size_t numSamples);
-    
+
+
+    /*!
+     * BMSmoothGain_processBuffers
+     *
+     * @param This        pointer to an initialized BMSmoothGain struct
+     * @param inputs      input buffers with size [numChannels,numSamples]
+     * @param outputs     output buffers with size [numChannels,numSamples]
+     * @param numChannels major dimension of inputs and outputs
+     * @param numSamples  minor diminsion of inputs and outputs
+     */
+    void BMSmoothGain_processBuffers(BMSmoothGain* This,
+                                     const float** inputs,
+                                     float** outputs,
+                                     size_t numChannels,
+                                     size_t numSamples);
+        
     
     /*!
      * BMSmoothGain_setGainDb

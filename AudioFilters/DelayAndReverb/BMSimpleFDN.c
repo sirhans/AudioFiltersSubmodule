@@ -13,6 +13,7 @@
 #include "BMFastHadamard.h"
 #include "BMIntegerMath.h"
 
+
 #define UNIQUESUMS_ATTEMPTS_LIMIT 5000
 
 
@@ -109,6 +110,178 @@ void BMSimpleFDN_logVelvetNoiseDelayTimes(BMSimpleFDN* This){
 
 
 
+/*!
+ *countPrimesInRange
+ */
+size_t countPrimesInRange(size_t min, size_t max){
+    size_t count = 0;
+    for(size_t i=min; i<=max; i++)
+        if(isPrimeMr(i))
+            count++;
+    
+    return count;
+}
+
+
+/*!
+ *getScaleForNPrimesInRange
+ *
+ * @return a value of scale for which there are there N primes in [min*scale,max*scale]
+ */
+float getScaleForNPrimesInRange(float min, float max, size_t N){
+    size_t numPrimesInRange = countPrimesInRange(min, max);
+    float scale = 1.0f;
+    float increment = powf(2.0,1.0/12.0); // an arbitraty number to use for increasing the scale geometrically
+    
+    while(numPrimesInRange < N){
+        scale *= increment; // increase the scale
+        numPrimesInRange = countPrimesInRange(min * scale, max * scale);
+    }
+    
+    return scale;
+}
+
+
+
+
+size_t nextPrime(size_t n){
+    n++;
+    while(!isPrimeMr(n))
+        n++;
+    return n;
+}
+
+
+
+
+
+void BMSimpleFDN_scaledPrimeDelayTimes(BMSimpleFDN* This){
+    
+    // what is the smallest scale for which [scale*This->minDelayS, scale*maxDelayS]
+    // contains This->numDelays primes
+    float scale = getScaleForNPrimesInRange(This->minDelayS, This->maxDelayS, This->numDelays);
+    
+    // set the first delay time, downscaled
+    float downscaledFirstDelay = scale * This->minDelayS;
+    
+    // what scale factor converts the downscaled version to the full size version?
+    float fullSizeFirstDelay = This->minDelayS * This->sampleRate;
+    float fullSizeScale = fullSizeFirstDelay/downscaledFirstDelay;
+    
+    // set the first delay
+    This->delayLengths[0] = (size_t)fullSizeFirstDelay;
+    
+    // assign delay times according to a scaled up array of consecutive primes
+    size_t previousDelayDownscaled = downscaledFirstDelay;
+    for(size_t i=1; i<This->numDelays; i++){
+        size_t currentDelayDownscaled = nextPrime(previousDelayDownscaled);
+        This->delayLengths[i] = (float)currentDelayDownscaled * fullSizeScale;
+        previousDelayDownscaled = currentDelayDownscaled;
+    }
+    
+    // randomly jitter the delay times
+    for(size_t i=0; i<This->numDelays-1; i++){
+        // find the distance between the ith delay and its next neighbor
+        size_t range = This->delayLengths[i+1] - This->delayLengths[i];
+
+        // generate a random number in range
+        size_t jitter = arc4random() % range;
+
+        This->delayLengths[i] += jitter;
+    }
+    // randomly jitter the last delay time
+    size_t maxDelayLength = This->maxDelayS * This->sampleRate;
+    size_t range = maxDelayLength - This->delayLengths[This->numDelays - 2];
+    size_t jitter = arc4random() % range;
+    This->delayLengths[This->numDelays - 1] += jitter;
+    
+    // randomly assign delay tap signs
+    BMSimpleFDN_randomSigns(This->outputTapSigns, This->numDelays);
+}
+
+
+
+
+void pseudoRandomInRange(size_t* delayTimes, float min, float max, size_t numDelays){
+    // randomly choose to skew left (-1) or right (1)
+    float skew = (arc4random() % 2 == 0) ? -1.0f : 1.0f;
+    // force the skew toward the positive side
+    //skew = 1.0;
+    
+    if(numDelays == 1){
+        delayTimes[0] = (size_t)round(min + (max - min) * (0.5f + skew*0.25f));
+        return;
+    }
+    if(numDelays == 2){
+        float pivot = min + (max-min) * (0.5f + skew*(1.0f / 6.0f));
+        pseudoRandomInRange(delayTimes, min, pivot, numDelays/2);
+        pseudoRandomInRange(delayTimes+(numDelays/2), pivot, max, numDelays/2);
+        return;
+    }
+    if(numDelays == 4){
+        float pivot = min + (max-min) * (0.5f + skew*(3.0f / 20.0f));
+        pseudoRandomInRange(delayTimes, min, pivot, numDelays/2);
+        pseudoRandomInRange(delayTimes+(numDelays/2), pivot, max, numDelays/2);
+        return;
+    }
+    if(numDelays == 8){
+        float pivot = min + (max-min) * (0.5f + skew*(0.121567f));
+        pseudoRandomInRange(delayTimes, min, pivot, numDelays/2);
+        pseudoRandomInRange(delayTimes+(numDelays/2), pivot, max, numDelays/2);
+        return;
+    }
+    if(numDelays == 16){
+        float pivot = min + (max-min) * (0.5f + skew*(0.0923872f));
+        pseudoRandomInRange(delayTimes, min, pivot, numDelays/2);
+        pseudoRandomInRange(delayTimes+(numDelays/2), pivot, max, numDelays/2);
+        return;
+    }
+    if(numDelays == 32){
+        float pivot = min + (max-min) * (0.5f + skew*(0.0678465f));
+        pseudoRandomInRange(delayTimes, min, pivot, numDelays/2);
+        pseudoRandomInRange(delayTimes+(numDelays/2), pivot, max, numDelays/2);
+        return;
+    }
+    if(numDelays == 64){
+        float pivot = min + (max-min) * (0.5f + skew*(0.0488923f));
+        pseudoRandomInRange(delayTimes, min, pivot, numDelays/2);
+        pseudoRandomInRange(delayTimes+(numDelays/2), pivot, max, numDelays/2);
+        return;
+    }
+    assert(numDelays <= 64);
+}
+
+
+
+
+
+void BMSimpleFDN_pseudoRandomDelayTimes(BMSimpleFDN* This){
+    pseudoRandomInRange(This->delayLengths,
+                        This->minDelayS*This->sampleRate,
+                        This->maxDelayS*This->sampleRate,
+                        This->numDelays);
+    
+    // jitter the delay times like velvet noise
+    for(size_t i=0; i<This->numDelays-1; i++){
+        // find the distance between the ith delay and its next neighbor
+        size_t range = This->delayLengths[i+1] - This->delayLengths[i];
+
+        // generate a random number in range
+        size_t jitter = arc4random() % range;
+
+        This->delayLengths[i] += jitter;
+    }
+    // randomly jitter the last delay time
+    size_t maxDelayLength = This->maxDelayS * This->sampleRate;
+    size_t jitter = arc4random() % (maxDelayLength - This->delayLengths[This->numDelays-2]);
+    This->delayLengths[This->numDelays-1] += jitter;
+    
+    // randomly assign delay tap signs
+    BMSimpleFDN_randomSigns(This->outputTapSigns, This->numDelays);
+}
+
+
+
 
 
 /*!
@@ -176,6 +349,53 @@ void BMSimpleFDN_randomDelayTimes(BMSimpleFDN* This){
             // if the entry we just generated is unique, stop searching
             if(!containsX(This->delayLengths,This->delayLengths[i],i))
                 generatedUniqueNewEntry = true;
+        }
+    }
+    
+    // randomly assign delay tap signs
+    BMSimpleFDN_randomSigns(This->outputTapSigns, This->numDelays);
+}
+
+
+
+
+
+void BMSimpleFDN_randomDelayTimesFixedTotal(BMSimpleFDN* This){
+    
+    // convert min and max delay from seconds to samples
+    size_t minDelay = This->minDelayS * This->sampleRate;
+    size_t maxDelay = This->maxDelayS * This->sampleRate;
+    
+    // find the range of delay times in samples
+    size_t delayRange = maxDelay - minDelay;
+    
+    // assert that there are enough integers between min and max to give each
+    // delay a unique length
+    assert(delayRange >= This->numDelays);
+    
+    // set the total randomisation, which is the total amount by which the whole
+    // set of delays can exceed minDelay
+    float averageRandomisation = (maxDelay - minDelay)/2.0f;
+    float totalRandomisation = This->numDelays * averageRandomisation;
+    
+    // set the first delay time
+    size_t randomisation = (arc4random() % (delayRange + 1));
+    This->delayLengths[0] = minDelay + randomisation;
+    totalRandomisation -= randomisation;
+    
+    // generate the remaining random delay lengths
+    for(size_t i=1; i<This->numDelays; i++){
+        bool generatedUniqueNewEntry = false;
+        while(!generatedUniqueNewEntry){
+            // generate a new random delay in the specified range
+            size_t randomisationRange = totalRandomisation / (This->numDelays - i);
+            size_t randomisation = (arc4random() % (randomisationRange + 1));
+            This->delayLengths[i] = minDelay + randomisation;
+            // if the entry we just generated is unique, stop searching
+            if(!containsX(This->delayLengths,This->delayLengths[i],i)){
+                generatedUniqueNewEntry = true;
+                totalRandomisation -= randomisation;
+            }
         }
     }
     
@@ -422,6 +642,12 @@ void BMSimpleFDN_init(BMSimpleFDN* This,
         BMSimpleFDN_uniqueSumsDelayTimes(This);
     if(method == DTM_RANDOMPRIMES)
         BMSimpleFDN_randomPrimesDelayTimes(This);
+    if(method == DTM_SCALEDPRIMES)
+        BMSimpleFDN_scaledPrimeDelayTimes(This);
+    if(method == DTM_PSEUDORANDOM)
+        BMSimpleFDN_pseudoRandomDelayTimes(This);
+    if(method == DTM_RANDOMFIXEDTOTAL)
+        BMSimpleFDN_randomDelayTimesFixedTotal(This);
 
     
     // count the total delay memory

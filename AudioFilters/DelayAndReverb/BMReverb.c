@@ -251,20 +251,7 @@ extern "C" {
     
     
     
-    
-    // computes the appropriate feedback gain attenuation
-    // to get an exponential decay envelope with the specified RT60 time
-    // (in seconds) from a delay line of the specified length.
-    //
-    // This formula comes from solving EQ 11.33 in DESIGNING AUDIO EFFECT PLUG-INS IN C++ by Will Pirkle
-    // which is attributed to Jot, originally.
-    double BMReverbDelayGainFromRT60(double rt60, double delayTime){
-        return pow(10.0, (-3.0 * delayTime) / rt60 );
-    }
-    
-    double BMReverbDelayGainFromRT30(double rt30, double delayTime){
-        return pow(10.0, (-2.0 * delayTime) / rt30 );
-    }
+
     
     
     // sets the cutoff frequency of the high shelf filters that increase
