@@ -1060,6 +1060,31 @@ void BMMultiLevelBiquad_setLinkwitzRileyHP(BMMultiLevelBiquad* bqf, double fc, s
 
 
 
+
+void BMMultiLevelBiquad_setLinkwitzRileyLP4thOrder(BMMultiLevelBiquad* bqf, double fc, size_t firstLevel){
+    
+    // a cascade of two butterworth filters makes a linkwitz-riley filter.
+    // the highpass and lowpass pair sums to unity gain without the need to
+    // invert the sign of one pair
+    BMMultiLevelBiquad_setLowPass12db(bqf, fc, firstLevel);
+    BMMultiLevelBiquad_setLowPass12db(bqf, fc, firstLevel+1);
+}
+
+
+
+
+void BMMultiLevelBiquad_setLinkwitzRileyHP4thOrder(BMMultiLevelBiquad* bqf, double fc, size_t firstLevel){
+    
+    // a cascade of two butterworth filters makes a linkwitz-riley filter.
+    // the highpass and lowpass pair sums to unity gain without the need to
+    // invert the sign of one pair
+    BMMultiLevelBiquad_setHighPass12db(bqf, fc, firstLevel);
+    BMMultiLevelBiquad_setHighPass12db(bqf, fc, firstLevel+1);
+}
+
+
+
+
 void BMMultiLevelBiquad_setLowPass6db(BMMultiLevelBiquad* bqf, double fc, size_t level){
     assert(level < bqf->numLevels);
     
