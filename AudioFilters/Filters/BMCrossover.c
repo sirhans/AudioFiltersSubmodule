@@ -495,7 +495,67 @@ extern "C" {
                                                band3L, band3L,
                                                numSamples);
     }
+	
+	
+	
+	
+	
+
+	/*!
+	 *BMCrossover3way_recombine
+	 */
+	void BMCrossover3way_recombine(const float* bassL, const float* bassR,
+								   const float* midL, const float* midR,
+								   const float* trebleL, const float* trebleR,
+								   float* outL, float* outR,
+								   size_t numSamples){
+		vDSP_vadd(bassL, 1, midL, 1, outL, 1, numSamples);
+		vDSP_vadd(bassR, 1, midR, 1, outR, 1, numSamples);
+		vDSP_vadd(trebleL,1,outL,1,outL,1,numSamples);
+		vDSP_vadd(trebleR,1,outR,1,outR,1,numSamples);
+	}
+	
+	
+	
+	
+
+	/*!
+	 *BMCrossover4way_recombine
+	 */
+	void BMCrossover4way_recombine(const float* band1L, const float* band1R,
+								   const float* band2L, const float* band2R,
+								   const float* band3L, const float* band3R,
+								   const float* band4L, const float* band4R,
+								   float* outL, 		float* outR,
+								   size_t numSamples){
+		
+		vDSP_vadd(band1L,1,band2L,1,outL,1,numSamples);
+		vDSP_vadd(band3L,1,outL,1,outL,1,numSamples);
+		vDSP_vadd(band4L,1,outL,1,outL,1,numSamples);
+
+	}
+
+
+	
+	/*!
+	 *BMCrossover_impulseResponse
+	 */
+	void BMCrossover_impulseResponse(BMCrossover *This, float* IRL, float* IRR, size_t numSamples);
+
+	/*!
+	 *BMCrossover3way_impulseResponse
+	 */
+	void BMCrossover3way_impulseResponse(BMCrossover3way *This, float* IRL, float* IRR, size_t numSamples);
+
+	/*!
+	 *BMCrossover4way_impulseResponse
+	 */
+	void BMCrossover4way_impulseResponse(BMCrossover4way *This, float* IRL, float* IRR, size_t numSamples);
+
+	
     
+	
+	
 #ifdef __cplusplus
 }
 #endif
