@@ -20,7 +20,6 @@ extern "C" {
 typedef struct BMRoundRobinSetting {
     size_t* indices;
     float* gain;
-    float* tempStorage;
     
     size_t numberOfChannel;
     size_t numberTaps;

@@ -56,7 +56,6 @@ extern "C" {
         // allocate memory for indices, gains and temp specification
         setting->indices = malloc(sizeof(size_t*) * setting->numberOfChannel);
         setting->gain = malloc(sizeof(float*) * setting->numberOfChannel);
-        setting->tempStorage = malloc(sizeof(float) * setting->numberTaps);
         
         This->gain = malloc(sizeof(float*) * setting->numberOfChannel);
         
@@ -95,8 +94,8 @@ extern "C" {
             
             // use velvet noise to set output tap times
             //we + 1 because we want to start from index 1, NOT 0
-            BMVelvetNoise_setTapIndicesNA(setting->startTimeMS, setting->endTimeMS,
-                                          setting->indices[i] + 1, setting->tempStorage,
+            BMVelvetNoise_setTapIndices(setting->startTimeMS, setting->endTimeMS,
+                                          setting->indices[i] + 1,
                                           setting->sampleRate, setting->numberTaps);
             setting->indices[i][0] = 0;
             
@@ -118,8 +117,6 @@ extern "C" {
         BMMultiTapDelay_free(&This->delay);
         
         BMEarlyReflectionsSetting* setting = &This->setting;
-        free(setting->tempStorage);
-        setting->tempStorage = NULL;
         
         for (int i=0; i<setting->numberOfChannel ; i++) {
             free(setting->indices[i]);

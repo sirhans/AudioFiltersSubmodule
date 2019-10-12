@@ -20,8 +20,6 @@ typedef struct{
     size_t** delayTimes;
     size_t** indices;
     float** gains;
-    
-    size_t bufferChunkSize;
     bool isStereo;
 } BMMultiTapDelaySetting;
 

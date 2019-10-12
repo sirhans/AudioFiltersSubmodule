@@ -26,7 +26,6 @@ void BMMultiTapDelay_Init(BMMultiTapDelay* This,
     
     BMMultiTapDelaySetting* setting = &This->setting;
     setting->isStereo = isStereo;
-    setting->bufferChunkSize = BM_BUFFER_CHUNK_SIZE;
     
     This->_needUpdateGain = This->_needUpdateIndices = false;
     This->numberChannel = (isStereo? 2:1);
@@ -55,7 +54,7 @@ void BMMultiTapDelay_Init(BMMultiTapDelay* This,
         setting->gains[i] = malloc(sizeof(float) * maxTaps);
         This->tempIndices[i] = malloc(sizeof(size_t) * maxTaps);
         This->tempGains[i] = malloc(sizeof(float) * maxTaps);
-        This->tempBuffer[i] = malloc(sizeof(float) * setting->bufferChunkSize);
+        This->tempBuffer[i] = malloc(sizeof(float) * BM_BUFFER_CHUNK_SIZE);
     }
     
     BMMultiTapDelay_setDelayTimes(This, delayTimesL, delayTimesR);
@@ -98,7 +97,7 @@ void BMMultiTapDelay_initBuffer(BMMultiTapDelay* delay){
     BMMultiTapDelaySetting* setting = &delay->setting;
     
     //init the rest
-    size_t numberFrames = (delay->maxDelayTime + 1) + setting->bufferChunkSize;
+    size_t numberFrames = (delay->maxDelayTime + 1) + BM_BUFFER_CHUNK_SIZE;
     size_t numberBytes = numberFrames * sizeof(float);
     delay->zeroArray = malloc(numberBytes);
     memset(delay->zeroArray, 0, numberBytes);
@@ -108,7 +107,7 @@ void BMMultiTapDelay_initBuffer(BMMultiTapDelay* delay){
     for(size_t i=0; i<delay->numberChannel; i++){
         TPCircularBufferInit(&delay->buffer[i], (int32_t)numberBytes);
         TPCircularBufferProduceBytes(&delay->buffer[i], delay->zeroArray, (int32_t)numberBytes);
-        TPCircularBufferConsume(&delay->buffer[i], (int32_t)(setting->bufferChunkSize+1) * sizeof(float));
+        TPCircularBufferConsume(&delay->buffer[i], (int32_t)(BM_BUFFER_CHUNK_SIZE+1) * sizeof(float));
     }
 }
 
@@ -147,7 +146,7 @@ void BMMultiTapDelay_ProcessBufferMono(BMMultiTapDelay* delay,
     size_t framesProcessed = 0;
     while(framesProcessed < frames){
         size_t framesProcessing = frames - framesProcessed;
-        framesProcessing = (framesProcessing < setting->bufferChunkSize)? framesProcessing:setting->bufferChunkSize;
+        framesProcessing = (framesProcessing < BM_BUFFER_CHUNK_SIZE)? framesProcessing:BM_BUFFER_CHUNK_SIZE;
         
         frameThisTime = framesProcessing;
         
@@ -158,7 +157,7 @@ void BMMultiTapDelay_ProcessBufferMono(BMMultiTapDelay* delay,
         bytesThisTime = (int32_t)frameThisTime * sizeof(float);
 
         //set 0 to the tempbuffer
-        memset(delay->tempBuffer[0], 0, setting->bufferChunkSize * sizeof(float));
+        memset(delay->tempBuffer[0], 0, BM_BUFFER_CHUNK_SIZE * sizeof(float));
         TPCircularBufferProduceBytes(&delay->buffer[0], delay->input[0]+framesProcessed, bytesThisTime);
         
         //from each read point, we read FrameThisTime frames to process
@@ -192,10 +191,7 @@ void BMMultiTapDelay_ProcessBufferStereo(BMMultiTapDelay* delay,
         BMMultiTapDelay_PerformUpdateIndices(delay);
     if(delay->_needUpdateGain)
         BMMultiTapDelay_PerformUpdateGains(delay);
-    
-    // this function is stereo in, stereo out; fail if the delay was
-    // not initialised for that configuration
-    //assert(delay->numberChannel == 2);
+	
     
     BMMultiTapDelaySetting* setting = &delay->setting;
     //this will bridge my code with Sir Hans's style ^_^
@@ -209,7 +205,7 @@ void BMMultiTapDelay_ProcessBufferStereo(BMMultiTapDelay* delay,
     size_t framesProcessed = 0;
     while(framesProcessed < frames){
         size_t framesProcessing = frames - framesProcessed;
-        framesProcessing = (framesProcessing < setting->bufferChunkSize)? framesProcessing:setting->bufferChunkSize;
+        framesProcessing = (framesProcessing < BM_BUFFER_CHUNK_SIZE)? framesProcessing:BM_BUFFER_CHUNK_SIZE;
         
         frameThisTime = framesProcessing;
         
@@ -221,7 +217,7 @@ void BMMultiTapDelay_ProcessBufferStereo(BMMultiTapDelay* delay,
         
         for(size_t i=0; i<delay->numberChannel; i++){
             //set 0 to the tempbuffer
-            memset(delay->tempBuffer[i], 0, setting->bufferChunkSize * sizeof(float));
+            memset(delay->tempBuffer[i], 0, BM_BUFFER_CHUNK_SIZE * sizeof(float));
             TPCircularBufferProduceBytes(&delay->buffer[i], delay->input[i]+framesProcessed, bytesThisTime);
             
             //from each read point, we read FrameThisTime frames to process

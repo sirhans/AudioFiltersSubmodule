@@ -43,15 +43,7 @@ void BMVelvetNoise_setTapIndices(float startTimeMS,
                                  float sampleRate,
                                  size_t numTaps);
 
-/*!
- *BMVelvetNoise_setTapIndicesNA
- */
-void BMVelvetNoise_setTapIndicesNA(float startTimeMS,
-                                   float endTimeMS,
-                                   size_t* indicesOut,
-                                   float* tempStorage,
-                                   float sampleRate,
-                                   size_t numTaps);
+
     
     /*
      * Set the values in tapSigns randomly to -1 and 1, with an equal
