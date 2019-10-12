@@ -8,12 +8,20 @@
 
 #include "BMMonoToStereo.h"
 
-#define BM_MTS_RT60 0.5f
-#define BM_MTS_DIFFUSION_WIDTH 0.025f
+#define BM_MTS_RT60 0.4f
 #define BM_MTS_LOW_CROSSOVER_FC 350.0f
-#define BM_MTS_HIGH_CROSSOVER_FC 1600.0f
-#define BM_MTS_TAPS_PER_CHANNEL 20
-#define BM_MTS_WET_MIX 0.9f
+#define BM_MTS_HIGH_CROSSOVER_FC 1500.0f
+#define BM_MTS_TAPS_PER_CHANNEL 10
+#define BM_MTS_WET_MIX 0.33f
+
+// the decorrelator will be able to influence the spectrum in frequency bands
+// whose width are integer multiples of the base frequency. The base frequency
+// should be set low enough so that the first few bands above
+// BM_MTS_DECORRELATOR_BASE_FREQUENCY are not so wide that they distort the
+// perceived EQ balance of the left and right channel. Setting the base frequency
+// too low smears transients in the time domain.
+#define BM_MTS_DECORRELATOR_BASE_FREQUENCY 20.0f
+#define BM_MTS_DIFFUSION_TIME 1.0f / BM_MTS_DECORRELATOR_BASE_FREQUENCY
 
 
 
@@ -24,7 +32,7 @@ void BMMonoToStereo_init(BMMonoToStereo *This, float sampleRate){
 	
 	// initialise the velvet noise decorrelator that does the main work
 	BMVelvetNoiseDecorrelator_init(&This->vnd,
-								   BM_MTS_DIFFUSION_WIDTH,
+								   BM_MTS_DIFFUSION_TIME,
 								   BM_MTS_TAPS_PER_CHANNEL,
 								   BM_MTS_RT60,
 								   BM_MTS_WET_MIX,
