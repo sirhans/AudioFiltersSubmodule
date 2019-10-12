@@ -8,7 +8,7 @@
 
 #include "BMMonoToStereo.h"
 
-#define BM_MTS_RT60 0.4f
+#define BM_MTS_RT60 0.3f
 #define BM_MTS_LOW_CROSSOVER_FC 350.0f
 #define BM_MTS_HIGH_CROSSOVER_FC 1500.0f
 #define BM_MTS_TAPS_PER_CHANNEL 10
