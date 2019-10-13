@@ -138,6 +138,8 @@ void BMCrossover_processMono(BMCrossover* This,
                              float* highpass,
                              size_t numSamples);
 
+
+
 /*!
  *BMCrossover3way_init
  * @abstract This function must be called prior to use
@@ -154,10 +156,13 @@ void BMCrossover3way_init(BMCrossover3way* This,
                           float sampleRate,
                           bool fourthOrder,
                           bool stereo);
+
+
 /*!
  *BMCrossover3way_free
  */
 void BMCrossover3way_free(BMCrossover3way* This);
+
 
 
 /*!
@@ -166,10 +171,12 @@ void BMCrossover3way_free(BMCrossover3way* This);
 void BMCrossover3way_setCutoff1(BMCrossover3way *This, float fc);
 
 
+
 /*!
  *BMCrossover3way_setCutoff2
  */
 void BMCrossover3way_setCutoff2(BMCrossover3way *This, float fc);
+
 
 
 /*!
@@ -202,10 +209,13 @@ void BMCrossover4way_init(BMCrossover4way* This,
                           bool fourthOrder,
                           bool stereo);
 
+
+
 /*!
  *BMCrossover4way_free
  */
 void BMCrossover4way_free(BMCrossover4way* This);
+
 
 
 /*!
@@ -219,20 +229,28 @@ void BMCrossover4way_processStereo(BMCrossover4way *This,
                                    float* band4L, float* band4R,
                                    size_t numSamples);
 
+
+
 /*!
  *BMCrossover4way_setCutoff1
  */
 void BMCrossover4way_setCutoff1(BMCrossover4way *This, float fc);
+
+
 
 /*!
  *BMCrossover4way_setCutoff2
  */
 void BMCrossover4way_setCutoff2(BMCrossover4way *This, float fc);
 
+
+
 /*!
  *BMCrossover4way_setCutoff3
  */
 void BMCrossover4way_setCutoff3(BMCrossover4way *This, float fc);
+
+
 
 
 /*!
@@ -243,6 +261,8 @@ void BMCrossover3way_recombine(const float* bassL, const float* bassR,
 							   const float* trebleL, const float* trebleR,
 							   float* outL, float* outR,
 							   size_t numSamples);
+
+
 
 /*!
  *BMCrossover4way_recombine
@@ -255,20 +275,31 @@ void BMCrossover4way_recombine(const float* band1L, const float* band1R,
 							   size_t numSamples);
 
 
+
+
 /*!
  *BMCrossover_impulseResponse
  */
 void BMCrossover_impulseResponse(BMCrossover *This, float* IRL, float* IRR, size_t numSamples);
+
+
+
 
 /*!
  *BMCrossover3way_impulseResponse
  */
 void BMCrossover3way_impulseResponse(BMCrossover3way *This, float* IRL, float* IRR, size_t numSamples);
 
+
+
+
 /*!
  *BMCrossover4way_impulseResponse
  */
 void BMCrossover4way_impulseResponse(BMCrossover4way *This, float* IRL, float* IRR, size_t numSamples);
+
+
+
 
 #endif /* BMCrossover_h */
 
