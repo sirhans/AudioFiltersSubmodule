@@ -75,6 +75,13 @@ void BMShortSimpleDelay_process(BMShortSimpleDelay* This,
                    sizeof(float)*numSamples);
         }
     }
+    
+    // if a new targetLength has been set, update the delay time
+    if(This->delayLength != This->targetDelayLength){
+        BMShortSimpleDelay_free(This);
+        BMShortSimpleDelay_init(This, This->numChannels, This->targetDelayLength);
+        This->delayLength = This->targetDelayLength;
+    }
 }
 
 
@@ -83,17 +90,18 @@ void BMShortSimpleDelay_process(BMShortSimpleDelay* This,
 /*!
  *BMShortSimpleDelay_init
  */
-void BMShortSimpleDelay_init(BMShortSimpleDelay* This, size_t numChannels, size_t length){
+void BMShortSimpleDelay_init(BMShortSimpleDelay* This, size_t numChannels, size_t lengthSamples){
     This->numChannels = numChannels;
-    This->delayLength = length;
+    This->delayLength = lengthSamples;
+    This->targetDelayLength = lengthSamples;
     
     This->delayPtrs = malloc(sizeof(float*)*numChannels);
     
     // allocate memory for all delays with a single call
-    This->delayMemory = calloc(numChannels*length,sizeof(float));
+    This->delayMemory = calloc(numChannels*lengthSamples,sizeof(float));
     
     for(size_t i=0; i<numChannels; i++){
-        This->delayPtrs[i] = This->delayMemory + (i*length);
+        This->delayPtrs[i] = This->delayMemory + (i*lengthSamples);
     }
 }
 
@@ -108,4 +116,14 @@ void BMShortSimpleDelay_free(BMShortSimpleDelay* This){
     This->delayMemory = NULL;
     free(This->delayPtrs);
     This->delayPtrs = NULL;
+}
+
+
+
+
+/*!
+ *BMShortSimpleDelay_changeLength
+ */
+void BMShortSimpleDelay_changeLength(BMShortSimpleDelay* This, size_t lengthSamples){
+    This->targetDelayLength = lengthSamples;
 }
