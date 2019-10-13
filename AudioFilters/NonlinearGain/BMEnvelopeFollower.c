@@ -28,19 +28,29 @@ void BMAttackFilter_setCutoff(BMAttackFilter* This, float fc){
     This->fc = fc;
     
     // compute the input gain to the integrators
-    float g = tanf(M_PI * fc / This->sampleRate);
+    double g = tan(M_PI * (double)fc / (double)This->sampleRate);
+	
+	// we need double precision for the coefficient calculation but can use
+	// single precision float for the filter processing
+	double a1, a2, a3;
     
     // update the first integrator state variable to ensure that the second
     // derivative remains continuous when changing the cutoff freuency
     This->ic1 *= This->g / g;
     
     // then save the new value of the gain coefficient
-    This->g = g;
+    This->g = (float)g;
     
     // compute the three filter coefficients
-    This->a1 = 1.0f / (1.0f + This->g * (This->g + This->k));
-    This->a2 = This->a1 * This->g;
-    This->a3 = This->a2 * This->g;
+    a1 = 1.0f / (1.0f + g * (g + (double)This->k));
+    a2 = a1 * This->g;
+    a3 = a2 * This->g;
+	
+	// copy the double precision filter coefficients in this function
+	// to the single precision coefficients in the filter struct
+	This->a1 = (float)a1;
+	This->a2 = (float)a2;
+	This->a3 = (float)a3;
     
     // precompute a value that helps us set the state variable to keep the
     // gradient continuous when switching from release to attack mode
@@ -56,19 +66,29 @@ void BMReleaseFilter_setCutoff(BMReleaseFilter* This, float fc){
     This->fc = fc;
     
     // compute the input gain to the integrators
-    float g = tanf(M_PI * fc / This->sampleRate);
+    double g = tanf(M_PI * fc / This->sampleRate);
+	
+	// we need double precision for the coefficient calculation but can use
+	// single precision float for the filter processing
+	double a1, a2, a3;
     
     // update the first integrator state variable to ensure that the second
     // derivative remains continuous when changing the cutoff freuency
     This->ic1 *= This->g / g;
     
     // then save the new value of the gain coefficient
-    This->g = g;
+    This->g = (float)g;
     
     // compute the three filter coefficients
-    This->a1 = 1.0f / (1.0f + This->g * (This->g + This->k));
-    This->a2 = This->a1 * This->g;
-    This->a3 = This->a2 * This->g;
+    a1 = 1.0f / (1.0f + g * (g + (double)This->k));
+    a2 = This->a1 * This->g;
+    a3 = This->a2 * This->g;
+	
+	// copy the double precision filter coefficients in this function
+	// to the single precision coefficients in the filter struct
+	This->a1 = (float)a1;
+	This->a2 = (float)a2;
+	This->a3 = (float)a3;
 }
 
 
