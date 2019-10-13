@@ -1,9 +1,8 @@
 //
 //  BMDiffusion.h
-//  AUStereoModulator
 //
 //  Created by Nguyen Minh Tien on 3/29/18.
-//  Copyright © 2018 Nguyen Minh Tien. All rights reserved.
+//  Anyone may use this file without restrictions
 //
 
 #ifndef BMDiffusion_h
