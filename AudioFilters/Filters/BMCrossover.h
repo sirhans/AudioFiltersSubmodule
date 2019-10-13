@@ -2,8 +2,16 @@
 //  BMCrossover.h
 //  BMAudioFilters
 //
-//  This is a Linkwitz-Riley crossover, created by cascading pairs
-//  of Butterworth filters.
+//  This is a Linkwitz-Riley crossover. The Linkwitz-Riley preserves the gain
+//  at exactly unity across the spectrum when splitting into separate bands and
+//  recombining. However, it only preserves gain when the signal is not modified
+//  between the crossover and the recombiner. If the phase correlation between
+//  the bands can be estimated, a higher-Q crossover is appropriate. For example
+//  if the phase is completely uncorrelated then we need the crossover to have
+//  a +3dB boost when splitting and recombining because 3dB of gain is lost when
+//  summing two uncorrelated signals. Therefore a perfect crossover should have
+//  adjustable Q, according to the estimated phase correlation between the
+//  signals in each frequency band. 
 //
 //  Created by Hans on 17/2/17.
 //
