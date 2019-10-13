@@ -23,7 +23,6 @@ extern "C" {
     typedef struct BMEarlyReflectionsSetting {
         size_t** indices;
         float** gain;
-        float* tempStorage;
         
         size_t numberOfChannel;
         size_t numberTaps;

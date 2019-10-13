@@ -927,6 +927,42 @@ void BMMultiLevelBiquad_setHighPass12db(BMMultiLevelBiquad* bqf, double fc,size_
     BMMultiLevelBiquad_queueUpdate(bqf);
 }
 
+
+
+
+void BMMultiLevelBiquad_setHighPass12dbNeg(BMMultiLevelBiquad* bqf, double fc,size_t level){
+    assert(level < bqf->numLevels);
+    
+    // for left and right channels, set coefficients
+    for(size_t i=0; i < bqf->numChannels; i++){
+        
+        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+        double* b1 = b0 + 1;
+        double* b2 = b1 + 1;
+        double* a1 = b2 + 1;
+        double* a2 = a1 + 1;
+        
+        
+        double gamma = tan(M_PI * fc / bqf->sampleRate);
+        double gamma_sq = gamma * gamma;
+        double sqrt_2_gamma = gamma * M_SQRT2;
+        double one_over_denominator = 1.0 / (gamma_sq + sqrt_2_gamma + 1.0);
+        
+        *b0 = -1.0 * one_over_denominator;
+        *b1 = 2.0 * one_over_denominator;
+        *b2 = *b0;
+        
+        *a1 = 2.0 * (gamma_sq - 1.0) * one_over_denominator;
+        *a2 = (gamma_sq - sqrt_2_gamma + 1.0) * one_over_denominator;
+    }
+    
+    BMMultiLevelBiquad_queueUpdate(bqf);
+}
+
+
+
+
+
 void BMMultiLevelBiquad_setHighPassQ12db(BMMultiLevelBiquad* bqf, double fc,double q,size_t level){
     assert(level < bqf->numLevels);
     
@@ -1031,9 +1067,9 @@ void BMMultiLevelBiquad_setLinkwitzRileyHP(BMMultiLevelBiquad* bqf, double fc, s
          *
          * Dn[gamma_] := gamma^2 + 2 gamma + 1
          *
-         * b0[gamma_] := 1 / Dn[gamma]
-         * b1[gamma_] := -2 / Dn[gamma]
-         * b2[gamma_] := 1 / Dn[gamma]
+         * b0[gamma_] := -1 / Dn[gamma]
+         * b1[gamma_] := 2 / Dn[gamma]
+         * b2[gamma_] := -1 / Dn[gamma]
          *
          * a1[gamma_] := 2 (gamma^2 - 1) / Dn[gamma]
          * a2[gamma_] := (gamma^2 - 2 gamma + 1) / Dn[gamma]
@@ -1047,9 +1083,9 @@ void BMMultiLevelBiquad_setLinkwitzRileyHP(BMMultiLevelBiquad* bqf, double fc, s
         double two_gamma = gamma * 2.0;
         double one_over_denominator = 1.0 / (gamma_sq + two_gamma + 1.0);
         
-        *b0 = 1.0 * one_over_denominator;
-        *b1 = -2.0 * one_over_denominator;
-        *b2 = *b0;
+        *b0 = -1.0 * one_over_denominator;
+        *b1 = 2.0 * one_over_denominator;
+        *b2 = -1.0 * one_over_denominator;
         
         *a1 = 2.0 * (gamma_sq - 1.0) * one_over_denominator;
         *a2 = (gamma_sq - two_gamma + 1.0) * one_over_denominator;
@@ -1057,6 +1093,31 @@ void BMMultiLevelBiquad_setLinkwitzRileyHP(BMMultiLevelBiquad* bqf, double fc, s
     
     BMMultiLevelBiquad_queueUpdate(bqf);
 }
+
+
+
+
+void BMMultiLevelBiquad_setLinkwitzRileyLP4thOrder(BMMultiLevelBiquad* bqf, double fc, size_t firstLevel){
+    
+    // a cascade of two butterworth filters makes a linkwitz-riley filter.
+    // the highpass and lowpass pair sums to unity gain without the need to
+    // invert the sign of one pair
+    BMMultiLevelBiquad_setLowPass12db(bqf, fc, firstLevel);
+    BMMultiLevelBiquad_setLowPass12db(bqf, fc, firstLevel+1);
+}
+
+
+
+
+void BMMultiLevelBiquad_setLinkwitzRileyHP4thOrder(BMMultiLevelBiquad* bqf, double fc, size_t firstLevel){
+    
+    // a cascade of two butterworth filters makes a linkwitz-riley filter.
+    // the highpass and lowpass pair sums to unity gain without the need to
+    // invert the sign of one pair
+    BMMultiLevelBiquad_setHighPass12db(bqf, fc, firstLevel);
+    BMMultiLevelBiquad_setHighPass12db(bqf, fc, firstLevel+1);
+}
+
 
 
 

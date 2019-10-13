@@ -14,6 +14,9 @@
 void BMMultiTapDelay_initBuffer(BMMultiTapDelay* delay);
 void BMMultiTapDelay_PerformReInitBuffer(BMMultiTapDelay* This);
 
+
+
+
 void BMMultiTapDelay_Init(BMMultiTapDelay* This,
                           bool isStereo,
                           size_t* delayTimesL, size_t* delayTimesR,
@@ -23,7 +26,6 @@ void BMMultiTapDelay_Init(BMMultiTapDelay* This,
     
     BMMultiTapDelaySetting* setting = &This->setting;
     setting->isStereo = isStereo;
-    setting->bufferChunkSize = BM_BUFFER_CHUNK_SIZE;
     
     This->_needUpdateGain = This->_needUpdateIndices = false;
     This->numberChannel = (isStereo? 2:1);
@@ -50,10 +52,9 @@ void BMMultiTapDelay_Init(BMMultiTapDelay* This,
     for (int i=0; i < This->numberChannel; i++) {
         setting->indices[i] = malloc(sizeof(size_t) * maxTaps);
         setting->gains[i] = malloc(sizeof(float) * maxTaps);
-//        setting->delayTimes[i] = malloc(sizeof(size_t) * maxTaps);
         This->tempIndices[i] = malloc(sizeof(size_t) * maxTaps);
         This->tempGains[i] = malloc(sizeof(float) * maxTaps);
-        This->tempBuffer[i] = malloc(sizeof(float) * setting->bufferChunkSize);
+        This->tempBuffer[i] = malloc(sizeof(float) * BM_BUFFER_CHUNK_SIZE);
     }
     
     BMMultiTapDelay_setDelayTimes(This, delayTimesL, delayTimesR);
@@ -63,11 +64,40 @@ void BMMultiTapDelay_Init(BMMultiTapDelay* This,
 }
 
 
+
+void BMMultiTapDelay_InitBypass(BMMultiTapDelay *This,
+						   bool isStereo,
+						   size_t maxDelayLength,
+						   size_t maxTapsPerChannel){
+	
+	// allocate temporary memory and set everything to zero
+	size_t *delayTimesL = calloc(maxTapsPerChannel, sizeof(size_t));
+	float       *gainsL = calloc(maxTapsPerChannel, sizeof(float));
+	
+	// set the gains of the first delay in each channel to one
+	gainsL[0] = 1.0f;
+	
+	// init the struct
+	BMMultiTapDelay_Init(This,
+						 isStereo,
+						 delayTimesL, delayTimesL,
+						 maxDelayLength,
+						 gainsL, gainsL,
+						 maxTapsPerChannel,
+						 maxTapsPerChannel);
+	
+	// free temporary memory
+	free(delayTimesL);
+	free(gainsL);
+}
+
+
+
 void BMMultiTapDelay_initBuffer(BMMultiTapDelay* delay){
     BMMultiTapDelaySetting* setting = &delay->setting;
     
     //init the rest
-    size_t numberFrames = (delay->maxDelayTime + 1) + setting->bufferChunkSize;
+    size_t numberFrames = (delay->maxDelayTime + 1) + BM_BUFFER_CHUNK_SIZE;
     size_t numberBytes = numberFrames * sizeof(float);
     delay->zeroArray = malloc(numberBytes);
     memset(delay->zeroArray, 0, numberBytes);
@@ -77,7 +107,7 @@ void BMMultiTapDelay_initBuffer(BMMultiTapDelay* delay){
     for(size_t i=0; i<delay->numberChannel; i++){
         TPCircularBufferInit(&delay->buffer[i], (int32_t)numberBytes);
         TPCircularBufferProduceBytes(&delay->buffer[i], delay->zeroArray, (int32_t)numberBytes);
-        TPCircularBufferConsume(&delay->buffer[i], (int32_t)(setting->bufferChunkSize+1) * sizeof(float));
+        TPCircularBufferConsume(&delay->buffer[i], (int32_t)(BM_BUFFER_CHUNK_SIZE+1) * sizeof(float));
     }
 }
 
@@ -116,7 +146,7 @@ void BMMultiTapDelay_ProcessBufferMono(BMMultiTapDelay* delay,
     size_t framesProcessed = 0;
     while(framesProcessed < frames){
         size_t framesProcessing = frames - framesProcessed;
-        framesProcessing = (framesProcessing < setting->bufferChunkSize)? framesProcessing:setting->bufferChunkSize;
+        framesProcessing = (framesProcessing < BM_BUFFER_CHUNK_SIZE)? framesProcessing:BM_BUFFER_CHUNK_SIZE;
         
         frameThisTime = framesProcessing;
         
@@ -127,7 +157,7 @@ void BMMultiTapDelay_ProcessBufferMono(BMMultiTapDelay* delay,
         bytesThisTime = (int32_t)frameThisTime * sizeof(float);
 
         //set 0 to the tempbuffer
-        memset(delay->tempBuffer[0], 0, setting->bufferChunkSize * sizeof(float));
+        memset(delay->tempBuffer[0], 0, BM_BUFFER_CHUNK_SIZE * sizeof(float));
         TPCircularBufferProduceBytes(&delay->buffer[0], delay->input[0]+framesProcessed, bytesThisTime);
         
         //from each read point, we read FrameThisTime frames to process
@@ -161,10 +191,7 @@ void BMMultiTapDelay_ProcessBufferStereo(BMMultiTapDelay* delay,
         BMMultiTapDelay_PerformUpdateIndices(delay);
     if(delay->_needUpdateGain)
         BMMultiTapDelay_PerformUpdateGains(delay);
-    
-    // this function is stereo in, stereo out; fail if the delay was
-    // not initialised for that configuration
-    //assert(delay->numberChannel == 2);
+	
     
     BMMultiTapDelaySetting* setting = &delay->setting;
     //this will bridge my code with Sir Hans's style ^_^
@@ -178,7 +205,7 @@ void BMMultiTapDelay_ProcessBufferStereo(BMMultiTapDelay* delay,
     size_t framesProcessed = 0;
     while(framesProcessed < frames){
         size_t framesProcessing = frames - framesProcessed;
-        framesProcessing = (framesProcessing < setting->bufferChunkSize)? framesProcessing:setting->bufferChunkSize;
+        framesProcessing = (framesProcessing < BM_BUFFER_CHUNK_SIZE)? framesProcessing:BM_BUFFER_CHUNK_SIZE;
         
         frameThisTime = framesProcessing;
         
@@ -190,7 +217,7 @@ void BMMultiTapDelay_ProcessBufferStereo(BMMultiTapDelay* delay,
         
         for(size_t i=0; i<delay->numberChannel; i++){
             //set 0 to the tempbuffer
-            memset(delay->tempBuffer[i], 0, setting->bufferChunkSize * sizeof(float));
+            memset(delay->tempBuffer[i], 0, BM_BUFFER_CHUNK_SIZE * sizeof(float));
             TPCircularBufferProduceBytes(&delay->buffer[i], delay->input[i]+framesProcessed, bytesThisTime);
             
             //from each read point, we read FrameThisTime frames to process
@@ -267,6 +294,8 @@ void BMMultiTapDelay_clearBuffers(BMMultiTapDelay* delay){
     }
 }
 
+
+
 /*
  *  Free memory of the struct at *This
  */
@@ -287,9 +316,6 @@ void BMMultiTapDelay_free(BMMultiTapDelay* This){
         
         free(setting->gains[i]);
         setting->gains[i] = NULL;
-        
-//        free(setting->delayTimes[i]);
-//        setting->delayTimes[i] = NULL;
         
         free(This->tempIndices[i]);
         This->tempIndices[i] = NULL;
@@ -341,6 +367,7 @@ void BMMultiTapDelay_PerformUpdateIndices(BMMultiTapDelay* This){
 }
 
 
+
 void BMMultiTapDelay_PerformUpdateGains(BMMultiTapDelay* This){
     //write data from tempArray
     BMMultiTapDelaySetting* setting = &This->setting;
@@ -351,6 +378,8 @@ void BMMultiTapDelay_PerformUpdateGains(BMMultiTapDelay* This){
     }
     This->_needUpdateGain = false;
 }
+
+
 
 void BMMultiTapDelay_setDelayTimes(BMMultiTapDelay* This,
                                    size_t* delayTimesL, size_t* delayTimesR){
@@ -366,6 +395,8 @@ void BMMultiTapDelay_setDelayTimes(BMMultiTapDelay* This,
     }
     This->_needUpdateIndices = true;
 }
+
+
 
 void BMMultiTapDelay_setDelayTimeNumTap(BMMultiTapDelay* This,
                                         size_t* delayTimesL, size_t* delayTimesR,
@@ -391,6 +422,8 @@ void BMMultiTapDelay_setDelayTimeNumTap(BMMultiTapDelay* This,
     This->_needUpdateIndices = true;
 }
 
+
+
 void BMMultiTapDelay_setGains(BMMultiTapDelay* This,
                               float* gainL, float* gainR){
     This->_needUpdateGain = false;
@@ -402,6 +435,8 @@ void BMMultiTapDelay_setGains(BMMultiTapDelay* This,
     }
     This->_needUpdateGain = true;
 }
+
+
 
 /*
  *  Print the impulse response to standard output for testing
@@ -464,6 +499,7 @@ void BMMultiTapDelay_impulseResponse(BMMultiTapDelay* This){
         BMMultiTapDelay_ProcessBufferMono(This, zero, leftIR + 1, IRlength - 1);
     }
     
+	
     /************************************
      *    print the impulse response    *
      ************************************/

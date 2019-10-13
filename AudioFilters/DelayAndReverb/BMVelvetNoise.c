@@ -14,12 +14,13 @@ extern "C" {
 
 #include "BMVelvetNoise.h"
 #include <stdlib.h>
-    /*
-     * Set tap indices using Velvet Noise method
+	
+    /*!
+	 *BMVelvetNoise_setTapIndices
      *
-     * (See: "Reverberation modeling using velvet noise" by M. Karjalainen
-     * and Hanna Järveläinen.
-     * https://www.researchgate.net/publication/283247924_Reverberation_modeling_using_velvet_noise
+	 * @abstract Set tap indices using Velvet Noise method
+     *
+     * @notes (See: "Reverberation modeling using velvet noise" by M. Karjalainen and Hanna Järveläinen. https://www.researchgate.net/publication/283247924_Reverberation_modeling_using_velvet_noise
      *
      * @param startTimeMS   the first tap time will start soon after this
      * @param endTimeMS     the last tap will end before this time
@@ -33,50 +34,27 @@ extern "C" {
                                      float sampleRate,
                                      size_t numTaps){
         
-        // allocate an array of tempoary storage
-        float* t = malloc(sizeof(float)*numTaps);
-        
-        // generate times evenly spaced between startTime and endTime
-        float increment = (endTimeMS - startTimeMS) / (float)(numTaps);
-        vDSP_vramp(&startTimeMS, &increment, t, 1, numTaps);
-        
+        // compute the spacing for evenly spaced between startTime and endTime
+        float incrementMS = (endTimeMS - startTimeMS) / (float)numTaps;
+		float incrementSamples = sampleRate * incrementMS / 1000.0f;
+		float startTimeSamples = sampleRate * startTimeMS / 1000.0f;
         
         for(size_t i=0; i< numTaps; i++){
+			// generate an evenly spaced tap time
+			float tapTime = (float)i * incrementSamples + startTimeSamples;
+			
             // add a random float to each delay time to get uneven spacing
-            t[i] += increment * (float)rand()/(float)RAND_MAX;
-            
-            // convert times from milliseconds to units of samples
-            t[i] *= sampleRate / 1000.0f;
+			float randomJitter = incrementSamples * (float)arc4random()/(float)UINT32_MAX;
+            tapTime += randomJitter;
             
             // convert to unsigned long (size_t)
-            indicesOut[i] = (size_t)t[i];
-        }
-        
-        // free the temp storage
-        free(t);
-    }
-
-    void BMVelvetNoise_setTapIndicesNA(float startTimeMS,
-                                       float endTimeMS,
-                                       size_t* indicesOut,
-                                       float* tempStorage,
-                                       float sampleRate,
-                                       size_t numTaps){
-        // generate times evenly spaced between startTime and endTime
-        float increment = (endTimeMS - startTimeMS) / (float)(numTaps);
-        vDSP_vramp(&startTimeMS, &increment, tempStorage, 1, numTaps);
-        
-        for(size_t i=0; i< numTaps; i++){
-            // add a random float to each delay time to get uneven spacing
-            tempStorage[i] += increment * (float)rand()/(float)RAND_MAX;
-            // convert times from milliseconds to units of samples
-            tempStorage[i] *= sampleRate / 1000.0f;
-            
-            // convert to unsigned long (size_t)
-            indicesOut[i] = (size_t)tempStorage[i];
+            indicesOut[i] = (size_t)tapTime;
         }
     }
     
+	
+	
+	
     /*
      * Swap the values at positions i and j in the array A
      */
@@ -95,16 +73,16 @@ extern "C" {
     void BMVelvetNoise_randomShuffle(float* A, size_t length){
         for(size_t i=0; i<length; i++){
             // swap the ith element in A with a randomly selected element
-            size_t randomIndex = rand() % length;
-            BMVelvetNoise_swapAt(A, i, randomIndex);
+            BMVelvetNoise_swapAt(A, i, arc4random_uniform((uint32_t)length));
         }
     }
     
     
     
-    /*
-     * Set the values in tapSigns randomly to -1 and 1, with an equal
-     * number of + and - values.
+    /*!
+	 *BMVelvetNoise_setTapSigns
+	 *
+     * @abstract Set the values in tapSigns randomly to -1 and 1, with an equal number of + and - values.
      *
      * @param tapSigns   input array
      * @param numTaps    length of tapSigns

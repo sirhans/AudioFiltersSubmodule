@@ -20,8 +20,6 @@ typedef struct{
     size_t** delayTimes;
     size_t** indices;
     float** gains;
-    
-    size_t bufferChunkSize;
     bool isStereo;
 } BMMultiTapDelaySetting;
 
@@ -46,12 +44,13 @@ typedef struct{
     float** tempGains;
     bool _needUpdateIndices;
     bool _needUpdateGain;
-//    bool needReInitBuffer;
 } BMMultiTapDelay;
 
 
-/*
- * initialize the delay struct
+/*!
+ *BMMultiTapDelay_Init
+ *
+ * @abstract initialize the delay struct
  *
  * @param This         pointer to an uninitialized delay struct
  * @param isStereo     set false for mono
@@ -71,6 +70,13 @@ void BMMultiTapDelay_Init(BMMultiTapDelay* This,
                           size_t numTaps, size_t maxTaps);
 
 
+/*!
+ *BMMultiTapDelay_InitBypass
+ */
+void BMMultiTapDelay_InitBypass(BMMultiTapDelay *This,
+								bool isStereo,
+								size_t maxDelayLength,
+								size_t maxTapsPerChannel);
 
 
 /*

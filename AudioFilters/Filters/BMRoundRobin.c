@@ -32,7 +32,6 @@ void BMRoundRobin_init(BMRoundRobin* This,
     // allocate memory for indices, gains and temp specification
     setting->indices = malloc(sizeof(size_t) * (setting->numberTaps + 1));
     setting->gain = malloc(sizeof(float) * (setting->numberTaps + 1));
-    setting->tempStorage = malloc(sizeof(float) * setting->numberTaps);
 
     BMRoundRobin_RegenIndicesAndGain(This);
     setting->indices[setting->numberTaps] = setting->bufferLengthInFrames;
@@ -72,11 +71,10 @@ void BMRoundRobin_RegenIndicesAndGain(BMRoundRobin* This){
     //we + 1 because we want to start from index 1, NOT 0
     float startTime = 0.0f;
     float endTime = setting->bufferLengthInMs;
-    BMVelvetNoise_setTapIndicesNA(startTime, endTime,
-                                  setting->indices + 1,
-                                  setting->tempStorage,
-                                  setting->sampleRate,
-                                  setting->numberTaps);
+    BMVelvetNoise_setTapIndices(startTime, endTime,
+								setting->indices + 1,
+								setting->sampleRate,
+								setting->numberTaps);
 
     float n = (float)setting->numberTaps;
     float m = 1.0; // number of delay taps with unchanged sign
@@ -159,8 +157,6 @@ void BMRoundRobin_destroy(BMRoundRobin* This){
     This->setting.indices = NULL;
     free(This->setting.gain);
     This->setting.gain = NULL;
-    free(This->setting.tempStorage);
-    This->setting.tempStorage = NULL;
 }
 
 
