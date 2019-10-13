@@ -153,6 +153,13 @@ void BMMultiLevelBiquad_setLowPassQ12db(BMMultiLevelBiquad* bqf, double fc,doubl
 
 void BMMultiLevelBiquad_setHighPass12db(BMMultiLevelBiquad* bqf, double fc, size_t level);
 
+/*!
+ *BMMultiLevelBiquad_setHighPass12dbNeg
+ *
+ * @abstract negated second-order butterworth highpass for butterworth crossover
+ */
+void BMMultiLevelBiquad_setHighPass12dbNeg(BMMultiLevelBiquad* bqf, double fc, size_t level);
+
 void BMMultiLevelBiquad_setHighPassQ12db(BMMultiLevelBiquad* bqf, double fc,double q,size_t level);
 
 /*

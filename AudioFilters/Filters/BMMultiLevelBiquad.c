@@ -927,6 +927,42 @@ void BMMultiLevelBiquad_setHighPass12db(BMMultiLevelBiquad* bqf, double fc,size_
     BMMultiLevelBiquad_queueUpdate(bqf);
 }
 
+
+
+
+void BMMultiLevelBiquad_setHighPass12dbNeg(BMMultiLevelBiquad* bqf, double fc,size_t level){
+    assert(level < bqf->numLevels);
+    
+    // for left and right channels, set coefficients
+    for(size_t i=0; i < bqf->numChannels; i++){
+        
+        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+        double* b1 = b0 + 1;
+        double* b2 = b1 + 1;
+        double* a1 = b2 + 1;
+        double* a2 = a1 + 1;
+        
+        
+        double gamma = tan(M_PI * fc / bqf->sampleRate);
+        double gamma_sq = gamma * gamma;
+        double sqrt_2_gamma = gamma * M_SQRT2;
+        double one_over_denominator = 1.0 / (gamma_sq + sqrt_2_gamma + 1.0);
+        
+        *b0 = -1.0 * one_over_denominator;
+        *b1 = 2.0 * one_over_denominator;
+        *b2 = *b0;
+        
+        *a1 = 2.0 * (gamma_sq - 1.0) * one_over_denominator;
+        *a2 = (gamma_sq - sqrt_2_gamma + 1.0) * one_over_denominator;
+    }
+    
+    BMMultiLevelBiquad_queueUpdate(bqf);
+}
+
+
+
+
+
 void BMMultiLevelBiquad_setHighPassQ12db(BMMultiLevelBiquad* bqf, double fc,double q,size_t level){
     assert(level < bqf->numLevels);
     
