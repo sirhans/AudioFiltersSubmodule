@@ -34,6 +34,7 @@ void BMVelvetNoiseDecorrelator_init(BMVelvetNoiseDecorrelator* This,
 	This->wetMix = BM_VND_WET_MIX;
 	This->rt60 = rt60DecayTimeSeconds;
 	This->maxDelayTimeS = maxDelaySeconds;
+	This->numWetTaps = numWetTaps;
 	
 	size_t tapsPerChannel = numWetTaps;
 	if (hasDryTap) tapsPerChannel++;
