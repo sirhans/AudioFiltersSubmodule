@@ -29,8 +29,11 @@ void BMMonoToStereo_init(BMMonoToStereo *This, float sampleRate){
 								   BM_MTS_DIFFUSION_TIME,
 								   BM_MTS_TAPS_PER_CHANNEL,
 								   BM_MTS_RT60,
-								   BM_MTS_WET_MIX,
+								   true,
 								   sampleRate);
+	
+	// set the wet/dry mix
+	BMVelvetNoiseDecorrelator_setWetMix(&This->vnd, BM_MTS_WET_MIX);
 	
 	// initialise a pair of crossover filters that will isolate only the midrange
 	// frequencies for mono-to-stereo conversion
