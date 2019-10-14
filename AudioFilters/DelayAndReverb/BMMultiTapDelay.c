@@ -71,24 +71,24 @@ void BMMultiTapDelay_initBypass(BMMultiTapDelay *This,
 						   size_t maxTapsPerChannel){
 	
 	// allocate temporary memory and set everything to zero
-	size_t *delayTimesL = calloc(maxTapsPerChannel, sizeof(size_t));
-	float       *gainsL = calloc(maxTapsPerChannel, sizeof(float));
+	size_t *delayTimes = calloc(maxTapsPerChannel, sizeof(size_t));
+	float       *gains = calloc(maxTapsPerChannel, sizeof(float));
 	
 	// set the gains of the first delay in each channel to one
-	gainsL[0] = 1.0f;
+	gains[0] = 1.0f;
 	
 	// init the struct
 	BMMultiTapDelay_Init(This,
 						 isStereo,
-						 delayTimesL, delayTimesL,
+						 delayTimes, delayTimes,
 						 maxDelayLength,
-						 gainsL, gainsL,
+						 gains, gains,
 						 maxTapsPerChannel,
 						 maxTapsPerChannel);
 	
 	// free temporary memory
-	free(delayTimesL);
-	free(gainsL);
+	free(delayTimes);
+	free(gains);
 }
 
 
