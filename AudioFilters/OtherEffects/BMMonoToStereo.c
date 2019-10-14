@@ -8,20 +8,14 @@
 
 #include "BMMonoToStereo.h"
 
+
 #define BM_MTS_RT60 0.3f
 #define BM_MTS_LOW_CROSSOVER_FC 350.0f
-#define BM_MTS_HIGH_CROSSOVER_FC 1100.0f
-#define BM_MTS_TAPS_PER_CHANNEL 10
-#define BM_MTS_WET_MIX 0.36f
-
-// the decorrelator will be able to influence the spectrum in frequency bands
-// whose width are integer multiples of the base frequency. The base frequency
-// should be set low enough so that the first few bands above
-// BM_MTS_DECORRELATOR_BASE_FREQUENCY are not so wide that they distort the
-// perceived EQ balance of the left and right channel. Setting the base frequency
-// too low smears transients in the time domain.
-#define BM_MTS_DECORRELATOR_BASE_FREQUENCY 40.0f
-#define BM_MTS_DIFFUSION_TIME 1.0f / BM_MTS_DECORRELATOR_BASE_FREQUENCY
+#define BM_MTS_HIGH_CROSSOVER_FC 1200.0f
+#define BM_MTS_TAPS_PER_CHANNEL 3
+#define BM_MTS_WET_MIX 0.40f
+#define BM_MTS_DECORRELATOR_FREQUENCY_BAND_WIDTH 40.0f
+#define BM_MTS_DIFFUSION_TIME 1.0f / BM_MTS_DECORRELATOR_FREQUENCY_BAND_WIDTH
 
 
 
