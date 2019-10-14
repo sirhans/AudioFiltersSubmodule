@@ -65,7 +65,7 @@ void BMMultiTapDelay_Init(BMMultiTapDelay* This,
 
 
 
-void BMMultiTapDelay_InitBypass(BMMultiTapDelay *This,
+void BMMultiTapDelay_initBypass(BMMultiTapDelay *This,
 						   bool isStereo,
 						   size_t maxDelayLength,
 						   size_t maxTapsPerChannel){
@@ -424,8 +424,7 @@ void BMMultiTapDelay_setDelayTimeNumTap(BMMultiTapDelay* This,
 
 
 
-void BMMultiTapDelay_setGains(BMMultiTapDelay* This,
-                              float* gainL, float* gainR){
+void BMMultiTapDelay_setGains(BMMultiTapDelay* This, float* gainL, float* gainR){
     This->_needUpdateGain = false;
     
     for (int i=0; i< This->numberChannel; i++) {

@@ -71,18 +71,20 @@ void BMMultiTapDelay_Init(BMMultiTapDelay* This,
 
 
 /*!
- *BMMultiTapDelay_InitBypass
+ *BMMultiTapDelay_initBypass
  */
-void BMMultiTapDelay_InitBypass(BMMultiTapDelay *This,
+void BMMultiTapDelay_initBypass(BMMultiTapDelay *This,
 								bool isStereo,
 								size_t maxDelayLength,
 								size_t maxTapsPerChannel);
 
 
-/*
- * works in place
+/*!
+ *BMMultiTapDelay_processBufferStereo
+ *
+ * @notes works in place
  */
-void BMMultiTapDelay_ProcessBufferStereo(BMMultiTapDelay* delay,
+void BMMultiTapDelay_processBufferStereo(BMMultiTapDelay* delay,
                                          float* inputL, float* inputR,
                                          float* outputL, float* outputR,
                                          size_t frames);
