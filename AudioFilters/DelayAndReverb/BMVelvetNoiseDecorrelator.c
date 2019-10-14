@@ -40,10 +40,10 @@ void BMVelvetNoiseDecorrelator_init(BMVelvetNoiseDecorrelator* This,
 	if (hasDryTap) tapsPerChannel++;
 	
 	// allocate memory for calculating delay setups
-	This->delayLengthsL = malloc(sizeof(size_t)*tapsPerChannel);
-	This->delayLengthsR = malloc(sizeof(size_t)*tapsPerChannel);
-	This->gainsL = malloc(sizeof(float)*tapsPerChannel);
-	This->gainsR = malloc(sizeof(float)*tapsPerChannel);
+	This->delayLengthsL = calloc(tapsPerChannel, sizeof(size_t));
+	This->delayLengthsR = calloc(tapsPerChannel, sizeof(size_t));
+	This->gainsL = calloc(tapsPerChannel, sizeof(float));
+	This->gainsR = calloc(tapsPerChannel, sizeof(float));
 	
 	// init the multi-tap delay in bypass mode
 	size_t maxDelayLenth = ceil(maxDelaySeconds*sampleRate);
@@ -113,6 +113,12 @@ void BMVelvetNoiseDecorrelator_genRandGains(BMVelvetNoiseDecorrelator *This){
 void BMVelvetNoiseDecorrelator_genRandTapTimes(BMVelvetNoiseDecorrelator *This){
 	// prepare to skip an array index if there is a dry tap at the beginning
 	size_t shift = This->hasDryTap ? 1 : 0;
+	
+	// set the dry tap delay time to zero
+	if(This->hasDryTap){
+		This->delayLengthsL[0] = 0;
+		This->delayLengthsR[0] = 0;
+	}
 	
 	// find out how many milliseconds in one sample
 	float oneSampleMs = 1000.0f / This->sampleRate;
