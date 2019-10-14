@@ -12,6 +12,11 @@
 #include <assert.h>
 #include "BMVelvetNoise.h"
 #include "BMReverb.h"
+#include "BMVectorOps.h"
+
+
+#define BM_VND_WET_MIX 0.40f
+
 
 
 
@@ -20,29 +25,155 @@
  */
 void BMVelvetNoiseDecorrelator_init(BMVelvetNoiseDecorrelator* This,
                                     float maxDelaySeconds,
-                                    size_t maxTapsPerChannel,
+                                    size_t numWetTaps,
                                     float rt60DecayTimeSeconds,
-									float wetMix,
+									bool hasDryTap,
 									float sampleRate){
 	This->sampleRate = sampleRate;
+	This->hasDryTap	= true;
+	This->wetMix = BM_VND_WET_MIX;
+	This->rt60 = rt60DecayTimeSeconds;
+	This->maxDelayTimeS = maxDelaySeconds;
+	
+	size_t tapsPerChannel = numWetTaps;
+	if (hasDryTap) tapsPerChannel++;
+	
+	// allocate memory for calculating delay setups
+	This->delayLengthsL = malloc(sizeof(size_t)*tapsPerChannel);
+	This->delayLengthsR = malloc(sizeof(size_t)*tapsPerChannel);
+	This->gainsL = malloc(sizeof(float)*tapsPerChannel);
+	This->gainsR = malloc(sizeof(float)*tapsPerChannel);
 	
 	// init the multi-tap delay in bypass mode
-	bool stereo = true;
 	size_t maxDelayLenth = ceil(maxDelaySeconds*sampleRate);
-	BMMultiTapDelay_InitBypass(&This->multiTapDelay,
-							   stereo,
+	BMMultiTapDelay_initBypass(&This->multiTapDelay,
+							   true,
 							   maxDelayLenth,
-							   maxTapsPerChannel + 1);
-
+							   tapsPerChannel);
 	
 	// setup the delay for processing
-	BMVelvetNoiseDecorrelator_update(This,
-									 maxDelaySeconds,
-									 maxTapsPerChannel,
-									 rt60DecayTimeSeconds,
-									 wetMix);
+	BMVelvetNoiseDecorrelator_randomiseAll(This);
 }
 
+
+
+
+
+/*!
+ *BMVelvetNoiseDecorrelator_genRandGains
+ *
+ * @abstract generates random gains and normalises them and updates the delay
+ */
+void BMVelvetNoiseDecorrelator_genRandGains(BMVelvetNoiseDecorrelator *This){
+	// prepare to skip an array index if there is a dry tap at the beginning
+	size_t shift = This->hasDryTap ? 1 : 0;
+	
+	// use the velvet noise algorithm to set random delay tap signs
+	BMVelvetNoise_setTapSigns(This->gainsL+shift, This->numWetTaps);
+	BMVelvetNoise_setTapSigns(This->gainsR+shift, This->numWetTaps);
+	
+	
+	// apply an exponential decay envelope to the gains
+	for(size_t i=shift; i<This->numWetTaps+shift; i++){
+		// left channel
+		float delayTimeInSeconds = This->delayLengthsL[i] / This->sampleRate;
+		float rt60Gain = BMReverbDelayGainFromRT60(This->rt60, delayTimeInSeconds);
+		This->gainsL[i] *= rt60Gain;
+		
+		// right channel
+		delayTimeInSeconds = This->delayLengthsR[i] / This->sampleRate;
+		rt60Gain = BMReverbDelayGainFromRT60(This->rt60, delayTimeInSeconds);
+		This->gainsR[i] *= rt60Gain;
+	}
+	
+	// if there is is a dry tap,
+	// set the balance between all of the wet taps against the single dry tap.
+	if(This->hasDryTap)
+		BMVelvetNoiseDecorrelator_setWetMix(This, This->wetMix);
+	
+	// else, if there is no dry tap, normalise so the wet gain is 1.0
+	else {
+		BMVectorNormalise(This->gainsL, This->numWetTaps);
+		BMVectorNormalise(This->gainsR, This->numWetTaps);
+		BMMultiTapDelay_setGains(&This->multiTapDelay, This->gainsL, This->gainsR);
+	}
+}
+
+
+
+
+
+
+/*!
+*BMVelvetNoiseDecorrelator_genRandTapTimes
+*
+* @abstract generates random delay tap times and updates the delay
+*/
+void BMVelvetNoiseDecorrelator_genRandTapTimes(BMVelvetNoiseDecorrelator *This){
+	// prepare to skip an array index if there is a dry tap at the beginning
+	size_t shift = This->hasDryTap ? 1 : 0;
+	
+	// find out how many milliseconds in one sample
+	float oneSampleMs = 1000.0f / This->sampleRate;
+	
+	// use the velvet noise algorithm to set the delay tap times
+	BMVelvetNoise_setTapIndices(oneSampleMs,
+								This->maxDelayTimeS * 1000.0f,
+								This->delayLengthsL + shift,
+								This->sampleRate, This->numWetTaps);
+	BMVelvetNoise_setTapIndices(oneSampleMs,
+								This->maxDelayTimeS * 1000.0f,
+								This->delayLengthsR + shift,
+								This->sampleRate, This->numWetTaps);
+	
+	BMMultiTapDelay_setDelayTimes(&This->multiTapDelay, This->delayLengthsL, This->delayLengthsR);
+}
+
+
+
+
+
+void BMVelvetNoiseDecorrelator_randomiseAll(BMVelvetNoiseDecorrelator *This){
+	// randomise times
+	BMVelvetNoiseDecorrelator_genRandTapTimes(This);
+	
+	// randomise gains
+	BMVelvetNoiseDecorrelator_genRandGains(This);
+}
+
+
+
+
+/*!
+ *BMVelvetNoiseDecorrelator_setWetMix
+ *
+ * @abstract sets the wet/dry mix and issues the command to update the multitap delay
+ */
+void BMVelvetNoiseDecorrelator_setWetMix(BMVelvetNoiseDecorrelator* This, float wetMix01){
+	This->wetMix = wetMix01;
+	
+	// we need a dry tap to set the mix; otherwise it's fiixed at 100% wet
+	assert(This->hasDryTap);
+	
+	// keep the wet mix in bounds
+	assert(0.0f <= wetMix01 & wetMix01 <= 1.0f);
+	
+	// set the dry bypass tap gains
+	float dryGain = sqrt(1.0f - wetMix01*wetMix01);
+	This->gainsL[0] = dryGain;
+	This->gainsR[0] = dryGain;
+	
+	// normalize so the norm of the vector of all wet taps is 1.0
+	BMVectorNormalise(This->gainsL+1, This->numWetTaps);
+	BMVectorNormalise(This->gainsR+1, This->numWetTaps);
+	
+	// scale the wet taps to get the wet gain as desired
+	vDSP_vsmul(This->gainsL+1, 1, &wetMix01, This->gainsL+1, 1, This->numWetTaps);
+	vDSP_vsmul(This->gainsR+1, 1, &wetMix01, This->gainsR+1, 1, This->numWetTaps);
+
+	// set the gains to the multitap delay
+	BMMultiTapDelay_setGains(&This->multiTapDelay, This->gainsL, This->gainsR);
+}
 
 
 
@@ -52,105 +183,16 @@ void BMVelvetNoiseDecorrelator_init(BMVelvetNoiseDecorrelator* This,
  */
 void BMVelvetNoiseDecorrelator_free(BMVelvetNoiseDecorrelator* This){
 	BMMultiTapDelay_free(&This->multiTapDelay);
+	
+	free(This->delayLengthsL);
+	This->delayLengthsL = NULL;
+	free(This->delayLengthsR);
+	This->delayLengthsR = NULL;
+	free(This->gainsL);
+	This->gainsL = NULL;
+	free(This->gainsR);
+	This->gainsR = NULL;
 }
-
-
-
-
-
-
-/*!
- *BMVelvetNoiseDecorrelator_update
- */
-void BMVelvetNoiseDecorrelator_update(BMVelvetNoiseDecorrelator* This,
-									  float diffusionSeconds,
-									  size_t tapsPerChannel,
-									  float rt60DecayTimeSeconds,
-									  float wetMix){
-	// keep the wet mix in bounds
-	assert(0.0f <= wetMix & wetMix <= 1.0f);
-	
-	// using the VND to mix the wet and dry signals requires an additional
-	// delay tap
-	size_t tapsPerChannelWithDryTap = tapsPerChannel + 1;
-	
-    // allocate temporary memory
-	size_t *delayLengthsL = malloc(sizeof(size_t)*tapsPerChannelWithDryTap);
-	size_t *delayLengthsR = malloc(sizeof(size_t)*tapsPerChannelWithDryTap);
-	float *gainsL = malloc(sizeof(float)*tapsPerChannelWithDryTap);
-	float *gainsR = malloc(sizeof(float)*tapsPerChannelWithDryTap);
-	
-	
-	// use the velvet noise algorithm to set delay times
-	BMVelvetNoise_setTapIndices(0.0f,
-								diffusionSeconds * 1000.0f,
-								delayLengthsL+1,
-								This->sampleRate,
-								tapsPerChannel);
-	BMVelvetNoise_setTapIndices(0.0f,
-								diffusionSeconds * 1000.0f,
-								delayLengthsR+1,
-								This->sampleRate,
-								tapsPerChannel);
-	
-	// set the first tap in each channel for the dry signal passthrough
-	delayLengthsL[0] = 0;
-	delayLengthsR[0] = 0;
-	
-	// set the delay times to the multitap delay
-	BMMultiTapDelay_setDelayTimeNumTap(&This->multiTapDelay, delayLengthsL, delayLengthsR, tapsPerChannelWithDryTap);
-	
-	
-	// use the velvet noise algorithm to set random delay tap signs
-	BMVelvetNoise_setTapSigns(gainsL+1, tapsPerChannel);
-	BMVelvetNoise_setTapSigns(gainsR+1, tapsPerChannel);
-	
-	// apply an exponential decay envelope to the gains
-	for(size_t i=1; i<tapsPerChannel+1; i++){
-		// left channel
-		float delayTimeInSeconds = delayLengthsL[i] / This->sampleRate;
-		float rt60Gain = BMReverbDelayGainFromRT60(rt60DecayTimeSeconds, delayTimeInSeconds);
-		gainsL[i] *= rt60Gain;
-		
-		// right channel
-		delayTimeInSeconds = delayLengthsR[i] / This->sampleRate;
-		rt60Gain = BMReverbDelayGainFromRT60(rt60DecayTimeSeconds, delayTimeInSeconds);
-		gainsR[i] *= rt60Gain;
-	}
-	
-	// find the vector l2 norm of the delays in each channel for normalisation
-	float leftTapsNorm = 0.0f;
-	float rightTapsNorm = 0.0f;
-	for(size_t i=1; i<tapsPerChannel+1; i++){
-		leftTapsNorm += gainsL[i]*gainsL[i];
-		rightTapsNorm += gainsR[i]*gainsR[i];
-	}
-	leftTapsNorm = sqrt(leftTapsNorm);
-	rightTapsNorm = sqrt(rightTapsNorm);
-	
-	// set the dry bypass tap gains
-	float dryGain = sqrt(1.0f - wetMix*wetMix);
-	gainsL[0] = dryGain;
-	gainsR[0] = dryGain;
-	
-	// normalize the other delay gains to get the specified wet / dry mix
-	for(size_t i=1; i<tapsPerChannel+1; i++){
-		gainsL[i] *= wetMix / leftTapsNorm;
-		gainsR[i] *= wetMix / rightTapsNorm;
-	}
-
-	
-	// set the gains to the multitap delay
-	BMMultiTapDelay_setGains(&This->multiTapDelay, gainsL, gainsR);
-	
-	
-	// free temporary memory
-	free(delayLengthsL);
-	free(delayLengthsR);
-	free(gainsL);
-	free(gainsR);
-}
-
 
 
 
