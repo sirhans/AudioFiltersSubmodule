@@ -192,7 +192,7 @@ void BMStaticDelay_setFeedbackMatrix(BMStaticDelay* This){
     This->feedbackMatrix = BM2x2Matrix_rotationMatrix(This->crossMixAngle);
     
     // scale the matrix to give the desired rt60 decay time
-    This->feedbackMatrix = BM2x2Matrix_smmul(This->feedbackGain, This->feedbackMatrix);
+    This->feedbackMatrix = simd_mul(This->feedbackGain, This->feedbackMatrix);
 }
 
 
@@ -231,7 +231,7 @@ void BMStaticDelay_setFeedbackCrossMix(BMStaticDelay* This, float amount){
 void BMStaticDelay_updateLFO(BMStaticDelay* This){
     if(This->updateLFO){
         This->updateLFO = false;
-        BMQuadratureOscillator_reInit(&This->qosc, This->lfoFreq, This->sampleRate);
+        BMQuadratureOscillator_setFrequency(&This->qosc, This->lfoFreq);
     }
 }
 
@@ -394,23 +394,26 @@ void static inline stereoBufferHelper(BMStaticDelay* This,
      * mix the feedback to the feedback buffer
      */
     // straight mix (L=>L and R=>R)
-    vDSP_vsmul(outL, 1, &This->feedbackMatrix.m11,
+	float m00 = This->feedbackMatrix.columns[0][0];
+	float m11 = This->feedbackMatrix.columns[1][1];
+    vDSP_vsmul(outL, 1, &m00,
                This->feedbackBufferL, 1,
                framesProcessing);
-    vDSP_vsmul(outR, 1, &This->feedbackMatrix.m22,
+    vDSP_vsmul(outR, 1, &m11,
                This->feedbackBufferR, 1,
                framesProcessing);
     
     // cross mix (L=>R and R=>L)
-    vDSP_vsma(outL, 1, &This->feedbackMatrix.m12,
+	float m01 = This->feedbackMatrix.columns[1][0];
+	float m10 = This->feedbackMatrix.columns[0][1];
+    vDSP_vsma(outL, 1, &m01,
               This->feedbackBufferR, 1,
               This->feedbackBufferR, 1,
               framesProcessing);
-    vDSP_vsma(outR, 1, &This->feedbackMatrix.m21,
+    vDSP_vsma(outR, 1, &m10,
               This->feedbackBufferL, 1,
               This->feedbackBufferL, 1,
               framesProcessing);
-    
 }
 
 
@@ -454,10 +457,10 @@ void BMStaticDelay_processBufferStereo(BMStaticDelay* This,
          * to rotate between the two channels.
          */
         // generate the quadrature LFO output into the temp buffers
-        BMQuadratureOscillator_processQuad(&This->qosc,
-                                           This->LFOBufferL,
-                                           This->LFOBufferR,
-                                           framesProcessing);
+        BMQuadratureOscillator_process(&This->qosc,
+									   This->LFOBufferL,
+									   This->LFOBufferR,
+									   framesProcessing);
         
         // multiplex the mixed input to the left channel buffer
         vDSP_vmul(This->LFOBufferL, 1, This->tempBufferL,1,

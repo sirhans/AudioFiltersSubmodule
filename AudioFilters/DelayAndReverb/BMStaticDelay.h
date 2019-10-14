@@ -52,6 +52,7 @@ extern "C" {
     
     
 #include <stdio.h>
+#include <simd/simd.h>
 #include "TPCircularBuffer+AudioBufferList.h"
 #include "BM2x2Matrix.h"
 #include "BMMultiLevelBiquad.h"
@@ -72,7 +73,7 @@ extern "C" {
         float sampleRate, feedbackGain, delayTimeInSeconds, crossMixAngle, crossMixAmount, lowpassFC, decayTime, lfoFreq, highpassFC;
         bool updateLFO;
         float *feedbackBufferL, *feedbackBufferR, *tempBufferL, *tempBufferR, *LFOBufferR, *LFOBufferL;
-        BM2x2Matrix feedbackMatrix;
+        simd_float2x2 feedbackMatrix;
         BMMultiLevelBiquad filter;
         BMQuadratureOscillator qosc;
         BMSmoothGain wetGain, dryGain;
