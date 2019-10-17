@@ -214,7 +214,7 @@ void BMVelvetNoiseDecorrelator_processBufferStereo(BMVelvetNoiseDecorrelator* Th
                                                    float* outputR,
                                                    size_t length){
 	// all processing is done by the multi-tap delay class
-    BMMultiTapDelay_ProcessBufferStereo(&This->multiTapDelay,
+    BMMultiTapDelay_processBufferStereo(&This->multiTapDelay,
 										inputL, inputR,
 										outputL, outputR,
 										length);

@@ -126,7 +126,9 @@ void BMQuadratureOscillator_volumeEnvelope4Stereo(BMQuadratureOscillator* This,
 
 
 
-
+void BMQuadratureOscillator_initMatrix(simd_float2x2* m,
+float frequency,
+                                       float sampleRate);
 
 #ifdef __cplusplus
 }
