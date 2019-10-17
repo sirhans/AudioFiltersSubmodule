@@ -42,10 +42,15 @@ typedef struct BMCrossover {
 
 
 typedef struct BMCrossover3way {
+    // filters for audio processing
     BMMultiLevelBiquad low;
     BMMultiLevelBiquad midAndHigh;
     BMMultiLevelBiquad mid;
     BMMultiLevelBiquad high;
+    
+    // filters for graph plotting
+    BMMultiLevelBiquad plotFilters [3];
+    
     bool stereo;
     bool fourthOrder;
 } BMCrossover3way;
@@ -53,12 +58,17 @@ typedef struct BMCrossover3way {
 
 
 typedef struct BMCrossover4way {
+    // filters for audio processing
     BMMultiLevelBiquad band1;
     BMMultiLevelBiquad bands2to4;
     BMMultiLevelBiquad band2;
     BMMultiLevelBiquad bands3to4;
     BMMultiLevelBiquad band3;
     BMMultiLevelBiquad band4;
+    
+    // filters for graph plotting
+    BMMultiLevelBiquad plotFilters [4];
+    
     bool stereo;
     bool fourthOrder;
 } BMCrossover4way;
@@ -140,6 +150,27 @@ void BMCrossover_processMono(BMCrossover* This,
 
 
 
+
+/*!
+ *BMCrossover_tfMagVectors
+ *
+ * @abstract get points to plot a graph of each of the two bands
+ *
+ * @param This        pointer to an initialized struct
+ * @param frequencies input vector containing the x-axis coordinates of the plot
+ * @param magLow      output vector containing the y-coordinates for low band
+ * @param magHigh     output vector containing the y-coordinates for high band
+ * @param length      length of the input and output vectors
+ */
+void BMCrossover_tfMagVectors(BMCrossover *This,
+                                  const float* frequencies,
+                                  float* magLow,
+                                  float* magHigh,
+                                  size_t length);
+
+
+
+
 /*!
  *BMCrossover3way_init
  * @abstract This function must be called prior to use
@@ -188,6 +219,29 @@ void BMCrossover3way_processStereo(BMCrossover3way *This,
                                    float* midL, float* midR,
                                    float* highL, float* highR,
                                    size_t numSamples);
+
+
+
+/*!
+ *BMCrossover3way_tfMagVectors
+ *
+ * @abstract get points to plot a graph of each of the three bands
+ *
+ * @param This        pointer to an initialized struct
+ * @param frequencies input vector containing the x-axis coordinates of the plot
+ * @param magLow      output vector containing the y-coordinates for low band
+ * @param magMid      output vector containing the y-coordinates for mid band
+ * @param magHigh     output vector containing the y-coordinates for high band
+ * @param length      length of the input and output vectors
+ */
+void BMCrossover3way_tfMagVectors(BMCrossover3way *This,
+                                  const float* frequencies,
+                                  float* magLow,
+                                  float* magMid,
+                                  float* magHigh,
+                                  size_t length);
+
+
 
 
 /*!
@@ -242,6 +296,33 @@ void BMCrossover4way_setCutoff1(BMCrossover4way *This, float fc);
  *BMCrossover4way_setCutoff2
  */
 void BMCrossover4way_setCutoff2(BMCrossover4way *This, float fc);
+
+
+
+
+
+
+/*!
+ *BMCrossover4way_tfMagVectors
+ *
+ * @abstract get points to plot a graph of each of the four bands
+ *
+ * @param This        pointer to an initialized struct
+ * @param frequencies input vector containing the x-axis coordinates of the plot
+ * @param magBand1    output vector containing the y-coordinates for band 1
+ * @param magBand2    output vector containing the y-coordinates for band 2
+ * @param magBand3    output vector containing the y-coordinates for band 3
+ * @param magBand4    output vector containing the y-coordinates for band 4
+ * @param length      length of the input and output vectors
+ */
+void BMCrossover4way_tfMagVectors(BMCrossover4way *This,
+                                  const float* frequencies,
+                                  float* magBand1,
+                                  float* magBand2,
+                                  float* magBand3,
+                                  float* magBand4,
+                                  size_t length);
+
 
 
 

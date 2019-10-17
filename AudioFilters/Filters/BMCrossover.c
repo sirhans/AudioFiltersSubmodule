@@ -181,6 +181,33 @@ extern "C" {
     
     
     
+    
+    
+    /*!
+     *BMCrossover_tfMagVectors
+     *
+     * @abstract get points to plot a graph of each of the two bands
+     *
+     * @param This        pointer to an initialized struct
+     * @param frequencies input vector containing the x-axis coordinates of the plot
+     * @param magLow      output vector containing the y-coordinates for low band
+     * @param magHigh     output vector containing the y-coordinates for high band
+     * @param length      length of the input and output vectors
+     */
+    void BMCrossover_tfMagVectors(BMCrossover *This,
+                                      const float* frequencies,
+                                      float* magLow,
+                                      float* magHigh,
+                                  size_t length){
+        BMMultiLevelBiquad_tfMagVector(&This->lp, frequencies, magLow, length);
+        BMMultiLevelBiquad_tfMagVector(&This->hp, frequencies, magHigh, length);
+    }
+    
+    
+    
+    
+    
+    
     /*!
      *BMCrossover3way_init
      * @abstract This function must be called prior to use
@@ -228,6 +255,20 @@ extern "C" {
                                 stereo,
                                 false,false);
         
+        // init filters for plotting
+        BMMultiLevelBiquad_init(&This->plotFilters[0],
+                                levelsPerFilter,
+                                sampleRate,
+                                false, false, false);
+        BMMultiLevelBiquad_init(&This->plotFilters[1],
+                                2*levelsPerFilter,
+                                sampleRate,
+                                false, false, false);
+        BMMultiLevelBiquad_init(&This->plotFilters[2],
+                                levelsPerFilter,
+                                sampleRate,
+                                false, false, false);
+        
         
         BMCrossover3way_setCutoff1(This, cutoff1);
         BMCrossover3way_setCutoff2(This, cutoff2);
@@ -239,10 +280,15 @@ extern "C" {
      *BMCrossover3way_free
      */
     void BMCrossover3way_free(BMCrossover3way* This){
+        // audio filters
         BMMultiLevelBiquad_destroy(&This->low);
         BMMultiLevelBiquad_destroy(&This->midAndHigh);
         BMMultiLevelBiquad_destroy(&This->mid);
         BMMultiLevelBiquad_destroy(&This->high);
+        
+        // plot filters
+        for(size_t i=0; i<3; i++)
+            BMMultiLevelBiquad_destroy(&This->plotFilters[i]);
     }
     
     
@@ -250,12 +296,22 @@ extern "C" {
     
     void BMCrossover3way_setCutoff1(BMCrossover3way *This, float fc){
         if(This->fourthOrder){
+            // for audio
             BMMultiLevelBiquad_setLinkwitzRileyLP4thOrder(&This->low, fc, 0);
             BMMultiLevelBiquad_setLinkwitzRileyHP4thOrder(&This->midAndHigh, fc, 0);
+            
+            // for plotting
+            BMMultiLevelBiquad_setLinkwitzRileyLP4thOrder(&This->plotFilters[0], fc, 0);
+            BMMultiLevelBiquad_setLinkwitzRileyHP4thOrder(&This->plotFilters[1], fc, 0);
         }
         else {
+            // for audio
             BMMultiLevelBiquad_setLinkwitzRileyLP(&This->low, fc, 0);
             BMMultiLevelBiquad_setLinkwitzRileyHP(&This->midAndHigh, fc, 0);
+            
+            // for plotting
+            BMMultiLevelBiquad_setLinkwitzRileyLP(&This->plotFilters[0], fc, 0);
+            BMMultiLevelBiquad_setLinkwitzRileyHP(&This->plotFilters[1], fc, 0);
         }
     }
     
@@ -268,14 +324,24 @@ extern "C" {
         // frequencies so that the lowpass filter will have the same phase shift
         // as the mid and high frequencies when we add it all back together
         if(This->fourthOrder){
+            // for audio
             BMMultiLevelBiquad_setLinkwitzRileyLP4thOrder(&This->mid, fc, 0);
             BMMultiLevelBiquad_setLinkwitzRileyLP4thOrder(&This->low, fc, 2);
             BMMultiLevelBiquad_setLinkwitzRileyHP4thOrder(&This->high, fc, 0);
+            
+            // for plotting
+            BMMultiLevelBiquad_setLinkwitzRileyLP4thOrder(&This->plotFilters[1], fc, 2);
+            BMMultiLevelBiquad_setLinkwitzRileyHP4thOrder(&This->plotFilters[2], fc, 0);
         }
         else {
+            // for audio
             BMMultiLevelBiquad_setLinkwitzRileyLP(&This->mid, fc, 0);
             BMMultiLevelBiquad_setLinkwitzRileyLP(&This->low, fc, 1);
             BMMultiLevelBiquad_setLinkwitzRileyHP(&This->high, fc, 0);
+            
+            // for plotting
+            BMMultiLevelBiquad_setLinkwitzRileyLP(&This->plotFilters[1], fc, 1);
+            BMMultiLevelBiquad_setLinkwitzRileyHP(&This->plotFilters[2], fc, 0);
         }
     }
     
@@ -313,6 +379,35 @@ extern "C" {
                                                midL, midR,
                                                numSamples);
     }
+    
+    
+    
+    
+    
+    /*!
+     *BMCrossover3way_tfMagVectors
+     *
+     * @abstract get points to plot a graph of each of the four bands
+     *
+     * @param This        pointer to an initialized struct
+     * @param frequencies input vector containing the x-axis coordinates of the plot
+     * @param magLow      output vector containing the y-coordinates for low band
+     * @param magMid      output vector containing the y-coordinates for mid band
+     * @param magHigh     output vector containing the y-coordinates for high band
+     * @param length      length of the input and output vectors
+     */
+    void BMCrossover3way_tfMagVectors(BMCrossover3way *This,
+                                      const float* frequencies,
+                                      float* magLow,
+                                      float* magMid,
+                                      float* magHigh,
+                                      size_t length){
+        BMMultiLevelBiquad_tfMagVector(&This->plotFilters[0], frequencies, magLow, length);
+        BMMultiLevelBiquad_tfMagVector(&This->plotFilters[1], frequencies, magMid, length);
+        BMMultiLevelBiquad_tfMagVector(&This->plotFilters[2], frequencies, magHigh, length);
+    }
+    
+    
     
     
     
@@ -375,6 +470,24 @@ extern "C" {
                                 stereo,
                                 false,false);
         
+        // init filters for plotting
+        BMMultiLevelBiquad_init(&This->plotFilters[0],
+                                levelsPerFilter,
+                                sampleRate,
+                                false, false, false);
+        BMMultiLevelBiquad_init(&This->plotFilters[1],
+                                2*levelsPerFilter,
+                                sampleRate,
+                                false, false, false);
+        BMMultiLevelBiquad_init(&This->plotFilters[2],
+                                2*levelsPerFilter,
+                                sampleRate,
+                                false, false, false);
+        BMMultiLevelBiquad_init(&This->plotFilters[3],
+                                levelsPerFilter,
+                                sampleRate,
+                                false, false, false);
+        
         
         BMCrossover4way_setCutoff1(This, cutoff1);
         BMCrossover4way_setCutoff2(This, cutoff2);
@@ -392,17 +505,30 @@ extern "C" {
         BMMultiLevelBiquad_destroy(&This->band4);
         BMMultiLevelBiquad_destroy(&This->bands2to4);
         BMMultiLevelBiquad_destroy(&This->bands3to4);
+        
+        for(size_t i=0; i<4; i++)
+            BMMultiLevelBiquad_destroy(&This->plotFilters[i]);
     }
     
     
     void BMCrossover4way_setCutoff1(BMCrossover4way *This, float fc){
         if(This->fourthOrder){
+            // for audio
             BMMultiLevelBiquad_setLinkwitzRileyLP4thOrder(&This->band1, fc, 0);
             BMMultiLevelBiquad_setLinkwitzRileyHP4thOrder(&This->bands2to4, fc, 0);
+            
+            // for plotting
+            BMMultiLevelBiquad_setLinkwitzRileyLP4thOrder(&This->plotFilters[0], fc, 0);
+            BMMultiLevelBiquad_setLinkwitzRileyHP4thOrder(&This->plotFilters[1], fc, 0);
         }
         else {
+            // for audio
             BMMultiLevelBiquad_setLinkwitzRileyLP(&This->band1, fc, 0);
             BMMultiLevelBiquad_setLinkwitzRileyHP(&This->bands2to4, fc, 0);
+            
+            // for plotting
+            BMMultiLevelBiquad_setLinkwitzRileyLP(&This->plotFilters[0], fc, 0);
+            BMMultiLevelBiquad_setLinkwitzRileyHP(&This->plotFilters[1], fc, 0);
         }
     }
     
@@ -414,14 +540,24 @@ extern "C" {
         // frequencies so that the lowpass filter will have the same phase shift
         // as the mid and high frequencies when we add it all back together
         if(This->fourthOrder){
+            // for audio
             BMMultiLevelBiquad_setLinkwitzRileyLP4thOrder(&This->band2, fc, 0);
             BMMultiLevelBiquad_setLinkwitzRileyLP4thOrder(&This->band1, fc, 2);
             BMMultiLevelBiquad_setLinkwitzRileyHP4thOrder(&This->bands3to4, fc, 0);
+            
+            // for plotting
+            BMMultiLevelBiquad_setLinkwitzRileyLP4thOrder(&This->plotFilters[1], fc, 2);
+            BMMultiLevelBiquad_setLinkwitzRileyHP4thOrder(&This->plotFilters[2], fc, 0);
         }
         else {
+            // for audio
             BMMultiLevelBiquad_setLinkwitzRileyLP(&This->band2, fc, 0);
             BMMultiLevelBiquad_setLinkwitzRileyLP(&This->band1, fc, 1);
             BMMultiLevelBiquad_setLinkwitzRileyHP(&This->bands3to4, fc, 0);
+            
+            // for plotting
+            BMMultiLevelBiquad_setLinkwitzRileyLP(&This->plotFilters[1], fc, 1);
+            BMMultiLevelBiquad_setLinkwitzRileyHP(&This->plotFilters[2], fc, 0);
         }
     }
     
@@ -433,16 +569,26 @@ extern "C" {
         // frequencies so that the lowpass filter will have the same phase shift
         // as the mid and high frequencies when we add it all back together
         if(This->fourthOrder){
+            // for audio
             BMMultiLevelBiquad_setLinkwitzRileyLP4thOrder(&This->band3, fc, 0);
             BMMultiLevelBiquad_setLinkwitzRileyLP4thOrder(&This->band2, fc, 2);
             BMMultiLevelBiquad_setLinkwitzRileyLP4thOrder(&This->band1, fc, 4);
             BMMultiLevelBiquad_setLinkwitzRileyHP4thOrder(&This->band4, fc, 0);
+            
+            // for plotting
+            BMMultiLevelBiquad_setLinkwitzRileyLP4thOrder(&This->plotFilters[2], fc, 2);
+            BMMultiLevelBiquad_setLinkwitzRileyHP4thOrder(&This->plotFilters[3], fc, 0);
         }
         else {
+            // for audio
             BMMultiLevelBiquad_setLinkwitzRileyLP(&This->band3, fc, 0);
             BMMultiLevelBiquad_setLinkwitzRileyLP(&This->band2, fc, 1);
             BMMultiLevelBiquad_setLinkwitzRileyLP(&This->band1, fc, 2);
             BMMultiLevelBiquad_setLinkwitzRileyHP(&This->band4, fc, 0);
+            
+            // for plotting
+            BMMultiLevelBiquad_setLinkwitzRileyLP(&This->plotFilters[2], fc, 1);
+            BMMultiLevelBiquad_setLinkwitzRileyHP(&This->plotFilters[3], fc, 0);
         }
     }
     
@@ -535,7 +681,41 @@ extern "C" {
 		vDSP_vadd(band4L,1,outL,1,outL,1,numSamples);
 
 	}
+    
+    
+    
+    
+    
 
+    //void BMMultiLevelBiquad_tfMagVector(BMMultiLevelBiquad* bqf, const float *frequency, float *magnitude, size_t length);
+    /*!
+     *BMCrossover4way_tfMagVectors
+     *
+     * @abstract get points to plot a graph of each of the four bands
+     *
+     * @param This        pointer to an initialized struct
+     * @param frequencies input vector containing the x-axis coordinates of the plot
+     * @param magBand1    output vector containing the y-coordinates for band 1
+     * @param magBand2    output vector containing the y-coordinates for band 2
+     * @param magBand3    output vector containing the y-coordinates for band 3
+     * @param magBand4    output vector containing the y-coordinates for band 4
+     * @param length      length of the input and output vectors
+     */
+    void BMCrossover4way_tfMagVectors(BMCrossover4way *This,
+                                      const float* frequencies,
+                                      float* magBand1,
+                                      float* magBand2,
+                                      float* magBand3,
+                                      float* magBand4,
+                                      size_t length){
+        BMMultiLevelBiquad_tfMagVector(&This->plotFilters[0], frequencies, magBand1, length);
+        BMMultiLevelBiquad_tfMagVector(&This->plotFilters[1], frequencies, magBand2, length);
+        BMMultiLevelBiquad_tfMagVector(&This->plotFilters[2], frequencies, magBand3, length);
+        BMMultiLevelBiquad_tfMagVector(&This->plotFilters[3], frequencies, magBand4, length);
+    }
+
+    
+    
 
 	
 	/*!
