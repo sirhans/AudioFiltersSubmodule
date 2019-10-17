@@ -181,7 +181,7 @@ void BMMultiTapDelay_ProcessBufferMono(BMMultiTapDelay* delay,
 /*
  * works in place
  */
-void BMMultiTapDelay_ProcessBufferStereo(BMMultiTapDelay* delay,
+void BMMultiTapDelay_processBufferStereo(BMMultiTapDelay* delay,
                                          float* inputL, float* inputR,
                                          float* outputL, float* outputR,
                                          size_t frames){
@@ -474,7 +474,7 @@ void BMMultiTapDelay_impulseResponse(BMMultiTapDelay* This){
         
         // write the initial impulse into the delay,
         float one = 1.0f;
-        BMMultiTapDelay_ProcessBufferStereo(This,
+        BMMultiTapDelay_processBufferStereo(This,
                                           &one, &one,
                                           leftIR, rightIR,
                                           1);
@@ -483,7 +483,7 @@ void BMMultiTapDelay_impulseResponse(BMMultiTapDelay* This){
         //float zero = 0.0f;
         float* zero = malloc(sizeof(float) * (IRlength - 1));
         memset(zero, 0, (IRlength - 1) * sizeof(float));
-        BMMultiTapDelay_ProcessBufferStereo(This,
+        BMMultiTapDelay_processBufferStereo(This,
                                           zero, zero,
                                           leftIR + 1, rightIR + 1,
                                           IRlength - 1);

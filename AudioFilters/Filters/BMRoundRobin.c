@@ -173,7 +173,7 @@ void BMRoundRobin_processBufferStereo(BMRoundRobin* This,
                                       float* outputL, float* outputR,
                                       size_t numSamples){
 
-        BMMultiTapDelay_ProcessBufferStereo(&This->delay,
+        BMMultiTapDelay_processBufferStereo(&This->delay,
                                             inputL, inputR,
                                             outputL, outputR,
                                             numSamples);

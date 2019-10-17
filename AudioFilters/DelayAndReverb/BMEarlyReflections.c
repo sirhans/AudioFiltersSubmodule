@@ -140,7 +140,7 @@ extern "C" {
                                           size_t numSamples){
         
 
-            BMMultiTapDelay_ProcessBufferStereo(&This->delay,
+            BMMultiTapDelay_processBufferStereo(&This->delay,
                                                 inputL, inputR,
                                                 outputL, outputR,
                                                 numSamples);
