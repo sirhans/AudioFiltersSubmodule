@@ -105,6 +105,26 @@ void BMMultiLevelBiquad_destroy(BMMultiLevelBiquad* bqf);
 // and update filter settings
 void BMMultiLevelBiquad_setBell(BMMultiLevelBiquad* bqf, float fc, float bandwidth, float gain_db, size_t level);
 
+
+/*!
+ *BMMultiLevelBiquad_setBellWithSkirt
+ *
+ * @abstract In addition to the usual controls for a bell filter, this function allows you to set the skirt gain, which is the gain at the DC and Nyquist frequencies.
+ *
+ * @note based on Effect Design part 1 AES paper by Jon Dattorro
+ *
+ *  @param This pointer to an initialised struct
+ *  @param fc   bell centre frequency
+ *  @param Q    Q = fc / bandwidth see Effect Design part 1 by Jon Dattorro for details
+ *  @param bellGainDb the gain of the bell at peak or valley
+ *  @param skirtGainDb the gain at DC and Nyquist
+ *  @param level The index within this BMMultiLevelBiquad filter array
+ */
+void BMMultiLevelBiquad_setBellWithSkirt(BMMultiLevelBiquad *This, float fc, float Q, float bellGainDb, float skirtGainDb, size_t level);
+
+
+
+
 /*!
  * BMMultiLevelBiquad_setNormalizedBell
  *
