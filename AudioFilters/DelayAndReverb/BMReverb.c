@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <math.h>
+#include "Constants.h"
 
 
 #ifdef __cplusplus
@@ -22,24 +23,6 @@ extern "C" {
 #endif
     
 #define BMREVERB_MATRIXATTENUATION 0.5 // 1/sqrt(4) keep the mixing unitary
-#define BMREVERB_TEMPBUFFERLENGTH 256 // buffered operation in chunks of 256
-    
-#define BM_MAX(a,b) ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; })
-#define BM_MIN(a,b) ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a < _b ? _a : _b; })
-    
-    
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-    
-#ifndef M_E
-#define M_E 2.71828182845904523536
-#endif
-    
-#ifndef M_SQRT2
-#define M_SQRT2 1.41421356237309504880
-#endif
-    
     
     /*
      * these functions should be called only from functions within this file
@@ -120,7 +103,7 @@ extern "C" {
         // this requires buffer memory so we do it in limited sized chunks to
         // avoid having to adjust the buffer length at runtime
         size_t samplesLeftToMix = numSamples;
-        size_t samplesMixingNext = BM_MIN(BMREVERB_TEMPBUFFERLENGTH,samplesLeftToMix);
+        size_t samplesMixingNext = BM_MIN(BM_BUFFER_CHUNK_SIZE,samplesLeftToMix);
         size_t bufferedProcessingIndex = 0;
         while (samplesLeftToMix != 0) {
             
@@ -157,7 +140,7 @@ extern "C" {
             // update the number of samples left to process in the buffer
             samplesLeftToMix -= samplesMixingNext;
             bufferedProcessingIndex += samplesMixingNext;
-            samplesMixingNext = BM_MIN(BMREVERB_TEMPBUFFERLENGTH,samplesLeftToMix);
+            samplesMixingNext = BM_MIN(BM_BUFFER_CHUNK_SIZE,samplesLeftToMix);
         }
         
         
@@ -478,9 +461,9 @@ extern "C" {
         rv->bufferEndIndices = malloc(rv->numDelays*sizeof(size_t));
         rv->mixingBuffers = malloc(rv->numDelays*sizeof(float));
         rv->decayGainAttenuation = malloc(rv->numDelays*sizeof(float));
-        rv->leftOutputTemp = malloc(BMREVERB_TEMPBUFFERLENGTH*sizeof(float));
-        rv->dryL = malloc(BMREVERB_TEMPBUFFERLENGTH*sizeof(float));
-        rv->dryR = malloc(BMREVERB_TEMPBUFFERLENGTH*sizeof(float));
+        rv->leftOutputTemp = malloc(BM_BUFFER_CHUNK_SIZE*sizeof(float));
+        rv->dryL = malloc(BM_BUFFER_CHUNK_SIZE*sizeof(float));
+        rv->dryR = malloc(BM_BUFFER_CHUNK_SIZE*sizeof(float));
         rv->delayOutputSigns = malloc(rv->numDelays*sizeof(float));
         
         

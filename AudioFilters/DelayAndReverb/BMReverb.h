@@ -30,7 +30,7 @@
 #define BMREVERB_HIGHSHELFFC 8000.0 // above this frequency decay is faster
 #define BMREVERB_HFDECAYMULTIPLIER 6.0 // HF decay is this many times faster
 #define BMREVERB_LOWSHELFFC 500.0 // above this frequency decay is faster
-#define BMREVERB_LFDECAYMULTIPLIER 6.0 // HF decay is this many times faster
+#define BMREVERB_LFDECAYMULTIPLIER 6.0 // LF decay is this many times faster
 #define BMREVERB_RT60 1.2 // overall decay time
 #define BMREVERB_HIGHPASS_FC 30.0 // highpass filter on wet out
 #define BMREVERB_LOWPASS_FC 1200.0 // lowpass filter on wet out
