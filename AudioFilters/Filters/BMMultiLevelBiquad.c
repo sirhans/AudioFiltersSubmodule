@@ -734,12 +734,12 @@ void BMMultiLevelBiquad_setLowShelfAdjustableSlope(BMMultiLevelBiquad* This, flo
 
     double a0, a1, a2, b0, b1, b2;
     
-    b0 =      A*( (A+1) - (A-1)*cos(w0) + twoSqrtAalpha );
-    b1 =  2.0*A*( (A-1) - (A+1)*cos(w0)                 );
-    b2 =      A*( (A+1) - (A-1)*cos(w0) - twoSqrtAalpha );
-    a0 =          (A+1) + (A-1)*cos(w0) + twoSqrtAalpha;
-    a1 =   -2.0*( (A-1) + (A+1)*cos(w0)                 );
-    a2 =          (A+1) + (A-1)*cos(w0) - twoSqrtAalpha;
+    b0 =      A*( (A+1.0) - (A-1.0)*cos(w0) + twoSqrtAalpha );
+    b1 =  2.0*A*( (A-1.0) - (A+1.0)*cos(w0)                 );
+    b2 =      A*( (A+1.0) - (A-1.0)*cos(w0) - twoSqrtAalpha );
+    a0 =          (A+1.0) + (A-1.0)*cos(w0) + twoSqrtAalpha;
+    a1 =   -2.0*( (A-1.0) + (A+1.0)*cos(w0)                 );
+    a2 =          (A+1.0) + (A-1.0)*cos(w0) - twoSqrtAalpha;
 
     // normalize a0 to 1
     b0 /= a0;
