@@ -20,11 +20,15 @@
 #endif /* MIN */
 
 #ifndef BM_MIN
-#define BM_MIN(a,b) (((a)<(b))?(a):(b))
+#define BM_MIN(a,b) ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a < _b ? _a : _b; })
 #endif
 
 #ifndef BM_MAX
-#define BM_MAX(a,b) (((a)>(b))?(a):(b))
+#define BM_MAX(a,b) ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; })
 #endif
+
+    
+    
+
 
 #endif /* Constants_h */
