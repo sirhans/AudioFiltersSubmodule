@@ -510,12 +510,12 @@ void BMMultiLevelBiquad_setHighShelf(BMMultiLevelBiquad* This, float fc, float g
  * @param This pointer to an initialized filter struct
  * @param fc   filter cutoff frequency
  * @param gain_db shelf gain in decibels
- * @param slope in [0.5,1], where 0.5 is equivalent to first order shelf slope and 1 is equivalent to second order shelf slope
+ * @param slope in [0.3,1], where 0.5 is equivalent to first order shelf slope and 1 is equivalent to second order shelf slope
  * @param level the index of the filter in the biquad cascade
  */
 void BMMultiLevelBiquad_setHighShelfAdjustableSlope(BMMultiLevelBiquad* This, float fc, float gain_db, float slope, size_t level){
     assert(level < This->numLevels);
-    assert(0.5 <= slope && slope <= 1.0);
+    assert(0.3 <= slope && slope <= 1.0);
     
 
     double A = pow(10.0,gain_db/40.0);
@@ -719,12 +719,12 @@ void BMMultiLevelBiquad_setLowShelf(BMMultiLevelBiquad* This, float fc, float ga
  * @param This pointer to an initialized filter struct
  * @param fc   filter cutoff frequency
  * @param gain_db shelf gain in decibels
- * @param slope in [0.5,1], where 0.5 is equivalent to first order shelf slope and 1 is equivalent to second order shelf slope
+ * @param slope in [0.3,1], where 0.5 is equivalent to first order shelf slope and 1 is equivalent to second order shelf slope
  * @param level the index of the filter in the biquad cascade
  */
 void BMMultiLevelBiquad_setLowShelfAdjustableSlope(BMMultiLevelBiquad* This, float fc, float gain_db, float slope, size_t level){
     assert(level < This->numLevels);
-    assert(0.5 <= slope && slope <= 1.0);
+    assert(0.3 <= slope && slope <= 1.0);
     
 
     double A = pow(10.0,gain_db/40.0);
