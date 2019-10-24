@@ -74,7 +74,9 @@ extern "C" {
     
     
     
-    
+    /*!
+     *BMLevelMeter_processStereo
+     */
     void BMLevelMeter_processStereo(BMLevelMeter* This,
                                     const float* inputL, const float* inputR,
                                     float* fastPeakL, float* fastPeakR,
@@ -135,7 +137,9 @@ extern "C" {
     }
     
     
-    
+    /*!
+     *BMLevelMeter_processMono
+     */
     void BMLevelMeter_processMono(BMLevelMeter* This,
                                     const float* input,
                                     float* fastPeak,
@@ -186,24 +190,67 @@ extern "C" {
     
     
     
+    
+    void BMLevelMeter_peakLevelMono(BMLevelMeter* This,
+                                    const float* input,
+                                    float* fastRelease_dB,
+                                    float* slowRelease_dB,
+                                    size_t bufferLength){
+        BMLevelMeter_processMono(This,
+                                 input,
+                                 fastRelease_dB,
+                                 slowRelease_dB,
+                                 bufferLength,
+                                 false);
+    }
+
+      
+
+    void BMLevelMeter_RMSPowerMono(BMLevelMeter* This,
+                                      const float* input,
+                                      float* fastRelease_dB,
+                                      float* slowRelease_dB,
+                                   size_t bufferLength){
+        BMLevelMeter_processMono(This,
+                                 input,
+                                 fastRelease_dB,
+                                 slowRelease_dB,
+                                 bufferLength,
+                                 true);
+    }
+
+    
+    
+    
+    
     void BMLevelMeter_peakLevelStereo(BMLevelMeter* This,
                                          const float* inputL, const float* inputR,
-                                         float* fastReleaseL, float* fastReleaseR,
-                                         float* slowReleaseL, float* slowReleaseR,
+                                         float* fastReleaseL_dB, float* fastReleaseR_dB,
+                                         float* slowReleaseL_dB, float* slowReleaseR_dB,
                                          size_t bufferLength){
-        BMLevelMeter_processStereo(This, inputL, inputR, fastReleaseL, fastReleaseR, slowReleaseL, slowReleaseR, bufferLength, false);
+        BMLevelMeter_processStereo(This,
+                                   inputL, inputR,
+                                   fastReleaseL_dB, fastReleaseR_dB,
+                                   slowReleaseL_dB, slowReleaseR_dB,
+                                   bufferLength,
+                                   false);
     }
     
     
     
     
     
-    void BMLevelMeter_RMSPowerStereo(BMLevelMeter* This,
-                                      const float* inputL, const float* inputR,
-                                      float* fastReleaseL, float* fastReleaseR,
-                                      float* slowReleaseL, float* slowReleaseR,
-                                      size_t bufferLength){
-        BMLevelMeter_processStereo(This, inputL, inputR, fastReleaseL, fastReleaseR, slowReleaseL, slowReleaseR, bufferLength, true);
+     void BMLevelMeter_RMSPowerStereo(BMLevelMeter* This,
+                                       const float* inputL, const float* inputR,
+                                       float* fastReleaseL_dB, float* fastReleaseR_dB,
+                                       float* slowReleaseL_dB, float* slowReleaseR_dB,
+                                       size_t bufferLength){
+        BMLevelMeter_processStereo(This,
+                                   inputL, inputR,
+                                   fastReleaseL_dB, fastReleaseR_dB,
+                                   slowReleaseL_dB, slowReleaseR_dB,
+                                   bufferLength,
+                                   true);
     }
     
     

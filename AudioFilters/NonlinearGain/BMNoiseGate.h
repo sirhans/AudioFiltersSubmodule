@@ -22,11 +22,11 @@ extern "C" {
 #include "BMLevelMeter.h"
 
 typedef struct BMNoiseGate {
-    float thresholdGain, lastState, closedGain;
+    float thresholdGain, lastState, closedGain, sidechainInputLeveldB, controlSignalLeveldB;
     float buffer [BM_BUFFER_CHUNK_SIZE];
     BMEnvelopeFollower envFollower;
     BMMultiLevelBiquad sidechainFilter;
-    BMLevelMeter sidechainInputMeter, gateLevelMeter;
+    BMLevelMeter sidechainInputMeter;
 } BMNoiseGate;
 
 /*!
@@ -102,11 +102,19 @@ void BMNoiseGate_setSidechainHighpass(BMNoiseGate* this, float fc);
 
 
 /*!
- * BMNoiseGate_getState
+ * BMNoiseGate_getGateVolumeDB
  *
- * @return   the last value of the gain control
+ * @return   the most recent value of the gain control in decibels
  */
-float BMNoiseGate_getState(BMNoiseGate* This);
+float BMNoiseGate_getGateVolumeDB(BMNoiseGate* This);
+
+
+/*!
+ * BMNoiseGate_getSidechainInputLevelDB
+ *
+ * @return   the most recent RMS power level of the sidechain input in decibels
+ */
+float BMNoiseGate_getSidechainInputLevelDB(BMNoiseGate* This);
 
 
 #ifdef __cplusplus

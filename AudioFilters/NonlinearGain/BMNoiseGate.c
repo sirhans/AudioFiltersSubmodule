@@ -34,6 +34,8 @@ extern "C" {
         BMNoiseGate_setSidechainHighpass(This, 0.0f);
         
         This->lastState = 0.0f;
+        This->sidechainInputLeveldB = -128.0f;
+        This->controlSignalLeveldB = -128.0f;
     }
     
     
@@ -73,9 +75,9 @@ extern "C" {
     
     
     void BMNoiseGate_processStereo(BMNoiseGate* This,
-                                 const float* inputL, const float* inputR,
-                                 float* outputL, float* outputR,
-                                 size_t numSamples){
+                                   const float* inputL, const float* inputR,
+                                   float* outputL, float* outputR,
+                                   size_t numSamples){
         
         // begin chunked processing
         while (numSamples > 0){
@@ -89,17 +91,23 @@ extern "C" {
             BMMultiLevelBiquad_processBufferMono(&This->sidechainFilter, This->buffer, This->buffer, samplesProcessing);
             
             // measure the RMS level of the sidechain input
-            BMLevelMeter_RMSPowerMono(&This->sidechainInputMeter, This->buffer, <#float *fastRelease#>, <#float *slowRelease#>, samplesProcessing);
+            float unused;
+            BMLevelMeter_RMSPowerMono(&This->sidechainInputMeter,
+                                      This->buffer,
+                                      &This->sidechainInputLeveldB,
+                                      &unused,
+                                      samplesProcessing);
             
-            // if abs(input) > threshold, buffer = 1, else buffer = 0
+            // if abs(input) > threshold, buffer = 1, else buffer = closedGain
             BMNoiseGate_thresholdClosedOpen(This, This->buffer, This->buffer, samplesProcessing);
             
             // Filter the buffer, which now contains only 1 and closedGain values, to
             // generate a gain control signal
             BMEnvelopeFollower_processBuffer(&This->envFollower, This->buffer, This->buffer, samplesProcessing);
             
-            // measure the RMS level of the control signal
-            BMLevelMeter_RMSPowerMono(&This->gateLevelMeter, This->buffer, <#float *fastRelease#>, <#float *slowRelease#>, samplesProcessing);
+            // save the last value in the control signal buffer for use in level
+            // metre display
+            This->controlSignalLeveldB = BM_GAIN_TO_DB(This->buffer[samplesProcessing-1]);
             
             // Apply the gain control signal to the input and write to output
             vDSP_vmul(This->buffer, 1, inputL, 1, outputL, 1, samplesProcessing);
@@ -108,7 +116,6 @@ extern "C" {
             // record the last gain value for use in apps that require a gain
             // indicator in the UI
             This->lastState = This->buffer[samplesProcessing-1];
-            
             
             // advance pointers
             inputL += samplesProcessing;
@@ -180,19 +187,24 @@ extern "C" {
     
     
     
-    float BMNoiseGate_getState(BMNoiseGate* This){
-        return This->lastState;
+ 
+    
+    float BMNoiseGate_getGateVolumeDB(BMNoiseGate* This){
+        return This->controlSignalLeveldB;
+    }
+
+
+
+    
+    
+    float BMNoiseGate_getSidechainInputLevelDB(BMNoiseGate* This){
+        return This->sidechainInputLeveldB;
     }
     
+    
+    
 
-    /*!
-     *BMNoiseGate_setSidechainLowpass
-     *
-     * @abstract set the lowpass filter cutoff frequency for the sidechain input
-     *
-     * @param This pointer to an initialised struct
-     * @param fc   cutoff frequency or 0.0 for filter bypass
-     */
+
     void BMNoiseGate_setSidechainLowpass(BMNoiseGate* This, float fc){
         if (fc > 0.0f){
             BMMultiLevelBiquad_setActiveOnLevel(&This->sidechainFilter, true, 1);
@@ -204,14 +216,7 @@ extern "C" {
 
 
 
-    /*!
-     *BMNoiseGate_setSidechainHighpass
-     *
-     * @abstract set the highpass filter cutoff frequency for the sidechain input
-     *
-     * @param This pointer to an initialised struct
-     * @param fc   cutoff frequency or 0.0 for filter bypass
-     */
+ 
     void BMNoiseGate_setSidechainHighpass(BMNoiseGate* This, float fc){
         if (fc > 0.0f){
             BMMultiLevelBiquad_setActiveOnLevel(&This->sidechainFilter, true, 0);
@@ -222,11 +227,8 @@ extern "C" {
     
     
     
-    /*!
-     *BMNoiseGate_setClosedGain
-     *
-     * @abstract sets the gain of the noise gate when it's in the closed state
-     */
+
+    
     void BMNoiseGate_setClosedGain(BMNoiseGate* This, float gainDb){
         This->closedGain = BM_DB_TO_GAIN(gainDb);
     }

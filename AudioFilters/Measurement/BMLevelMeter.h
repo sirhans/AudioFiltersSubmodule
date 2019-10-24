@@ -56,16 +56,16 @@ extern "C" {
      *
      * @param inputL an array of audio samples with length = bufferLength
      * @param inputR an array of audio samples with length = bufferLength
-     * @param fastPeakL pointer to a scalar decibel value that tracks the peak quickly
-     * @param fastPeakR pointer to a scalar decibel value that tracks the peak quickly
-     * @param slowPeakL pointer to a scalar decibel that tracks the peak more slowly
-     * @param slowPeakR pointer to a scalar decibel that tracks the peak more slowly
+     * @param fastPeakL_dB pointer to a scalar decibel value that tracks the peak quickly
+     * @param fastPeakR_dB pointer to a scalar decibel value that tracks the peak quickly
+     * @param slowPeakL_dB pointer to a scalar decibel that tracks the peak more slowly
+     * @param slowPeakR_dB pointer to a scalar decibel that tracks the peak more slowly
      * @param bufferLength length of inputL and inputR. This should be the length of the actual audio buffer. If the buffer length changes from one function call to the next, this class will automatically adjust the filter frequencies to keep the release time constant.
      */
     void BMLevelMeter_peakLevelStereo(BMLevelMeter* This,
                                          const float* inputL, const float* inputR,
-                                         float* fastPeakL, float* fastPeakR,
-                                         float* slowPeakL, float* slowPeakR,
+                                         float* fastPeakL_dB, float* fastPeakR_dB,
+                                         float* slowPeakL_dB, float* slowPeakR_dB,
                                          size_t bufferLength);
     
     
@@ -77,34 +77,34 @@ extern "C" {
      *
      * @param inputL an array of audio samples with length = bufferLength
      * @param inputR an array of audio samples with length = bufferLength
-     * @param fastReleaseL pointer to a scalar decibel value that tracks the peak quickly
-     * @param fastReleaseR pointer to a scalar decibel value that tracks the peak quickly
-     * @param slowReleaseL pointer to a scalar decibel that tracks the peak more slowly
-     * @param slowReleaseR pointer to a scalar decibel that tracks the peak more slowly
+     * @param fastReleaseL_dB pointer to a scalar decibel value that tracks the peak quickly
+     * @param fastReleaseR_dB pointer to a scalar decibel value that tracks the peak quickly
+     * @param slowReleaseL_dB pointer to a scalar decibel that tracks the peak more slowly
+     * @param slowReleaseR_dB pointer to a scalar decibel that tracks the peak more slowly
      * @param bufferLength length of inputL and inputR. This should be the length of the actual audio buffer. If the buffer length changes from one function call to the next, this class will automatically adjust the filter frequencies to keep the release time constant.
      */
     void BMLevelMeter_RMSPowerStereo(BMLevelMeter* This,
                                       const float* inputL, const float* inputR,
-                                      float* fastReleaseL, float* fastReleaseR,
-                                      float* slowReleaseL, float* slowReleaseR,
+                                      float* fastReleaseL_dB, float* fastReleaseR_dB,
+                                      float* slowReleaseL_dB, float* slowReleaseR_dB,
                                       size_t bufferLength);
 
 
 /*!
-   * BMLevelMeter_peakLevelStereo
-   *
-   * @abstract scan a stereo pair of audio buffers to get the peak value. Then filter the time series of peaks so that we get a value that goes up instantaneously and down more slowly. Filter a second time to get a value that goes down even more slowly. The fastPeak values are useful for a level meter. The slowPeak values are useful for an indicator that shows what level the peak has reached in recent history.
-   *
-   * @param input an array of audio samples with length = bufferLength
-   * @param fastPeak pointer to a scalar decibel value that tracks the peak quickly
-   * @param slowPeak pointer to a scalar decibel that tracks the peak more slowly
-   * @param bufferLength length of inputL and inputR. This should be the length of the actual audio buffer. If the buffer length changes from one function call to the next, this class will automatically adjust the filter frequencies to keep the release time constant.
-   */
-  void BMLevelMeter_peakLevelMono(BMLevelMeter* This,
-                                  const float* input,
-                                  float* fastPeak,
-                                  float* slowPeak,
-                                  size_t bufferLength);
+ * BMLevelMeter_peakLevelStereo
+ *
+ * @abstract scan a stereo pair of audio buffers to get the peak value. Then filter the time series of peaks so that we get a value that goes up instantaneously and down more slowly. Filter a second time to get a value that goes down even more slowly. The fastPeak values are useful for a level meter. The slowPeak values are useful for an indicator that shows what level the peak has reached in recent history.
+ *
+ * @param input an array of audio samples with length = bufferLength
+ * @param fastPeak_dB pointer to a scalar decibel value that tracks the peak quickly
+ * @param slowPeak_dB pointer to a scalar decibel that tracks the peak more slowly
+ * @param bufferLength length of inputL and inputR. This should be the length of the actual audio buffer. If the buffer length changes from one function call to the next, this class will automatically adjust the filter frequencies to keep the release time constant.
+ */
+void BMLevelMeter_peakLevelMono(BMLevelMeter* This,
+                                const float* input,
+                                float* fastPeak_dB,
+                                float* slowPeak_dB,
+                                size_t bufferLength);
   
 
 /*!
@@ -113,36 +113,18 @@ extern "C" {
  * @abstract find the RMS power level in a stereo pair of buffers. Then filter the time series of peaks so that we get a value that goes up instantaneously and down more slowly. Filter a second time to get a value that goes down even more slowly. The fastRelease values are useful for a level meter. The slowRelease values are useful for an indicator that shows the highest level the RMS power has reached in recent history.
  *
  * @param input an array of audio samples with length = bufferLength
- * @param fastRelease pointer to a scalar decibel value that tracks the peak quickly
- * @param slowRelease pointer to a scalar decibel that tracks the peak more slowly
+ * @param fastRelease_dB pointer to a scalar decibel value that tracks the peak quickly
+ * @param slowRelease_dB pointer to a scalar decibel that tracks the peak more slowly
  * @param bufferLength length of inputL and inputR. This should be the length of the actual audio buffer. If the buffer length changes from one function call to the next, this class will automatically adjust the filter frequencies to keep the release time constant.
  */
 void BMLevelMeter_RMSPowerMono(BMLevelMeter* This,
                                   const float* input,
-                                  float* fastRelease,
-                                  float* slowRelease,
+                                  float* fastRelease_dB,
+                                  float* slowRelease_dB,
                                   size_t bufferLength);
 
 
   
-  /*!
-   * BMLevelMeter_RMSPowerStereo
-   *
-   * @abstract find the RMS power level in a stereo pair of buffers. Then filter the time series of peaks so that we get a value that goes up instantaneously and down more slowly. Filter a second time to get a value that goes down even more slowly. The fastRelease values are useful for a level meter. The slowRelease values are useful for an indicator that shows the highest level the RMS power has reached in recent history.
-   *
-   * @param inputL an array of audio samples with length = bufferLength
-   * @param inputR an array of audio samples with length = bufferLength
-   * @param fastReleaseL pointer to a scalar decibel value that tracks the peak quickly
-   * @param fastReleaseR pointer to a scalar decibel value that tracks the peak quickly
-   * @param slowReleaseL pointer to a scalar decibel that tracks the peak more slowly
-   * @param slowReleaseR pointer to a scalar decibel that tracks the peak more slowly
-   * @param bufferLength length of inputL and inputR. This should be the length of the actual audio buffer. If the buffer length changes from one function call to the next, this class will automatically adjust the filter frequencies to keep the release time constant.
-   */
-  void BMLevelMeter_RMSPowerStereo(BMLevelMeter* This,
-                                    const float* inputL, const float* inputR,
-                                    float* fastReleaseL, float* fastReleaseR,
-                                    float* slowReleaseL, float* slowReleaseR,
-                                    size_t bufferLength);
 
     
 #endif /* BMPeakMetre_h */
