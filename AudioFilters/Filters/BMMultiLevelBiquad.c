@@ -749,7 +749,7 @@ void BMMultiLevelBiquad_setLowShelfAdjustableSlope(BMMultiLevelBiquad* This, flo
     a2 /= a0;
     
     // for left and right channels, set coefficients
-    // these formulae are from the RBJ filter cookbook
+    // these formulae are from the R B-J filter cookbook
     for(size_t i=0; i < This->numChannels; i++){
         double* b0p = This->coefficients_d + level*This->numChannels*5 + i*5;
         double* b1p = b0p + 1;
