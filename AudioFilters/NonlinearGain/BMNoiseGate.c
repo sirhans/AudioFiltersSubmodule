@@ -27,18 +27,25 @@ extern "C" {
         BMNoiseGate_setThreshold(This, thresholdDb);
         BMNoiseGate_setReleaseTime(This, BM_NOISE_GATE_RELEASE_TIME);
         BMNoiseGate_setAttackTime(This, BM_NOISE_GATE_ATTACK_TIME);
+        BMMultiLevelBiquad_init(&This->sidechainFilter, 2, sampleRate, false, false, false);
+        
+        // bypass the sidechain filters
+        BMNoiseGate_setSidechainLowpass(This, 0.0f);
+        BMNoiseGate_setSidechainHighpass(This, 0.0f);
+        
         This->lastState = 0.0f;
     }
     
     
+
     
     
     /*!
-     *BMNoiseGate_threshold01
+     *BMNoiseGate_thresholdClosedOpen
      *
-     * @abstract convert values < threshold to 0; >= threshold to 1.
+     * @abstract convert values < threshold to closedGain; >= threshold to 1.
      */
-    void BMNoiseGate_threshold01(BMNoiseGate* This, const float* input, float* output, size_t numSamples){
+    void BMNoiseGate_thresholdClosedOpen(BMNoiseGate* This, const float* input, float* output, size_t numSamples){
         // int version of numSamples for vForce functions
         int numSamplesI = (int)numSamples;
         
@@ -55,6 +62,10 @@ extern "C" {
         
         // ceiling to get only values in the set {0.0,1.0}
         vvceilf(This->buffer, This->buffer, &numSamplesI);
+        
+        // scale and shift to replace zeros with This->closedGain
+        float scale = 1.0f - This->closedGain;
+        vDSP_vsmsa(This->buffer, 1, &scale, &This->closedGain, This->buffer, 1, numSamples);
     }
     
     
@@ -74,12 +85,21 @@ extern "C" {
             float half = 0.5f;
             vDSP_vasm(inputL, 1, inputR, 1, &half, This->buffer, 1, samplesProcessing);
             
-            // if abs(input) > threshold, buffer = 1, else buffer = 0
-            BMNoiseGate_threshold01(This, This->buffer, This->buffer, samplesProcessing);
+            // apply sidechain filters to the buffer
+            BMMultiLevelBiquad_processBufferMono(&This->sidechainFilter, This->buffer, This->buffer, samplesProcessing);
             
-            // Filter the buffer, which now contains only 1 and 0 values, to
+            // measure the RMS level of the sidechain input
+            BMLevelMeter_RMSPowerMono(&This->sidechainInputMeter, This->buffer, <#float *fastRelease#>, <#float *slowRelease#>, samplesProcessing);
+            
+            // if abs(input) > threshold, buffer = 1, else buffer = 0
+            BMNoiseGate_thresholdClosedOpen(This, This->buffer, This->buffer, samplesProcessing);
+            
+            // Filter the buffer, which now contains only 1 and closedGain values, to
             // generate a gain control signal
             BMEnvelopeFollower_processBuffer(&This->envFollower, This->buffer, This->buffer, samplesProcessing);
+            
+            // measure the RMS level of the control signal
+            BMLevelMeter_RMSPowerMono(&This->gateLevelMeter, This->buffer, <#float *fastRelease#>, <#float *slowRelease#>, samplesProcessing);
             
             // Apply the gain control signal to the input and write to output
             vDSP_vmul(This->buffer, 1, inputL, 1, outputL, 1, samplesProcessing);
@@ -112,10 +132,13 @@ extern "C" {
         while (numSamples > 0){
             size_t samplesProcessing = BM_MIN(numSamples,BM_BUFFER_CHUNK_SIZE);
             
-            // if abs(input) > threshold, buffer = 1, else buffer = 0
-            BMNoiseGate_threshold01(This, input, This->buffer, samplesProcessing);
+            // apply sidechain filters to the buffer
+            BMMultiLevelBiquad_processBufferMono(&This->sidechainFilter, input, This->buffer, samplesProcessing);
             
-            //Filter the buffer, which now contains only 1 and 0 values, to
+            // if abs(input) > threshold, buffer = 1, else buffer = 0
+            BMNoiseGate_thresholdClosedOpen(This, This->buffer, This->buffer, samplesProcessing);
+            
+            //Filter the buffer, which now contains only closedGain and 0 values, to
             //generate a gain control signal
             BMEnvelopeFollower_processBuffer(&This->envFollower, This->buffer, This->buffer, samplesProcessing);
             
@@ -159,6 +182,53 @@ extern "C" {
     
     float BMNoiseGate_getState(BMNoiseGate* This){
         return This->lastState;
+    }
+    
+
+    /*!
+     *BMNoiseGate_setSidechainLowpass
+     *
+     * @abstract set the lowpass filter cutoff frequency for the sidechain input
+     *
+     * @param This pointer to an initialised struct
+     * @param fc   cutoff frequency or 0.0 for filter bypass
+     */
+    void BMNoiseGate_setSidechainLowpass(BMNoiseGate* This, float fc){
+        if (fc > 0.0f){
+            BMMultiLevelBiquad_setActiveOnLevel(&This->sidechainFilter, true, 1);
+            BMMultiLevelBiquad_setLowPass12db(&This->sidechainFilter, fc, 1);
+        }
+        else BMMultiLevelBiquad_setActiveOnLevel(&This->sidechainFilter, false, 1);
+        
+    }
+
+
+
+    /*!
+     *BMNoiseGate_setSidechainHighpass
+     *
+     * @abstract set the highpass filter cutoff frequency for the sidechain input
+     *
+     * @param This pointer to an initialised struct
+     * @param fc   cutoff frequency or 0.0 for filter bypass
+     */
+    void BMNoiseGate_setSidechainHighpass(BMNoiseGate* This, float fc){
+        if (fc > 0.0f){
+            BMMultiLevelBiquad_setActiveOnLevel(&This->sidechainFilter, true, 0);
+            BMMultiLevelBiquad_setHighPass12db(&This->sidechainFilter, fc, 0);
+        }
+        else BMMultiLevelBiquad_setActiveOnLevel(&This->sidechainFilter, false, 0);
+    }
+    
+    
+    
+    /*!
+     *BMNoiseGate_setClosedGain
+     *
+     * @abstract sets the gain of the noise gate when it's in the closed state
+     */
+    void BMNoiseGate_setClosedGain(BMNoiseGate* This, float gainDb){
+        This->closedGain = BM_DB_TO_GAIN(gainDb);
     }
     
     
