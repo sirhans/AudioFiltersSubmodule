@@ -95,7 +95,7 @@ void BMNoiseGate_setClosedGain(BMNoiseGate *This, float gainDb);
  *
  * @abstract set the lowpass filter cutoff frequency for the sidechain input
  *
- * @param this pointer to an initialised struct
+ * @param This pointer to an initialised struct
  * @param fc   cutoff frequency or 0.0 for filter bypass
  */
 void BMNoiseGate_setSidechainLowpass(BMNoiseGate *This, float fc);
@@ -107,7 +107,7 @@ void BMNoiseGate_setSidechainLowpass(BMNoiseGate *This, float fc);
  *
  * @abstract set the highpass filter cutoff frequency for the sidechain input
  *
- * @param this pointer to an initialised struct
+ * @param This pointer to an initialised struct
  * @param fc   cutoff frequency or 0.0 for filter bypass
  */
 void BMNoiseGate_setSidechainHighpass(BMNoiseGate *This, float fc);

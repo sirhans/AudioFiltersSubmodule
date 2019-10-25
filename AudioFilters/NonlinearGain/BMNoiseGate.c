@@ -71,8 +71,13 @@ extern "C" {
 	
 	
 	
+	
 	void BMNoiseGate_updateDelay(BMNoiseGate *This){
+		// find the group delay of the sidechain filter at its centre frequency
+		size_t groupDelay = BMNoiseGate_sidechainFilterGroupDelay(This);
 		
+		// set the delay to compensate for group delay
+		BMShortSimpleDelay_changeLength(&This->delay, groupDelay);
 	}
 	
 	
@@ -98,7 +103,7 @@ extern "C" {
         float zero = 0.0f; float one = 1.0f;
         vDSP_vclip(This->buffer, 1, &zero, &one, This->buffer, 1, numSamples);
         
-        // ceiling to get only values in the set {0.0,1.0}
+        // ceiling to get only values from the set {0.0,1.0}
         vvceilf(This->buffer, This->buffer, &numSamplesI);
         
         // scale and shift to replace zeros with This->closedGain
@@ -126,13 +131,13 @@ extern "C" {
             // apply sidechain filters to the buffer
             BMMultiLevelBiquad_processBufferMono(&This->sidechainFilter, This->buffer, This->buffer, samplesProcessing);
             
-            // measure the RMS level of the sidechain input
+            // measure the peak level of the sidechain input
             float unused;
-            BMLevelMeter_RMSPowerMono(&This->sidechainInputMeter,
-                                      This->buffer,
-                                      &This->sidechainInputLeveldB,
-                                      &unused,
-                                      samplesProcessing);
+			BMLevelMeter_peakLevelMono(&This->sidechainInputMeter,
+									   This->buffer,
+									   &This->sidechainInputLeveldB,
+									   &unused,
+									   samplesProcessing);
             
             // if abs(input) > threshold, buffer = 1, else buffer = closedGain
             BMNoiseGate_thresholdClosedOpen(This, This->buffer, This->buffer, samplesProcessing);

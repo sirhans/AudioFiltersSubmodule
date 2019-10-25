@@ -129,17 +129,6 @@ extern "C" {
     
     
     
-    /*!
-     * BMGainStage_setGain
-     *
-     * @param This       Pointer to an initialised gain stage
-     * @param gain       Input gain coefficient.
-     *
-     */
-    void BMGainStage_setGain(BMGainStage *This, float gain);
-    
-    
-    
     
     
     
