@@ -20,7 +20,7 @@ extern "C" {
     
 #define INTRP_DLY_CFCT_TBL_LENGTH 100
     
-    void BMInterpolatedDelay_init(BMInterpolatedDelay* This,
+    void BMInterpolatedDelay_init(BMInterpolatedDelay *This,
                                   bool stereo,
                                   float initialLengthInSamples,
                                   size_t interpolationOrder,
@@ -68,7 +68,7 @@ extern "C" {
     
     
     
-    void BMInterpolatedDelay_destroy(BMInterpolatedDelay* This){
+    void BMInterpolatedDelay_destroy(BMInterpolatedDelay *This){
         //BMMultiTapDelay_destroy(&This->delayBuffer);
     }
     
@@ -77,7 +77,7 @@ extern "C" {
     
     
     
-    void BMInterpolatedDelay_setLength(BMInterpolatedDelay* This, float length){
+    void BMInterpolatedDelay_setLength(BMInterpolatedDelay *This, float length){
         // separate length into fractional and integer parts
         float intDelayF = floorf(length);
         size_t intDelayI = (size_t) intDelayF;
@@ -134,7 +134,7 @@ extern "C" {
     
     
     
-    static __inline__ __attribute__((always_inline)) void BMInterpolatedDelay_processSampleLinearInterpMono(BMInterpolatedDelay* This,
+    static __inline__ __attribute__((always_inline)) void BMInterpolatedDelay_processSampleLinearInterpMono(BMInterpolatedDelay *This,
                                                           float in,
                                                           float* out){
 
@@ -144,7 +144,7 @@ extern "C" {
     
     
     
-    static __inline__ __attribute__((always_inline)) void BMInterpolatedDelay_processSampleLinearInterpStereo(BMInterpolatedDelay* This,
+    static __inline__ __attribute__((always_inline)) void BMInterpolatedDelay_processSampleLinearInterpStereo(BMInterpolatedDelay *This,
                                                             float inL,
                                                             float inR,
                                                             float* outL,

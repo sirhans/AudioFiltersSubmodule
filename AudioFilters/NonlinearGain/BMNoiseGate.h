@@ -35,14 +35,26 @@ typedef struct BMNoiseGate {
  * @param thresholdDb       when the volume drops below this threshold the noise gate switches into release mode
  * @param sampleRate        sample rate
  */
-void BMNoiseGate_init(BMNoiseGate* this, float thresholdDb, float sampleRate);
+void BMNoiseGate_init(BMNoiseGate *This, float thresholdDb, float sampleRate);
+
+
+
+/*!
+ *BMNoiseGate_free
+ *
+ * @param thresholdDb       when the volume drops below this threshold the noise gate switches into release mode
+ * @param sampleRate        sample rate
+ */
+void BMNoiseGate_free(BMNoiseGate *This);
+
+
 
 
 
 /*!
  *BMNoiseGate_processMono
  */
-void BMNoiseGate_processMono(BMNoiseGate* this,
+void BMNoiseGate_processMono(BMNoiseGate *This,
                              const float* input,
                              float* output,
                              size_t numSamplesIn);
@@ -50,7 +62,7 @@ void BMNoiseGate_processMono(BMNoiseGate* this,
 /*!
  *BMNoiseGate_processStereo
  */
-void BMNoiseGate_processStereo(BMNoiseGate* this,
+void BMNoiseGate_processStereo(BMNoiseGate *This,
                                const float* inputL, const float* inputR,
                                float* outputL, float* outputR,
                                size_t numSamplesIn);
@@ -58,24 +70,24 @@ void BMNoiseGate_processStereo(BMNoiseGate* this,
 /*!
  *BMNoiseGate_setReleaseTime
  */
-void BMNoiseGate_setReleaseTime(BMNoiseGate* this,float releaseTimeSeconds);
+void BMNoiseGate_setReleaseTime(BMNoiseGate *This,float releaseTimeSeconds);
 
 /*!
  *BMNoiseGate_setAttackTime
  */
-void BMNoiseGate_setAttackTime(BMNoiseGate* this,float attackTimeSeconds);
+void BMNoiseGate_setAttackTime(BMNoiseGate *This,float attackTimeSeconds);
 
 /*!
  *BMNoiseGate_setThreshold
  */
-void BMNoiseGate_setThreshold(BMNoiseGate* this,float thresholdDb);
+void BMNoiseGate_setThreshold(BMNoiseGate *This,float thresholdDb);
 
 /*!
  *BMNoiseGate_setClosedGain
  *
  * @abstract sets the gain of the noise gate when it's in the closed state
  */
-void BMNoiseGate_setClosedGain(BMNoiseGate* this, float gainDb);
+void BMNoiseGate_setClosedGain(BMNoiseGate *This, float gainDb);
 
 
 /*!
@@ -86,7 +98,7 @@ void BMNoiseGate_setClosedGain(BMNoiseGate* this, float gainDb);
  * @param this pointer to an initialised struct
  * @param fc   cutoff frequency or 0.0 for filter bypass
  */
-void BMNoiseGate_setSidechainLowpass(BMNoiseGate* this, float fc);
+void BMNoiseGate_setSidechainLowpass(BMNoiseGate *This, float fc);
 
 
 
@@ -98,7 +110,7 @@ void BMNoiseGate_setSidechainLowpass(BMNoiseGate* this, float fc);
  * @param this pointer to an initialised struct
  * @param fc   cutoff frequency or 0.0 for filter bypass
  */
-void BMNoiseGate_setSidechainHighpass(BMNoiseGate* this, float fc);
+void BMNoiseGate_setSidechainHighpass(BMNoiseGate *This, float fc);
 
 
 /*!
@@ -106,7 +118,7 @@ void BMNoiseGate_setSidechainHighpass(BMNoiseGate* this, float fc);
  *
  * @return   the most recent value of the gain control in decibels
  */
-float BMNoiseGate_getGateVolumeDB(BMNoiseGate* This);
+float BMNoiseGate_getGateVolumeDB(BMNoiseGate *This);
 
 
 /*!
@@ -114,7 +126,7 @@ float BMNoiseGate_getGateVolumeDB(BMNoiseGate* This);
  *
  * @return   the most recent RMS power level of the sidechain input in decibels
  */
-float BMNoiseGate_getSidechainInputLevelDB(BMNoiseGate* This);
+float BMNoiseGate_getSidechainInputLevelDB(BMNoiseGate *This);
 
 
 #ifdef __cplusplus

@@ -22,7 +22,7 @@ extern "C" {
     
     
 
-    void BMNoiseGate_init(BMNoiseGate* This, float thresholdDb, float sampleRate){
+    void BMNoiseGate_init(BMNoiseGate *This, float thresholdDb, float sampleRate){
         BMEnvelopeFollower_initWithCustomNumStages(&This->envFollower, 3, 3, sampleRate);
         BMNoiseGate_setThreshold(This, thresholdDb);
         BMNoiseGate_setReleaseTime(This, BM_NOISE_GATE_RELEASE_TIME);
@@ -47,7 +47,7 @@ extern "C" {
      *
      * @abstract convert values < threshold to closedGain; >= threshold to 1.
      */
-    void BMNoiseGate_thresholdClosedOpen(BMNoiseGate* This, const float* input, float* output, size_t numSamples){
+    void BMNoiseGate_thresholdClosedOpen(BMNoiseGate *This, const float* input, float* output, size_t numSamples){
         // int version of numSamples for vForce functions
         int numSamplesI = (int)numSamples;
         
@@ -74,7 +74,7 @@ extern "C" {
     
     
     
-    void BMNoiseGate_processStereo(BMNoiseGate* This,
+    void BMNoiseGate_processStereo(BMNoiseGate *This,
                                    const float* inputL, const float* inputR,
                                    float* outputL, float* outputR,
                                    size_t numSamples){
@@ -130,7 +130,7 @@ extern "C" {
     
     
     
-    void BMNoiseGate_processMono(BMNoiseGate* This,
+    void BMNoiseGate_processMono(BMNoiseGate *This,
                                  const float* input,
                                  float* output,
                                  size_t numSamples){
@@ -166,7 +166,7 @@ extern "C" {
     
     
     
-    void BMNoiseGate_setAttackTime(BMNoiseGate* This,float attackTimeSeconds){
+    void BMNoiseGate_setAttackTime(BMNoiseGate *This,float attackTimeSeconds){
         BMEnvelopeFollower_setAttackTime(&This->envFollower, attackTimeSeconds);
     }
     
@@ -174,14 +174,14 @@ extern "C" {
     
     
     
-    void BMNoiseGate_setReleaseTime(BMNoiseGate* This,float releaseTimeSeconds){
+    void BMNoiseGate_setReleaseTime(BMNoiseGate *This,float releaseTimeSeconds){
         BMEnvelopeFollower_setReleaseTime(&This->envFollower, releaseTimeSeconds);
     }
     
     
     
     
-    void BMNoiseGate_setThreshold(BMNoiseGate* This,float thresholdDb){
+    void BMNoiseGate_setThreshold(BMNoiseGate *This,float thresholdDb){
         This->thresholdGain = BM_DB_TO_GAIN(thresholdDb);
     }
     
@@ -189,7 +189,7 @@ extern "C" {
     
  
     
-    float BMNoiseGate_getGateVolumeDB(BMNoiseGate* This){
+    float BMNoiseGate_getGateVolumeDB(BMNoiseGate *This){
         return This->controlSignalLeveldB;
     }
 
@@ -197,7 +197,7 @@ extern "C" {
 
     
     
-    float BMNoiseGate_getSidechainInputLevelDB(BMNoiseGate* This){
+    float BMNoiseGate_getSidechainInputLevelDB(BMNoiseGate *This){
         return This->sidechainInputLeveldB;
     }
     
@@ -205,7 +205,7 @@ extern "C" {
     
 
 
-    void BMNoiseGate_setSidechainLowpass(BMNoiseGate* This, float fc){
+    void BMNoiseGate_setSidechainLowpass(BMNoiseGate *This, float fc){
         if (fc > 0.0f){
             BMMultiLevelBiquad_setActiveOnLevel(&This->sidechainFilter, true, 1);
             BMMultiLevelBiquad_setLowPass12db(&This->sidechainFilter, fc, 1);
@@ -217,7 +217,7 @@ extern "C" {
 
 
  
-    void BMNoiseGate_setSidechainHighpass(BMNoiseGate* This, float fc){
+    void BMNoiseGate_setSidechainHighpass(BMNoiseGate *This, float fc){
         if (fc > 0.0f){
             BMMultiLevelBiquad_setActiveOnLevel(&This->sidechainFilter, true, 0);
             BMMultiLevelBiquad_setHighPass12db(&This->sidechainFilter, fc, 0);
@@ -229,7 +229,7 @@ extern "C" {
     
 
     
-    void BMNoiseGate_setClosedGain(BMNoiseGate* This, float gainDb){
+    void BMNoiseGate_setClosedGain(BMNoiseGate *This, float gainDb){
         This->closedGain = BM_DB_TO_GAIN(gainDb);
     }
     

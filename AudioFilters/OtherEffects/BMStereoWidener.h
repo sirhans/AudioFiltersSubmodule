@@ -35,12 +35,12 @@ extern "C" {
     /*
      * Works in place
      */
-    void BMStereoWidener_processAudio(BMStereoWidener* This,
+    void BMStereoWidener_processAudio(BMStereoWidener *This,
                                       float* inL, float* inR,
                                       float* outL, float* outR,
                                       size_t numSamples);
     
-    void BMStereoWidener_setWidth(BMStereoWidener* This, float width);
+    void BMStereoWidener_setWidth(BMStereoWidener *This, float width);
     
     
 #endif /* BMStereoWidener_h */

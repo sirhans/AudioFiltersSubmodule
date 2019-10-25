@@ -22,7 +22,7 @@ extern "C" {
     
     
     
-    void BMWetDryMixer_init(BMWetDryMixer* This, float sampleRate){
+    void BMWetDryMixer_init(BMWetDryMixer *This, float sampleRate){
         This->wetMix = This->mixTarget = 1.0f;
         This->inTransition = false;
         
@@ -33,7 +33,7 @@ extern "C" {
     
     
     
-    void BMWetDryMixer_processBufferInPhase(BMWetDryMixer* This,
+    void BMWetDryMixer_processBufferInPhase(BMWetDryMixer *This,
                                                 float* inputWetL, float* inputWetR,
                                                 float* inputDryL, float* inputDryR,
                                                 float* outputL, float* outputR,
@@ -99,7 +99,7 @@ extern "C" {
     
     
     
-    void BMWetDryMixer_processBufferRandomPhase(BMWetDryMixer* This,
+    void BMWetDryMixer_processBufferRandomPhase(BMWetDryMixer *This,
                                      float* inputWetL, float* inputWetR,
                                      float* inputDryL, float* inputDryR,
                                      float* outputL, float* outputR,
@@ -181,7 +181,7 @@ extern "C" {
     
     
     
-    void BMWetDryMixer_setMix(BMWetDryMixer* This, float mix){
+    void BMWetDryMixer_setMix(BMWetDryMixer *This, float mix){
         assert(0.0f <= mix && mix <= 1.0f);
         
         // if this is a legitimate gain change, set the new target and switch to
@@ -195,7 +195,7 @@ extern "C" {
     
     
     
-    float BMWetDryMixer_getMix(BMWetDryMixer* This){
+    float BMWetDryMixer_getMix(BMWetDryMixer *This){
         return This->mixTarget;
     }
     

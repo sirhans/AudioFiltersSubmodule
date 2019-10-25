@@ -14,9 +14,9 @@
 #include "BMFastHadamard.h"
 #include "BMVelvetNoise.h"
 
-float TestReverb_processSample(TestReverb* This,float x);
+float TestReverb_processSample(TestReverb *This,float x);
 
-void TestReverb_init(TestReverb* This,size_t numOfDelay,float sampleRate){
+void TestReverb_init(TestReverb *This,size_t numOfDelay,float sampleRate){
     assert(BMPowerOfTwoQ(numOfDelay));
     assert(numOfDelay>=16);
     
@@ -44,7 +44,7 @@ void TestReverb_init(TestReverb* This,size_t numOfDelay,float sampleRate){
     }
 }
 
-inline float TestReverb_processSample(TestReverb* This,float x){
+inline float TestReverb_processSample(TestReverb *This,float x){
     //Get dlOut
     float xOut = x;
     float gain = 1./sqrt(This->numOfDelay);
@@ -73,13 +73,13 @@ inline float TestReverb_processSample(TestReverb* This,float x){
     return xOut;
 }
 
-void TestReverb_process(TestReverb* This,float* input,float* output, size_t numSamples){
+void TestReverb_process(TestReverb *This,float* input,float* output, size_t numSamples){
     for (size_t i = 0; i<numSamples; i++) {
         output[i] = TestReverb_processSample(This, input[i]);
     }
 }
 
-void TestReverb_impulseResponse(TestReverb* this,size_t frameCount){
+void TestReverb_impulseResponse(TestReverb *This,size_t frameCount){
     float* irBuffer = malloc(sizeof(float)*frameCount);
     float* outBuffer = malloc(sizeof(float)*frameCount);
     for(int i=0;i<frameCount;i++){

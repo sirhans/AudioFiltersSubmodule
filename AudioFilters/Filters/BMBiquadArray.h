@@ -42,10 +42,10 @@ extern "C" {
     
     
     /*
-     * This function initialises memory and puts all the filters
+      *This function initialises memory and puts all the filters
      * into bypass mode.
      */
-    void BMBiquadArray_init(BMBiquadArray* This, size_t numChannels, float sampleRate);
+    void BMBiquadArray_init(BMBiquadArray *This, size_t numChannels, float sampleRate);
 
 
     /*
@@ -58,7 +58,7 @@ extern "C" {
      * @param numChannels         size of FDN, length of delayTimes
      * @param sampleRate          sample rate in Hz
      */
-//    void BMBiquadArray_FDNHighShelfInit(BMBiquadArray* This, float* delayTimes, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels, float sampleRate);
+//    void BMBiquadArray_FDNHighShelfInit(BMBiquadArray *This, float* delayTimes, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels, float sampleRate);
     
     /*
      * Set high frequency decay for High shelf filter array in an FDN
@@ -69,7 +69,7 @@ extern "C" {
      * @param filteredRT60      decay time at nyquist (seconds)
      * @param numChannels       size of FDN
      */
-    void BMBiquadArray_setHighDecayFDN(BMBiquadArray* This, float* delayTimesSeconds, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels);
+    void BMBiquadArray_setHighDecayFDN(BMBiquadArray *This, float* delayTimesSeconds, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels);
     
     
     
@@ -84,7 +84,7 @@ extern "C" {
      * @param numChannels         size of FDN, length of delayTimes
      * @param sampleRate          sample rate in Hz
      */
-//    void BMBiquadArray_FDNLowShelfInit(BMBiquadArray* This, float* delayTimes, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels, float sampleRate);
+//    void BMBiquadArray_FDNLowShelfInit(BMBiquadArray *This, float* delayTimes, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels, float sampleRate);
     
     
     /*
@@ -96,7 +96,7 @@ extern "C" {
      * @param filteredRT60      decay time at DC (seconds)
      * @param numChannels       size of FDN
      */
-    void BMBiquadArray_setLowDecayFDN(BMBiquadArray* This, float* delayTimesSeconds, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels);
+    void BMBiquadArray_setLowDecayFDN(BMBiquadArray *This, float* delayTimesSeconds, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels);
     
     
     
@@ -107,11 +107,11 @@ extern "C" {
      * (works in place)
      */
     
-    static __inline__ __attribute__((always_inline)) void BMBiquadArray_processSample(BMBiquadArray* This, float* input, float* output, size_t numChannels){
+    static __inline__ __attribute__((always_inline)) void BMBiquadArray_processSample(BMBiquadArray *This, float* input, float* output, size_t numChannels){
         assert(numChannels <= This->numChannels);
         
         /*
-         * This is the biquad difference equation that we want to compute:
+          *This is the biquad difference equation that we want to compute:
          *
          * y0 = b0 * x0 + b1 * x1 + b2 * x2 - (a1 * y1 + a2 * y2);
          *
@@ -173,14 +173,14 @@ extern "C" {
     /*
      * Free memory and clear
      */
-    void BMBiquadArray_free(BMBiquadArray* This);
+    void BMBiquadArray_free(BMBiquadArray *This);
     
     
     
     /*
      * Print the impulse response of the first filter in the array
      */
-    void BMBiquadArray_impulseResponse(BMBiquadArray* This);
+    void BMBiquadArray_impulseResponse(BMBiquadArray *This);
     
 
 #ifdef __cplusplus

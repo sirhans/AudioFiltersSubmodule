@@ -62,7 +62,7 @@ typedef struct{
  * @param numTaps      the number of delay taps (must be same for L and R channels)
  * @param maxTaps      the taps can be changed as long as we don't exceed maxTaps
  */
-void BMMultiTapDelay_Init(BMMultiTapDelay* This,
+void BMMultiTapDelay_Init(BMMultiTapDelay *This,
                           bool isStereo,
                           size_t* delayTimesL, size_t* delayTimesR,
                           size_t maxDelayTime,
@@ -114,7 +114,7 @@ void BMMultiTapDelay_ProcessOneSampleStereo(BMMultiTapDelay* delay,
 /*
  *  Free memory of the struct at *This
  */
-void BMMultiTapDelay_free(BMMultiTapDelay* This);
+void BMMultiTapDelay_free(BMMultiTapDelay *This);
 
 
 /*
@@ -122,17 +122,17 @@ void BMMultiTapDelay_free(BMMultiTapDelay* This);
  */
 void BMMultiTapDelay_clearBuffers(BMMultiTapDelay* delay);
 
-void BMMultiTapDelay_setDelayTimes(BMMultiTapDelay* This,
+void BMMultiTapDelay_setDelayTimes(BMMultiTapDelay *This,
                                    size_t* delayTimesL, size_t* delayTimesR);
-void BMMultiTapDelay_setDelayTimeNumTap(BMMultiTapDelay* This,
+void BMMultiTapDelay_setDelayTimeNumTap(BMMultiTapDelay *This,
                                    size_t* delayTimesL, size_t* delayTimesR,size_t numTaps);
-void BMMultiTapDelay_setGains(BMMultiTapDelay* This,
+void BMMultiTapDelay_setGains(BMMultiTapDelay *This,
                               float* gainL, float* gainR);
 
-void BMMultiTapDelay_PerformUpdateIndices(BMMultiTapDelay* This);
-void BMMultiTapDelay_PerformUpdateGains(BMMultiTapDelay* This);
+void BMMultiTapDelay_PerformUpdateIndices(BMMultiTapDelay *This);
+void BMMultiTapDelay_PerformUpdateGains(BMMultiTapDelay *This);
         
 
-void BMMultiTapDelay_impulseResponse(BMMultiTapDelay* This);
+void BMMultiTapDelay_impulseResponse(BMMultiTapDelay *This);
 
 #endif /* BMMultiTapDelay_h */

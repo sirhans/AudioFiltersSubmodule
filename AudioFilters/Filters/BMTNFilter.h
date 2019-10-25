@@ -35,13 +35,13 @@ extern "C" {
      * one for the periodic component (tone) and the other for the random
      * component (noise) of the input signal.
      *
-     * This class does not include a function for processing stereo signals.
+      *This class does not include a function for processing stereo signals.
      * If stereo processing is required, use two BMTNFilters in parallel.
      */
     void BMTNFilter_processBuffer(BMTNFilter* f, const float* input, float* toneOut, float* noiseOut, size_t numSamples);
     
     /*
-     * This function is optional.  If you don't call it, the filter will
+      *This function is optional.  If you don't call it, the filter will
      * use reasonable default settings.
      *
      *

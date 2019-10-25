@@ -30,7 +30,7 @@ extern "C" {
      *
      * @abstract We are using digital filters to slow down the release of the peak value. Since we only update the peak value once with every buffer we process, the sample rate of the smoothing filter is equal to audioSampleRate/bufferSize. Therefore, if the buffer size changes, the sample rate of the filters should also update. This function sets the appropriate filter cutoff frequencies for a given buffer size. The audio sample rate is assumed to be constant.
      */
-    void BMLevelMeter_setBufferSize(BMLevelMeter* This, size_t bufferSize){
+    void BMLevelMeter_setBufferSize(BMLevelMeter *This, size_t bufferSize){
         float buffersPerSecond = This->sampleRate / (float)bufferSize;
         BMReleaseFilter_updateSampleRate(&This->fastReleaseL_peak, buffersPerSecond);
         BMReleaseFilter_updateSampleRate(&This->fastReleaseR_peak, buffersPerSecond);
@@ -47,7 +47,7 @@ extern "C" {
     
     
     
-    void BMLevelMeter_init(BMLevelMeter* This, float sampleRate){
+    void BMLevelMeter_init(BMLevelMeter *This, float sampleRate){
         This->expectedBufferLength = BM_LEVEL_METER_DEFAULT_BUFFER_LENGTH;
         
         This->sampleRate = sampleRate;
@@ -77,7 +77,7 @@ extern "C" {
     /*!
      *BMLevelMeter_processStereo
      */
-    void BMLevelMeter_processStereo(BMLevelMeter* This,
+    void BMLevelMeter_processStereo(BMLevelMeter *This,
                                     const float* inputL, const float* inputR,
                                     float* fastPeakL, float* fastPeakR,
                                     float* slowPeakL, float* slowPeakR,
@@ -140,7 +140,7 @@ extern "C" {
     /*!
      *BMLevelMeter_processMono
      */
-    void BMLevelMeter_processMono(BMLevelMeter* This,
+    void BMLevelMeter_processMono(BMLevelMeter *This,
                                     const float* input,
                                     float* fastPeak,
                                     float* slowPeak,
@@ -191,7 +191,7 @@ extern "C" {
     
     
     
-    void BMLevelMeter_peakLevelMono(BMLevelMeter* This,
+    void BMLevelMeter_peakLevelMono(BMLevelMeter *This,
                                     const float* input,
                                     float* fastRelease_dB,
                                     float* slowRelease_dB,
@@ -206,7 +206,7 @@ extern "C" {
 
       
 
-    void BMLevelMeter_RMSPowerMono(BMLevelMeter* This,
+    void BMLevelMeter_RMSPowerMono(BMLevelMeter *This,
                                       const float* input,
                                       float* fastRelease_dB,
                                       float* slowRelease_dB,
@@ -223,7 +223,7 @@ extern "C" {
     
     
     
-    void BMLevelMeter_peakLevelStereo(BMLevelMeter* This,
+    void BMLevelMeter_peakLevelStereo(BMLevelMeter *This,
                                          const float* inputL, const float* inputR,
                                          float* fastReleaseL_dB, float* fastReleaseR_dB,
                                          float* slowReleaseL_dB, float* slowReleaseR_dB,
@@ -240,7 +240,7 @@ extern "C" {
     
     
     
-     void BMLevelMeter_RMSPowerStereo(BMLevelMeter* This,
+     void BMLevelMeter_RMSPowerStereo(BMLevelMeter *This,
                                        const float* inputL, const float* inputR,
                                        float* fastReleaseL_dB, float* fastReleaseR_dB,
                                        float* slowReleaseL_dB, float* slowReleaseR_dB,

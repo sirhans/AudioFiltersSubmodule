@@ -10,11 +10,11 @@
 #include "BMIntegerMath.h"
 
 // forward declarations
-void BMSpectrum_setupFFT(BMSpectrum* this,size_t n);
+void BMSpectrum_setupFFT(BMSpectrum *This,size_t n);
 
 
 
-void BMSpectrum_init(BMSpectrum* this, size_t fftLength){
+void BMSpectrum_init(BMSpectrum *This, size_t fftLength){
     this->fftLength = fftLength;
     this->fft_initialized = false;
     BMSpectrum_setupFFT(this, fftLength);
@@ -24,7 +24,7 @@ void BMSpectrum_init(BMSpectrum* this, size_t fftLength){
 
 
 
-void BMSpectrum_setupFFT(BMSpectrum* this,size_t n){
+void BMSpectrum_setupFFT(BMSpectrum *This,size_t n){
     if(this->fft_initialized){
         vDSP_destroy_fftsetup(this->setup);
         
@@ -68,7 +68,7 @@ void BMSpectrum_setupFFT(BMSpectrum* this,size_t n){
 
 
 
-float* BMSpectrum_processData(BMSpectrum* this,float* inData,int inSize,int* outSize,float* nq){
+float* BMSpectrum_processData(BMSpectrum *This,float* inData,int inSize,int* outSize,float* nq){
     if(inSize>0){
         //Output size = half input size
         *outSize = inSize/2;

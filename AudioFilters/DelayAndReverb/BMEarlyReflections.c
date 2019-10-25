@@ -34,7 +34,7 @@ extern "C" {
      * @param wetAmount    wet^2 + dry^2 == 1
      * @param numTapsPerChannel  output taps on each channel L and R
      */
-    void BMEarlyReflections_init(BMEarlyReflections* This,
+    void BMEarlyReflections_init(BMEarlyReflections *This,
                                  float startTimeMS,
                                  float endTimeMS,
                                  float sampleRate,
@@ -85,7 +85,7 @@ extern "C" {
         BMEarlyReflections_setWetAmount(This,wetAmount);
     }
     
-    void BMEarlyReflection_RegenIndicesAndGain(BMEarlyReflections* This){
+    void BMEarlyReflection_RegenIndicesAndGain(BMEarlyReflections *This){
         BMEarlyReflectionsSetting* setting = &This->setting;
 
         float gainScale = 1.0 / sqrt((float)setting->numberTaps);
@@ -113,7 +113,7 @@ extern "C" {
     /*
      * free memory used by the struct at *This
      */
-    void BMEarlyReflections_destroy(BMEarlyReflections* This){
+    void BMEarlyReflections_destroy(BMEarlyReflections *This){
         BMMultiTapDelay_free(&This->delay);
         
         BMEarlyReflectionsSetting* setting = &This->setting;
@@ -131,10 +131,10 @@ extern "C" {
     
     
     /*
-     * This can be done faster by calling the multi-tap delay process
+      *This can be done faster by calling the multi-tap delay process
      * function directly.
      */
-    void BMEarlyReflections_processBuffer(BMEarlyReflections* This,
+    void BMEarlyReflections_processBuffer(BMEarlyReflections *This,
                                           float* inputL, float* inputR,
                                           float* outputL, float* outputR,
                                           size_t numSamples){
@@ -154,7 +154,7 @@ extern "C" {
      *
      * @param wetAmount  gain of wet signal; must be in [0.0,1.0]
      */
-    void BMEarlyReflections_setWetAmount(BMEarlyReflections* This,
+    void BMEarlyReflections_setWetAmount(BMEarlyReflections *This,
                                          float wetAmount){
         assert(wetAmount <= 1.0f);
         assert(wetAmount >= 0.0f);
@@ -179,7 +179,7 @@ extern "C" {
     }
     
     
-    void BMEarlyReflections_impulseResponse(BMEarlyReflections* This){
+    void BMEarlyReflections_impulseResponse(BMEarlyReflections *This){
         //BMSimpleDelay_impulseResponse(&This->delay);
     }
     

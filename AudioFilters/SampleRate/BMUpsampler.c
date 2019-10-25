@@ -23,7 +23,7 @@ extern "C" {
 
     
     
-    void BMUpsampler_init(BMUpsampler* This, bool stereo, size_t upsampleFactor){
+    void BMUpsampler_init(BMUpsampler *This, bool stereo, size_t upsampleFactor){
         assert(isPowerOfTwo(upsampleFactor));
         
         This->upsampleFactor = upsampleFactor;
@@ -64,7 +64,7 @@ extern "C" {
      * @param output   length = numSamplesIn * upsampleFactor
      * @param numSamplesIn  number of input samples to process
      */
-    void BMUpsampler_processBufferMono(BMUpsampler* This, const float* input, float* output, size_t numSamplesIn){
+    void BMUpsampler_processBufferMono(BMUpsampler *This, const float* input, float* output, size_t numSamplesIn){
         
         while(numSamplesIn > 0){
             size_t samplesProcessing = BM_MIN(numSamplesIn, BM_BUFFER_CHUNK_SIZE);
@@ -103,7 +103,7 @@ extern "C" {
 
     
     
-    void BMUpsampler_processBufferStereo(BMUpsampler* This, const float* inputL, const float* inputR, float* outputL, float* outputR, size_t numSamplesIn){
+    void BMUpsampler_processBufferStereo(BMUpsampler *This, const float* inputL, const float* inputR, float* outputL, float* outputR, size_t numSamplesIn){
         
         while(numSamplesIn > 0){
             size_t samplesProcessing = BM_MIN(numSamplesIn, BM_BUFFER_CHUNK_SIZE);
@@ -149,7 +149,7 @@ extern "C" {
     
     
     
-    void BMUpsampler_free(BMUpsampler* This){
+    void BMUpsampler_free(BMUpsampler *This){
         // free internal memory for each 2x stage
         for(size_t i=0; i<This->numStages; i++)
             BMIIRUpsampler2x_free(&This->upsamplers2x[i]);
@@ -170,7 +170,7 @@ extern "C" {
     
     
     
-    void BMUpsampler_impulseResponse(BMUpsampler* This, float* IR, size_t IRLength){
+    void BMUpsampler_impulseResponse(BMUpsampler *This, float* IR, size_t IRLength){
         // IRLength must be divisible by the upsampling factor
         assert(IRLength % This->upsampleFactor);
         

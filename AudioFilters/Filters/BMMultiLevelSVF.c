@@ -13,20 +13,20 @@
 
 #define SVF_Param_Count 3
 
-static inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF* This,
+static inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF *This,
                                                         int level,int channel,
                                                         const float* input,
                                                         float* output,
                                                         size_t numSamples);
-static inline void BMMultiLevelSVF_updateSVFParam(BMMultiLevelSVF* This);
+static inline void BMMultiLevelSVF_updateSVFParam(BMMultiLevelSVF *This);
 
-void BMMultiLevelSVF_init(BMMultiLevelSVF* This,int numLevels,float sampleRate,
+void BMMultiLevelSVF_init(BMMultiLevelSVF *This,int numLevels,float sampleRate,
                           bool isStereo){
     This->sampleRate = sampleRate;
     This->numChannels = isStereo? 2 : 1;
     This->numLevels = numLevels;
     //If stereo -> we need totalnumlevel = numlevel *2
-    int totalNumLevels = numLevels * This->numChannels;
+    int totalNumLevels = numLevels  *This->numChannels;
     This->a = (float**)malloc(sizeof(float*) * numLevels);
     This->m = (float**)malloc(sizeof(float*) * numLevels);
     This->tempA = (float**)malloc(sizeof(float*) * numLevels);
@@ -48,7 +48,7 @@ void BMMultiLevelSVF_init(BMMultiLevelSVF* This,int numLevels,float sampleRate,
 
 
 
-void BMMultiLevelSVF_free(BMMultiLevelSVF* This){
+void BMMultiLevelSVF_free(BMMultiLevelSVF *This){
     
     for(int i=0;i<This->numLevels;i++){
         free(This->a[i]);
@@ -96,7 +96,7 @@ void BMMultiLevelSVF_free(BMMultiLevelSVF* This){
 
 
 #pragma mark - process
-void BMMultiLevelSVF_processBufferMono(BMMultiLevelSVF* This,
+void BMMultiLevelSVF_processBufferMono(BMMultiLevelSVF *This,
                                        const float* input,
                                        float* output,
                                        size_t numSamples){
@@ -114,7 +114,7 @@ void BMMultiLevelSVF_processBufferMono(BMMultiLevelSVF* This,
     }
 }
 
-void BMMultiLevelSVF_processBufferStereo(BMMultiLevelSVF* This,
+void BMMultiLevelSVF_processBufferStereo(BMMultiLevelSVF *This,
                                          const float* inputL, const float* inputR,
                                          float* outputL, float* outputR, size_t numSamples){
     assert(This->numChannels == 2);
@@ -140,7 +140,7 @@ void BMMultiLevelSVF_processBufferStereo(BMMultiLevelSVF* This,
     }
 }
 
-inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF* This,
+inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF *This,
                                                  int level,int channel,
                                                  const float* input,
                                                  float* output,size_t numSamples){
@@ -155,7 +155,7 @@ inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF* This,
     }
 }
 
-inline void BMMultiLevelSVF_updateSVFParam(BMMultiLevelSVF* This){
+inline void BMMultiLevelSVF_updateSVFParam(BMMultiLevelSVF *This){
     if(This->shouldUpdateParam){
         This->shouldUpdateParam = false;
         //Update all param
@@ -170,11 +170,11 @@ inline void BMMultiLevelSVF_updateSVFParam(BMMultiLevelSVF* This){
 }
 
 #pragma mark - Filters
-void BMMultiLevelSVF_setLowpass(BMMultiLevelSVF* This, double fc, size_t level){
+void BMMultiLevelSVF_setLowpass(BMMultiLevelSVF *This, double fc, size_t level){
     BMMultiLevelSVF_setLowpassQ(This, fc, 1./sqrtf(2.), level);
 }
 
-void BMMultiLevelSVF_setLowpassQ(BMMultiLevelSVF* This, double fc, double q, size_t level){
+void BMMultiLevelSVF_setLowpassQ(BMMultiLevelSVF *This, double fc, double q, size_t level){
     assert(level < This->numLevels);
     
     float g = tanf(M_PI*fc/This->sampleRate);
@@ -189,7 +189,7 @@ void BMMultiLevelSVF_setLowpassQ(BMMultiLevelSVF* This, double fc, double q, siz
     This->shouldUpdateParam = true;
 }
 
-void BMMultiLevelSVF_setBandpass(BMMultiLevelSVF* This, double fc, double q, size_t level){
+void BMMultiLevelSVF_setBandpass(BMMultiLevelSVF *This, double fc, double q, size_t level){
     assert(level < This->numLevels);
     
     float g = tanf(M_PI*fc/This->sampleRate);
@@ -204,11 +204,11 @@ void BMMultiLevelSVF_setBandpass(BMMultiLevelSVF* This, double fc, double q, siz
     This->shouldUpdateParam = true;
 }
 
-void BMMultiLevelSVF_setHighpass(BMMultiLevelSVF* This, double fc, size_t level){
+void BMMultiLevelSVF_setHighpass(BMMultiLevelSVF *This, double fc, size_t level){
     BMMultiLevelSVF_setHighpassQ(This, fc, 1./sqrtf(2.), level);
 }
 
-void BMMultiLevelSVF_setHighpassQ(BMMultiLevelSVF* This, double fc, double q, size_t level){
+void BMMultiLevelSVF_setHighpassQ(BMMultiLevelSVF *This, double fc, double q, size_t level){
     assert(level < This->numLevels);
     
     float g = tanf(M_PI*fc/This->sampleRate);
@@ -223,7 +223,7 @@ void BMMultiLevelSVF_setHighpassQ(BMMultiLevelSVF* This, double fc, double q, si
     This->shouldUpdateParam = true;
 }
 
-void BMMultiLevelSVF_setNotchpass(BMMultiLevelSVF* This, double fc, double q, size_t level){
+void BMMultiLevelSVF_setNotchpass(BMMultiLevelSVF *This, double fc, double q, size_t level){
     assert(level < This->numLevels);
     
     float g = tanf(M_PI*fc/This->sampleRate);
@@ -238,7 +238,7 @@ void BMMultiLevelSVF_setNotchpass(BMMultiLevelSVF* This, double fc, double q, si
     This->shouldUpdateParam = true;
 }
 
-void BMMultiLevelSVF_setPeak(BMMultiLevelSVF* This, double fc, double q, size_t level){
+void BMMultiLevelSVF_setPeak(BMMultiLevelSVF *This, double fc, double q, size_t level){
     assert(level < This->numLevels);
     
     float g = tanf(M_PI*fc/This->sampleRate);
@@ -253,7 +253,7 @@ void BMMultiLevelSVF_setPeak(BMMultiLevelSVF* This, double fc, double q, size_t 
     This->shouldUpdateParam = true;
 }
 
-void BMMultiLevelSVF_setAllpass(BMMultiLevelSVF* This, double fc, double q, size_t level){
+void BMMultiLevelSVF_setAllpass(BMMultiLevelSVF *This, double fc, double q, size_t level){
     assert(level < This->numLevels);
     
     float g = tanf(M_PI*fc/This->sampleRate);
@@ -268,7 +268,7 @@ void BMMultiLevelSVF_setAllpass(BMMultiLevelSVF* This, double fc, double q, size
     This->shouldUpdateParam = true;
 }
 
-void BMMultiLevelSVF_setBell(BMMultiLevelSVF* This, double fc, double gain, double q, size_t level){
+void BMMultiLevelSVF_setBell(BMMultiLevelSVF *This, double fc, double gain, double q, size_t level){
     assert(level < This->numLevels);
     
     float A = powf(10, gain/40.);
@@ -284,11 +284,11 @@ void BMMultiLevelSVF_setBell(BMMultiLevelSVF* This, double fc, double gain, doub
     This->shouldUpdateParam = true;
 }
 
-void BMMultiLevelSVF_setLowShelf(BMMultiLevelSVF* This, double fc, double gain, size_t level){
+void BMMultiLevelSVF_setLowShelf(BMMultiLevelSVF *This, double fc, double gain, size_t level){
     BMMultiLevelSVF_setLowShelfQ(This, fc, gain, 1./sqrtf(2.), level);
 }
 
-void BMMultiLevelSVF_setLowShelfQ(BMMultiLevelSVF* This, double fc, double gain, double q, size_t level){
+void BMMultiLevelSVF_setLowShelfQ(BMMultiLevelSVF *This, double fc, double gain, double q, size_t level){
     assert(level < This->numLevels);
     
     float A = powf(10, gain/40.);
@@ -304,11 +304,11 @@ void BMMultiLevelSVF_setLowShelfQ(BMMultiLevelSVF* This, double fc, double gain,
     This->shouldUpdateParam = true;
 }
 
-void BMMultiLevelSVF_setHighShelf(BMMultiLevelSVF* This, double fc, double gain, size_t level){
+void BMMultiLevelSVF_setHighShelf(BMMultiLevelSVF *This, double fc, double gain, size_t level){
     BMMultiLevelSVF_setHighShelfQ(This, fc, gain, 1./sqrtf(2.), level);
 }
 
-void BMMultiLevelSVF_setHighShelfQ(BMMultiLevelSVF* This, double fc, double gain, double q, size_t level){
+void BMMultiLevelSVF_setHighShelfQ(BMMultiLevelSVF *This, double fc, double gain, double q, size_t level){
     assert(level < This->numLevels);
     
     float A = powf(10, gain/40.);
@@ -324,7 +324,7 @@ void BMMultiLevelSVF_setHighShelfQ(BMMultiLevelSVF* This, double fc, double gain
     This->shouldUpdateParam = true;
 }
 
-void BMMultiLevelSVF_impulseResponse(BMMultiLevelSVF* this,size_t frameCount){
+void BMMultiLevelSVF_impulseResponse(BMMultiLevelSVF *This,size_t frameCount){
     float* irBuffer = malloc(sizeof(float)*frameCount);
     float* irBufferR = malloc(sizeof(float)*frameCount);
     float* outBuffer = malloc(sizeof(float)*frameCount);

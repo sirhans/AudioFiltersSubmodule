@@ -31,7 +31,7 @@ extern "C" {
      * @param This        pointer to an initialized BMSmoothGain struct
      * @param sampleRate  audio system sample rate; if you need to change this, you must re-initialize the struct
      */
-    void BMWetDryMixer_init(BMWetDryMixer* This, float sampleRate);
+    void BMWetDryMixer_init(BMWetDryMixer *This, float sampleRate);
     
     
     
@@ -49,7 +49,7 @@ extern "C" {
      * @param outputR     right channel output buffer length >= numSamples
      * @param numSamples  to process completely, all input and output arrays should have this length
      */
-    void BMWetDryMixer_processBufferInPhase(BMWetDryMixer* This,
+    void BMWetDryMixer_processBufferInPhase(BMWetDryMixer *This,
                                                 float* inputWetL, float* inputWetR,
                                                 float* inputDryL, float* inputDryR,
                                                 float* outputL, float* outputR,
@@ -71,7 +71,7 @@ extern "C" {
      * @param outputR     right channel output buffer length >= numSamples
      * @param numSamples  to process completely, all input and output arrays should have this length
      */
-    void BMWetDryMixer_processBufferRandomPhase(BMWetDryMixer* This,
+    void BMWetDryMixer_processBufferRandomPhase(BMWetDryMixer *This,
                                     float* inputWetL, float* inputWetR,
                                     float* inputDryL, float* inputDryR,
                                     float* outputL, float* outputR,
@@ -84,7 +84,7 @@ extern "C" {
      * @param This        pointer to an initialized BMSmoothGain struct
      * @param mix    in [0,1], 0 = dry, 1 = wet
      */
-    void BMWetDryMixer_setMix(BMWetDryMixer* This, float mix);
+    void BMWetDryMixer_setMix(BMWetDryMixer *This, float mix);
     
     
     
@@ -94,7 +94,7 @@ extern "C" {
      * @param This        pointer to an initialized BMWetDryMixer struct
      * @return            mix, 0 = dry, 1 = wet
      */
-    float BMWetDryMixer_getMix(BMWetDryMixer* This);
+    float BMWetDryMixer_getMix(BMWetDryMixer *This);
     
     
 #ifdef __cplusplus

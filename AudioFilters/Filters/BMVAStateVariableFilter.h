@@ -61,19 +61,19 @@ typedef struct BMVAStateVariableFilter {
     bool needUpdate;
 } BMVAStateVariableFilter;
 
-    void BMVAStateVariableFilter_init(BMVAStateVariableFilter* This,bool isStereo,size_t sRate,SVFType type);
+    void BMVAStateVariableFilter_init(BMVAStateVariableFilter *This,bool isStereo,size_t sRate,SVFType type);
     
-    void BMVAStateVariableFilter_processBufferStereo(BMVAStateVariableFilter* This,float* const inputL, float* inputR,float* outputL,float* outputR, const int numSamples);
+    void BMVAStateVariableFilter_processBufferStereo(BMVAStateVariableFilter *This,float* const inputL, float* inputR,float* outputL,float* outputR, const int numSamples);
     
-    void BMVAStateVariableFilter_destroy(BMVAStateVariableFilter* This);
+    void BMVAStateVariableFilter_destroy(BMVAStateVariableFilter *This);
     
-    void BMVAStateVariableFilter_setFC(BMVAStateVariableFilter* This,const float newFC);
-    void BMVAStateVariableFilter_setQ(BMVAStateVariableFilter* This,const float newQ);
-    void BMVAStateVariableFilter_setGain(BMVAStateVariableFilter* This,const float gainDB);
-    void BMVAStateVariableFilter_setFilterType(BMVAStateVariableFilter* This,SVFType type);
-    void BMVAStateVariableFilter_setSampleRate(BMVAStateVariableFilter* This,const float newSampleRate);
+    void BMVAStateVariableFilter_setFC(BMVAStateVariableFilter *This,const float newFC);
+    void BMVAStateVariableFilter_setQ(BMVAStateVariableFilter *This,const float newQ);
+    void BMVAStateVariableFilter_setGain(BMVAStateVariableFilter *This,const float gainDB);
+    void BMVAStateVariableFilter_setFilterType(BMVAStateVariableFilter *This,SVFType type);
+    void BMVAStateVariableFilter_setSampleRate(BMVAStateVariableFilter *This,const float newSampleRate);
     
-    void BMVAStateVariableFilter_setFilter(BMVAStateVariableFilter* This,const int newType, const float fc,const float newQ, const float gainDB);
+    void BMVAStateVariableFilter_setFilter(BMVAStateVariableFilter *This,const int newType, const float fc,const float newQ, const float gainDB);
     
 #ifdef __cplusplus
 }

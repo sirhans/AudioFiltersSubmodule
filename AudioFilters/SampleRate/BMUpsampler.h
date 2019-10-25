@@ -33,7 +33,7 @@ extern "C" {
      * @param stereo set true if you need stereo processing; false for mono
      * @param upsampleFactor supported values: 2^n
      */
-    void BMUpsampler_init(BMUpsampler* This, bool stereo, size_t upsampleFactor);
+    void BMUpsampler_init(BMUpsampler *This, bool stereo, size_t upsampleFactor);
     
     
     
@@ -45,7 +45,7 @@ extern "C" {
      * @param output   length = numSamplesIn * upsampleFactor
      * @param numSamplesIn  number of input samples to process
      */
-    void BMUpsampler_processBufferMono(BMUpsampler* This, const float* input, float* output, size_t numSamplesIn);
+    void BMUpsampler_processBufferMono(BMUpsampler *This, const float* input, float* output, size_t numSamplesIn);
 
     
     /*!
@@ -58,10 +58,10 @@ extern "C" {
      * @param outputR   length = numSamplesIn * upsampleFactor
      * @param numSamplesIn  number of input samples to process
      */
-    void BMUpsampler_processBufferStereo(BMUpsampler* This, const float* inputL, const float* inputR, float* outputL, float* outputR, size_t numSamplesIn);
+    void BMUpsampler_processBufferStereo(BMUpsampler *This, const float* inputL, const float* inputR, float* outputL, float* outputR, size_t numSamplesIn);
     
     
-    void BMUpsampler_free(BMUpsampler* This);
+    void BMUpsampler_free(BMUpsampler *This);
     
     
     /*!
@@ -69,7 +69,7 @@ extern "C" {
      * @param IR array for IR output with length = IRLength
      * @param IRLength must be divisible by upsampleFactor
      */
-    void BMUpsampler_impulseResponse(BMUpsampler* This, float* IR, size_t IRLength);
+    void BMUpsampler_impulseResponse(BMUpsampler *This, float* IR, size_t IRLength);
     
 #endif /* BMUpsampler_h */
 

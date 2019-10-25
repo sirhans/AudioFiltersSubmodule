@@ -20,13 +20,13 @@
 #define BM_DOWNSAMPLER_CHUNK_SIZE BM_BUFFER_CHUNK_SIZE * 4
 
 // forward declaration of internal function
-double* BMIIRDownsampler2x_genCoefficients(BMIIRDownsampler2x* This, float minStopbandAttenuationDb, float maxTransitionBandwidth);
+double* BMIIRDownsampler2x_genCoefficients(BMIIRDownsampler2x *This, float minStopbandAttenuationDb, float maxTransitionBandwidth);
 
 
 
 
 
-size_t BMIIRDownsampler2x_init (BMIIRDownsampler2x* This,
+size_t BMIIRDownsampler2x_init (BMIIRDownsampler2x *This,
                               float minStopbandAttenuationDb,
                               float maxTransitionBandwidth,
                               bool stereo){
@@ -73,7 +73,7 @@ size_t BMIIRDownsampler2x_init (BMIIRDownsampler2x* This,
  * @param minStopbandAttenuationDb     the AA filters will acheive at least this much stopband attenuation. specified in dB as a positive number.
  * @param maxTransitionBandwidth       the AA filters will not let the transition bandwidth exceed this value. In (0,0.5).
  */
-double* BMIIRDownsampler2x_genCoefficients(BMIIRDownsampler2x* This, float minStopbandAttenuationDb, float maxTransitionBandwidth){
+double* BMIIRDownsampler2x_genCoefficients(BMIIRDownsampler2x *This, float minStopbandAttenuationDb, float maxTransitionBandwidth){
     // find out how many allpass filter stages it will take to acheive the
     // required stopband attenuation and transition bandwidth
     This->numCoefficients = BMPolyphaseIIR2Designer_computeNbrCoefsFromProto(minStopbandAttenuationDb, maxTransitionBandwidth);
@@ -113,7 +113,7 @@ double* BMIIRDownsampler2x_genCoefficients(BMIIRDownsampler2x* This, float minSt
 
 
 
-void BMIIRDownsampler2x_free (BMIIRDownsampler2x* This){
+void BMIIRDownsampler2x_free (BMIIRDownsampler2x *This){
     
     BMMultiLevelBiquad_destroy(&This->even);
     BMMultiLevelBiquad_destroy(&This->odd);
@@ -134,7 +134,7 @@ void BMIIRDownsampler2x_free (BMIIRDownsampler2x* This){
 
 
 
-void BMIIRDownsampler2x_setCoefs (BMIIRDownsampler2x* This, const double* coef_arr){
+void BMIIRDownsampler2x_setCoefs (BMIIRDownsampler2x *This, const double* coef_arr){
     assert (coef_arr != 0);
     
     /*
@@ -180,7 +180,7 @@ void BMIIRDownsampler2x_setCoefs (BMIIRDownsampler2x* This, const double* coef_a
 
 
 
-void BMIIRDownsampler2x_processBufferMono (BMIIRDownsampler2x* This, const float* input, float* output, size_t numSamplesIn){
+void BMIIRDownsampler2x_processBufferMono (BMIIRDownsampler2x *This, const float* input, float* output, size_t numSamplesIn){
     assert(!This->stereo);
     assert (output != input);
     
@@ -213,7 +213,7 @@ void BMIIRDownsampler2x_processBufferMono (BMIIRDownsampler2x* This, const float
 
 
 
-void BMIIRDownsampler2x_processBufferStereo (BMIIRDownsampler2x* This, const float* inputL, const float* inputR, float* outputL, float* outputR, size_t numSamplesIn){
+void BMIIRDownsampler2x_processBufferStereo (BMIIRDownsampler2x *This, const float* inputL, const float* inputR, float* outputL, float* outputR, size_t numSamplesIn){
     assert(This->stereo);
     assert (outputL != inputL);
     assert (outputR != inputR);

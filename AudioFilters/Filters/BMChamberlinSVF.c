@@ -11,7 +11,7 @@
 
 
 
-void BMChamberlinSVFStereo_lowpassBuffer(BMChamberlinSVFStereo* This,
+void BMChamberlinSVFStereo_lowpassBuffer(BMChamberlinSVFStereo *This,
                                         const float* inputL, const float* inputR,
                                         float* outputL, float* outputR,
                                         size_t numSamples){
@@ -19,9 +19,9 @@ void BMChamberlinSVFStereo_lowpassBuffer(BMChamberlinSVFStereo* This,
     for(size_t i=0; i<numSamples; i++){
         // calculate the lowpass SVF
         simd_float2 hp = simd_make_float2(inputL[i],inputR[i]) -
-                                            (This->fPlusq * This->i1 + This->i2);
+                                            (This->fPlusq  *This->i1 + This->i2);
         This->i1 += This->f * hp;
-        This->i2 += This->f * This->i1;
+        This->i2 += This->f  *This->i1;
         
         // copy output to the out buffers
         outputL[i] = This->i2.x;
@@ -31,7 +31,7 @@ void BMChamberlinSVFStereo_lowpassBuffer(BMChamberlinSVFStereo* This,
 
 
 
-void BMChamberlinSVF4_lowpassBuffer(BMChamberlinSVF4* This,
+void BMChamberlinSVF4_lowpassBuffer(BMChamberlinSVF4 *This,
                                     const float* input1, const float* input2,
                                     const float* input3, const float* input4,
                                     float* output1, float* output2,
@@ -41,9 +41,9 @@ void BMChamberlinSVF4_lowpassBuffer(BMChamberlinSVF4* This,
     for(size_t i=0; i<numSamples; i++){
         // calculate the lowpass SVF
         simd_float4 hp = simd_make_float4(input1[i],input2[i],input3[i],input4[i]) -
-                                            (This->fPlusq * This->i1 + This->i2);
+                                            (This->fPlusq  *This->i1 + This->i2);
         This->i1 += This->f * hp;
-        This->i2 += This->f * This->i1;
+        This->i2 += This->f  *This->i1;
         
         // copy output to the out buffers
         output1[i] = This->i2.x;
@@ -55,7 +55,7 @@ void BMChamberlinSVF4_lowpassBuffer(BMChamberlinSVF4* This,
 
 
 
-void BMChamberlinSVFStereo_setLowpassQ(BMChamberlinSVFStereo* This, float fc, float Q){
+void BMChamberlinSVFStereo_setLowpassQ(BMChamberlinSVFStereo *This, float fc, float Q){
     // reference:
     // https://www.earlevel.com/main/2003/03/02/the-digital-state-variable-filter/
     
@@ -66,7 +66,7 @@ void BMChamberlinSVFStereo_setLowpassQ(BMChamberlinSVFStereo* This, float fc, fl
 
 
 
-void BMChamberlinSVF4_setLowpassQ(BMChamberlinSVF4* This, float fc, float Q){
+void BMChamberlinSVF4_setLowpassQ(BMChamberlinSVF4 *This, float fc, float Q){
     // reference:
     // https://www.earlevel.com/main/2003/03/02/the-digital-state-variable-filter/
     
@@ -78,7 +78,7 @@ void BMChamberlinSVF4_setLowpassQ(BMChamberlinSVF4* This, float fc, float Q){
 
 
 
-void BMChamberlinSVFStereo_init(BMChamberlinSVFStereo* This, float sampleRate){
+void BMChamberlinSVFStereo_init(BMChamberlinSVFStereo *This, float sampleRate){
     This->sampleRate = sampleRate;
     This->i1 = 0.0f;
     This->i2 = 0.0f;
@@ -86,7 +86,7 @@ void BMChamberlinSVFStereo_init(BMChamberlinSVFStereo* This, float sampleRate){
 
 
 
-void BMChamberlinSVF4_init(BMChamberlinSVF4* This, float sampleRate){
+void BMChamberlinSVF4_init(BMChamberlinSVF4 *This, float sampleRate){
     This->sampleRate = sampleRate;
     This->i1 = 0.0f;
     This->i2 = 0.0f;

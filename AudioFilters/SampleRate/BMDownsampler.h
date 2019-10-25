@@ -33,7 +33,7 @@ extern "C" {
      * @stereo set true for stereo AA filters; false for mono
      * @param  downsampleFactor supported values: 2^n
      */
-    void BMDownsampler_init(BMDownsampler* This, bool stereo, size_t downsampleFactor);
+    void BMDownsampler_init(BMDownsampler *This, bool stereo, size_t downsampleFactor);
     
     
     
@@ -46,7 +46,7 @@ extern "C" {
      * @param output   length = numSamplesIn / upsampleFactor
      * @param numSamplesIn  number of input samples to process
      */
-    void BMDownsampler_processBufferMono(BMDownsampler* This, float* input, float* output, size_t numSamplesIn);
+    void BMDownsampler_processBufferMono(BMDownsampler *This, float* input, float* output, size_t numSamplesIn);
     
     
     /*!
@@ -60,10 +60,10 @@ extern "C" {
      * @param outputR   length = numSamplesIn / upsampleFactor
      * @param numSamplesIn  number of input samples to process
      */
-    void BMDownsampler_processBufferStereo(BMDownsampler* This, float* inputL, float* inputR, float* outputL, float* outputR, size_t numSamplesIn);
+    void BMDownsampler_processBufferStereo(BMDownsampler *This, float* inputL, float* inputR, float* outputL, float* outputR, size_t numSamplesIn);
     
     
-    void BMDownsampler_free(BMDownsampler* This);
+    void BMDownsampler_free(BMDownsampler *This);
     
     
     /*!
@@ -71,7 +71,7 @@ extern "C" {
      * @param IR empty array for storing the impulse response with length = IRLength
      * @param IRLength -
      */
-    void BMDownsampler_impulseResponse(BMDownsampler* This, float* IR, size_t IRLength);
+    void BMDownsampler_impulseResponse(BMDownsampler *This, float* IR, size_t IRLength);
     
     
 #endif /* BMDownsampler_h */

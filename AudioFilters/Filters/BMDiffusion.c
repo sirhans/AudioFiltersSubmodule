@@ -13,14 +13,14 @@
 
 #define dtFactor 2.85
 
-float BMAllPassFilter_processSample(BMAllPassFilter* this,float x);
-float BMNestedAllPass2_processSample(BMNestedAllPass2* this,float x);
-float BMNestedAllPass3_processSample(BMNestedAllPass3* this,float x);
+float BMAllPassFilter_processSample(BMAllPassFilter *This,float x);
+float BMNestedAllPass2_processSample(BMNestedAllPass2 *This,float x);
+float BMNestedAllPass3_processSample(BMNestedAllPass3 *This,float x);
 void calculateDelayTime(int dt1,int* dt2,int* dt3);
 
 
 
-void BMAllPassFilter_init(BMAllPassFilter* this,size_t delaySamples,float decayAmount){
+void BMAllPassFilter_init(BMAllPassFilter *This,size_t delaySamples,float decayAmount){
     this->delayLine = malloc(sizeof(float)*(delaySamples+1));
     memset(this->delayLine, 0, sizeof(float)*(delaySamples+1));
     this->coefficient = decayAmount;
@@ -29,11 +29,11 @@ void BMAllPassFilter_init(BMAllPassFilter* this,size_t delaySamples,float decayA
     this->delayEndIndex = delaySamples;
 }
 
-void BMAllPassFilter_destroy(BMAllPassFilter* this){
+void BMAllPassFilter_destroy(BMAllPassFilter *This){
     free(this->delayLine);
 }
 
-inline float BMAllPassFilter_processSample(BMAllPassFilter* this,float x){
+inline float BMAllPassFilter_processSample(BMAllPassFilter *This,float x){
     //Get delay data from delayline
     float dlOut = this->delayLine[this->readIndex];
     //Calculate the feedback signal
@@ -57,13 +57,13 @@ inline float BMAllPassFilter_processSample(BMAllPassFilter* this,float x){
     return dlOut + dlBypass;
 }
 
-void BMAllPassFilter_process(BMAllPassFilter* this,float* input,float* output,size_t frameCount){
+void BMAllPassFilter_process(BMAllPassFilter *This,float* input,float* output,size_t frameCount){
     for(size_t i = 0;i<frameCount;i++){
         output[i] = BMAllPassFilter_processSample(this, input[i]);
     }
 }
 
-void BMAllPassFilter_impulseResponse(BMAllPassFilter* this,size_t frameCount){
+void BMAllPassFilter_impulseResponse(BMAllPassFilter *This,size_t frameCount){
     float* irBuffer = malloc(sizeof(float)*frameCount);
     for(int i=0;i<frameCount;i++){
         if(i==0)
@@ -83,7 +83,7 @@ void BMAllPassFilter_impulseResponse(BMAllPassFilter* this,size_t frameCount){
 
 
 #pragma mark - Nested 2 AP
-void BMNestedAllPass2_init(BMNestedAllPass2* this, size_t delayTime,float coeff,size_t nestedDelayTime,float nestedCoeff,bool preNesting){
+void BMNestedAllPass2_init(BMNestedAllPass2 *This, size_t delayTime,float coeff,size_t nestedDelayTime,float nestedCoeff,bool preNesting){
     this->delayLine = malloc(sizeof(float)*(delayTime+1));
     memset(this->delayLine, 0, sizeof(float)*(delayTime+1));
     this->coefficient = coeff;
@@ -94,12 +94,12 @@ void BMNestedAllPass2_init(BMNestedAllPass2* this, size_t delayTime,float coeff,
     this->preNesting = preNesting;
 }
 
-void BMNestedAllPass2_destroy(BMNestedAllPass2* this){
+void BMNestedAllPass2_destroy(BMNestedAllPass2 *This){
     free(this->delayLine);
     BMAllPassFilter_destroy(&this->nestedAP);
 }
 
-inline float BMNestedAllPass2_processSample(BMNestedAllPass2* this,float x){
+inline float BMNestedAllPass2_processSample(BMNestedAllPass2 *This,float x){
     //Read from delayline
     float dlOut = this->delayLine[this->readIndex];
     //process nested filter (if post nested)
@@ -129,18 +129,18 @@ inline float BMNestedAllPass2_processSample(BMNestedAllPass2* this,float x){
         this->writeIndex = 0;
     
     //Calculate the bypass signal
-    float dlBypass = dlIn * this->coefficient;
+    float dlBypass = dlIn  *This->coefficient;
     
     return dlOut + dlBypass;
 }
 
-void BMNestedAllPass2_process(BMNestedAllPass2* this,float* input,float* output,size_t frameCount){
+void BMNestedAllPass2_process(BMNestedAllPass2 *This,float* input,float* output,size_t frameCount){
     for(size_t i = 0;i<frameCount;i++){
         output[i] = BMNestedAllPass2_processSample(this, input[i]);
     }
 }
 
-void BMNestedAllPass2_impulseResponse(BMNestedAllPass2* this,size_t frameCount){
+void BMNestedAllPass2_impulseResponse(BMNestedAllPass2 *This,size_t frameCount){
     float* irBuffer = malloc(sizeof(float)*frameCount);
     for(int i=0;i<frameCount;i++){
         if(i==0)
@@ -159,7 +159,7 @@ void BMNestedAllPass2_impulseResponse(BMNestedAllPass2* this,size_t frameCount){
 }
 
 #pragma mark - Nested 3 AP
-void BMNestedAllPass3_init(BMNestedAllPass3* this, size_t delayTime,float coeff,size_t nestedDelayTime1,float nestedCoeff1,bool preNesting1,size_t nestedDelayTime2,float nestedCoeff2,bool preNesting2){
+void BMNestedAllPass3_init(BMNestedAllPass3 *This, size_t delayTime,float coeff,size_t nestedDelayTime1,float nestedCoeff1,bool preNesting1,size_t nestedDelayTime2,float nestedCoeff2,bool preNesting2){
     this->delayLine = malloc(sizeof(float)*(delayTime+1));
     memset(this->delayLine, 0, sizeof(float)*(delayTime+1));
     this->coefficient = coeff;
@@ -170,12 +170,12 @@ void BMNestedAllPass3_init(BMNestedAllPass3* this, size_t delayTime,float coeff,
     this->preNesting = preNesting1;
 }
 
-void BMNestedAllPass3_destroy(BMNestedAllPass3* this){
+void BMNestedAllPass3_destroy(BMNestedAllPass3 *This){
     free(this->delayLine);
     BMNestedAllPass2_destroy(&this->nestedAP2);
 }
 
-inline float BMNestedAllPass3_processSample(BMNestedAllPass3* this,float x){
+inline float BMNestedAllPass3_processSample(BMNestedAllPass3 *This,float x){
     //Read from delayline
     float dlOut = this->delayLine[this->readIndex];
     //process nested filter (if post nested)
@@ -205,18 +205,18 @@ inline float BMNestedAllPass3_processSample(BMNestedAllPass3* this,float x){
         this->writeIndex = 0;
     
     //Calculate the bypass signal
-    float dlBypass = dlIn * this->coefficient;
+    float dlBypass = dlIn  *This->coefficient;
     
     return dlOut + dlBypass;
 }
 
-void BMNestedAllPass3_process(BMNestedAllPass3* this,float* input,float* output,size_t frameCount){
+void BMNestedAllPass3_process(BMNestedAllPass3 *This,float* input,float* output,size_t frameCount){
     for(size_t i = 0;i<frameCount;i++){
         output[i] = BMNestedAllPass3_processSample(this, input[i]);
     }
 }
 
-void BMNestedAllPass3_impulseResponse(BMNestedAllPass3* this,size_t frameCount){
+void BMNestedAllPass3_impulseResponse(BMNestedAllPass3 *This,size_t frameCount){
     float* irBuffer = malloc(sizeof(float)*frameCount);
     for(int i=0;i<frameCount;i++){
         if(i==0)
@@ -270,7 +270,7 @@ void calculateDelayTime(int dt1,int* dt2,int* dt3){
     }
 }
 
-void BMDiffusion_init(BMDiffusion* this,float totalDT){
+void BMDiffusion_init(BMDiffusion *This,float totalDT){
     totalDT/=10;
     //Calculate dt1
     this->dt1 = roundf(totalDT/(1/dtFactor + 1/(dtFactor*dtFactor) + 1));
@@ -283,12 +283,12 @@ void BMDiffusion_init(BMDiffusion* this,float totalDT){
 //    BMNestedAllPass3_impulseResponse(&this->nestedAPFilterR, 256);
 }
 
-void BMDiffusion_destroy(BMDiffusion* this){
+void BMDiffusion_destroy(BMDiffusion *This){
     BMNestedAllPass3_destroy(&this->nestedAPFilterL);
     BMNestedAllPass3_destroy(&this->nestedAPFilterR);
 }
 
-void BMDiffusion_process(BMDiffusion* this,float* inDataL,float* inDataR,float* outDataL,float* outDataR,size_t frameCount){
+void BMDiffusion_process(BMDiffusion *This,float* inDataL,float* inDataR,float* outDataL,float* outDataR,size_t frameCount){
     BMNestedAllPass3_process(&this->nestedAPFilterL, inDataL, outDataL, frameCount);
     BMNestedAllPass3_process(&this->nestedAPFilterR, inDataR, outDataR, frameCount);
 }

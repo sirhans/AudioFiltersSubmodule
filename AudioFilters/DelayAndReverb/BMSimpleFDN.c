@@ -21,23 +21,23 @@
 float BMSimpleFDN_gainFromRT60(float rt60, float delayTime);
 void BMSimpleFDN_randomShuffle(float* A, size_t length);
 void BMSimpleFDN_randomSigns(float* A, size_t length);
-inline float BMSimpleFDN_processSample(BMSimpleFDN* This, float input);
+inline float BMSimpleFDN_processSample(BMSimpleFDN *This, float input);
 
 
 
 
 
-void BMSimpleFDN_velvetNoiseDelayTimes(BMSimpleFDN* This){
+void BMSimpleFDN_velvetNoiseDelayTimes(BMSimpleFDN *This){
     
     // find out what spacing the delays should have to put them in the range
     // between minDelay and maxDelay. The last should never exceed max delay and
     // the first can not be before min delay.
     float delayTimeRange = (This->maxDelayS - This->minDelayS);
     float delaySpacing = delayTimeRange / (float)(This->numDelays);
-    size_t minDelaySamples = This->minDelayS * This->sampleRate;
+    size_t minDelaySamples = This->minDelayS  *This->sampleRate;
     
     // ensure that delay times can be assigned without duplication
-    assert(delayTimeRange * This->sampleRate >= This->numDelays);
+    assert(delayTimeRange  *This->sampleRate >= This->numDelays);
     
     // assign evenly spaced delay times
     for(size_t i=0; i<This->numDelays; i++)
@@ -54,7 +54,7 @@ void BMSimpleFDN_velvetNoiseDelayTimes(BMSimpleFDN* This){
         This->delayLengths[i] += jitter;
     }
     // randomly jitter the last delay time
-    size_t maxDelayLength = This->maxDelayS * This->sampleRate;
+    size_t maxDelayLength = This->maxDelayS  *This->sampleRate;
     size_t jitter = arc4random() % (maxDelayLength - This->delayLengths[This->numDelays-2]);
     This->delayLengths[This->numDelays-1] += jitter;
     
@@ -65,7 +65,7 @@ void BMSimpleFDN_velvetNoiseDelayTimes(BMSimpleFDN* This){
 
 
 
-void BMSimpleFDN_logVelvetNoiseDelayTimes(BMSimpleFDN* This){
+void BMSimpleFDN_logVelvetNoiseDelayTimes(BMSimpleFDN *This){
     
     // find out what spacing the delays should have to put them in the range
     // between minDelay and maxDelay. The last should never exceed max delay and
@@ -74,12 +74,12 @@ void BMSimpleFDN_logVelvetNoiseDelayTimes(BMSimpleFDN* This){
     double delayCommonRatio = pow(delayTimeRangeRatio, 1.0/(double)This->numDelays);
     
     // ensure that delay times can be assigned without duplication
-    assert((This->maxDelayS - This->minDelayS) * This->sampleRate >= This->numDelays);
+    assert((This->maxDelayS - This->minDelayS)  *This->sampleRate >= This->numDelays);
     
     // assign logarithmically spaced delay times
     for(size_t i=0; i<This->numDelays; i++){
         double delayTimeSeconds = This->minDelayS * pow(delayCommonRatio,(double)i);
-        This->delayLengths[i] = delayTimeSeconds * This->sampleRate;
+        This->delayLengths[i] = delayTimeSeconds  *This->sampleRate;
     }
     
     // ensure that no two delays have the same length
@@ -99,7 +99,7 @@ void BMSimpleFDN_logVelvetNoiseDelayTimes(BMSimpleFDN* This){
         This->delayLengths[i] += jitter;
     }
     // randomly jitter the last delay time
-    size_t maxDelayLength = This->maxDelayS * This->sampleRate;
+    size_t maxDelayLength = This->maxDelayS  *This->sampleRate;
     size_t range = maxDelayLength - This->delayLengths[This->numDelays - 2];
     size_t jitter = arc4random() % range;
     This->delayLengths[This->numDelays - 1] += jitter;
@@ -155,17 +155,17 @@ size_t nextPrime(size_t n){
 
 
 
-void BMSimpleFDN_scaledPrimeDelayTimes(BMSimpleFDN* This){
+void BMSimpleFDN_scaledPrimeDelayTimes(BMSimpleFDN *This){
     
     // what is the smallest scale for which [scale*This->minDelayS, scale*maxDelayS]
     // contains This->numDelays primes
     float scale = getScaleForNPrimesInRange(This->minDelayS, This->maxDelayS, This->numDelays);
     
     // set the first delay time, downscaled
-    float downscaledFirstDelay = scale * This->minDelayS;
+    float downscaledFirstDelay = scale  *This->minDelayS;
     
     // what scale factor converts the downscaled version to the full size version?
-    float fullSizeFirstDelay = This->minDelayS * This->sampleRate;
+    float fullSizeFirstDelay = This->minDelayS  *This->sampleRate;
     float fullSizeScale = fullSizeFirstDelay/downscaledFirstDelay;
     
     // set the first delay
@@ -190,7 +190,7 @@ void BMSimpleFDN_scaledPrimeDelayTimes(BMSimpleFDN* This){
         This->delayLengths[i] += jitter;
     }
     // randomly jitter the last delay time
-    size_t maxDelayLength = This->maxDelayS * This->sampleRate;
+    size_t maxDelayLength = This->maxDelayS  *This->sampleRate;
     size_t range = maxDelayLength - This->delayLengths[This->numDelays - 2];
     size_t jitter = arc4random() % range;
     This->delayLengths[This->numDelays - 1] += jitter;
@@ -255,7 +255,7 @@ void pseudoRandomInRange(size_t* delayTimes, float min, float max, size_t numDel
 
 
 
-void BMSimpleFDN_pseudoRandomDelayTimes(BMSimpleFDN* This){
+void BMSimpleFDN_pseudoRandomDelayTimes(BMSimpleFDN *This){
     pseudoRandomInRange(This->delayLengths,
                         This->minDelayS*This->sampleRate,
                         This->maxDelayS*This->sampleRate,
@@ -272,7 +272,7 @@ void BMSimpleFDN_pseudoRandomDelayTimes(BMSimpleFDN* This){
         This->delayLengths[i] += jitter;
     }
     // randomly jitter the last delay time
-    size_t maxDelayLength = This->maxDelayS * This->sampleRate;
+    size_t maxDelayLength = This->maxDelayS  *This->sampleRate;
     size_t jitter = arc4random() % (maxDelayLength - This->delayLengths[This->numDelays-2]);
     This->delayLengths[This->numDelays-1] += jitter;
     
@@ -324,11 +324,11 @@ bool containsCommonFactor(size_t* A, size_t x, size_t numElements){
 
 
 
-void BMSimpleFDN_randomDelayTimes(BMSimpleFDN* This){
+void BMSimpleFDN_randomDelayTimes(BMSimpleFDN *This){
     
     // convert min and max delay from seconds to samples
-    size_t minDelay = This->minDelayS * This->sampleRate;
-    size_t maxDelay = This->maxDelayS * This->sampleRate;
+    size_t minDelay = This->minDelayS  *This->sampleRate;
+    size_t maxDelay = This->maxDelayS  *This->sampleRate;
     
     // find the range of delay times in samples
     size_t delayRange = maxDelay - minDelay;
@@ -360,11 +360,11 @@ void BMSimpleFDN_randomDelayTimes(BMSimpleFDN* This){
 
 
 
-void BMSimpleFDN_randomDelayTimesFixedTotal(BMSimpleFDN* This){
+void BMSimpleFDN_randomDelayTimesFixedTotal(BMSimpleFDN *This){
     
     // convert min and max delay from seconds to samples
-    size_t minDelay = This->minDelayS * This->sampleRate;
-    size_t maxDelay = This->maxDelayS * This->sampleRate;
+    size_t minDelay = This->minDelayS  *This->sampleRate;
+    size_t maxDelay = This->maxDelayS  *This->sampleRate;
     
     // find the range of delay times in samples
     size_t delayRange = maxDelay - minDelay;
@@ -418,11 +418,11 @@ size_t randomPrimeInRange(size_t min, size_t max){
 
 
 
-void BMSimpleFDN_randomPrimesDelayTimes(BMSimpleFDN* This){
+void BMSimpleFDN_randomPrimesDelayTimes(BMSimpleFDN *This){
     
     // convert min and max delay from seconds to samples
-    size_t minDelay = This->minDelayS * This->sampleRate;
-    size_t maxDelay = This->maxDelayS * This->sampleRate;
+    size_t minDelay = This->minDelayS  *This->sampleRate;
+    size_t maxDelay = This->maxDelayS  *This->sampleRate;
     
     // find the range of delay times in samples
     size_t delayRange = maxDelay - minDelay;
@@ -454,11 +454,11 @@ void BMSimpleFDN_randomPrimesDelayTimes(BMSimpleFDN* This){
 
 
 
-void BMSimpleFDN_relativelyPrimeDelayTimes(BMSimpleFDN* This){
+void BMSimpleFDN_relativelyPrimeDelayTimes(BMSimpleFDN *This){
     
     // convert min and max delay from seconds to samples
-    size_t minDelay = This->minDelayS * This->sampleRate;
-    size_t maxDelay = This->maxDelayS * This->sampleRate;
+    size_t minDelay = This->minDelayS  *This->sampleRate;
+    size_t maxDelay = This->maxDelayS  *This->sampleRate;
     
     // find the range of delay times in samples
     size_t delayRange = maxDelay - minDelay;
@@ -554,11 +554,11 @@ bool containsRedundantCFSum(size_t* A, size_t x, size_t numElements){
 
 
 
-void BMSimpleFDN_uniqueSumsDelayTimes(BMSimpleFDN* This){
+void BMSimpleFDN_uniqueSumsDelayTimes(BMSimpleFDN *This){
     
     // convert min and max delay from seconds to samples
-    size_t minDelay = This->minDelayS * This->sampleRate;
-    size_t maxDelay = This->maxDelayS * This->sampleRate;
+    size_t minDelay = This->minDelayS  *This->sampleRate;
+    size_t maxDelay = This->maxDelayS  *This->sampleRate;
     
     // find the range of delay times in samples
     size_t delayRange = maxDelay - minDelay;
@@ -603,7 +603,7 @@ void BMSimpleFDN_uniqueSumsDelayTimes(BMSimpleFDN* This){
 
 
 
-void BMSimpleFDN_init(BMSimpleFDN* This,
+void BMSimpleFDN_init(BMSimpleFDN *This,
                       float sampleRate,
                       size_t numDelays,
                       enum delayTimeMethod method,
@@ -676,7 +676,7 @@ void BMSimpleFDN_init(BMSimpleFDN* This,
 
 
 
-float BMSimpleFDN_processSample(BMSimpleFDN* This, float input){
+float BMSimpleFDN_processSample(BMSimpleFDN *This, float input){
     float output = 0;
     
     // read from the delays
@@ -685,10 +685,10 @@ float BMSimpleFDN_processSample(BMSimpleFDN* This, float input){
         float readSample = This->delays[i][This->rwIndices[i]];
         
         // attenuate and write to buffer1
-        This->buffer1[i] = readSample * This->attenuationCoefficients[i];
+        This->buffer1[i] = readSample  *This->attenuationCoefficients[i];
         
         // sum to output
-        output += This->buffer1[i] * This->outputTapSigns[i];
+        output += This->buffer1[i]  *This->outputTapSigns[i];
     }
     
     
@@ -717,7 +717,7 @@ float BMSimpleFDN_processSample(BMSimpleFDN* This, float input){
 
 
 
-void BMSimpleFDN_processBuffer(BMSimpleFDN* This,
+void BMSimpleFDN_processBuffer(BMSimpleFDN *This,
                                const float* input,
                                float* output,
                                size_t numSamples){
@@ -749,7 +749,7 @@ float BMSimpleFDN_gainFromRT60(float rt60, float delayTime){
 
 
 
-void BMSimpleFDN_free(BMSimpleFDN* This){
+void BMSimpleFDN_free(BMSimpleFDN *This){
     // we only need to free one delay because we allocated with a single call
     // to malloc
     free(This->delays[0]);
@@ -811,7 +811,7 @@ void BMSimpleFDN_randomSigns(float* A, size_t length){
 
 
 
-void BMSimpleFDN_impulseResponse(BMSimpleFDN* This, float* IR, size_t numSamples){
+void BMSimpleFDN_impulseResponse(BMSimpleFDN *This, float* IR, size_t numSamples){
     // process the initial impulse
     IR[0] = BMSimpleFDN_processSample(This, 1.0f);
     
