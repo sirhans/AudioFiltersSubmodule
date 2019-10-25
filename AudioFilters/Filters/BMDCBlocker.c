@@ -11,16 +11,16 @@
 #include "BMDCBlocker.h"
 
 void BMDCBlocker_init(BMDCBlocker *This){
-    this->filterData[0] = 0.;
-    this->filterData[1] = 0.;
-    this->r = 0.995;
+    This->filterData[0] = 0.;
+    This->filterData[1] = 0.;
+    This->r = 0.995;
 }
 
 void BMDCBlocker_process(BMDCBlocker *This,float* input,float* output,size_t processSample){
     for(int i=0;i<processSample;i++){
-        output[i] = input[i] - this->filterData[0] + this->r*this->filterData[1];
-        this->filterData[0] = input[i];
-        this->filterData[1] = output[i];
+        output[i] = input[i] - This->filterData[0] + This->r*This->filterData[1];
+        This->filterData[0] = input[i];
+        This->filterData[1] = output[i];
     }
     
 }

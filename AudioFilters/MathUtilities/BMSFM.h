@@ -51,4 +51,23 @@ void BMSFM_free(BMSFM *This);
 float BMSFM_process(BMSFM *This, float* input, size_t inputLength);
 
 
+/*!
+ *BMGeometricMean
+ *
+ * @abstract returns the geometric mean of the elements in the array input
+ *
+ * @param input array of inputs with length inputLength
+ * @param inputLength length of input array
+ */
+float BMGeometricMean(float* input, size_t inputLength);
+
+
+/*!
+ *BMGeometricMean2
+ *
+ * @abstract returns the geometric mean of a and b
+ */
+float BMGeometricMean2(float a, float b);
+
+
 #endif /* BMSFM_h */

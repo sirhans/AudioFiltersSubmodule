@@ -20,13 +20,16 @@ extern "C" {
 #include "BMEnvelopeFollower.h"
 #include "BMMultiLevelBiquad.h"
 #include "BMLevelMeter.h"
+#include "BMSFM.h"
+#include "BMShortSimpleDelay.h"
 
 typedef struct BMNoiseGate {
-    float thresholdGain, lastState, closedGain, sidechainInputLeveldB, controlSignalLeveldB;
+    float thresholdGain, lastState, closedGain, sidechainInputLeveldB, controlSignalLeveldB, sidechainMinFreq, sidechainMaxFreq;
     float buffer [BM_BUFFER_CHUNK_SIZE];
     BMEnvelopeFollower envFollower;
     BMMultiLevelBiquad sidechainFilter;
     BMLevelMeter sidechainInputMeter;
+	BMShortSimpleDelay delay;
 } BMNoiseGate;
 
 /*!
@@ -41,9 +44,6 @@ void BMNoiseGate_init(BMNoiseGate *This, float thresholdDb, float sampleRate);
 
 /*!
  *BMNoiseGate_free
- *
- * @param thresholdDb       when the volume drops below this threshold the noise gate switches into release mode
- * @param sampleRate        sample rate
  */
 void BMNoiseGate_free(BMNoiseGate *This);
 

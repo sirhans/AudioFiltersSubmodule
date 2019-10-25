@@ -89,7 +89,7 @@ void TestReverb_impulseResponse(TestReverb *This,size_t frameCount){
             irBuffer[i] = 0;
     }
     
-    TestReverb_process(this, irBuffer, outBuffer, frameCount);
+    TestReverb_process(This, irBuffer, outBuffer, frameCount);
     
     printf("\n\\impulse response: {\n");
     for(size_t i=0; i<(frameCount-1); i++)

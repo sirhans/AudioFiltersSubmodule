@@ -687,7 +687,7 @@ extern "C" {
     
     
 
-    //void BMMultiLevelBiquad_tfMagVector(BMMultiLevelBiquad* bqf, const float *frequency, float *magnitude, size_t length);
+    //void BMMultiLevelBiquad_tfMagVector(BMMultiLevelBiquad* This, const float *frequency, float *magnitude, size_t length);
     /*!
      *BMCrossover4way_tfMagVectors
      *

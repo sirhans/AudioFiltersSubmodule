@@ -339,7 +339,7 @@ void BMMultiLevelSVF_impulseResponse(BMMultiLevelSVF *This,size_t frameCount){
         }
     }
     
-    BMMultiLevelSVF_processBufferStereo(this, irBuffer, irBufferR, outBuffer, outBufferR, frameCount);
+    BMMultiLevelSVF_processBufferStereo(This, irBuffer, irBufferR, outBuffer, outBufferR, frameCount);
     
     printf("\[");
     for(size_t i=0; i<(frameCount-1); i++)

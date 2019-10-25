@@ -28,8 +28,15 @@ extern "C" {
         BMNoiseGate_setReleaseTime(This, BM_NOISE_GATE_RELEASE_TIME);
         BMNoiseGate_setAttackTime(This, BM_NOISE_GATE_ATTACK_TIME);
         BMMultiLevelBiquad_init(&This->sidechainFilter, 2, sampleRate, false, false, false);
+		
+		// init the sidechain filter group delay compensation delay
+		This->sidechainMinFreq = 20.0f;
+		This->sidechainMaxFreq = 10000.0f;
+		BMShortSimpleDelay_init(&This->delay, 2, 10);
         
         // bypass the sidechain filters
+		BMMultiLevelBiquad_setBypass(&This->sidechainFilter, 0);
+		BMMultiLevelBiquad_setBypass(&This->sidechainFilter, 1);
         BMNoiseGate_setSidechainLowpass(This, 0.0f);
         BMNoiseGate_setSidechainHighpass(This, 0.0f);
         
@@ -39,8 +46,37 @@ extern "C" {
     }
     
     
+	
+	void BMNoiseGate_free(BMNoiseGate *This){
+		BMMultiLevelBiquad_destroy(&This->sidechainFilter);
+		BMShortSimpleDelay_free(&This->delay);
+	}
 
     
+	
+	
+	// returns the group delay in samples of the sidechain filter at the log
+	// scale midpoint between the highpass and lowpass cutoff frequencies
+	size_t BMNoiseGate_sidechainFilterGroupDelay(BMNoiseGate *This){
+		
+		// we use the geometric mean to get the midpoint between the
+		// lower and upper bounds on a log frequency scale
+		double centreFreq = BMGeometricMean2(This->sidechainMinFreq,
+											   This->sidechainMaxFreq);
+		
+		// return the group delay in samples, rounded to the nearest integer
+		return (size_t)round(BMMultiLevelBiquad_groupDelay(&This->sidechainFilter, centreFreq));
+	}
+	
+	
+	
+	
+	void BMNoiseGate_updateDelay(BMNoiseGate *This){
+		
+	}
+	
+	
+	
     
     /*!
      *BMNoiseGate_thresholdClosedOpen
@@ -206,23 +242,38 @@ extern "C" {
 
 
     void BMNoiseGate_setSidechainLowpass(BMNoiseGate *This, float fc){
-        if (fc > 0.0f){
+		assert(fc <= This->sidechainFilter.sampleRate/2.0f);
+		
+        if (fc > 0.0f && fc != This->sidechainFilter.sampleRate/2.0f){
             BMMultiLevelBiquad_setActiveOnLevel(&This->sidechainFilter, true, 1);
             BMMultiLevelBiquad_setLowPass12db(&This->sidechainFilter, fc, 1);
+			This->sidechainMaxFreq = fc;
         }
-        else BMMultiLevelBiquad_setActiveOnLevel(&This->sidechainFilter, false, 1);
-        
+		else {
+			BMMultiLevelBiquad_setActiveOnLevel(&This->sidechainFilter, false, 1);
+			This->sidechainMaxFreq = This->sidechainFilter.sampleRate/2.0;
+		}
+		
+		BMNoiseGate_updateDelay(This);
     }
 
 
 
  
     void BMNoiseGate_setSidechainHighpass(BMNoiseGate *This, float fc){
-        if (fc > 0.0f){
+		assert(fc <= This->sidechainFilter.sampleRate/2.0f);
+		
+        if (fc > 0.0f && fc != This->sidechainFilter.sampleRate/2.0f){
             BMMultiLevelBiquad_setActiveOnLevel(&This->sidechainFilter, true, 0);
-            BMMultiLevelBiquad_setHighPass12db(&This->sidechainFilter, fc, 0);
+            BMMultiLevelBiquad_setHighPass12db(&This->sidechainFilter, fc, 1);
+			This->sidechainMinFreq = fc;
         }
-        else BMMultiLevelBiquad_setActiveOnLevel(&This->sidechainFilter, false, 0);
+		else {
+			BMMultiLevelBiquad_setActiveOnLevel(&This->sidechainFilter, false, 0);
+			This->sidechainMinFreq = 0.0f;
+		}
+		
+		BMNoiseGate_updateDelay(This);
     }
     
     
