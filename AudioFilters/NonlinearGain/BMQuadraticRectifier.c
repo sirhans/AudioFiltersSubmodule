@@ -123,13 +123,13 @@ void BMQuadraticRectifier_processBufferStereoVDSP(BMQuadraticRectifier* This,
 
     // for the upper threshold,
     // where the input is less than the polynomial output, return the input
-    // *** This works because the input was clamped before curving ***
+    // *** This works because the input was clipped before curving ***
     vDSP_vmin(inputL,1,curvedLNeg,1,outputNegL,1,numSamples);
     vDSP_vmin(inputR,1,curvedRNeg,1,outputNegR,1,numSamples);
 
     // for the lower threshold,
     // where the input is greater than the polynomical output, return the input
-    // *** This works because the input was clamped before curving ***
+    // *** This works because the input was clipped before curving ***
     vDSP_vmax(inputL,1,curvedLPos,1,outputPosL,1,numSamples);
     vDSP_vmax(inputR,1,curvedRPos,1,outputPosR,1,numSamples);
 }
