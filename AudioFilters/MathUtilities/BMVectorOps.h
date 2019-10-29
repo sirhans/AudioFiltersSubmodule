@@ -114,5 +114,31 @@ static inline vFloat32_32 vfClipNeg32(vFloat32_32 A){
 }
 
 
+/*!
+ *BMVectorNorm
+ *
+ * @abstract find the l2 norm of v
+ *
+ * @param v input vector
+ * @param length length of v
+ */
+static float BMVectorNorm(const float* v, size_t length){
+	float sumsq;
+	vDSP_svesq(v, 1, &sumsq, length);
+	return sqrtf(sumsq);
+}
+
+
+/*!
+ *BMVectorNormalise
+ *
+ * @abstract scale v so that its l2 norm is equal to one
+ */
+static void BMVectorNormalise(float* v, size_t length){
+	float norm = BMVectorNorm(v, length);
+	float scale = 1.0 / norm;
+	vDSP_vsmul(v,1,&scale,v,1,length);
+}
+
 
 #endif /* BMVectorOps_h */

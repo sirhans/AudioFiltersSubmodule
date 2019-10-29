@@ -10,28 +10,28 @@
 #include "BMIntegerMath.h"
 
 // forward declarations
-void BMSpectrum_setupFFT(BMSpectrum* this,size_t n);
+void BMSpectrum_setupFFT(BMSpectrum *This,size_t n);
 
 
 
-void BMSpectrum_init(BMSpectrum* this, size_t fftLength){
-    this->fftLength = fftLength;
-    this->fft_initialized = false;
-    BMSpectrum_setupFFT(this, fftLength);
+void BMSpectrum_init(BMSpectrum *This, size_t fftLength){
+    This->fftLength = fftLength;
+    This->fft_initialized = false;
+    BMSpectrum_setupFFT(This, fftLength);
 }
 
 
 
 
 
-void BMSpectrum_setupFFT(BMSpectrum* this,size_t n){
-    if(this->fft_initialized){
-        vDSP_destroy_fftsetup(this->setup);
+void BMSpectrum_setupFFT(BMSpectrum *This,size_t n){
+    if(This->fft_initialized){
+        vDSP_destroy_fftsetup(This->setup);
         
-        free(this->fft_input_buffer1);
-        free(this->fft_input_buffer2);
-        free(this->fft_output_buffer1);
-        free(this->fft_output_buffer2);
+        free(This->fft_input_buffer1);
+        free(This->fft_input_buffer2);
+        free(This->fft_output_buffer1);
+        free(This->fft_output_buffer2);
     }
     //FFT
     assert(isPowerOfTwo(n));
@@ -40,35 +40,35 @@ void BMSpectrum_setupFFT(BMSpectrum* this,size_t n){
     printf("%zu %zu\n",log2n,n);
     
     //input
-    this->fft_input_buffer1 = malloc((n/2)*sizeof(float)+15);
-    this->fft_input.realp = (float*)(((uintptr_t)this->fft_input_buffer1+15) & ~ (uintptr_t)0x0F);
-    this->fft_input_buffer2 = malloc((n/2)*sizeof(float)+15);
-    this->fft_input.imagp = (float*)(((uintptr_t)this->fft_input_buffer2+15) & ~ (uintptr_t)0x0F);
+    This->fft_input_buffer1 = malloc((n/2)*sizeof(float)+15);
+    This->fft_input.realp = (float*)(((uintptr_t)This->fft_input_buffer1+15) & ~ (uintptr_t)0x0F);
+    This->fft_input_buffer2 = malloc((n/2)*sizeof(float)+15);
+    This->fft_input.imagp = (float*)(((uintptr_t)This->fft_input_buffer2+15) & ~ (uintptr_t)0x0F);
     //output
-    this->fft_output_buffer1 = malloc((n/2)*sizeof(float)+15);
-    this->fft_output.realp = (float*)(((uintptr_t)this->fft_output_buffer1+15) & ~ (uintptr_t)0x0F);
-    this->fft_output_buffer2 = malloc((n/2)*sizeof(float)+15);
-    this->fft_output.imagp = (float*)(((uintptr_t)this->fft_output_buffer2+15) & ~ (uintptr_t)0x0F);
+    This->fft_output_buffer1 = malloc((n/2)*sizeof(float)+15);
+    This->fft_output.realp = (float*)(((uintptr_t)This->fft_output_buffer1+15) & ~ (uintptr_t)0x0F);
+    This->fft_output_buffer2 = malloc((n/2)*sizeof(float)+15);
+    This->fft_output.imagp = (float*)(((uintptr_t)This->fft_output_buffer2+15) & ~ (uintptr_t)0x0F);
     //Buffer
-    this->fft_buffer_buffer1 = malloc((n/2)*sizeof(float)+15);
-    this->fft_buffer.realp = (float*)(((uintptr_t)this->fft_buffer_buffer1+15) & ~ (uintptr_t)0x0F);
-    this->fft_buffer_buffer2 = malloc((n/2)*sizeof(float)+15);
-    this->fft_buffer.imagp = (float*)(((uintptr_t)this->fft_buffer_buffer2+15) & ~ (uintptr_t)0x0F);
+    This->fft_buffer_buffer1 = malloc((n/2)*sizeof(float)+15);
+    This->fft_buffer.realp = (float*)(((uintptr_t)This->fft_buffer_buffer1+15) & ~ (uintptr_t)0x0F);
+    This->fft_buffer_buffer2 = malloc((n/2)*sizeof(float)+15);
+    This->fft_buffer.imagp = (float*)(((uintptr_t)This->fft_buffer_buffer2+15) & ~ (uintptr_t)0x0F);
     
     // prepare the fft algo (you want to reuse the setup across fft calculations)
-    this->setup = vDSP_create_fftsetup(log2n, kFFTRadix2);
+    This->setup = vDSP_create_fftsetup(log2n, kFFTRadix2);
     
-    this->fft_initialized = true;
+    This->fft_initialized = true;
     
-    this->windowData = malloc(sizeof(float)*n);
-    vDSP_hamm_window(this->windowData, n, 0);
+    This->windowData = malloc(sizeof(float)*n);
+    vDSP_hamm_window(This->windowData, n, 0);
 }
 
 
 
 
 
-float* BMSpectrum_processData(BMSpectrum* this,float* inData,int inSize,int* outSize,float* nq){
+float* BMSpectrum_processData(BMSpectrum *This,float* inData,int inSize,int* outSize,float* nq){
     if(inSize>0){
         //Output size = half input size
         *outSize = inSize/2;
@@ -78,20 +78,20 @@ float* BMSpectrum_processData(BMSpectrum* this,float* inData,int inSize,int* out
         //        assert(dataSize!=DesiredBufferLength);
         
         // apply a window function to fade the edges to zero
-        vDSP_vmul(inData, 1, this->windowData, 1, inData, 1, inSize);
+        vDSP_vmul(inData, 1, This->windowData, 1, inData, 1, inSize);
         
         // copy the input to the packed complex array that the fft algo uses
-        vDSP_ctoz((DSPComplex *) inData, 2, &this->fft_input, 1, *outSize);
+        vDSP_ctoz((DSPComplex *) inData, 2, &This->fft_input, 1, *outSize);
         
         // calculate the fft
         //        vDSP_fft_zrip(setup, &a, 1, log2n, FFT_FORWARD);
-        vDSP_fft_zropt(this->setup, &this->fft_input, 1, &this->fft_output, 1, &this->fft_buffer, log2n, FFT_FORWARD);
+        vDSP_fft_zropt(This->setup, &This->fft_input, 1, &This->fft_output, 1, &This->fft_buffer, log2n, FFT_FORWARD);
         
-        *nq = this->fft_output.imagp[0];
-        this->fft_output.imagp[0] = 0;
+        *nq = This->fft_output.imagp[0];
+        This->fft_output.imagp[0] = 0;
         // give a nice name and reuse the buffer for output
-        float* magSpectrum = this->fft_buffer.realp;
-        vDSP_zvabs(&this->fft_output, 1, magSpectrum, 1, *outSize);
+        float* magSpectrum = This->fft_buffer.realp;
+        vDSP_zvabs(&This->fft_output, 1, magSpectrum, 1, *outSize);
         
         //Limit the point
         float minValue = 0.0001;//-40db

@@ -34,7 +34,7 @@ extern "C" {
      * @param wetAmount    wet^2 + dry^2 == 1
      * @param numTapsPerChannel  output taps on each channel L and R
      */
-    void BMEarlyReflections_init(BMEarlyReflections* This,
+    void BMEarlyReflections_init(BMEarlyReflections *This,
                                  float startTimeMS,
                                  float endTimeMS,
                                  float sampleRate,
@@ -56,7 +56,6 @@ extern "C" {
         // allocate memory for indices, gains and temp specification
         setting->indices = malloc(sizeof(size_t*) * setting->numberOfChannel);
         setting->gain = malloc(sizeof(float*) * setting->numberOfChannel);
-        setting->tempStorage = malloc(sizeof(float) * setting->numberTaps);
         
         This->gain = malloc(sizeof(float*) * setting->numberOfChannel);
         
@@ -86,7 +85,7 @@ extern "C" {
         BMEarlyReflections_setWetAmount(This,wetAmount);
     }
     
-    void BMEarlyReflection_RegenIndicesAndGain(BMEarlyReflections* This){
+    void BMEarlyReflection_RegenIndicesAndGain(BMEarlyReflections *This){
         BMEarlyReflectionsSetting* setting = &This->setting;
 
         float gainScale = 1.0 / sqrt((float)setting->numberTaps);
@@ -95,8 +94,8 @@ extern "C" {
             
             // use velvet noise to set output tap times
             //we + 1 because we want to start from index 1, NOT 0
-            BMVelvetNoise_setTapIndicesNA(setting->startTimeMS, setting->endTimeMS,
-                                          setting->indices[i] + 1, setting->tempStorage,
+            BMVelvetNoise_setTapIndices(setting->startTimeMS, setting->endTimeMS,
+                                          setting->indices[i] + 1,
                                           setting->sampleRate, setting->numberTaps);
             setting->indices[i][0] = 0;
             
@@ -114,12 +113,10 @@ extern "C" {
     /*
      * free memory used by the struct at *This
      */
-    void BMEarlyReflections_destroy(BMEarlyReflections* This){
+    void BMEarlyReflections_destroy(BMEarlyReflections *This){
         BMMultiTapDelay_free(&This->delay);
         
         BMEarlyReflectionsSetting* setting = &This->setting;
-        free(setting->tempStorage);
-        setting->tempStorage = NULL;
         
         for (int i=0; i<setting->numberOfChannel ; i++) {
             free(setting->indices[i]);
@@ -134,16 +131,16 @@ extern "C" {
     
     
     /*
-     * This can be done faster by calling the multi-tap delay process
+      *This can be done faster by calling the multi-tap delay process
      * function directly.
      */
-    void BMEarlyReflections_processBuffer(BMEarlyReflections* This,
+    void BMEarlyReflections_processBuffer(BMEarlyReflections *This,
                                           float* inputL, float* inputR,
                                           float* outputL, float* outputR,
                                           size_t numSamples){
         
 
-            BMMultiTapDelay_ProcessBufferStereo(&This->delay,
+            BMMultiTapDelay_processBufferStereo(&This->delay,
                                                 inputL, inputR,
                                                 outputL, outputR,
                                                 numSamples);
@@ -157,7 +154,7 @@ extern "C" {
      *
      * @param wetAmount  gain of wet signal; must be in [0.0,1.0]
      */
-    void BMEarlyReflections_setWetAmount(BMEarlyReflections* This,
+    void BMEarlyReflections_setWetAmount(BMEarlyReflections *This,
                                          float wetAmount){
         assert(wetAmount <= 1.0f);
         assert(wetAmount >= 0.0f);
@@ -182,7 +179,7 @@ extern "C" {
     }
     
     
-    void BMEarlyReflections_impulseResponse(BMEarlyReflections* This){
+    void BMEarlyReflections_impulseResponse(BMEarlyReflections *This){
         //BMSimpleDelay_impulseResponse(&This->delay);
     }
     

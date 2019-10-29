@@ -35,7 +35,7 @@ extern "C" {
     }
     
     
-    void BMLagrangeInterpolationTable_init(BMLagrangeInterpolationTable* This,
+    void BMLagrangeInterpolationTable_init(BMLagrangeInterpolationTable *This,
                                            size_t interpolationOrder,
                                            size_t length){
         // rename the input for convenience of notation
@@ -51,7 +51,7 @@ extern "C" {
         
         // allocate memory for the second dimension of the table
         for(size_t i=0; i<length; i++)
-            This->table[i] = malloc(sizeof(float) * This->width);
+            This->table[i] = malloc(sizeof(float)  *This->width);
         
         
         /*
@@ -93,16 +93,16 @@ extern "C" {
     
     
     
-    size_t BMLagrangInterpolationTable_getIndex(BMLagrangeInterpolationTable* This, float delta){
+    size_t BMLagrangInterpolationTable_getIndex(BMLagrangeInterpolationTable *This, float delta){
         // confirm that the input is valid
         assert(delta >= This->dMin && delta < This->dMax);
 
         // get the index corresponding to delta (by truncation)
-        return (size_t) ((delta - This->dMin) * This->lengthF);
+        return (size_t) ((delta - This->dMin)  *This->lengthF);
     }
     
     
-    void BMLagrangeInterpolationTable_destroy(BMLagrangeInterpolationTable* This){
+    void BMLagrangeInterpolationTable_destroy(BMLagrangeInterpolationTable *This){
         
         // free the inner dimension of the table
         for(size_t i=0; i<This->lengthI; i++)

@@ -16,9 +16,9 @@
 #include "Constants.h"
 
 
-void BMShortSimpleDelay_process(BMShortSimpleDelay* This,
-                                const float** inputs,
-                                float** outputs,
+void BMShortSimpleDelay_process(BMShortSimpleDelay *This,
+                                const float **inputs,
+                                float **outputs,
                                 size_t numChannels,
                                 size_t numSamples){
     assert(This->numChannels >= numChannels);
@@ -26,54 +26,63 @@ void BMShortSimpleDelay_process(BMShortSimpleDelay* This,
     // does not work in place
     assert(inputs[0] != outputs[0]);
     
-    if(numSamples < This->delayLength){
-        printf("Warning: BMShortSimpleDelay is inefficient when the delay time is ");
-        printf("longer than the audio buffer size. Consider using BMSimpleDelay ");
-        printf("instead. Buffer size: %zu, Delay length: %zu.\n", numSamples, This->delayLength);
-    }
+	// bypass if the delay is zero
+	if (This->delayLength == 0) {
+		for(size_t i=0; i<numChannels; i++){
+			memcpy(outputs[i], inputs[i], numSamples*sizeof(float));
+		}
+	}
+	else {
+		for(size_t i=0; i<numChannels; i++){
+			// when the audio buffer length is longer than the delay we can copy
+			// part of the audio directly from input to output. The remaining part
+			// waits in the buffer until the next call.
+			if(numSamples >= This->delayLength){
+				// copy from delay buffer to output
+				memcpy(outputs[i],
+					   This->delayPtrs[i],
+					   sizeof(float)*This->delayLength);
+				
+				// copy directly from input to output
+				memcpy(outputs[i] + This->delayLength,
+					   inputs[i],
+					   sizeof(float)*(numSamples-This->delayLength));
+				
+				// copy from input to delay buffer
+				memcpy(This->delayPtrs[i],
+					   inputs[i] + numSamples - This->delayLength,
+					   sizeof(float)*This->delayLength);
+			}
+			
+			// when the delay time is longer than the audio buffer then we have to
+			// shift the contents of the delay in addition to copying in and out
+			// of buffers. This is much slower and should be avoided by using
+			// the BMSimpleDelay class, which uses a circular buffer to eliminate
+			// the need for shifting the contents of the delay.
+			else {
+				// copy from the delay buffer to the output
+				memcpy(outputs[i],
+					   This->delayPtrs[i],
+					   sizeof(float)*numSamples);
+				
+				// move samples within the delay buffer (this is the slow part)
+				memmove(This->delayPtrs[i],
+						This->delayPtrs[i]+numSamples,
+						sizeof(float)*(This->delayLength - numSamples));
+				
+				// copy into the delay buffer
+				memcpy(This->delayPtrs[i] + This->delayLength - numSamples,
+					   inputs[i],
+					   sizeof(float)*numSamples);
+			}
+		}
+	}
     
-    for(size_t i=0; i<numChannels; i++){
-        // when the audio buffer length is longer than the delay we can copy
-        // part of the audio directly from input to output. The remaining part
-        // waits in the buffer until the next call.
-        if(numSamples >= This->delayLength){
-            // copy from delay buffer to output
-            memcpy(outputs[i],
-                   This->delayPtrs[i],
-                   sizeof(float)*This->delayLength);
-            
-            // copy directly from input to output
-            memcpy(outputs[i] + This->delayLength,
-                   inputs[i],
-                   sizeof(float)*(numSamples-This->delayLength));
-        
-            // copy from input to delay buffer
-            memcpy(This->delayPtrs[i],
-                   inputs[i] + numSamples - This->delayLength,
-                   sizeof(float)*This->delayLength);
-        }
-        
-        // when the delay time is longer than the audio buffer then we have to
-        // shift the contents of the delay in addition to copying in and out
-        // of buffers. This is much slower and should be avoided by using
-        // the BMSimpleDelay class, which uses a circular buffer to eliminate
-        // the need for shifting the contents of the delay.
-        else {
-            // copy from the delay buffer to the output
-            memcpy(outputs[i],
-                   This->delayPtrs[i],
-                   sizeof(float)*numSamples);
-            
-            // move samples within the delay buffer (this is the slow part)
-            memmove(This->delayPtrs[i],
-                    This->delayPtrs[i]+numSamples,
-                    sizeof(float)*(This->delayLength - numSamples));
-            
-            // copy into the delay buffer
-            memcpy(This->delayPtrs[i] + This->delayLength - numSamples,
-                   inputs[i],
-                   sizeof(float)*numSamples);
-        }
+    // if a new targetLength has been set, update the delay time
+    if(This->delayLength != This->targetDelayLength){
+        BMShortSimpleDelay_free(This);
+        BMShortSimpleDelay_init(This, This->numChannels, This->targetDelayLength);
+        This->delayLength = This->targetDelayLength;
     }
 }
 
@@ -83,17 +92,22 @@ void BMShortSimpleDelay_process(BMShortSimpleDelay* This,
 /*!
  *BMShortSimpleDelay_init
  */
-void BMShortSimpleDelay_init(BMShortSimpleDelay* This, size_t numChannels, size_t length){
+void BMShortSimpleDelay_init(BMShortSimpleDelay* This, size_t numChannels, size_t lengthSamples){
     This->numChannels = numChannels;
-    This->delayLength = length;
+    This->delayLength = lengthSamples;
+    This->targetDelayLength = lengthSamples;
+	
+	// in case of zero delay time, allocate one sample of memory so that we
+	// don't get an error when we free the memory later
+	if (lengthSamples==0) lengthSamples = 1;
     
     This->delayPtrs = malloc(sizeof(float*)*numChannels);
     
     // allocate memory for all delays with a single call
-    This->delayMemory = calloc(numChannels*length,sizeof(float));
+    This->delayMemory = calloc(numChannels*lengthSamples,sizeof(float));
     
     for(size_t i=0; i<numChannels; i++){
-        This->delayPtrs[i] = This->delayMemory + (i*length);
+        This->delayPtrs[i] = This->delayMemory + (i*lengthSamples);
     }
 }
 
@@ -108,4 +122,14 @@ void BMShortSimpleDelay_free(BMShortSimpleDelay* This){
     This->delayMemory = NULL;
     free(This->delayPtrs);
     This->delayPtrs = NULL;
+}
+
+
+
+
+/*!
+ *BMShortSimpleDelay_changeLength
+ */
+void BMShortSimpleDelay_changeLength(BMShortSimpleDelay* This, size_t lengthSamples){
+    This->targetDelayLength = lengthSamples;
 }

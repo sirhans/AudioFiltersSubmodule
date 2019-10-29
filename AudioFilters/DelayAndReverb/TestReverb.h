@@ -24,8 +24,8 @@ typedef struct TestReverb {
     float* temp2;
 } TestReverb;
 
-void TestReverb_init(TestReverb* This,size_t numOfDelay,float sampleRate);
-void TestReverb_process(TestReverb* This,float* input,float* output, size_t numSamples);
-void TestReverb_impulseResponse(TestReverb* this,size_t frameCount);
+void TestReverb_init(TestReverb *This,size_t numOfDelay,float sampleRate);
+void TestReverb_process(TestReverb *This,float* input,float* output, size_t numSamples);
+void TestReverb_impulseResponse(TestReverb *This,size_t frameCount);
 
 #endif /* TestReverb_h */

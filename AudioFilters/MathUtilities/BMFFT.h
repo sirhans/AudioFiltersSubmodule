@@ -36,9 +36,9 @@ typedef struct BMFFT {
 
 
 
-void BMFFT_init(BMFFT* this, size_t inputLength);
+void BMFFT_init(BMFFT *This, size_t inputLength);
 
-void BMFFT_free(BMFFT* this);
+void BMFFT_free(BMFFT *This);
 
 
 
@@ -53,7 +53,7 @@ void BMFFT_free(BMFFT* this);
  * @param output  an array of real valued output with length = inputLength/2
  * @param inputLength MUST BE EQUAL TO THE LENGTH USED WHEN *This was initialised
  */
-void BMFFT_absFFTCombinedDCNQ(BMFFT* This, float* input, float* output, size_t inputLength);
+void BMFFT_absFFTCombinedDCNQ(BMFFT *This, float* input, float* output, size_t inputLength);
 
 
 
@@ -68,7 +68,7 @@ void BMFFT_absFFTCombinedDCNQ(BMFFT* This, float* input, float* output, size_t i
  * @param output  an array of real valued output with length = 1 + inputLength/2
  * @param inputLength MUST BE EQUAL TO THE LENGTH USED WHEN *This was initialised
  */
-void BMFFT_absFFT(BMFFT* This, float* input, float* output, size_t inputLength);
+void BMFFT_absFFT(BMFFT *This, float* input, float* output, size_t inputLength);
 
 
 
@@ -85,7 +85,7 @@ void BMFFT_absFFT(BMFFT* This, float* input, float* output, size_t inputLength);
  * @param output  an array of real valued output with length = numSamples
  * @param numSamples MUST BE EQUAL TO THE LENGTH USED WHEN *This was initialised
  */
-void BMFFT_hammingWindow(BMFFT* This, float* input, float* output, size_t numSamples);
+void BMFFT_hammingWindow(BMFFT *This, float* input, float* output, size_t numSamples);
 
 
 

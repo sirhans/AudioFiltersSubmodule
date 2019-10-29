@@ -12,7 +12,7 @@
 
 
 
-void BMFFT_init(BMFFT* This, size_t inputLength){
+void BMFFT_init(BMFFT *This, size_t inputLength){
 
     assert(isPowerOfTwo(inputLength));
     
@@ -52,7 +52,7 @@ void BMFFT_init(BMFFT* This, size_t inputLength){
 
 
 
-void BMFFT_free(BMFFT* This){
+void BMFFT_free(BMFFT *This){
     vDSP_destroy_fftsetup(This->setup);
     
     free(This->fft_input_buffer_i);
@@ -78,7 +78,7 @@ void BMFFT_free(BMFFT* This){
 
 
 
-void BMFFT_absFFTCombinedDCNQ(BMFFT* This, float* input, float* output, size_t inputLength){
+void BMFFT_absFFTCombinedDCNQ(BMFFT *This, float* input, float* output, size_t inputLength){
     // require the input length to match the size of the FFT setup
     assert(inputLength == This->inputLength);
     
@@ -101,7 +101,7 @@ void BMFFT_absFFTCombinedDCNQ(BMFFT* This, float* input, float* output, size_t i
 
 
 
-void BMFFT_absFFT(BMFFT* This, float* input, float* output, size_t inputLength){
+void BMFFT_absFFT(BMFFT *This, float* input, float* output, size_t inputLength){
     // require the input length to match the size of the FFT setup
     assert(inputLength == This->inputLength);
     
@@ -126,7 +126,7 @@ void BMFFT_absFFT(BMFFT* This, float* input, float* output, size_t inputLength){
 
 
 
-void BMFFT_hammingWindow(BMFFT* This, float* input, float* output, size_t numSamples){
+void BMFFT_hammingWindow(BMFFT *This, float* input, float* output, size_t numSamples){
     assert(numSamples == This->inputLength);
     vDSP_vmul(input,1,This->hammingWindow,1,output,1,numSamples);
 }

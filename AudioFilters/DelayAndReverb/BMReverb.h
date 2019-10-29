@@ -30,7 +30,7 @@
 #define BMREVERB_HIGHSHELFFC 8000.0 // above this frequency decay is faster
 #define BMREVERB_HFDECAYMULTIPLIER 6.0 // HF decay is this many times faster
 #define BMREVERB_LOWSHELFFC 500.0 // above this frequency decay is faster
-#define BMREVERB_LFDECAYMULTIPLIER 6.0 // HF decay is this many times faster
+#define BMREVERB_LFDECAYMULTIPLIER 6.0 // LF decay is this many times faster
 #define BMREVERB_RT60 1.2 // overall decay time
 #define BMREVERB_HIGHPASS_FC 30.0 // highpass filter on wet out
 #define BMREVERB_LOWPASS_FC 1200.0 // lowpass filter on wet out
@@ -181,8 +181,21 @@ extern "C" {
     // not affect the dry signal at all.
     void BMReverbSetLowPassFC(struct BMReverb* rv, float fc);
     
-    double BMReverbDelayGainFromRT60(double rt60, double delayTime);
-    double BMReverbDelayGainFromRT30(double rt30, double delayTime);
+	
+	// computes the appropriate feedback gain attenuation
+    // to get an exponential decay envelope with the specified RT60 time
+    // (in seconds) from a delay line of the specified length.
+    //
+    // This formula comes from solving EQ 11.33 in DESIGNING AUDIO EFFECT PLUG-INS IN C++ by Will Pirkle
+    // which is attributed to Jot, originally.
+    static double BMReverbDelayGainFromRT60(double rt60, double delayTime){
+        return pow(10.0, (-3.0 * delayTime) / rt60 );
+    }
+    
+
+    static double BMReverbDelayGainFromRT30(double rt30, double delayTime){
+        return pow(10.0, (-2.0 * delayTime) / rt30 );
+    }
     
     
 #ifdef __cplusplus

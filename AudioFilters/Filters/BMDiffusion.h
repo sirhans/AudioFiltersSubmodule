@@ -1,9 +1,8 @@
 //
 //  BMDiffusion.h
-//  AUStereoModulator
 //
 //  Created by Nguyen Minh Tien on 3/29/18.
-//  Copyright © 2018 Nguyen Minh Tien. All rights reserved.
+//  Anyone may use this file without restrictions
 //
 
 #ifndef BMDiffusion_h
@@ -48,8 +47,8 @@ typedef struct{
     BMNestedAllPass3 nestedAPFilterR;
 } BMDiffusion;
 
-void BMDiffusion_init(BMDiffusion* this,float totalDT);
-void BMDiffusion_destroy(BMDiffusion* this);
-void BMDiffusion_process(BMDiffusion* this,float* inDataL,float* inDataR,float* outDataL,float* outDataR,size_t frameCount);
+void BMDiffusion_init(BMDiffusion *This,float totalDT);
+void BMDiffusion_destroy(BMDiffusion *This);
+void BMDiffusion_process(BMDiffusion *This,float* inDataL,float* inDataR,float* outDataL,float* outDataR,size_t frameCount);
 
 #endif /* BMDiffusion_h */

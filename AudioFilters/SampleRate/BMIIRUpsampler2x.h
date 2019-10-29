@@ -32,17 +32,17 @@ typedef struct BMIIRUpsampler2x {
  * @param transitionBandwidth       the AA filter transition bandwidth, in (0,0.5).
  * @param stereo                    Set this to true to process audio in stereo; false for mono
  */
-size_t BMIIRUpsampler2x_init (BMIIRUpsampler2x* This,
+size_t BMIIRUpsampler2x_init (BMIIRUpsampler2x *This,
                               float stopbandAttenuationDb,
                               float transitionBandwidth,
                               bool stereo);
 
-void BMIIRUpsampler2x_free (BMIIRUpsampler2x* This);
+void BMIIRUpsampler2x_free (BMIIRUpsampler2x *This);
 
-void BMIIRUpsampler2x_setCoefs (BMIIRUpsampler2x* This, const double* coef_arr);
+void BMIIRUpsampler2x_setCoefs (BMIIRUpsampler2x *This, const double* coef_arr);
 
-void BMIIRUpsampler2x_processBufferMono (BMIIRUpsampler2x* This, const float* input, float* output, size_t numSamplesIn);
+void BMIIRUpsampler2x_processBufferMono (BMIIRUpsampler2x *This, const float* input, float* output, size_t numSamplesIn);
 
-void BMIIRUpsampler2x_processBufferStereo (BMIIRUpsampler2x* This, const float* inputL, const float* inputR, float* outputL, float* outputR, size_t numSamplesIn);
+void BMIIRUpsampler2x_processBufferStereo (BMIIRUpsampler2x *This, const float* inputL, const float* inputR, float* outputL, float* outputR, size_t numSamplesIn);
 
 #endif /* BMIIRUpsampler2x_h */

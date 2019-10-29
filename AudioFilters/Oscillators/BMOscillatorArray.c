@@ -28,7 +28,7 @@ extern "C" {
      *
      * ALL ARRAYS MUST HAVE AT LEAST length ELEMENTS
      */
-    void BMOscillatorArray_init(BMOscillatorArray* This,
+    void BMOscillatorArray_init(BMOscillatorArray *This,
                                 float* magnitude,
                                 float* phase,
                                 float* frequency,
@@ -48,14 +48,14 @@ extern "C" {
         // initialize rotation matrices and energy store values
         for(size_t i=0; i < length; i++){
             // init a matrix that rotates at the specified frequency
-            BM2x2Matrix m;
+            simd_float2x2 m;
             BMQuadratureOscillator_initMatrix(&m, frequency[i], sampleRate);
             
             // copy the matrix values into the arrays
-            This->m11[i] = m.m11;
-            This->m12[i] = m.m12;
-            This->m21[i] = m.m21;
-            This->m22[i] = m.m22;
+			This->m11[i] = m.columns[0][0]; // m.m11;
+			This->m12[i] = m.columns[1][0]; // m.m12;
+			This->m21[i] = m.columns[0][1]; // m.m21;
+			This->m22[i] = m.columns[1][1]; // m.m22;
     
             // set initial values at the specified magnitudes and phases
             This->r[i] = magnitude[i]*sinf(phase[i]);
@@ -66,7 +66,7 @@ extern "C" {
     
     
     
-    void BMOscillatorArray_destroy(BMOscillatorArray* This){
+    void BMOscillatorArray_destroy(BMOscillatorArray *This){
         free(This->m11);
         free(This->m12);
         free(This->m21);
@@ -95,7 +95,7 @@ extern "C" {
      * @param output     pointer to the output
      *
      */
-    void BMOscillatorArray_processSample(BMOscillatorArray* This,
+    void BMOscillatorArray_processSample(BMOscillatorArray *This,
                                          float* output){
         // the following is a vectorised multiplication:
         //

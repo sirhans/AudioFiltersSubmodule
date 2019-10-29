@@ -18,7 +18,7 @@ typedef struct BMDCBlocker {
     float r;
 } BMDCBlocker;
 
-void BMDCBlocker_init(BMDCBlocker* this);
-void BMDCBlocker_process(BMDCBlocker* this,float* input,float* output,size_t processSample);
+void BMDCBlocker_init(BMDCBlocker *This);
+void BMDCBlocker_process(BMDCBlocker *This,float* input,float* output,size_t processSample);
 
 #endif /* BMDCBlocker_h */

@@ -52,6 +52,7 @@ extern "C" {
     
     
 #include <stdio.h>
+#include <simd/simd.h>
 #include "TPCircularBuffer+AudioBufferList.h"
 #include "BM2x2Matrix.h"
 #include "BMMultiLevelBiquad.h"
@@ -72,7 +73,7 @@ extern "C" {
         float sampleRate, feedbackGain, delayTimeInSeconds, crossMixAngle, crossMixAmount, lowpassFC, decayTime, lfoFreq, highpassFC;
         bool updateLFO;
         float *feedbackBufferL, *feedbackBufferR, *tempBufferL, *tempBufferR, *LFOBufferR, *LFOBufferL;
-        BM2x2Matrix feedbackMatrix;
+        simd_float2x2 feedbackMatrix;
         BMMultiLevelBiquad filter;
         BMQuadratureOscillator qosc;
         BMSmoothGain wetGain, dryGain;
@@ -93,7 +94,7 @@ extern "C" {
      * @param highpassFC The cutoff frequency of a 12db highpass filter on the delay signal output
      * @param sampleRate
      */
-    void BMStaticDelay_init(BMStaticDelay* This,
+    void BMStaticDelay_init(BMStaticDelay *This,
                             size_t numChannelsIn, size_t numChannelsOut,
                             float delayTime,
                             float decayTime,
@@ -103,7 +104,7 @@ extern "C" {
                             float highpassFC,
                             float sampleRate);
     
-    void BMStaticDelay_destroy(BMStaticDelay* This);
+    void BMStaticDelay_destroy(BMStaticDelay *This);
     
     
     
@@ -111,7 +112,7 @@ extern "C" {
      *BMStaticDelay_processBufferStereo
      *
      */
-    void BMStaticDelay_processBufferStereo(BMStaticDelay* This,
+    void BMStaticDelay_processBufferStereo(BMStaticDelay *This,
                                            const float* inL, const float* inR,
                                            float* outL, float* outR,
                                            int numFrames);
@@ -124,7 +125,7 @@ extern "C" {
      *
      * @param amount In [0,1]. Set to 0 for no cross mix, 1 for 100% cross, 0.5 for even mixing.
      */
-    void BMStaticDelay_setFeedbackCrossMix(BMStaticDelay* This, float amount);
+    void BMStaticDelay_setFeedbackCrossMix(BMStaticDelay *This, float amount);
     
     
     
@@ -133,7 +134,7 @@ extern "C" {
      *
      * @abstract Sets the time for the gain of the feedback signal to decay from unity down to -60db
      */
-    void BMStaticDelay_setRT60DecayTime(BMStaticDelay* This, float rt60DecayTime);
+    void BMStaticDelay_setRT60DecayTime(BMStaticDelay *This, float rt60DecayTime);
     
     
     
@@ -144,7 +145,7 @@ extern "C" {
      *
      * @param gainDb  sets the gain of the wet signal in dB
      */
-    void BMStaticDelay_setWetGain(BMStaticDelay* This, float gainDb);
+    void BMStaticDelay_setWetGain(BMStaticDelay *This, float gainDb);
     
     
     
@@ -153,7 +154,7 @@ extern "C" {
      *
      * @param fc The cutoff frequency of a 12db lowpass filter on the delay signal output
      */
-    void BMStaticDelay_setLowpassFc(BMStaticDelay* This, float fc);
+    void BMStaticDelay_setLowpassFc(BMStaticDelay *This, float fc);
     
     
     
@@ -162,7 +163,7 @@ extern "C" {
      *
      * @param fc The cutoff frequency of a 12db highpass filter on the delay signal output
      */
-    void BMStaticDelay_setHighpassFc(BMStaticDelay* This, float fc);
+    void BMStaticDelay_setHighpassFc(BMStaticDelay *This, float fc);
     
     
     
@@ -173,11 +174,11 @@ extern "C" {
      *
      * @param timeInSeconds delay time in seconds
      */
-    void BMStaticDelay_setDelayTime(BMStaticDelay* This, float timeInSeconds);
+    void BMStaticDelay_setDelayTime(BMStaticDelay *This, float timeInSeconds);
     
-    void BMStaticDelay_setBypass(BMStaticDelay* This, size_t level);
+    void BMStaticDelay_setBypass(BMStaticDelay *This, size_t level);
     
-    void BMStaticDelay_setDryGain(BMStaticDelay* This, float gainDb);
+    void BMStaticDelay_setDryGain(BMStaticDelay *This, float gainDb);
     
 #ifdef __cplusplus
 }

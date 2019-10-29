@@ -41,7 +41,7 @@ void BMCompressor_initWithSettings(BMCompressor* compressor, float sampleRate, f
  * @code result[i] = -1.0f * (X[i] >= lowerLimit && X[i] <= upperLimit);
  * @warning no warnings
  */
-void BMCompressor_ProcessBufferMono(BMCompressor* This, const float* input, float* output, float* minGainDb, size_t numSamples);
+void BMCompressor_ProcessBufferMono(BMCompressor *This, const float* input, float* output, float* minGainDb, size_t numSamples);
 
 void BMCompressor_ProcessBufferStereo(BMCompressor* compressor, float* inputL, float* inputR, float* outputL, float* outputR, float* minGainDb, size_t frameCount);
 

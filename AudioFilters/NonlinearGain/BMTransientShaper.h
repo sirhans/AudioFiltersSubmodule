@@ -51,17 +51,17 @@ typedef struct BMTransientShaper {
  * @param afterAttackEnvelope positive values indicate that we are in the portion immediately after the attack range: [0,+?]
  * @param releaseEnvelope  positive values indicate that we are in the release portion. output values in range: [0,input]
  */
-void BMTransientEnveloper_processBuffer(BMTransientEnveloper* This,
+void BMTransientEnveloper_processBuffer(BMTransientEnveloper *This,
                                         const float* input,
                                         float* attackEnvelope,
                                         float* afterAttackEnvelope,
                                         float* releaseEnvelope,
                                         size_t numSamples);
 
-void BMTransientEnveloper_setAttackOnsetTime(BMTransientEnveloper* This, float seconds);
+void BMTransientEnveloper_setAttackOnsetTime(BMTransientEnveloper *This, float seconds);
 
-void BMTransientEnveloper_setAttackDuration(BMTransientEnveloper* This, float seconds);
+void BMTransientEnveloper_setAttackDuration(BMTransientEnveloper *This, float seconds);
 
-void BMTransientEnveloper_setReleaseDuration(BMEnvelopeFollower* This, float seconds);
+void BMTransientEnveloper_setReleaseDuration(BMEnvelopeFollower *This, float seconds);
 
 #endif /* BMTransientShaper_h */

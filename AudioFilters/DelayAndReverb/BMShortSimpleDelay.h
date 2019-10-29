@@ -18,7 +18,7 @@
 typedef struct BMShortSimpleDelay{
     float **delayPtrs;
     float *delayMemory;
-    size_t delayLength, numChannels;
+    size_t delayLength, numChannels, targetDelayLength;
 } BMShortSimpleDelay;
 
 
@@ -33,16 +33,27 @@ void BMShortSimpleDelay_process(BMShortSimpleDelay* This,
 
 /*!
  *BMShortSimpleDelay_init
+ *
+ * @param This  pointer to an uninitialised struct
+ * @param numChannels number of audio channels the struct will be processing (2 for stereo)
+ * @param lengthSamples length of the delay in samples
  */
 void BMShortSimpleDelay_init(BMShortSimpleDelay* This,
                              size_t numChannels,
-                             size_t length);
+                             size_t lengthSamples);
 
 
 /*!
  *BMShortSimpleDelay_free
  */
 void BMShortSimpleDelay_free(BMShortSimpleDelay* This);
+
+
+
+/*!
+ *BMShortSimpleDelay_changeLength
+ */
+void BMShortSimpleDelay_changeLength(BMShortSimpleDelay* This, size_t lengthSamples);
 
 
 #endif /* BMShortSimpleDelay_h */

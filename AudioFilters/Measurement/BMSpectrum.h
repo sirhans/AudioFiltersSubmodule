@@ -33,7 +33,7 @@ typedef struct BMSpectrum {
     size_t fftLength;
 } BMSpectrum;
 
-void BMSpectrum_init(BMSpectrum* this, size_t fftLength);
-float* BMSpectrum_processData(BMSpectrum* this,float* inData,int inSize,int* outsize,float* nq);
+void BMSpectrum_init(BMSpectrum *This, size_t fftLength);
+float* BMSpectrum_processData(BMSpectrum *This,float* inData,int inSize,int* outsize,float* nq);
 
 #endif /* BMSpectrum_h */

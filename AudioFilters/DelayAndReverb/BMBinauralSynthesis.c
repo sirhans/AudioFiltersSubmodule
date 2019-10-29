@@ -20,10 +20,10 @@
 #define DEGREES_TO_RADIANS(degrees) ((degrees) * (M_PI / 180.0))
 
 static inline float calculateAlphaAngle(float degree);
-void BMBinauralSynthesis_updateCoefficient(BMBinauralSynthesis* This);
-void BMBinauralSynthesis_normalizeA0(BMBinauralSynthesis* This,size_t channel);
+void BMBinauralSynthesis_updateCoefficient(BMBinauralSynthesis *This);
+void BMBinauralSynthesis_normalizeA0(BMBinauralSynthesis *This,size_t channel);
 
-void BMBinauralSynthesis_init(BMBinauralSynthesis* This,bool isStereo,float sampleRate){
+void BMBinauralSynthesis_init(BMBinauralSynthesis *This,bool isStereo,float sampleRate){
     This->numChannels = isStereo == true ? 2 : 1;
     This->coefficient_f = malloc(sizeof(float)*numCoefficient *This->numChannels);
     This->coefficient_d = malloc(sizeof(double)*numCoefficient *This->numChannels);
@@ -36,7 +36,7 @@ void BMBinauralSynthesis_init(BMBinauralSynthesis* This,bool isStereo,float samp
     
     BMMultiLevelBiquad_init(&This->filter, numLevel, sampleRate, isStereo, false, true);
     
-    for(int i=0;i<numCoefficient * This->numChannels;i++){
+    for(int i=0;i<numCoefficient  *This->numChannels;i++){
         This->coefficient_f[i] = This->coefficient_d[i] = This->coefficient_normD[i] = 0;
     }
     
@@ -50,7 +50,7 @@ void BMBinauralSynthesis_init(BMBinauralSynthesis* This,bool isStereo,float samp
     BMBinauralSynthesis_updateCoefficient(This);
 }
 
-void BMBinauralSynthesis_destroy(BMBinauralSynthesis* This){
+void BMBinauralSynthesis_destroy(BMBinauralSynthesis *This){
     free(This->coefficient_d);
     free(This->coefficient_normD);
     free(This->coefficient_f);
@@ -58,7 +58,7 @@ void BMBinauralSynthesis_destroy(BMBinauralSynthesis* This){
     BMMultiLevelBiquad_destroy(&This->filter);
 }
 
-void BMBinauralSynthesis_processMono(BMBinauralSynthesis* This,float* in,float* out, size_t numSamples){
+void BMBinauralSynthesis_processMono(BMBinauralSynthesis *This,float* in,float* out, size_t numSamples){
     //update coefficient if need to
     BMBinauralSynthesis_updateCoefficient(This);
     
@@ -66,7 +66,7 @@ void BMBinauralSynthesis_processMono(BMBinauralSynthesis* This,float* in,float* 
     BMMultiLevelBiquad_processBufferMono(&This->filter, in, out, numSamples);
 }
 
-void BMBinauralSynthesis_processStereo(BMBinauralSynthesis* This,float* inL,float* inR, float* outL, float* outR, size_t numSamples){
+void BMBinauralSynthesis_processStereo(BMBinauralSynthesis *This,float* inL,float* inR, float* outL, float* outR, size_t numSamples){
     //update coefficient if need to
     BMBinauralSynthesis_updateCoefficient(This);
     
@@ -74,12 +74,12 @@ void BMBinauralSynthesis_processStereo(BMBinauralSynthesis* This,float* inL,floa
     BMMultiLevelBiquad_processBufferStereo(&This->filter, inL, inR, outL, outR, numSamples);
 }
 
-void BMBinauralSynthesis_updateCoefficient(BMBinauralSynthesis* This){
+void BMBinauralSynthesis_updateCoefficient(BMBinauralSynthesis *This){
     if(This->needUpdate){
         This->needUpdate = false;
         
         //Cast from float to double
-        for(int i=0;i<numCoefficient * This->numChannels;i++){
+        for(int i=0;i<numCoefficient  *This->numChannels;i++){
             This->coefficient_d[i] = This->coefficient_f[i];
         }
         //Normalize A0
@@ -97,13 +97,13 @@ void BMBinauralSynthesis_updateCoefficient(BMBinauralSynthesis* This){
 
 #pragma mark - Set param
 
-void BMBinauralSynthesis_setAngleLeft(BMBinauralSynthesis* This,float degree){
+void BMBinauralSynthesis_setAngleLeft(BMBinauralSynthesis *This,float degree){
     float alpha = calculateAlphaAngle(degree);
     
     size_t channel = 0;
     
-    This->coefficient_f[0 + channel*numCoefficient] = This->w0 + alpha * This->sampleRate;//b0
-    This->coefficient_f[1 + channel*numCoefficient] = This->w0 - alpha * This->sampleRate;//b1
+    This->coefficient_f[0 + channel*numCoefficient] = This->w0 + alpha  *This->sampleRate;//b0
+    This->coefficient_f[1 + channel*numCoefficient] = This->w0 - alpha  *This->sampleRate;//b1
     This->coefficient_f[2 + channel*numCoefficient] = 0;//b2
     This->coefficient_f[3 + channel*numCoefficient] = This->w0 + This->sampleRate;//a0
     This->coefficient_f[4 + channel*numCoefficient] = This->w0 - This->sampleRate;//a1
@@ -111,13 +111,13 @@ void BMBinauralSynthesis_setAngleLeft(BMBinauralSynthesis* This,float degree){
     This->needUpdate = true;
 }
 
-void BMBinauralSynthesis_setAngleRight(BMBinauralSynthesis* This,float degree){
+void BMBinauralSynthesis_setAngleRight(BMBinauralSynthesis *This,float degree){
     float alpha = calculateAlphaAngle(degree);
     
     size_t channel = 1;
     
-    This->coefficient_f[0 + channel*numCoefficient] = This->w0 + alpha * This->sampleRate;//b0
-    This->coefficient_f[1 + channel*numCoefficient] = This->w0 - alpha * This->sampleRate;//b1
+    This->coefficient_f[0 + channel*numCoefficient] = This->w0 + alpha  *This->sampleRate;//b0
+    This->coefficient_f[1 + channel*numCoefficient] = This->w0 - alpha  *This->sampleRate;//b1
     This->coefficient_f[2 + channel*numCoefficient] = 0;//b2
     This->coefficient_f[3 + channel*numCoefficient] = This->w0 + This->sampleRate;//a0
     This->coefficient_f[4 + channel*numCoefficient] = This->w0 - This->sampleRate;//a1
@@ -135,12 +135,12 @@ void BMBinauralSynthesis_setAngleRight(BMBinauralSynthesis* This,float degree){
     }
 }
 
-void BMBinauralSynthesis_setHSGain(BMBinauralSynthesis* This,float gainDb){
+void BMBinauralSynthesis_setHSGain(BMBinauralSynthesis *This,float gainDb){
     This->hsGain = gainDb;
     This->needUpdate = true;
 }
 
-void BMBinauralSynthesis_normalizeA0(BMBinauralSynthesis* This,size_t channel){
+void BMBinauralSynthesis_normalizeA0(BMBinauralSynthesis *This,size_t channel){
     double b0 = This->coefficient_d[channel*numCoefficient];
     double b1 = This->coefficient_d[channel*numCoefficient + 1];
     double b2 = This->coefficient_d[channel*numCoefficient + 2];
@@ -161,6 +161,6 @@ inline float calculateAlphaAngle(float degree){
 }
 
 #pragma mark - Test
-void BMBinauralSynthesis_getTFMagVectorData(BMBinauralSynthesis* This,float* freq, float* magnitude, size_t length , size_t level){
+void BMBinauralSynthesis_getTFMagVectorData(BMBinauralSynthesis *This,float* freq, float* magnitude, size_t length , size_t level){
     BMMultiLevelBiquad_tfMagVectorAtLevel(&This->filter, freq, magnitude, length, level);
 }

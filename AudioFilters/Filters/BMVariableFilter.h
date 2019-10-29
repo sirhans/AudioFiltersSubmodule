@@ -43,7 +43,7 @@ extern "C" {
      * @param audioOutput    an array of values for the filter output, length = numSamples
      * @param numSamples     length of input and output arrays
      */
-    void BMVariableFilter_freqSweepMono(BMVariableFilter* This,
+    void BMVariableFilter_freqSweepMono(BMVariableFilter *This,
                                         const float* audioInput,
                                         const float* cutoffControl,
                                         float* audioOutput,
@@ -60,7 +60,7 @@ extern "C" {
      * @param audioOutput    an array of values for the filter output, length = numSamples
      * @param numSamples     length of input and output arrays
      */
-    void BMVariableFilter_freqAndQSweepMono(BMVariableFilter* This,
+    void BMVariableFilter_freqAndQSweepMono(BMVariableFilter *This,
                                             const float* audioInput,
                                             const float* cutoffControl,
                                             const float* qControl,

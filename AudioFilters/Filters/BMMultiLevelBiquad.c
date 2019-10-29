@@ -26,28 +26,28 @@
 
 // evaluate the combined transfer function of all levels of the filter
 // at the frequency specified by z
-DSPDoubleComplex BMMultiLevelBiquad_tfEval(BMMultiLevelBiquad* bqf, DSPDoubleComplex z);
-DSPDoubleComplex BMMultiLevelBiquad_tfEvalAtLevel(BMMultiLevelBiquad* bqf, DSPDoubleComplex z,size_t level);
+DSPDoubleComplex BMMultiLevelBiquad_tfEval(BMMultiLevelBiquad *This, DSPDoubleComplex z);
+DSPDoubleComplex BMMultiLevelBiquad_tfEvalAtLevel(BMMultiLevelBiquad *This, DSPDoubleComplex z,size_t level);
 
 // Destroy the current filter setup and create a new one.
 // This function must be called only from the audio processing thread.
-void BMMultiLevelBiquad_recreate(BMMultiLevelBiquad* bqf);
+void BMMultiLevelBiquad_recreate(BMMultiLevelBiquad *This);
 
 // Create a filter setup object
-void BMMultiLevelBiquad_create(BMMultiLevelBiquad* bqf);
+void BMMultiLevelBiquad_create(BMMultiLevelBiquad *This);
 
 
 // this is a thread-safe way to update filter coefficients
-void BMMultiLevelBiquad_enqueueUpdate(BMMultiLevelBiquad* bqf);
+void BMMultiLevelBiquad_enqueueUpdate(BMMultiLevelBiquad *This);
 
 
 // this function updates the filter immediately and is safe to call
 // only from the audio thread. It changes the filter coefficients in realtime
 // if possible; otherwise it calls _recreate.
-void BMMultiLevelBiquad_updateNow(BMMultiLevelBiquad* bqf);
+void BMMultiLevelBiquad_updateNow(BMMultiLevelBiquad *This);
 
 //Enable all levels in foreground, disable in-active level in background
-extern inline void BMMultiLevelBiquad_updateLevels(BMMultiLevelBiquad* bqf);
+extern inline void BMMultiLevelBiquad_updateLevels(BMMultiLevelBiquad *This);
 
 // returns true if the operating system supports vDSP_biquadm_SetCoefficentsSingle()
 bool BMMultiLevelBiquad_OSSupportsRealtimeUpdate();
@@ -58,15 +58,15 @@ bool BMMultiLevelBiquad_OSSupportsRealtimeUpdate();
 
 
 
-void BMMultiLevelBiquad_processBufferStereo(BMMultiLevelBiquad* bqf, const float* inL, const float* inR, float* outL, float* outR, size_t numSamples){
+void BMMultiLevelBiquad_processBufferStereo(BMMultiLevelBiquad *This, const float* inL, const float* inR, float* outL, float* outR, size_t numSamples){
     // this function is only for two channel filtering
-    assert(bqf->numChannels == 2);
+    assert(This->numChannels == 2);
     
     // update filter coefficients if necessary
-    if (bqf->needsUpdate) BMMultiLevelBiquad_updateNow(bqf);
+    if (This->needsUpdate) BMMultiLevelBiquad_updateNow(This);
     
     //Levels
-    BMMultiLevelBiquad_updateLevels(bqf);
+    BMMultiLevelBiquad_updateLevels(This);
     
     // link the two input buffers into a single multidimensional array
     const float* twoChannelInput [2] = {inL, inR};
@@ -75,9 +75,9 @@ void BMMultiLevelBiquad_processBufferStereo(BMMultiLevelBiquad* bqf, const float
     float* twoChannelOutput [2] = {outL, outR};
     
     // apply a multilevel biquad filter to both channels
-    vDSP_biquadm(bqf->multiChannelFilterSetup, (const float* _Nonnull * _Nonnull)twoChannelInput, 1, twoChannelOutput, 1, numSamples);
+    vDSP_biquadm(This->multiChannelFilterSetup, (const float* _Nonnull * _Nonnull)twoChannelInput, 1, twoChannelOutput, 1, numSamples);
     
-    BMSmoothGain_processBuffer(&bqf->gain, outL, outR, outL, outR, numSamples);
+    BMSmoothGain_processBuffer(&This->gain, outL, outR, outL, outR, numSamples);
 }
 
 
@@ -85,18 +85,18 @@ void BMMultiLevelBiquad_processBufferStereo(BMMultiLevelBiquad* bqf, const float
 
 
 
-void BMMultiLevelBiquad_processBuffer4(BMMultiLevelBiquad* bqf,
+void BMMultiLevelBiquad_processBuffer4(BMMultiLevelBiquad *This,
                                        const float* in1, const float* in2, const float* in3, const float* in4,
                                        float* out1, float* out2, float* out3, float* out4,
                                        size_t numSamples){
     // this function is only for four channel filtering
-    assert(bqf->numChannels == 4);
+    assert(This->numChannels == 4);
     
     // update filter coefficients if necessary
-    if (bqf->needsUpdate) BMMultiLevelBiquad_updateNow(bqf);
+    if (This->needsUpdate) BMMultiLevelBiquad_updateNow(This);
     
     //Levels
-    BMMultiLevelBiquad_updateLevels(bqf);
+    BMMultiLevelBiquad_updateLevels(This);
     
     // link the two input buffers into a single multidimensional array
     const float* fourChannelInput [4] = {in1, in2, in3, in4};
@@ -106,45 +106,45 @@ void BMMultiLevelBiquad_processBuffer4(BMMultiLevelBiquad* bqf,
     
     
     // apply a multilevel biquad filter to both channels
-    vDSP_biquadm(bqf->multiChannelFilterSetup, (const float* _Nonnull * _Nonnull)fourChannelInput, 1, fourChannelOutput, 1, numSamples);
+    vDSP_biquadm(This->multiChannelFilterSetup, (const float* _Nonnull * _Nonnull)fourChannelInput, 1, fourChannelOutput, 1, numSamples);
     
     // apply a gain adjustment
     float *outputs [4] = {out1, out2, out3, out4};
-    BMSmoothGain_processBuffers(&bqf->gain, outputs, outputs, 4, numSamples);
+    BMSmoothGain_processBuffers(&This->gain, outputs, outputs, 4, numSamples);
 }
 
 
 
 
 
-void BMMultiLevelBiquad_processBufferMono(BMMultiLevelBiquad* bqf, const float* input, float* output, size_t numSamples){
+void BMMultiLevelBiquad_processBufferMono(BMMultiLevelBiquad *This, const float* input, float* output, size_t numSamples){
     
     // this function is only for single channel filtering
-    assert(bqf->numChannels == 1);
+    assert(This->numChannels == 1);
     
     
     // update filter coefficients if necessary
-    if (bqf->needsUpdate) BMMultiLevelBiquad_updateNow(bqf);
+    if (This->needsUpdate) BMMultiLevelBiquad_updateNow(This);
     
     //Levels
-    BMMultiLevelBiquad_updateLevels(bqf);
+    BMMultiLevelBiquad_updateLevels(This);
     
     // if using the multiChannel filter for single channel processing
-    if(bqf->useBiquadm){
+    if(This->useBiquadm){
         // biquadm requires arrays of pointers as input and output
         const float* inputP [1] = {input};
         float* outputP [1] = {output};
         
         // apply a multiChannel biquad filter
-        vDSP_biquadm(bqf->multiChannelFilterSetup, (const float* _Nonnull * _Nonnull)inputP, 1, outputP, 1, numSamples);
+        vDSP_biquadm(This->multiChannelFilterSetup, (const float* _Nonnull * _Nonnull)inputP, 1, outputP, 1, numSamples);
         
         
         // if using the single channel filter
     } else {
-        vDSP_biquad(bqf->singleChannelFilterSetup, bqf->monoDelays, input, 1, output, 1, numSamples);
+        vDSP_biquad(This->singleChannelFilterSetup, This->monoDelays, input, 1, output, 1, numSamples);
     }
     
-    BMSmoothGain_processBufferMono(&bqf->gain, input, output, numSamples);
+    BMSmoothGain_processBufferMono(&This->gain, input, output, numSamples);
 }
 
 
@@ -169,7 +169,7 @@ bool BMMultiLevelBiquad_OSSupportsRealtimeUpdate(){
 
 
 
-void BMMultiLevelBiquad_init(BMMultiLevelBiquad* bqf,
+void BMMultiLevelBiquad_init(BMMultiLevelBiquad *This,
                              size_t numLevels,
                              float sampleRate,
                              bool isStereo,
@@ -177,62 +177,62 @@ void BMMultiLevelBiquad_init(BMMultiLevelBiquad* bqf,
                              bool smoothUpdate){
     // initialize pointers to null to prevent errors when calling
     // free() in the destroy function
-    bqf->multiChannelFilterSetup = NULL;
-    bqf->singleChannelFilterSetup = NULL;
-    bqf->coefficients_d = NULL;
-    bqf->coefficients_f = NULL;
-    bqf->monoDelays = NULL;
+    This->multiChannelFilterSetup = NULL;
+    This->singleChannelFilterSetup = NULL;
+    This->coefficients_d = NULL;
+    This->coefficients_f = NULL;
+    This->monoDelays = NULL;
     
-    bqf->needsUpdate = false;
-    bqf->sampleRate = sampleRate;
-    bqf->numLevels = numLevels;
-    bqf->numChannels = isStereo ? 2 : 1;
-    bqf->useSmoothUpdate = smoothUpdate;
-    bqf->needUpdateActiveLevels = false;
-    bqf->activeLevels = malloc(sizeof(bool)*numLevels);
+    This->needsUpdate = false;
+    This->sampleRate = sampleRate;
+    This->numLevels = numLevels;
+    This->numChannels = isStereo ? 2 : 1;
+    This->useSmoothUpdate = smoothUpdate;
+    This->needUpdateActiveLevels = false;
+    This->activeLevels = malloc(sizeof(bool)*numLevels);
     for(int i=0;i<numLevels;i++){
-        bqf->activeLevels[i] = true;
+        This->activeLevels[i] = true;
     }
     
     // Should we use the multichannel biquad?
     // Even for mono signals, we have to use biquadm if we need realtime
     // update of filter coefficients.
-    bqf->useBiquadm = false;
-    if (isStereo || monoRealTimeUpdate) bqf->useBiquadm = true;
+    This->useBiquadm = false;
+    if (isStereo || monoRealTimeUpdate) This->useBiquadm = true;
     
     
     // We will update in realtime if the OS supports it and we are using
     // vDSP_biquadm
-    bqf->useRealTimeUpdate = false;
-    if(BMMultiLevelBiquad_OSSupportsRealtimeUpdate() && bqf->useBiquadm)
-        bqf->useRealTimeUpdate = true;
+    This->useRealTimeUpdate = false;
+    if(BMMultiLevelBiquad_OSSupportsRealtimeUpdate() && This->useBiquadm)
+        This->useRealTimeUpdate = true;
     
     
     // Allocate memory for 5 coefficients per filter,
     // 2 filters per level (left and right channels)
-    bqf->coefficients_d = malloc(numLevels*5*bqf->numChannels*sizeof(double));
+    This->coefficients_d = malloc(numLevels*5*This->numChannels*sizeof(double));
     
     // repeat the allocation for floating point coefficients. We need
     // both double and float to support realtime updates
-    bqf->coefficients_f = malloc(numLevels*5*bqf->numChannels*sizeof(float));
+    This->coefficients_f = malloc(numLevels*5*This->numChannels*sizeof(float));
     
     // Allocate 2*numLevels + 2 floats for mono delay memory
-    if(!bqf->useBiquadm)
-        bqf->monoDelays = malloc( sizeof(float)* (2*numLevels + 2) );
+    if(!This->useBiquadm)
+        This->monoDelays = malloc( sizeof(float)* (2*numLevels + 2) );
     
     
     // start with all levels on bypass
     for (size_t i=0; i<numLevels; i++) {
-        BMMultiLevelBiquad_setBypass(bqf, i);
+        BMMultiLevelBiquad_setBypass(This, i);
     }
     
     // set 0db of gain
-    BMSmoothGain_init(&bqf->gain, sampleRate);
-    BMSmoothGain_init(&bqf->gain2, sampleRate);
-    BMMultiLevelBiquad_setGain(bqf,0.0);
+    BMSmoothGain_init(&This->gain, sampleRate);
+    BMSmoothGain_init(&This->gain2, sampleRate);
+    BMMultiLevelBiquad_setGain(This,0.0);
     
     // setup filter struct
-    BMMultiLevelBiquad_create(bqf);
+    BMMultiLevelBiquad_create(This);
 }
 
 
@@ -241,165 +241,165 @@ void BMMultiLevelBiquad_init(BMMultiLevelBiquad* bqf,
 /*!
  *BMMultiLevelBiquad_init4
  */
-void BMMultiLevelBiquad_init4(BMMultiLevelBiquad* bqf,
+void BMMultiLevelBiquad_init4(BMMultiLevelBiquad *This,
                              size_t numLevels,
                              float sampleRate,
                              bool smoothUpdate){
     
     // init as stereo to make use of the code that is in the existing init function
-    BMMultiLevelBiquad_init(bqf, numLevels, sampleRate, true, false, smoothUpdate);
+    BMMultiLevelBiquad_init(This, numLevels, sampleRate, true, false, smoothUpdate);
     
     // change the number of channels to 4
-    bqf->numChannels = 4;
+    This->numChannels = 4;
     
     // Allocate memory for 5 coefficients per filter,
     // 2 filters per level (left and right channels)
-    free(bqf->coefficients_d);
-    bqf->coefficients_d = malloc(numLevels*5*bqf->numChannels*sizeof(double));
+    free(This->coefficients_d);
+    This->coefficients_d = malloc(numLevels*5*This->numChannels*sizeof(double));
     
     // repeat the allocation for floating point coefficients. We need
     // both double and float to support realtime updates
-    free(bqf->coefficients_f);
-    bqf->coefficients_f = malloc(numLevels*5*bqf->numChannels*sizeof(float));
+    free(This->coefficients_f);
+    This->coefficients_f = malloc(numLevels*5*This->numChannels*sizeof(float));
     
     
     // start with all levels on bypass
     for (size_t i=0; i<numLevels; i++) {
-        BMMultiLevelBiquad_setBypass(bqf, i);
+        BMMultiLevelBiquad_setBypass(This, i);
     }
     
     // set 0db of gain
-    BMMultiLevelBiquad_setGain(bqf,0.0f);
+    BMMultiLevelBiquad_setGain(This,0.0f);
     
     // update the filter struct
-    BMMultiLevelBiquad_recreate(bqf);
+    BMMultiLevelBiquad_recreate(This);
 }
 
 
 
 
 
-void BMMultiLevelBiquad_setGain(BMMultiLevelBiquad* bqf, float gain_db){
-    BMSmoothGain_setGainDb(&bqf->gain, gain_db);
-    BMSmoothGain_setGainDb(&bqf->gain2, gain_db);
+void BMMultiLevelBiquad_setGain(BMMultiLevelBiquad *This, float gain_db){
+    BMSmoothGain_setGainDb(&This->gain, gain_db);
+    BMSmoothGain_setGainDb(&This->gain2, gain_db);
 }
 
 
 
 
-void BMMultiLevelBiquad_queueUpdate(BMMultiLevelBiquad* bqf){
-    bqf->needsUpdate = true;
+void BMMultiLevelBiquad_queueUpdate(BMMultiLevelBiquad *This){
+    This->needsUpdate = true;
 }
 
 
 
 
-inline void BMMultiLevelBiquad_updateNow(BMMultiLevelBiquad* bqf){
+inline void BMMultiLevelBiquad_updateNow(BMMultiLevelBiquad *This){
     
     // using realtime updates
-    if(bqf->useRealTimeUpdate){
+    if(This->useRealTimeUpdate){
         // convert the coefficients to floating point
-        for(size_t i=0; i<bqf->numLevels*bqf->numChannels*5; i++){
-            bqf->coefficients_f[i] = bqf->coefficients_d[i];
+        for(size_t i=0; i<This->numLevels*This->numChannels*5; i++){
+            This->coefficients_f[i] = This->coefficients_d[i];
         }
-        if(bqf->useSmoothUpdate){
+        if(This->useSmoothUpdate){
             //rate close to 1 mean it's change more slowly
-            vDSP_biquadm_SetTargetsSingle(bqf->multiChannelFilterSetup, bqf->coefficients_f, 0.995, 0.05, 0, 0, bqf->numLevels, bqf->numChannels);
-            //                printf("%f %f %f\n",bqf->coefficients_f[0],bqf->coefficients_f[1],bqf->coefficients_f[2]);
+            vDSP_biquadm_SetTargetsSingle(This->multiChannelFilterSetup, This->coefficients_f, 0.995, 0.05, 0, 0, This->numLevels, This->numChannels);
+            //                printf("%f %f %f\n",This->coefficients_f[0],This->coefficients_f[1],This->coefficients_f[2]);
         }else{
             // update the coefficients
-            vDSP_biquadm_SetCoefficientsSingle(bqf->multiChannelFilterSetup, bqf->coefficients_f, 0, 0, bqf->numLevels, bqf->numChannels);
+            vDSP_biquadm_SetCoefficientsSingle(This->multiChannelFilterSetup, This->coefficients_f, 0, 0, This->numLevels, This->numChannels);
         }
         // not using realtime updates
     } else {
-        BMMultiLevelBiquad_recreate(bqf);
+        BMMultiLevelBiquad_recreate(This);
     }
     
-    bqf->needsUpdate = false;
+    This->needsUpdate = false;
 }
 
 
-void BMMultiLevelBiquad_create(BMMultiLevelBiquad* bqf){
+void BMMultiLevelBiquad_create(BMMultiLevelBiquad *This){
     
-    if(bqf->useBiquadm){
-        bqf->multiChannelFilterSetup =
-        vDSP_biquadm_CreateSetup(bqf->coefficients_d, bqf->numLevels, bqf->numChannels);
+    if(This->useBiquadm){
+        This->multiChannelFilterSetup =
+        vDSP_biquadm_CreateSetup(This->coefficients_d, This->numLevels, This->numChannels);
     }
     
     else {
-        bqf->singleChannelFilterSetup =
-        vDSP_biquad_CreateSetup(bqf->coefficients_d, bqf->numLevels);
-        memset(bqf->monoDelays,0,sizeof(float) * (2*bqf->numLevels + 2));
+        This->singleChannelFilterSetup =
+        vDSP_biquad_CreateSetup(This->coefficients_d, This->numLevels);
+        memset(This->monoDelays,0,sizeof(float) * (2*This->numLevels + 2));
     }
 }
 
 
 
-inline void BMMultiLevelBiquad_recreate(BMMultiLevelBiquad* bqf){
+inline void BMMultiLevelBiquad_recreate(BMMultiLevelBiquad *This){
     
-    if(bqf->useBiquadm){
-        vDSP_biquadm_DestroySetup(bqf->multiChannelFilterSetup);
-        bqf->multiChannelFilterSetup =
-        vDSP_biquadm_CreateSetup(bqf->coefficients_d, bqf->numLevels, bqf->numChannels);
+    if(This->useBiquadm){
+        vDSP_biquadm_DestroySetup(This->multiChannelFilterSetup);
+        This->multiChannelFilterSetup =
+        vDSP_biquadm_CreateSetup(This->coefficients_d, This->numLevels, This->numChannels);
     }
     
     else {
-        vDSP_biquad_DestroySetup(bqf->singleChannelFilterSetup);
-        bqf->singleChannelFilterSetup =
-        vDSP_biquad_CreateSetup(bqf->coefficients_d, bqf->numLevels);
-        memset(bqf->monoDelays,0,sizeof(float) * (2*bqf->numLevels + 2));
+        vDSP_biquad_DestroySetup(This->singleChannelFilterSetup);
+        This->singleChannelFilterSetup =
+        vDSP_biquad_CreateSetup(This->coefficients_d, This->numLevels);
+        memset(This->monoDelays,0,sizeof(float) * (2*This->numLevels + 2));
     }
 }
 
 
 
-void BMMultiLevelBiquad_destroy(BMMultiLevelBiquad* bqf){
-    if(bqf->coefficients_d) free(bqf->coefficients_d);
-    if(bqf->coefficients_f) free(bqf->coefficients_f);
-    if(bqf->monoDelays) free(bqf->monoDelays);
-    bqf->coefficients_d = NULL;
-    bqf->coefficients_f = NULL;
-    bqf->monoDelays = NULL;
+void BMMultiLevelBiquad_destroy(BMMultiLevelBiquad *This){
+    if(This->coefficients_d) free(This->coefficients_d);
+    if(This->coefficients_f) free(This->coefficients_f);
+    if(This->monoDelays) free(This->monoDelays);
+    This->coefficients_d = NULL;
+    This->coefficients_f = NULL;
+    This->monoDelays = NULL;
     
-    if(bqf->numChannels > 1)
-        vDSP_biquadm_DestroySetup(bqf->multiChannelFilterSetup);
+    if(This->numChannels > 1)
+        vDSP_biquadm_DestroySetup(This->multiChannelFilterSetup);
     else
-        vDSP_biquad_DestroySetup(bqf->singleChannelFilterSetup);
-    bqf->multiChannelFilterSetup = NULL;
-    bqf->singleChannelFilterSetup = NULL;
+        vDSP_biquad_DestroySetup(This->singleChannelFilterSetup);
+    This->multiChannelFilterSetup = NULL;
+    This->singleChannelFilterSetup = NULL;
 }
 
 
 
 
 #pragma mark - Active level
-inline void BMMultiLevelBiquad_updateLevels(BMMultiLevelBiquad* bqf){
-    if(bqf->needUpdateActiveLevels){
+inline void BMMultiLevelBiquad_updateLevels(BMMultiLevelBiquad *This){
+    if(This->needUpdateActiveLevels){
         printf("disable un-active level\n");
         //        for(int i=0;i<6;i++){
-        //            printf("%d\n",bqf->activeLevels[i]);
+        //            printf("%d\n",This->activeLevels[i]);
         //        }
-        bqf->needUpdateActiveLevels = false;
-        vDSP_biquadm_SetActiveFilters(bqf->multiChannelFilterSetup, bqf->activeLevels);
+        This->needUpdateActiveLevels = false;
+        vDSP_biquadm_SetActiveFilters(This->multiChannelFilterSetup, This->activeLevels);
     }
 }
 
 /*
  MultiLevelBiquad posses several filters inside. We can active/disable each of them by the setActiveOnLevel function.
  */
-void BMMultiLevelBiquad_setActiveOnLevel(BMMultiLevelBiquad* bqf,bool active,size_t level){
+void BMMultiLevelBiquad_setActiveOnLevel(BMMultiLevelBiquad *This,bool active,size_t level){
     //Keep track which should be active
-    bqf->activeLevels[level] = active;
-    bqf->needUpdateActiveLevels = true;
+    This->activeLevels[level] = active;
+    This->needUpdateActiveLevels = true;
 }
 
 #pragma mark - Set filter parameters
-void BMMultiLevelBiquad_setCoefficientZ(BMMultiLevelBiquad* bqf,size_t level,double* coeff){
-    assert(level < bqf->numLevels);
+void BMMultiLevelBiquad_setCoefficientZ(BMMultiLevelBiquad *This,size_t level,double* coeff){
+    assert(level < This->numLevels);
     
     // for left and right channels, set coefficients
-    for(size_t i=0; i < bqf->numChannels; i++){
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+    for(size_t i=0; i < This->numChannels; i++){
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
         double* b1 = b0 + 1;
         double* b2 = b0 + 2;
         double* a1 = b0 + 3;
@@ -412,16 +412,16 @@ void BMMultiLevelBiquad_setCoefficientZ(BMMultiLevelBiquad* bqf,size_t level,dou
         *a2 = coeff[4 + i*5];
     }
     
-    BMMultiLevelBiquad_queueUpdate(bqf);
+    BMMultiLevelBiquad_queueUpdate(This);
 }
 
 //Bypass function is still allow filter to be processed. It only set all parameters back to 0 to achieve the bypass effects. If you want to actually disable it, call setActiveOnLevel function.
-void BMMultiLevelBiquad_setBypass(BMMultiLevelBiquad* bqf, size_t level){
-    assert(level < bqf->numLevels);
+void BMMultiLevelBiquad_setBypass(BMMultiLevelBiquad *This, size_t level){
+    assert(level < This->numLevels);
     
     // for left and right channels, set coefficients
-    for(size_t i=0; i < bqf->numChannels; i++){
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+    for(size_t i=0; i < This->numChannels; i++){
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
         double* b1 = b0 + 1;
         double* b2 = b0 + 2;
         double* a1 = b0 + 3;
@@ -431,20 +431,20 @@ void BMMultiLevelBiquad_setBypass(BMMultiLevelBiquad* bqf, size_t level){
         *b1 = *b2 = *a1 = *a2 = 0.0;
     }
     
-    BMMultiLevelBiquad_queueUpdate(bqf);
+    BMMultiLevelBiquad_queueUpdate(This);
     
 }
 
 
 
 // based on formula in 2.3.10 of Digital Filters for Everyone by Rusty Allred
-void BMMultiLevelBiquad_setHighShelf(BMMultiLevelBiquad* bqf, float fc, float gain_db, size_t level){
-    assert(level < bqf->numLevels);
+void BMMultiLevelBiquad_setHighShelf(BMMultiLevelBiquad *This, float fc, float gain_db, size_t level){
+    assert(level < This->numLevels);
     
     
     // for left and right channels, set coefficients
-    for(size_t i=0; i < bqf->numChannels; i++){
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+    for(size_t i=0; i < This->numChannels; i++){
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
         double* b1 = b0 + 1;
         double* b2 = b0 + 2;
         double* a1 = b0 + 3;
@@ -452,7 +452,7 @@ void BMMultiLevelBiquad_setHighShelf(BMMultiLevelBiquad* bqf, float fc, float ga
         
         float gainV = BM_DB_TO_GAIN(gain_db);
         
-        double gamma = tanf(M_PI * fc / bqf->sampleRate);
+        double gamma = tanf(M_PI * fc / This->sampleRate);
         double gamma_2 = gamma*gamma;
         double sqrt_gain = sqrtf(gainV);
         double g_d;
@@ -495,55 +495,77 @@ void BMMultiLevelBiquad_setHighShelf(BMMultiLevelBiquad* bqf, float fc, float ga
         *a2 = (gamma_2_plus_g_d_2 - sqrt_2_g_d_gamma)*one_over_denominator;
     }
     
-    BMMultiLevelBiquad_queueUpdate(bqf);
+    BMMultiLevelBiquad_queueUpdate(This);
 }
 
 
-void BMMultiLevelBiquad_setHighShelfAdjustableSlope(BMMultiLevelBiquad* bqf, float fc, float gain_db, float slope, size_t level){
-    assert(level < bqf->numLevels);
+
+
+
+/*!
+ *BMMultiLevelBiquad_setHighShelfAdjustableSlope
+ *
+ * @abstract adjustable high shelf filter from Robert Bristow-Johnson cookbook
+ *
+ * @param This pointer to an initialized filter struct
+ * @param fc   filter cutoff frequency
+ * @param gain_db shelf gain in decibels
+ * @param slope in [0.3,1], where 0.5 is equivalent to first order shelf slope and 1 is equivalent to second order shelf slope
+ * @param level the index of the filter in the biquad cascade
+ */
+void BMMultiLevelBiquad_setHighShelfAdjustableSlope(BMMultiLevelBiquad *This, float fc, float gain_db, float slope, size_t level){
+    assert(level < This->numLevels);
+    assert(0.3 <= slope && slope <= 1.0);
+    
+
+    double A = pow(10.0,gain_db/40.0);
+    double w0 = 2.0 * M_PI * (fc / This->sampleRate);
+    double alpha = sin(w0)/2.0 * sqrt( (A + 1.0/A) * (1.0/slope - 1.0) + 2.0);
+    double twoSqrtAalpha = 2.0 * sqrt(A) * alpha;
+
+    double a0, a1, a2, b0, b1, b2;
+    
+    b0 =      A*( (A+1.0) + (A-1.0)*cos(w0) + twoSqrtAalpha );
+    b1 = -2.0*A*( (A-1.0) + (A+1.0)*cos(w0)                 );
+    b2 =      A*( (A+1.0) + (A-1.0)*cos(w0) - twoSqrtAalpha );
+    a0 =          (A+1.0) - (A-1.0)*cos(w0) + twoSqrtAalpha;
+    a1 =    2.0*( (A-1.0) - (A+1.0)*cos(w0)                 );
+    a2 =          (A+1.0) - (A-1.0)*cos(w0) - twoSqrtAalpha;
+
+    // normalize a0 to 1
+    b0 /= a0;
+    b1 /= a0;
+    b2 /= a0;
+    a1 /= a0;
+    a2 /= a0;
     
     // for left and right channels, set coefficients
     // these formulae are from the RBJ filter cookbook
-    for(size_t i=0; i < bqf->numChannels; i++){
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
-        double* b1 = b0 + 1;
-        double* b2 = b0 + 2;
-        double* a1 = b0 + 3;
-        double* a2 = b0 + 4;
+    for(size_t i=0; i < This->numChannels; i++){
+        double* b0p = This->coefficients_d + level*This->numChannels*5 + i*5;
+        double* b1p = b0p + 1;
+        double* b2p = b0p + 2;
+        double* a1p = b0p + 3;
+        double* a2p = b0p + 4;
         
-        double A = pow(10.0,gain_db/40.0);
-        double w0 = 2.0 * M_PI * (fc / bqf->sampleRate);
-        double alpha = sin(w0)/2.0 * sqrt( (A + 1.0/A) * (1.0/slope - 1) + 2);
-        double twoRAalpha = 1.0 * sqrt(A) * alpha;
-        
-        // compute the prenormalized filter coefficients
-        // these formulae are from the RBJ filter cookbook
-        double b0pn =      A*( (A+1.0) + (A-1.0)*cos(w0) + twoRAalpha );
-        double b1pn = -2.0*A*( (A-1.0) + (A+1.0)*cos(w0)            );
-        double b2pn =      A*( (A+1.0) + (A-1.0)*cos(w0) - twoRAalpha );
-        double a0pn =          (A+1.0) - (A-1.0)*cos(w0) + twoRAalpha;
-        double a1pn =    2.0*( (A-1.0) - (A+1.0)*cos(w0)            );
-        double a2pn =          (A+1.0) - (A-1.0)*cos(w0) - twoRAalpha;
-        
-        // normalize the a0 term to 1 and save the coefficients
-        *b0 = b0pn / a0pn;
-        *b1 = b1pn / a0pn;
-        *b2 = b2pn / a0pn;
-        *a1 = a1pn / a0pn;
-        *a2 = a2pn / a0pn;
+        *b0p = b0;
+        *b1p = b1;
+        *b2p = b2;
+        *a1p = a1;
+        *a2p = a2;
     }
     
-    BMMultiLevelBiquad_queueUpdate(bqf);
+    BMMultiLevelBiquad_queueUpdate(This);
 }
 
 
 
-void BMMultiLevelBiquad_setHighShelfFirstOrder(BMMultiLevelBiquad* bqf, float fc, float gain_db, size_t level){
-    assert(level < bqf->numLevels);
+void BMMultiLevelBiquad_setHighShelfFirstOrder(BMMultiLevelBiquad *This, float fc, float gain_db, size_t level){
+    assert(level < This->numLevels);
     
     // for left and right channels, set coefficients
-    for(size_t i=0; i < bqf->numChannels; i++){
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+    for(size_t i=0; i < This->numChannels; i++){
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
         double* b1 = b0 + 1;
         double* b2 = b0 + 2;
         double* a1 = b0 + 3;
@@ -553,7 +575,7 @@ void BMMultiLevelBiquad_setHighShelfFirstOrder(BMMultiLevelBiquad* bqf, float fc
         
         // if the gain is nontrivial
         {
-            double gamma = tanf(M_PI * fc / bqf->sampleRate);
+            double gamma = tanf(M_PI * fc / This->sampleRate);
             double one_over_denominator;
             if(gainV>1.0f){
                 one_over_denominator = 1.0f / (gamma + 1.0f);
@@ -572,19 +594,19 @@ void BMMultiLevelBiquad_setHighShelfFirstOrder(BMMultiLevelBiquad* bqf, float fc
         }
     }
     
-    BMMultiLevelBiquad_queueUpdate(bqf);
+    BMMultiLevelBiquad_queueUpdate(This);
 }
 
 
 
 
 
-void BMMultiLevelBiquad_setLowShelfFirstOrder(BMMultiLevelBiquad* bqf, float fc, float gain_db, size_t level){
-    assert(level < bqf->numLevels);
+void BMMultiLevelBiquad_setLowShelfFirstOrder(BMMultiLevelBiquad *This, float fc, float gain_db, size_t level){
+    assert(level < This->numLevels);
     
     // for left and right channels, set coefficients
-    for(size_t i=0; i < bqf->numChannels; i++){
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+    for(size_t i=0; i < This->numChannels; i++){
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
         double* b1 = b0 + 1;
         double* b2 = b0 + 2;
         double* a1 = b0 + 3;
@@ -594,7 +616,7 @@ void BMMultiLevelBiquad_setLowShelfFirstOrder(BMMultiLevelBiquad* bqf, float fc,
         
         // if the gain is nontrivial
         {
-            double gamma = tanf(M_PI * fc / bqf->sampleRate);
+            double gamma = tanf(M_PI * fc / This->sampleRate);
             double one_over_denominator;
             if(gainV>1.0f){
                 one_over_denominator = 1.0f / (gamma + 1.0f);
@@ -613,7 +635,7 @@ void BMMultiLevelBiquad_setLowShelfFirstOrder(BMMultiLevelBiquad* bqf, float fc,
         }
     }
     
-    BMMultiLevelBiquad_queueUpdate(bqf);
+    BMMultiLevelBiquad_queueUpdate(This);
 }
 
 
@@ -624,12 +646,12 @@ void BMMultiLevelBiquad_setLowShelfFirstOrder(BMMultiLevelBiquad* bqf, float fc,
 // set a low shelf filter at on the specified level in both
 // channels and update filter settings
 // based on formula in 2.3.10 of Digital Filters for Everyone by Rusty Allred
-void BMMultiLevelBiquad_setLowShelf(BMMultiLevelBiquad* bqf, float fc, float gain_db, size_t level){
-    assert(level < bqf->numLevels);
+void BMMultiLevelBiquad_setLowShelf(BMMultiLevelBiquad *This, float fc, float gain_db, size_t level){
+    assert(level < This->numLevels);
     
     // for left and right channels, set coefficients
-    for(size_t i=0; i < bqf->numChannels; i++){
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+    for(size_t i=0; i < This->numChannels; i++){
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
         double* b1 = b0 + 1;
         double* b2 = b0 + 2;
         double* a1 = b0 + 3;
@@ -638,7 +660,7 @@ void BMMultiLevelBiquad_setLowShelf(BMMultiLevelBiquad* bqf, float fc, float gai
         float gainV = BM_DB_TO_GAIN(gain_db);
         
         
-        double gamma = tanf(M_PI * fc / bqf->sampleRate);
+        double gamma = tanf(M_PI * fc / This->sampleRate);
         double gamma_2 = gamma*gamma;
         double sqrt_gain = sqrtf(gainV);
         double g_d;
@@ -683,25 +705,82 @@ void BMMultiLevelBiquad_setLowShelf(BMMultiLevelBiquad* bqf, float fc, float gai
         *a2 = (g_d_2_gamma_2_plus_1 - sqrt_2_g_d_gamma)*one_over_denominator;
     }
     
-    BMMultiLevelBiquad_queueUpdate(bqf);
+    BMMultiLevelBiquad_queueUpdate(This);
 }
 
 
+
+
+/*!
+ *BMMultiLevelBiquad_setLowShelfAdjustableSlope
+ *
+ * @abstract adjustable high shelf filter from Robert Bristow-Johnson cookbook
+ *
+ * @param This pointer to an initialized filter struct
+ * @param fc   filter cutoff frequency
+ * @param gain_db shelf gain in decibels
+ * @param slope in [0.3,1], where 0.5 is equivalent to first order shelf slope and 1 is equivalent to second order shelf slope
+ * @param level the index of the filter in the biquad cascade
+ */
+void BMMultiLevelBiquad_setLowShelfAdjustableSlope(BMMultiLevelBiquad *This, float fc, float gain_db, float slope, size_t level){
+    assert(level < This->numLevels);
+    assert(0.3 <= slope && slope <= 1.0);
+    
+
+    double A = pow(10.0,gain_db/40.0);
+    double w0 = 2.0 * M_PI * (fc / This->sampleRate);
+    double alpha = sin(w0)/2.0 * sqrt( (A + 1.0/A) * (1.0/slope - 1.0) + 2.0);
+    double twoSqrtAalpha = 2.0 * sqrt(A) * alpha;
+
+    double a0, a1, a2, b0, b1, b2;
+    
+    b0 =      A*( (A+1.0) - (A-1.0)*cos(w0) + twoSqrtAalpha );
+    b1 =  2.0*A*( (A-1.0) - (A+1.0)*cos(w0)                 );
+    b2 =      A*( (A+1.0) - (A-1.0)*cos(w0) - twoSqrtAalpha );
+    a0 =          (A+1.0) + (A-1.0)*cos(w0) + twoSqrtAalpha;
+    a1 =   -2.0*( (A-1.0) + (A+1.0)*cos(w0)                 );
+    a2 =          (A+1.0) + (A-1.0)*cos(w0) - twoSqrtAalpha;
+
+    // normalize a0 to 1
+    b0 /= a0;
+    b1 /= a0;
+    b2 /= a0;
+    a1 /= a0;
+    a2 /= a0;
+    
+    // for left and right channels, set coefficients
+    // these formulae are from the R B-J filter cookbook
+    for(size_t i=0; i < This->numChannels; i++){
+        double* b0p = This->coefficients_d + level*This->numChannels*5 + i*5;
+        double* b1p = b0p + 1;
+        double* b2p = b0p + 2;
+        double* a1p = b0p + 3;
+        double* a2p = b0p + 4;
+        
+        *b0p = b0;
+        *b1p = b1;
+        *b2p = b2;
+        *a1p = a1;
+        *a2p = a2;
+    }
+    
+    BMMultiLevelBiquad_queueUpdate(This);
+}
 
 
 
 
 // based on formulae in 2.3.8 in Digital Filters are for Everyone,
 // 2nd ed. by Rusty Allred
-void BMMultiLevelBiquad_setBell(BMMultiLevelBiquad* bqf, float fc, float bandwidth, float gain_db, size_t level){
-    assert(level < bqf->numLevels);
+void BMMultiLevelBiquad_setBell(BMMultiLevelBiquad *This, float fc, float bandwidth, float gain_db, size_t level){
+    assert(level < This->numLevels);
     
     float gainV = BM_DB_TO_GAIN(gain_db);
     
     // for left and right channels, set coefficients
-    for(size_t i=0; i < bqf->numChannels; i++){
+    for(size_t i=0; i < This->numChannels; i++){
         
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
         double* b1 = b0 + 1;
         double* b2 = b0 + 2;
         double* a1 = b0 + 3;
@@ -715,8 +794,8 @@ void BMMultiLevelBiquad_setBell(BMMultiLevelBiquad* bqf, float fc, float bandwid
         
         // if the gain is nontrivial
         else {
-            double alpha =  tan( (M_PI * bandwidth)   / bqf->sampleRate);
-            double beta  = -cos( (2.0 * M_PI * fc) / bqf->sampleRate);
+            double alpha =  tan( (M_PI * bandwidth)   / This->sampleRate);
+            double beta  = -cos( (2.0 * M_PI * fc) / This->sampleRate);
             double oneOverD;
             
             if (gainV < 1.0) {
@@ -743,18 +822,87 @@ void BMMultiLevelBiquad_setBell(BMMultiLevelBiquad* bqf, float fc, float bandwid
         }
     }
     
-    BMMultiLevelBiquad_queueUpdate(bqf);
+    BMMultiLevelBiquad_queueUpdate(This);
 }
 
 
+/*!
+ *BMMultiLevelBiquad_setBellWithSkirt
+ *
+ * @abstract In addition to the usual controls for a bell filter, this function allows you to set the skirt gain, which is the gain at the DC and Nyquist frequencies.
+ *
+ * @note based on Effect Design part 1 AES paper by Jon Dattorro
+ *
+ *  @param This pointer to an initialised struct
+ *  @param fc   bell centre frequency
+ *  @param Q    Q = fc / bandwidth see Effect Design part 1 by Jon Dattorro for details
+ *  @param bellGainDb the gain of the bell at peak or valley
+ *  @param skirtGainDb the gain at DC and Nyquist
+ *  @param level The index within this BMMultiLevelBiquad filter array
+ */
+void BMMultiLevelBiquad_setBellWithSkirt(BMMultiLevelBiquad *This, float fc, float Q, float bellGainDb, float skirtGainDb, size_t level){
+    assert(level < This->numLevels);
+    
+    double bellGainV = BM_DB_TO_GAIN(bellGainDb);
+    double skirtGainV = BM_DB_TO_GAIN(skirtGainDb);
+    double wc = 2.0 * M_PI * fc / This->sampleRate;
+    
+    // \[Beta][\[Omega]c_,Q_] := (1 - Tan[\[Omega]c/(2 Q)])/(1 + Tan[\[Omega]c/(2 Q)])
+    double beta = (1.0 - tan(wc/(2.0*Q)))/(1.0 + tan(wc/(2.0*Q)));
+    
+    // \[Gamma][\[Omega]c_] := -Cos[\[Omega]c]
+    double gamma = -cos(wc);
+    
+    // this filter is a mixture of an allpass filter with the unfiltered signal
+    // apg: allpass gain
+    double apg = (bellGainV + skirtGainV) * 0.5;
+    // ufg: unfiltered gain
+    double ufg = (bellGainV - skirtGainV) * 0.5;
+    
+    // allpass filter coefficients
+    // A[z_, \[Beta]_, \[Gamma]_] := (\[Beta] + \[Gamma] (1 + \[Beta])/z + 1/z^2)/(1 + \[Gamma] (1 + \[Beta])/z + \[Beta]/z^2)
+    double apb0 = beta;
+    double apb1 = gamma * (1.0 + beta);
+    double apb2 = 1.0;
+    double apa0 = 1.0;
+    double apa1 = gamma * (1.0 + beta);
+    double apa2 = beta;
+    
+    // allpass + unfiltered mixture b coefficients
+    double mixb0 = apg * apb0 + ufg * apa0;
+    double mixb1 = apg * apb1 + ufg * apa1;
+    double mixb2 = apg * apb2 + ufg * apa2;
+    
+    // for left and right channels, set coefficients
+    for(size_t i=0; i < This->numChannels; i++){
+        
+        double *b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
+        double *b1 = b0 + 1;
+        double *b2 = b0 + 2;
+        double *a1 = b0 + 3;
+        double *a2 = b0 + 4;
+        
+        *b0 = mixb0;
+        *b1 = mixb1;
+        *b2 = mixb2;
+        *a1 = apa1;
+        *a2 = apa2;
+    }
+    
+    BMMultiLevelBiquad_queueUpdate(This);
+}
+
+
+
+
 /*
- * This function approximates the integral of the magnitude transfer function
+  *This function approximates the integral of the magnitude transfer function
  * of a bell filter on [0,Nyquist], normalized so that the result is 1 when
  * the gain setting is 0 db.
  */
-double approximateBellIntegral(BMMultiLevelBiquad* bqf,double bwHertz, double gainDb){
+double approximateBellIntegral(BMMultiLevelBiquad *This,double bwHertz, double gainDb){
     // we normalize the bandwidth so that Nyquist = M_PI
-    double bw = M_PI * bwHertz / (bqf->sampleRate/2.0f);
+    double bw = M_PI * bwHertz / (This->sampleRate/2.0f);
     
     // the following approximation was generated by Mathematica and output
     // using the "// CForm" command so that it could be entered below in
@@ -791,14 +939,14 @@ double approximateBellIntegral(BMMultiLevelBiquad* bqf,double bwHertz, double ga
 
 
 /*
- * This is based on the setBell function above. The difference is that it
+  *This is based on the setBell function above. The difference is that it
  * attempts to keep the overall gain at unity by adjusting the broadband
  * gain to compensate for the boost or cut of the bell filter. This allows
  * us to acheive extreme filter curves that approach the behavior of bandpass
  * and notch filters without clipping or loosing too much signal gain.
  */
-void BMMultiLevelBiquad_setNormalizedBell(BMMultiLevelBiquad* bqf, float fc, float bandwidth, float controlGainDb, size_t level){
-    assert(level < bqf->numLevels);
+void BMMultiLevelBiquad_setNormalizedBell(BMMultiLevelBiquad *This, float fc, float bandwidth, float controlGainDb, size_t level){
+    assert(level < This->numLevels);
     
     // we start by finding out what gain we actually need to set on the bell
     // filter to place the peak at gain_db.
@@ -808,7 +956,7 @@ void BMMultiLevelBiquad_setNormalizedBell(BMMultiLevelBiquad* bqf, float fc, flo
     float actualGain = FLT_MAX;
     while(fabs(actualGain - controlGainDb) > 0.1f){
         // how much will the gain be compensated, as compared to the bell filter
-        float gainCompensation = BM_GAIN_TO_DB(1.0 / approximateBellIntegral(bqf,bandwidth, gain_db));
+        float gainCompensation = BM_GAIN_TO_DB(1.0 / approximateBellIntegral(This,bandwidth, gain_db));
         // find out what the actual gain at fc will be
         actualGain = gain_db + gainCompensation;
         // adjust the gain setting of the bell filter to get the actual gain
@@ -818,15 +966,15 @@ void BMMultiLevelBiquad_setNormalizedBell(BMMultiLevelBiquad* bqf, float fc, flo
     
     
     // compute the final gain compensation value in volt scale (not dB)
-    float gainCompensationV = 1.0 / approximateBellIntegral(bqf,bandwidth, gain_db);
+    float gainCompensationV = 1.0 / approximateBellIntegral(This,bandwidth, gain_db);
     
     // set the standard bell filter
-    BMMultiLevelBiquad_setBell(bqf, fc, bandwidth, gain_db, level);
+    BMMultiLevelBiquad_setBell(This, fc, bandwidth, gain_db, level);
     
     // adjust the gain to keep the full spectrum magnitude near unity
-    for(size_t i=0; i < bqf->numChannels; i++){
+    for(size_t i=0; i < This->numChannels; i++){
         
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
         double* b1 = b0 + 1;
         double* b2 = b0 + 2;
         
@@ -835,23 +983,23 @@ void BMMultiLevelBiquad_setNormalizedBell(BMMultiLevelBiquad* bqf, float fc, flo
         *b2 *= gainCompensationV;
     }
     
-    BMMultiLevelBiquad_queueUpdate(bqf);
+    BMMultiLevelBiquad_queueUpdate(This);
 }
 
 
-void BMMultiLevelBiquad_setLowPass12db(BMMultiLevelBiquad* bqf, double fc, size_t level){
-    assert(level < bqf->numLevels);
+void BMMultiLevelBiquad_setLowPass12db(BMMultiLevelBiquad *This, double fc, size_t level){
+    assert(level < This->numLevels);
     
     // for left and right channels, set coefficients
-    for(size_t i=0; i < bqf->numChannels; i++){
+    for(size_t i=0; i < This->numChannels; i++){
         
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
         double* b1 = b0 + 1;
         double* b2 = b1 + 1;
         double* a1 = b2 + 1;
         double* a2 = a1 + 1;
         
-        double gamma = tan(M_PI * fc / bqf->sampleRate);
+        double gamma = tan(M_PI * fc / This->sampleRate);
         double gamma_sq = gamma * gamma;
         double sqrt_2_gamma = gamma * M_SQRT2;
         double one_over_denominator = 1.0 / (gamma_sq + sqrt_2_gamma + 1.0);
@@ -864,26 +1012,26 @@ void BMMultiLevelBiquad_setLowPass12db(BMMultiLevelBiquad* bqf, double fc, size_
         *a2 = (gamma_sq - sqrt_2_gamma + 1.0) * one_over_denominator;
     }
     
-    BMMultiLevelBiquad_queueUpdate(bqf);
+    BMMultiLevelBiquad_queueUpdate(This);
 }
 
 
 
 
 
-void BMMultiLevelBiquad_setLowPassQ12db(BMMultiLevelBiquad* bqf, double fc,double q, size_t level){
-    assert(level < bqf->numLevels);
+void BMMultiLevelBiquad_setLowPassQ12db(BMMultiLevelBiquad *This, double fc,double q, size_t level){
+    assert(level < This->numLevels);
     
     // for left and right channels, set coefficients
-    for(size_t i=0; i < bqf->numChannels; i++){
+    for(size_t i=0; i < This->numChannels; i++){
         
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
         double* b1 = b0 + 1;
         double* b2 = b1 + 1;
         double* a1 = b2 + 1;
         double* a2 = a1 + 1;
         
-        double gamma = tan(M_PI * fc / bqf->sampleRate);
+        double gamma = tan(M_PI * fc / This->sampleRate);
         double gamma_sq = gamma * gamma;
         double one_over_denominator = 1.0 / (q*gamma_sq + gamma + q);
         
@@ -895,23 +1043,23 @@ void BMMultiLevelBiquad_setLowPassQ12db(BMMultiLevelBiquad* bqf, double fc,doubl
         *a2 = (q*gamma_sq - gamma + q) * one_over_denominator;
     }
     
-    BMMultiLevelBiquad_queueUpdate(bqf);
+    BMMultiLevelBiquad_queueUpdate(This);
 }
 
-void BMMultiLevelBiquad_setHighPass12db(BMMultiLevelBiquad* bqf, double fc,size_t level){
-    assert(level < bqf->numLevels);
+void BMMultiLevelBiquad_setHighPass12db(BMMultiLevelBiquad *This, double fc,size_t level){
+    assert(level < This->numLevels);
     
     // for left and right channels, set coefficients
-    for(size_t i=0; i < bqf->numChannels; i++){
+    for(size_t i=0; i < This->numChannels; i++){
         
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
         double* b1 = b0 + 1;
         double* b2 = b1 + 1;
         double* a1 = b2 + 1;
         double* a2 = a1 + 1;
         
         
-        double gamma = tan(M_PI * fc / bqf->sampleRate);
+        double gamma = tan(M_PI * fc / This->sampleRate);
         double gamma_sq = gamma * gamma;
         double sqrt_2_gamma = gamma * M_SQRT2;
         double one_over_denominator = 1.0 / (gamma_sq + sqrt_2_gamma + 1.0);
@@ -924,22 +1072,58 @@ void BMMultiLevelBiquad_setHighPass12db(BMMultiLevelBiquad* bqf, double fc,size_
         *a2 = (gamma_sq - sqrt_2_gamma + 1.0) * one_over_denominator;
     }
     
-    BMMultiLevelBiquad_queueUpdate(bqf);
+    BMMultiLevelBiquad_queueUpdate(This);
 }
 
-void BMMultiLevelBiquad_setHighPassQ12db(BMMultiLevelBiquad* bqf, double fc,double q,size_t level){
-    assert(level < bqf->numLevels);
+
+
+
+void BMMultiLevelBiquad_setHighPass12dbNeg(BMMultiLevelBiquad *This, double fc,size_t level){
+    assert(level < This->numLevels);
     
     // for left and right channels, set coefficients
-    for(size_t i=0; i < bqf->numChannels; i++){
+    for(size_t i=0; i < This->numChannels; i++){
         
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
         double* b1 = b0 + 1;
         double* b2 = b1 + 1;
         double* a1 = b2 + 1;
         double* a2 = a1 + 1;
         
-        double gamma = tan(M_PI * fc / bqf->sampleRate);
+        
+        double gamma = tan(M_PI * fc / This->sampleRate);
+        double gamma_sq = gamma * gamma;
+        double sqrt_2_gamma = gamma * M_SQRT2;
+        double one_over_denominator = 1.0 / (gamma_sq + sqrt_2_gamma + 1.0);
+        
+        *b0 = -1.0 * one_over_denominator;
+        *b1 = 2.0 * one_over_denominator;
+        *b2 = *b0;
+        
+        *a1 = 2.0 * (gamma_sq - 1.0) * one_over_denominator;
+        *a2 = (gamma_sq - sqrt_2_gamma + 1.0) * one_over_denominator;
+    }
+    
+    BMMultiLevelBiquad_queueUpdate(This);
+}
+
+
+
+
+
+void BMMultiLevelBiquad_setHighPassQ12db(BMMultiLevelBiquad *This, double fc,double q,size_t level){
+    assert(level < This->numLevels);
+    
+    // for left and right channels, set coefficients
+    for(size_t i=0; i < This->numChannels; i++){
+        
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
+        double* b1 = b0 + 1;
+        double* b2 = b1 + 1;
+        double* a1 = b2 + 1;
+        double* a2 = a1 + 1;
+        
+        double gamma = tan(M_PI * fc / This->sampleRate);
         double gamma_sq = gamma * gamma;
         double one_over_denominator = 1.0 / (q*gamma_sq + gamma + q);
         
@@ -951,17 +1135,17 @@ void BMMultiLevelBiquad_setHighPassQ12db(BMMultiLevelBiquad* bqf, double fc,doub
         *a2 = (q*gamma_sq - gamma + q) * one_over_denominator;
     }
     
-    BMMultiLevelBiquad_queueUpdate(bqf);
+    BMMultiLevelBiquad_queueUpdate(This);
 }
 
 
-void BMMultiLevelBiquad_setLinkwitzRileyLP(BMMultiLevelBiquad* bqf, double fc, size_t level){
-    assert(level < bqf->numLevels);
+void BMMultiLevelBiquad_setLinkwitzRileyLP(BMMultiLevelBiquad *This, double fc, size_t level){
+    assert(level < This->numLevels);
     
     // for left and right channels, set coefficients
-    for(size_t i=0; i < bqf->numChannels; i++){
+    for(size_t i=0; i < This->numChannels; i++){
         
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
         double* b1 = b0 + 1;
         double* b2 = b1 + 1;
         double* a1 = b2 + 1;
@@ -986,7 +1170,7 @@ void BMMultiLevelBiquad_setLinkwitzRileyLP(BMMultiLevelBiquad* bqf, double fc, s
          */
         
         
-        double gamma = tan(M_PI * fc / bqf->sampleRate);
+        double gamma = tan(M_PI * fc / This->sampleRate);
         double gamma_sq = gamma * gamma;
         double two_gamma = gamma * 2.0;
         double one_over_denominator = 1.0 / (gamma_sq + two_gamma + 1.0);
@@ -999,7 +1183,7 @@ void BMMultiLevelBiquad_setLinkwitzRileyLP(BMMultiLevelBiquad* bqf, double fc, s
         *a2 = (gamma_sq - two_gamma + 1.0) * one_over_denominator;
     }
     
-    BMMultiLevelBiquad_queueUpdate(bqf);
+    BMMultiLevelBiquad_queueUpdate(This);
 }
 
 
@@ -1009,13 +1193,13 @@ void BMMultiLevelBiquad_setLinkwitzRileyLP(BMMultiLevelBiquad* bqf, double fc, s
 
 
 
-void BMMultiLevelBiquad_setLinkwitzRileyHP(BMMultiLevelBiquad* bqf, double fc, size_t level){
-    assert(level < bqf->numLevels);
+void BMMultiLevelBiquad_setLinkwitzRileyHP(BMMultiLevelBiquad *This, double fc, size_t level){
+    assert(level < This->numLevels);
     
     // for left and right channels, set coefficients
-    for(size_t i=0; i < bqf->numChannels; i++){
+    for(size_t i=0; i < This->numChannels; i++){
         
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
         double* b1 = b0 + 1;
         double* b2 = b1 + 1;
         double* a1 = b2 + 1;
@@ -1031,9 +1215,9 @@ void BMMultiLevelBiquad_setLinkwitzRileyHP(BMMultiLevelBiquad* bqf, double fc, s
          *
          * Dn[gamma_] := gamma^2 + 2 gamma + 1
          *
-         * b0[gamma_] := 1 / Dn[gamma]
-         * b1[gamma_] := -2 / Dn[gamma]
-         * b2[gamma_] := 1 / Dn[gamma]
+         * b0[gamma_] := -1 / Dn[gamma]
+         * b1[gamma_] := 2 / Dn[gamma]
+         * b2[gamma_] := -1 / Dn[gamma]
          *
          * a1[gamma_] := 2 (gamma^2 - 1) / Dn[gamma]
          * a2[gamma_] := (gamma^2 - 2 gamma + 1) / Dn[gamma]
@@ -1042,38 +1226,63 @@ void BMMultiLevelBiquad_setLinkwitzRileyHP(BMMultiLevelBiquad* bqf, double fc, s
          *
          */
         
-        double gamma = tan(M_PI * fc / bqf->sampleRate);
+        double gamma = tan(M_PI * fc / This->sampleRate);
         double gamma_sq = gamma * gamma;
         double two_gamma = gamma * 2.0;
         double one_over_denominator = 1.0 / (gamma_sq + two_gamma + 1.0);
         
-        *b0 = 1.0 * one_over_denominator;
-        *b1 = -2.0 * one_over_denominator;
-        *b2 = *b0;
+        *b0 = -1.0 * one_over_denominator;
+        *b1 = 2.0 * one_over_denominator;
+        *b2 = -1.0 * one_over_denominator;
         
         *a1 = 2.0 * (gamma_sq - 1.0) * one_over_denominator;
         *a2 = (gamma_sq - two_gamma + 1.0) * one_over_denominator;
     }
     
-    BMMultiLevelBiquad_queueUpdate(bqf);
+    BMMultiLevelBiquad_queueUpdate(This);
 }
 
 
 
-void BMMultiLevelBiquad_setLowPass6db(BMMultiLevelBiquad* bqf, double fc, size_t level){
-    assert(level < bqf->numLevels);
+
+void BMMultiLevelBiquad_setLinkwitzRileyLP4thOrder(BMMultiLevelBiquad *This, double fc, size_t firstLevel){
+    
+    // a cascade of two butterworth filters makes a linkwitz-riley filter.
+    // the highpass and lowpass pair sums to unity gain without the need to
+    // invert the sign of one pair
+    BMMultiLevelBiquad_setLowPass12db(This, fc, firstLevel);
+    BMMultiLevelBiquad_setLowPass12db(This, fc, firstLevel+1);
+}
+
+
+
+
+void BMMultiLevelBiquad_setLinkwitzRileyHP4thOrder(BMMultiLevelBiquad *This, double fc, size_t firstLevel){
+    
+    // a cascade of two butterworth filters makes a linkwitz-riley filter.
+    // the highpass and lowpass pair sums to unity gain without the need to
+    // invert the sign of one pair
+    BMMultiLevelBiquad_setHighPass12db(This, fc, firstLevel);
+    BMMultiLevelBiquad_setHighPass12db(This, fc, firstLevel+1);
+}
+
+
+
+
+void BMMultiLevelBiquad_setLowPass6db(BMMultiLevelBiquad *This, double fc, size_t level){
+    assert(level < This->numLevels);
     
     // for left and right channels, set coefficients
-    for(size_t i=0; i < bqf->numChannels; i++){
+    for(size_t i=0; i < This->numChannels; i++){
         
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
         double* b1 = b0 + 1;
         double* b2 = b1 + 1;
         double* a1 = b2 + 1;
         double* a2 = a1 + 1;
         
         
-        double gamma = tan(M_PI * fc / bqf->sampleRate);
+        double gamma = tan(M_PI * fc / This->sampleRate);
         double one_over_denominator = 1.0 / (gamma + 1.0);
         
         *b0 = gamma * one_over_denominator;
@@ -1084,25 +1293,25 @@ void BMMultiLevelBiquad_setLowPass6db(BMMultiLevelBiquad* bqf, double fc, size_t
         *a2 = 0.0;
     }
     
-    BMMultiLevelBiquad_queueUpdate(bqf);
+    BMMultiLevelBiquad_queueUpdate(This);
 }
 
 
 
-void BMMultiLevelBiquad_setHighPass6db(BMMultiLevelBiquad* bqf, double fc, size_t level){
-    assert(level < bqf->numLevels);
+void BMMultiLevelBiquad_setHighPass6db(BMMultiLevelBiquad *This, double fc, size_t level){
+    assert(level < This->numLevels);
     
     // for left and right channels, set coefficients
-    for(size_t i=0; i < bqf->numChannels; i++){
+    for(size_t i=0; i < This->numChannels; i++){
         
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
         double* b1 = b0 + 1;
         double* b2 = b1 + 1;
         double* a1 = b2 + 1;
         double* a2 = a1 + 1;
         
         
-        double gamma = tan(M_PI * fc / bqf->sampleRate);
+        double gamma = tan(M_PI * fc / This->sampleRate);
         double one_over_denominator = 1.0 / (gamma + 1.0);
         
         *b0 = 1.0 * one_over_denominator;
@@ -1113,18 +1322,18 @@ void BMMultiLevelBiquad_setHighPass6db(BMMultiLevelBiquad* bqf, double fc, size_
         *a2 = 0.0;
     }
     
-    BMMultiLevelBiquad_queueUpdate(bqf);
+    BMMultiLevelBiquad_queueUpdate(This);
 }
 
 
 
-void BMMultilevelBiquad_setAllpass2ndOrder(BMMultiLevelBiquad* bqf, double c1, double c2, size_t level){
-    assert(level < bqf->numLevels);
+void BMMultilevelBiquad_setAllpass2ndOrder(BMMultiLevelBiquad *This, double c1, double c2, size_t level){
+    assert(level < This->numLevels);
     
     // for left and right channels, set coefficients
-    for(size_t i=0; i < bqf->numChannels; i++){
+    for(size_t i=0; i < This->numChannels; i++){
         
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
         double* b1 = b0 + 1;
         double* b2 = b1 + 1;
         double* a1 = b2 + 1;
@@ -1144,7 +1353,7 @@ void BMMultilevelBiquad_setAllpass2ndOrder(BMMultiLevelBiquad* bqf, double c1, d
         *a2 = c1 * c2;
     }
     
-    BMMultiLevelBiquad_queueUpdate(bqf);
+    BMMultiLevelBiquad_queueUpdate(This);
 }
 
 
@@ -1152,13 +1361,13 @@ void BMMultilevelBiquad_setAllpass2ndOrder(BMMultiLevelBiquad* bqf, double c1, d
 
 
 
-void BMMultilevelBiquad_setAllpass1stOrder(BMMultiLevelBiquad* bqf, double c, size_t level){
-    assert(level < bqf->numLevels);
+void BMMultilevelBiquad_setAllpass1stOrder(BMMultiLevelBiquad *This, double c, size_t level){
+    assert(level < This->numLevels);
     
     // for left and right channels, set coefficients
-    for(size_t i=0; i < bqf->numChannels; i++){
+    for(size_t i=0; i < This->numChannels; i++){
         
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
         double* b1 = b0 + 1;
         double* b2 = b1 + 1;
         double* a1 = b2 + 1;
@@ -1178,13 +1387,13 @@ void BMMultilevelBiquad_setAllpass1stOrder(BMMultiLevelBiquad* bqf, double c, si
         *a2 = 0.0;
     }
     
-    BMMultiLevelBiquad_queueUpdate(bqf);
+    BMMultiLevelBiquad_queueUpdate(This);
 }
 
 
 
 
-void BMMultilevelBiquad_setCriticallyDampedPhaseCompensator(BMMultiLevelBiquad * bqf, double lowpassFC, size_t level){
+void BMMultilevelBiquad_setCriticallyDampedPhaseCompensator(BMMultiLevelBiquad  *This, double lowpassFC, size_t level){
     // We find the allpass coefficient Beta that yields the same phase response
     // as the critically damped lowpass at lowpassFC.
     //
@@ -1197,14 +1406,14 @@ void BMMultilevelBiquad_setCriticallyDampedPhaseCompensator(BMMultiLevelBiquad *
     double c3 = 1.0 - c2;
     
     // get the cutoff in [0,pi]
-    double wc = 2.0 * M_PI * lowpassFC / bqf->sampleRate;
+    double wc = 2.0 * M_PI * lowpassFC / This->sampleRate;
     
     double allpassBeta = -2.0 +
                          (c1 * wc) +
                          (c2 * (cos(wc/2.0) - sin(wc/2.0))) +
                          (c3 * cos(wc));
     
-    BMMultilevelBiquad_setAllpass1stOrder(bqf,allpassBeta,level);
+    BMMultilevelBiquad_setAllpass1stOrder(This,allpassBeta,level);
 }
 
 
@@ -1243,26 +1452,26 @@ double digitalToAnalogFCWarp(float fcDigital){
  *
  * @param fc  filter cutoff in hz
  */
-void BMMultiLevelBiquad_setBWLPSection(BMMultiLevelBiquad* bqf,
+void BMMultiLevelBiquad_setBWLPSection(BMMultiLevelBiquad *This,
                                        double fc,
                                        size_t level,
                                        size_t filterOrder,
                                        size_t sectionNumber){
-    assert(level < bqf->numLevels);
+    assert(level < This->numLevels);
     
     /*
      * pre-calculate some values
      */
     double c = butterworthCHelper(filterOrder, sectionNumber);
-    fc = digitalToAnalogFCWarp(M_PI*fc/(bqf->sampleRate/2.0));
+    fc = digitalToAnalogFCWarp(M_PI*fc/(This->sampleRate/2.0));
     double fc2 = fc*fc;
     
     
     // for left and right channels, set coefficients
-    for(size_t i=0; i < bqf->numChannels; i++){
+    for(size_t i=0; i < This->numChannels; i++){
         
         
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
         double* b1 = b0 + 1;
         double* b2 = b1 + 1;
         double* a1 = b2 + 1;
@@ -1292,7 +1501,7 @@ void BMMultiLevelBiquad_setBWLPSection(BMMultiLevelBiquad* bqf,
         *b2 /= a0;
     }
     
-    BMMultiLevelBiquad_queueUpdate(bqf);
+    BMMultiLevelBiquad_queueUpdate(This);
 }
 
 
@@ -1308,13 +1517,13 @@ void BMMultiLevelBiquad_setBWLPSection(BMMultiLevelBiquad* bqf,
  *                     biquad sections, beginning with firstLevel
  * @param numLevels    number of biquad sections to use (order / 2)
  */
-void BMMultiLevelBiquad_setHighOrderBWLP(BMMultiLevelBiquad* bqf, double fc, size_t firstLevel, size_t numLevels){
+void BMMultiLevelBiquad_setHighOrderBWLP(BMMultiLevelBiquad *This, double fc, size_t firstLevel, size_t numLevels){
     
     // N is the filter order
     size_t N = numLevels * 2;
     
     for(size_t i=0; i<numLevels; i++)
-        BMMultiLevelBiquad_setBWLPSection(bqf, fc, i+firstLevel, N, i+1);
+        BMMultiLevelBiquad_setBWLPSection(This, fc, i+firstLevel, N, i+1);
 }
 
 
@@ -1536,12 +1745,12 @@ void BMMuiltiLevelBiquad_NormalizeA0(const float* inputCoefficients,
  *
  * @param fc  filter cutoff in hz
  */
-void BMMultiLevelBiquad_setLegendreLPSection(BMMultiLevelBiquad* bqf,
+void BMMultiLevelBiquad_setLegendreLPSection(BMMultiLevelBiquad *This,
                                              double fc,
                                              size_t level,
                                              size_t filterOrder,
                                              size_t sectionNumber){
-    assert(level < bqf->numLevels);
+    assert(level < This->numLevels);
     
     // get the coefficients for the prototype filter in the analog domain
     float sDomainPrototypeCoefficients [6];
@@ -1551,7 +1760,7 @@ void BMMultiLevelBiquad_setLegendreLPSection(BMMultiLevelBiquad* bqf,
     
     // compute the warped cutoff frequency of the analog prototype to
     // prepare for s to z domain transformation.
-    double fcInRadians = M_PI * (fc / (bqf->sampleRate/2.0));
+    double fcInRadians = M_PI * (fc / (This->sampleRate/2.0));
     double warpedAnalogFc = tan(0.5*fcInRadians);
     
     // warp the frequency of the s-domain prototype
@@ -1570,9 +1779,9 @@ void BMMultiLevelBiquad_setLegendreLPSection(BMMultiLevelBiquad* bqf,
     
     
     // for left and right channels, set coefficients
-    for(size_t i=0; i < bqf->numChannels; i++){
+    for(size_t i=0; i < This->numChannels; i++){
         
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + i*5;
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
         double* b1 = b0 + 1;
         double* b2 = b1 + 1;
         double* a1 = b2 + 1;
@@ -1585,7 +1794,7 @@ void BMMultiLevelBiquad_setLegendreLPSection(BMMultiLevelBiquad* bqf,
         *b2 = zDomainCoefficients[5];
     }
     
-    BMMultiLevelBiquad_queueUpdate(bqf);
+    BMMultiLevelBiquad_queueUpdate(This);
 }
 
 
@@ -1600,13 +1809,13 @@ void BMMultiLevelBiquad_setLegendreLPSection(BMMultiLevelBiquad* bqf,
  *                     biquad sections, beginning with firstLevel
  * @param numLevels    number of biquad sections to use. numLevels = (filterOrder / 2)
  */
-void BMMultiLevelBiquad_setLegendreLP(BMMultiLevelBiquad* bqf, double fc, size_t firstLevel, size_t numLevels){
+void BMMultiLevelBiquad_setLegendreLP(BMMultiLevelBiquad *This, double fc, size_t firstLevel, size_t numLevels){
     
     // N is the filter order
     size_t N = numLevels * 2;
     
     for(size_t i=0; i<numLevels; i++)
-        BMMultiLevelBiquad_setLegendreLPSection(bqf, fc, i+firstLevel, N, i+1);
+        BMMultiLevelBiquad_setLegendreLPSection(This, fc, i+firstLevel, N, i+1);
 }
 
 
@@ -1703,7 +1912,7 @@ void besselFilterSectionGetQAndFcMultiplier(size_t filterOrder,
  *
  * @abstract sets up a single section of a Bessel lowpass filter that is factored across several biquad sections.
  */
-void BMMultiLevelBiquad_setBesselLPSection(BMMultiLevelBiquad* bqf,
+void BMMultiLevelBiquad_setBesselLPSection(BMMultiLevelBiquad *This,
                                            double fc,
                                            size_t level,
                                            size_t filterOrder,
@@ -1712,7 +1921,7 @@ void BMMultiLevelBiquad_setBesselLPSection(BMMultiLevelBiquad* bqf,
     for(size_t i = 0; i<filterOrder/2; i++){
         float fcMultiplier, q;
         besselFilterSectionGetQAndFcMultiplier(filterOrder,sectionNumber,&fcMultiplier,&q);
-        BMMultiLevelBiquad_setLowPassQ12db(bqf, fc*fcMultiplier, q, level);
+        BMMultiLevelBiquad_setLowPassQ12db(This, fc*fcMultiplier, q, level);
     }
 }
 
@@ -1727,13 +1936,13 @@ void BMMultiLevelBiquad_setBesselLPSection(BMMultiLevelBiquad* bqf,
  *                     biquad sections, beginning with firstLevel
  * @param numLevels    number of biquad sections to use. numLevels = (filterOrder / 2)
  */
-void BMMultiLevelBiquad_setBesselLP(BMMultiLevelBiquad* bqf, double fc, size_t firstLevel, size_t numLevels){
+void BMMultiLevelBiquad_setBesselLP(BMMultiLevelBiquad *This, double fc, size_t firstLevel, size_t numLevels){
     
     // N is the filter order
     size_t N = numLevels * 2;
     
     for(size_t i=0; i<numLevels; i++)
-        BMMultiLevelBiquad_setBesselLPSection(bqf, fc, i+firstLevel, N, i+1);
+        BMMultiLevelBiquad_setBesselLPSection(This, fc, i+firstLevel, N, i+1);
 }
 
 
@@ -1750,7 +1959,7 @@ void BMMultiLevelBiquad_setBesselLP(BMMultiLevelBiquad* bqf, double fc, size_t f
  *
  * @abstract sets up a single section of a Bessel lowpass filter that is factored across several biquad sections.
  */
-void BMMultiLevelBiquad_setCriticallyDampedLPSection(BMMultiLevelBiquad* bqf,
+void BMMultiLevelBiquad_setCriticallyDampedLPSection(BMMultiLevelBiquad *This,
                                                      double fc,
                                                      size_t level,
                                                      size_t filterOrder){
@@ -1764,7 +1973,7 @@ void BMMultiLevelBiquad_setCriticallyDampedLPSection(BMMultiLevelBiquad* bqf,
     float Q = 0.5;
     
     for(size_t i = 0; i<filterOrder/2; i++)
-        BMMultiLevelBiquad_setLowPassQ12db(bqf, fc, Q, level);
+        BMMultiLevelBiquad_setLowPassQ12db(This, fc, Q, level);
 }
 
 
@@ -1782,13 +1991,13 @@ void BMMultiLevelBiquad_setCriticallyDampedLPSection(BMMultiLevelBiquad* bqf,
  *                     biquad sections, beginning with firstLevel
  * @param numLevels    number of biquad sections to use. numLevels = (filterOrder / 2)
  */
-void BMMultiLevelBiquad_setCriticallyDampedLP(BMMultiLevelBiquad* bqf, double fc, size_t firstLevel, size_t numLevels){
+void BMMultiLevelBiquad_setCriticallyDampedLP(BMMultiLevelBiquad *This, double fc, size_t firstLevel, size_t numLevels){
     
     // N is the filter order
     size_t N = numLevels * 2;
     
     for(size_t i=0; i<numLevels; i++)
-        BMMultiLevelBiquad_setCriticallyDampedLPSection(bqf, fc, i+firstLevel, N);
+        BMMultiLevelBiquad_setCriticallyDampedLPSection(This, fc, i+firstLevel, N);
 }
 
 
@@ -1796,19 +2005,19 @@ void BMMultiLevelBiquad_setCriticallyDampedLP(BMMultiLevelBiquad* bqf, double fc
 
 // evaluate the transfer function of the filter at all levels for the
 // frequency specified by the complex number z
-inline DSPDoubleComplex BMMultiLevelBiquad_tfEval(BMMultiLevelBiquad* bqf, DSPDoubleComplex z){
+inline DSPDoubleComplex BMMultiLevelBiquad_tfEval(BMMultiLevelBiquad *This, DSPDoubleComplex z){
     
     DSPDoubleComplex z2 = DSPDoubleComplex_cmul(z, z);
     
-    DSPDoubleComplex out = DSPDoubleComplex_init(BMSmoothGain_getGainLinear(&bqf->gain), 0.0);
+    DSPDoubleComplex out = DSPDoubleComplex_init(BMSmoothGain_getGainLinear(&This->gain), 0.0);
     
     
-    for (size_t level = 0; level < bqf->numLevels; level++) {
+    for (size_t level = 0; level < This->numLevels; level++) {
         
         // both channels are the same so we just check the left one
         size_t channel = 0;
         
-        double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + channel*5;
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + channel*5;
         double* b1 = b0+1;
         double* b2 = b0+2;
         double* a1 = b0+3;
@@ -1834,16 +2043,16 @@ inline DSPDoubleComplex BMMultiLevelBiquad_tfEval(BMMultiLevelBiquad* bqf, DSPDo
 }
 
 
-inline DSPDoubleComplex BMMultiLevelBiquad_tfEvalAtLevel(BMMultiLevelBiquad* bqf, DSPDoubleComplex z,size_t level){
+inline DSPDoubleComplex BMMultiLevelBiquad_tfEvalAtLevel(BMMultiLevelBiquad *This, DSPDoubleComplex z,size_t level){
     
     DSPDoubleComplex z2 = DSPDoubleComplex_cmul(z, z);
     
-    DSPDoubleComplex out = DSPDoubleComplex_init(BMSmoothGain_getGainLinear(&bqf->gain), 0.0);
+    DSPDoubleComplex out = DSPDoubleComplex_init(BMSmoothGain_getGainLinear(&This->gain), 0.0);
     
     // both channels are the same so we just check the left one
     size_t channel = 0;
     
-    double* b0 = bqf->coefficients_d + level*bqf->numChannels*5 + channel*5;
+    double* b0 = This->coefficients_d + level*This->numChannels*5 + channel*5;
     double* b1 = b0+1;
     double* b2 = b0+2;
     double* a1 = b0+3;
@@ -1884,21 +2093,21 @@ inline DSPDoubleComplex BMMultiLevelBiquad_tfEvalAtLevel(BMMultiLevelBiquad* bqf
  * @param length      the number of elements in frequency and magnitude
  *
  */
-void BMMultiLevelBiquad_tfMagVector(BMMultiLevelBiquad* bqf, const float *frequency, float *magnitude, size_t length){
+void BMMultiLevelBiquad_tfMagVector(BMMultiLevelBiquad *This, const float *frequency, float *magnitude, size_t length){
     for (size_t i = 0; i<length; i++) {
         // convert from frequency into z (complex angular velocity)
-        DSPDoubleComplex z = DSPDoubleComplex_z(frequency[i], bqf->sampleRate);
+        DSPDoubleComplex z = DSPDoubleComplex_z(frequency[i], This->sampleRate);
         // evaluate the transfer function at z and take absolute value
-        magnitude[i] = DSPDoubleComplex_abs(BMMultiLevelBiquad_tfEval(bqf,z));
+        magnitude[i] = DSPDoubleComplex_abs(BMMultiLevelBiquad_tfEval(This,z));
     }
 }
 
-void BMMultiLevelBiquad_tfMagVectorAtLevel(BMMultiLevelBiquad* bqf, const float *frequency, float *magnitude, size_t length,size_t level){
+void BMMultiLevelBiquad_tfMagVectorAtLevel(BMMultiLevelBiquad *This, const float *frequency, float *magnitude, size_t length,size_t level){
     for (size_t i = 0; i<length; i++) {
         // convert from frequency into z (complex angular velocity)
-        DSPDoubleComplex z = DSPDoubleComplex_z(frequency[i], bqf->sampleRate);
+        DSPDoubleComplex z = DSPDoubleComplex_z(frequency[i], This->sampleRate);
         // evaluate the transfer function at z and take absolute value
-        magnitude[i] = DSPDoubleComplex_abs(BMMultiLevelBiquad_tfEvalAtLevel(bqf,z,level));
+        magnitude[i] = DSPDoubleComplex_abs(BMMultiLevelBiquad_tfEvalAtLevel(This,z,level));
     }
 }
 
@@ -1916,16 +2125,16 @@ void BMMultiLevelBiquad_tfMagVectorAtLevel(BMMultiLevelBiquad* bqf, const float 
  * @param freq the frequency at which you need to compute the group delay of the filter cascade
  * @return the group delay in samples at freq
  */
-double BMMultiLevelBiquad_groupDelay(BMMultiLevelBiquad* bqf, double freq){
+double BMMultiLevelBiquad_groupDelay(BMMultiLevelBiquad *This, double freq){
     double delay = 0.0;
     
-    for (size_t level=0; level<bqf->numLevels; level++) {
+    for (size_t level=0; level<This->numLevels; level++) {
         
-        double b0 = bqf->coefficients_d[5*level];
-        double b1 = bqf->coefficients_d[5*level + 1];
-        double b2 = bqf->coefficients_d[5*level + 2];
-        double a1 = bqf->coefficients_d[5*level + 3];
-        double a2 = bqf->coefficients_d[5*level + 4];
+        double b0 = This->coefficients_d[5*level];
+        double b1 = This->coefficients_d[5*level + 1];
+        double b2 = This->coefficients_d[5*level + 2];
+        double a1 = This->coefficients_d[5*level + 3];
+        double a2 = This->coefficients_d[5*level + 4];
         
         // normalize the feed forward coefficients so that b0=1
         // see: see: http://www.musicdsp.org/files/Audio-EQ-Cookbook.txt
@@ -1934,7 +2143,7 @@ double BMMultiLevelBiquad_groupDelay(BMMultiLevelBiquad* bqf, double freq){
         b0 = 1.0;
         
         // radian normalised frequency
-        double w = freq / (0.5*bqf->sampleRate);
+        double w = freq / (0.5*This->sampleRate);
         
         // calculate the group delay of the normalized filter using a cookbook formula
         // http://music-dsp.music.columbia.narkive.com/9F6BIvHy/group-delay
@@ -1980,20 +2189,20 @@ double BMMultiLevelBiquad_groupDelay(BMMultiLevelBiquad* bqf, double freq){
  * BMMiltiLevelBiquad_phaseResponse
  *
  * @abstract Calculates the real-valued phase response of the filter cascade at the frequency freq. The formula for this generalizes to filters of any order. It is based on equation (24) in this document: http://www.rs-met.com/documents/dsp/BasicDigitalFilters.pdf
- * @param bqf       pointer to an initialized struct
+ * @param This       pointer to an initialized struct
  * @param freq      the frequency at which we want to evaluate the phase response
  */
-double BMMiltiLevelBiquad_phaseResponse(BMMultiLevelBiquad* bqf, double freq){
+double BMMiltiLevelBiquad_phaseResponse(BMMultiLevelBiquad *This, double freq){
     double totalPhaseShift = 0;
-    double w = 2.0 * M_PI * freq / bqf->sampleRate;
+    double w = 2.0 * M_PI * freq / This->sampleRate;
     
-    for (size_t level=0; level<bqf->numLevels; level++) {
+    for (size_t level=0; level<This->numLevels; level++) {
         
-        double b0 = bqf->coefficients_d[5*level];
-        double b1 = bqf->coefficients_d[5*level + 1];
-        double b2 = bqf->coefficients_d[5*level + 2];
-        double a1 = bqf->coefficients_d[5*level + 3];
-        double a2 = bqf->coefficients_d[5*level + 4];
+        double b0 = This->coefficients_d[5*level];
+        double b1 = This->coefficients_d[5*level + 1];
+        double b2 = This->coefficients_d[5*level + 2];
+        double a1 = This->coefficients_d[5*level + 3];
+        double a2 = This->coefficients_d[5*level + 4];
         
     // Mathematica prototype:
     //
