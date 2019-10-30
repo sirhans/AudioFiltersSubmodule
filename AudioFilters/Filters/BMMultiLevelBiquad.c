@@ -855,9 +855,9 @@ void BMMultiLevelBiquad_setBellWithSkirt(BMMultiLevelBiquad *This, float fc, flo
     
     // this filter is a mixture of an allpass filter with the unfiltered signal
     // apg: allpass gain
-    double apg = (bellGainV + skirtGainV) * 0.5;
+    double apg = (skirtGainV + bellGainV) * 0.5;
     // ufg: unfiltered gain
-    double ufg = (bellGainV - skirtGainV) * 0.5;
+    double ufg = (skirtGainV - bellGainV) * 0.5;
     
     // allpass filter coefficients
     // A[z_, \[Beta]_, \[Gamma]_] := (\[Beta] + \[Gamma] (1 + \[Beta])/z + 1/z^2)/(1 + \[Gamma] (1 + \[Beta])/z + \[Beta]/z^2)
