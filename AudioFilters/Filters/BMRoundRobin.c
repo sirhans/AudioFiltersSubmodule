@@ -39,8 +39,10 @@ void BMRoundRobin_init(BMRoundRobin* This,
     // initialise the multi-tap delay
     BMMultiTapDelay_Init(&This->delay, stereo,
                          setting->indices, setting->indices,
+						 setting->bufferLengthInFrames,
                          setting->gain, setting->gain,
-                         numTapsPerChannel + 1,numTapsPerChannel + 1, sampleRate);
+                         numTapsPerChannel + 1,
+						 numTapsPerChannel + 1);
 
 }
 
