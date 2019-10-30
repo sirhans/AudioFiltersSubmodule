@@ -3,7 +3,7 @@
 //  AudioFiltersXcodeProject
 //
 //  Created by Hans on 29/10/19.
-//  Copyright © 2019 BlueMangoo. All rights reserved.
+//  Anyone may use this file without restrictions of any kind
 //
 
 #include "BMAsymptoticLimiter.h"
