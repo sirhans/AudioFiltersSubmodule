@@ -18,7 +18,7 @@ extern "C" {
 #endif
     
     typedef struct BMVelocityFilter{
-        BMMultiLevelBiquad bqf;
+        BMMultiLevelBiquad This;
         float maxGainDb, minGainDb, centreVelocity;
     } BMVelocityFilter;
     

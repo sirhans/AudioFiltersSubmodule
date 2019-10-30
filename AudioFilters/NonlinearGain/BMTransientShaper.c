@@ -23,7 +23,7 @@
 
 
 
-void BMTransientEnveloper_init(BMTransientEnveloper* This, float sampleRate){
+void BMTransientEnveloper_init(BMTransientEnveloper *This, float sampleRate){
     
     /*
      * attack transient filters
@@ -67,7 +67,7 @@ void BMTransientEnveloper_init(BMTransientEnveloper* This, float sampleRate){
 
 
 
-void BMTransientEnveloper_setAttackOnsetTime(BMTransientEnveloper* This, float seconds){
+void BMTransientEnveloper_setAttackOnsetTime(BMTransientEnveloper *This, float seconds){
     if(seconds > 0){
         float attackOnsetFc = ARTimeToCutoffFrequency(seconds, BMENV_NUM_STAGES);
     
@@ -81,7 +81,7 @@ void BMTransientEnveloper_setAttackOnsetTime(BMTransientEnveloper* This, float s
 
 
 
-void BMTransientEnveloper_setAttackDuration(BMTransientEnveloper* This, float seconds){
+void BMTransientEnveloper_setAttackDuration(BMTransientEnveloper *This, float seconds){
     
     float attackDurationFc = ARTimeToCutoffFrequency(seconds, BMENV_NUM_STAGES);
     
@@ -92,14 +92,14 @@ void BMTransientEnveloper_setAttackDuration(BMTransientEnveloper* This, float se
 
 
 
-void BMTransientEnveloper_setReleaseDuration(BMEnvelopeFollower* This, float seconds){
+void BMTransientEnveloper_setReleaseDuration(BMEnvelopeFollower *This, float seconds){
     
 }
 
 
 
 
-void BMTransientEnveloper_processBuffer(BMTransientEnveloper* This,
+void BMTransientEnveloper_processBuffer(BMTransientEnveloper *This,
                                         const float* input,
                                         float* attackEnvelope,
                                         float* afterAttackEnvelope,

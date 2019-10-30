@@ -20,7 +20,7 @@
  *     products derived from this software without specific            *
  *     prior written permission.                                       *
  *                                                                     *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
+  *This SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
  * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,         *
  * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES               *
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE             *
@@ -39,7 +39,7 @@
  *=====================================================================*/
 
 /*
- * This file has been modified by Hans Anderson in 2019 to add vectorised
+  *This file has been modified by Hans Anderson in 2019 to add vectorised
  * functions on Apple platforms
  */
 
@@ -134,7 +134,7 @@ fasterlog2 (float x)
 
 
 /*
- * This is the vectorized version of fasterlog2
+  *This is the vectorized version of fasterlog2
  * with ~5% error
  *
  * @param X     input array of length "length"
@@ -173,7 +173,7 @@ fasterlog10 (float x){
 
 
 /*
- * This is the vectorized version of fasterlog
+  *This is the vectorized version of fasterlog
  * with ~ 5% error
  *
  * @param X     input array of length "length"

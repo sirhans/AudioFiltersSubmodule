@@ -22,7 +22,7 @@
 
 
 
-void BMAttackFilter_setCutoff(BMAttackFilter* This, float fc){
+void BMAttackFilter_setCutoff(BMAttackFilter *This, float fc){
     assert(fc > 0.0f);
     
     This->fc = fc;
@@ -43,8 +43,8 @@ void BMAttackFilter_setCutoff(BMAttackFilter* This, float fc){
     
     // compute the three filter coefficients
     a1 = 1.0f / (1.0f + g * (g + (double)This->k));
-    a2 = a1 * This->g;
-    a3 = a2 * This->g;
+    a2 = a1  *This->g;
+    a3 = a2  *This->g;
 	
 	// copy the double precision filter coefficients in this function
 	// to the single precision coefficients in the filter struct
@@ -60,7 +60,7 @@ void BMAttackFilter_setCutoff(BMAttackFilter* This, float fc){
 
 
 
-void BMReleaseFilter_setCutoff(BMReleaseFilter* This, float fc){
+void BMReleaseFilter_setCutoff(BMReleaseFilter *This, float fc){
     assert(fc > 0.0f);
     
     This->fc = fc;
@@ -81,8 +81,8 @@ void BMReleaseFilter_setCutoff(BMReleaseFilter* This, float fc){
     
     // compute the three filter coefficients
     a1 = 1.0f / (1.0f + g * (g + (double)This->k));
-    a2 = This->a1 * This->g;
-    a3 = This->a2 * This->g;
+    a2 = This->a1  *This->g;
+    a3 = This->a2  *This->g;
 	
 	// copy the double precision filter coefficients in this function
 	// to the single precision coefficients in the filter struct
@@ -93,14 +93,14 @@ void BMReleaseFilter_setCutoff(BMReleaseFilter* This, float fc){
 
 
 
-void BMReleaseFilter_updateSampleRate(BMReleaseFilter* This, float sampleRate){
+void BMReleaseFilter_updateSampleRate(BMReleaseFilter *This, float sampleRate){
     This->sampleRate = sampleRate;
     BMReleaseFilter_setCutoff(This, This->fc);
 }
 
 
 
-void BMAttackFilter_updateSampleRate(BMAttackFilter* This, float sampleRate){
+void BMAttackFilter_updateSampleRate(BMAttackFilter *This, float sampleRate){
     This->sampleRate = sampleRate;
     BMAttackFilter_setCutoff(This, This->fc);
 }
@@ -122,7 +122,7 @@ float ARTimeToCutoffFrequency(float time, size_t numStages){
 
 
 
-void BMAttackFilter_init(BMAttackFilter* This, float fc, float sampleRate){
+void BMAttackFilter_init(BMAttackFilter *This, float fc, float sampleRate){
     
     This->sampleRate = sampleRate;
     
@@ -138,7 +138,7 @@ void BMAttackFilter_init(BMAttackFilter* This, float fc, float sampleRate){
 
 
 
-void BMReleaseFilter_init(BMReleaseFilter* This, float fc, float sampleRate){
+void BMReleaseFilter_init(BMReleaseFilter *This, float fc, float sampleRate){
     
     This->sampleRate = sampleRate;
     
@@ -154,7 +154,7 @@ void BMReleaseFilter_init(BMReleaseFilter* This, float fc, float sampleRate){
 
 
 
-void BMAttackFilter_processBuffer(BMAttackFilter* This,
+void BMAttackFilter_processBuffer(BMAttackFilter *This,
                                   const float* input,
                                   float* output,
                                   size_t numSamples){
@@ -170,15 +170,15 @@ void BMAttackFilter_processBuffer(BMAttackFilter* This,
                 // set the attack mode flag
                 This->attackMode = true;
                 // and update the state variables to get continuous gradient
-                This->ic1 = This->previousOutputGradient * This->gInv_2;
+                This->ic1 = This->previousOutputGradient  *This->gInv_2;
                 // and continuous output value
                 This->ic2 = This->previousOutputValue;
             }
             
             // process the state variable filter
             float v3 = x - This->ic2;
-            float v1 = This->a1 * This->ic1 + This->a2 * v3;
-            float v2 = This->ic2 + This->a2 * This->ic1 + This->a3 * v3;
+            float v1 = This->a1  *This->ic1 + This->a2 * v3;
+            float v2 = This->ic2 + This->a2  *This->ic1 + This->a3 * v3;
             
             // update the state variables
             This->ic1 = 2.0f * v1 - This->ic1;
@@ -207,7 +207,7 @@ void BMAttackFilter_processBuffer(BMAttackFilter* This,
 
 
 
-void BMReleaseFilter_processBufferNegative(BMReleaseFilter* This,
+void BMReleaseFilter_processBufferNegative(BMReleaseFilter *This,
                                    const float* input,
                                    float* output,
                                    size_t numSamples){
@@ -219,7 +219,7 @@ void BMReleaseFilter_processBufferNegative(BMReleaseFilter* This,
 
 
 
-void BMReleaseFilter_processBuffer(BMReleaseFilter* This,
+void BMReleaseFilter_processBuffer(BMReleaseFilter *This,
                                    const float* input,
                                    float* output,
                                    size_t numSamples){
@@ -250,8 +250,8 @@ void BMReleaseFilter_processBuffer(BMReleaseFilter* This,
             
             // process the state variable filter
             float v3 = x - This->ic2;
-            float v1 = This->a1 * This->ic1 + This->a2 * v3;
-            float v2 = This->ic2 + This->a2 * This->ic1 + This->a3 * v3;
+            float v1 = This->a1  *This->ic1 + This->a2 * v3;
+            float v2 = This->ic2 + This->a2  *This->ic1 + This->a3 * v3;
             
             // update the state variables
             This->ic1 = 2.0f * v1 - This->ic1;
@@ -269,7 +269,7 @@ void BMReleaseFilter_processBuffer(BMReleaseFilter* This,
 
 
 
-void BMEnvelopeFollower_init(BMEnvelopeFollower* This, float sampleRate){
+void BMEnvelopeFollower_init(BMEnvelopeFollower *This, float sampleRate){
     BMEnvelopeFollower_initWithCustomNumStages(This, BMENV_NUM_STAGES, BMENV_NUM_STAGES, sampleRate);
 }
 
@@ -277,7 +277,7 @@ void BMEnvelopeFollower_init(BMEnvelopeFollower* This, float sampleRate){
 
 
 
-void BMEnvelopeFollower_free(BMEnvelopeFollower* This){
+void BMEnvelopeFollower_free(BMEnvelopeFollower *This){
     free(This->attackFilters);
     free(This->releaseFilters);
     This->attackFilters = NULL;
@@ -287,7 +287,7 @@ void BMEnvelopeFollower_free(BMEnvelopeFollower* This){
 
 
 
-void BMEnvelopeFollower_initWithCustomNumStages(BMEnvelopeFollower* This,
+void BMEnvelopeFollower_initWithCustomNumStages(BMEnvelopeFollower *This,
                                                 size_t numReleaseStages,
                                                 size_t numAttackStages,
                                                 float sampleRate){
@@ -324,7 +324,7 @@ void BMEnvelopeFollower_initWithCustomNumStages(BMEnvelopeFollower* This,
 
 
 
-void BMEnvelopeFollower_setAttackTime(BMEnvelopeFollower* This, float attackTime){
+void BMEnvelopeFollower_setAttackTime(BMEnvelopeFollower *This, float attackTime){
     assert(attackTime >= 0.0f);
     
     // if the attack time is zero, don't process the attack at all
@@ -344,7 +344,7 @@ void BMEnvelopeFollower_setAttackTime(BMEnvelopeFollower* This, float attackTime
 
 
 
-void BMEnvelopeFollower_setReleaseTime(BMEnvelopeFollower* This, float releaseTimeSeconds){
+void BMEnvelopeFollower_setReleaseTime(BMEnvelopeFollower *This, float releaseTimeSeconds){
     
     float releaseFc = ARTimeToCutoffFrequency(releaseTimeSeconds,This->numReleaseStages);
     
@@ -355,7 +355,7 @@ void BMEnvelopeFollower_setReleaseTime(BMEnvelopeFollower* This, float releaseTi
 
 
 
-void BMEnvelopeFollower_processBuffer(BMEnvelopeFollower* This, const float* input, float* output, size_t numSamples){
+void BMEnvelopeFollower_processBuffer(BMEnvelopeFollower *This, const float* input, float* output, size_t numSamples){
     
     // process all the release filters in series
     BMReleaseFilter_processBuffer(&This->releaseFilters[0], input, output, numSamples);

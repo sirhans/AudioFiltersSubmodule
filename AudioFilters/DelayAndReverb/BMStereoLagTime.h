@@ -47,11 +47,11 @@ typedef struct BMStereoLagTime {
     size_t sampleToReachTargetR;
 } BMStereoLagTime;
 
-void BMStereoLagTime_init(BMStereoLagTime* This,size_t maxDelayTimeInMilSecond,size_t sampleRate);
-void BMStereoLagTime_destroy(BMStereoLagTime* This);
-void BMStereoLagTime_setDelayLeft(BMStereoLagTime* This,size_t delayInMilSecond);
-void BMStereoLagTime_setDelayRight(BMStereoLagTime* This,size_t delayInMilSecond);
+void BMStereoLagTime_init(BMStereoLagTime *This,size_t maxDelayTimeInMilSecond,size_t sampleRate);
+void BMStereoLagTime_destroy(BMStereoLagTime *This);
+void BMStereoLagTime_setDelayLeft(BMStereoLagTime *This,size_t delayInMilSecond);
+void BMStereoLagTime_setDelayRight(BMStereoLagTime *This,size_t delayInMilSecond);
 
-void BMStereoLagTime_process(BMStereoLagTime* This,float* inL, float* inR, float* outL, float* outR,size_t numSamples);
+void BMStereoLagTime_process(BMStereoLagTime *This,float* inL, float* inR, float* outL, float* outR,size_t numSamples);
 
 #endif /* BMStereoLagTime_h */

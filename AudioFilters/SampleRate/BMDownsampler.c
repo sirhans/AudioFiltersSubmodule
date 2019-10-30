@@ -87,7 +87,7 @@ extern "C" {
      * @param output   length = numSamplesIn / upsampleFactor
      * @param numSamplesIn  number of input samples to process
      */
-    void BMDownsampler_processBufferMono(BMDownsampler* This, float* input, float* output, size_t numSamplesIn){
+    void BMDownsampler_processBufferMono(BMDownsampler *This, float* input, float* output, size_t numSamplesIn){
         // the input length must be divisible by the downsample factor
         assert(numSamplesIn % This->downsampleFactor == 0);
         
@@ -143,7 +143,7 @@ extern "C" {
     
     
     
-    void BMDownsampler_processBufferStereo(BMDownsampler* This, float* inputL, float* inputR, float* outputL, float* outputR, size_t numSamplesIn){
+    void BMDownsampler_processBufferStereo(BMDownsampler *This, float* inputL, float* inputR, float* outputL, float* outputR, size_t numSamplesIn){
         // the input length must be divisible by the downsample factor
         assert(numSamplesIn % This->downsampleFactor == 0);
         
@@ -206,7 +206,7 @@ extern "C" {
     
     
     
-    void BMDownsampler_free(BMDownsampler* This){
+    void BMDownsampler_free(BMDownsampler *This){
         // free internal memory for each 2x stage
         for(size_t i=0; i<This->numStages; i++)
             BMIIRDownsampler2x_free(&This->downsamplers2x[i]);
@@ -233,9 +233,9 @@ extern "C" {
     
     
     
-    void BMDownsampler_impulseResponse(BMDownsampler* This, float* IR, size_t IRLength){
+    void BMDownsampler_impulseResponse(BMDownsampler *This, float* IR, size_t IRLength){
         // the input length is the output length * the upsample factor
-        size_t inputLength = IRLength * This->downsampleFactor;
+        size_t inputLength = IRLength  *This->downsampleFactor;
         
         // allocate the array for the impulse input
         float* impulse = malloc(sizeof(float)*inputLength);

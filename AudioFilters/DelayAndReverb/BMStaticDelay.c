@@ -33,7 +33,7 @@ float rt60FeedbackGain(float delayTime, float rt60DecayTime){
 
 // returns true if there is space available to write into the
 // circular buffers
-bool hasWriteBytesAvailable(BMStaticDelay* This){
+bool hasWriteBytesAvailable(BMStaticDelay *This){
     uint32_t bytesAvailableL, bytesAvailableR;
     TPCircularBufferHead(&This->bufferL, &bytesAvailableL);
     TPCircularBufferHead(&This->bufferR, &bytesAvailableR);
@@ -41,7 +41,7 @@ bool hasWriteBytesAvailable(BMStaticDelay* This){
 }
 
 
-void BMStaticDelay_init(BMStaticDelay* This,
+void BMStaticDelay_init(BMStaticDelay *This,
                         size_t numChannelsIn, size_t numChannelsOut,
                         float delayTime,
                         float decayTime,
@@ -178,7 +178,7 @@ void BMStaticDelay_init(BMStaticDelay* This,
 
 
 
-void BMStaticDelay_setDelayTime(BMStaticDelay* This, float timeInSeconds){
+void BMStaticDelay_setDelayTime(BMStaticDelay *This, float timeInSeconds){
     if(This->delayTimeInSeconds!=timeInSeconds){
         This->delayTimeInSeconds = timeInSeconds;
         This->delayTimeNeedsUpdate = true;
@@ -186,7 +186,7 @@ void BMStaticDelay_setDelayTime(BMStaticDelay* This, float timeInSeconds){
 }
 
 
-void BMStaticDelay_setFeedbackMatrix(BMStaticDelay* This){
+void BMStaticDelay_setFeedbackMatrix(BMStaticDelay *This){
     
     // set the matrix according to the crossMix angle
     This->feedbackMatrix = BM2x2Matrix_rotationMatrix(This->crossMixAngle);
@@ -200,7 +200,7 @@ void BMStaticDelay_setFeedbackMatrix(BMStaticDelay* This){
 
 
 
-void BMStaticDelay_setRT60DecayTime(BMStaticDelay* This, float rt60DecayTime){
+void BMStaticDelay_setRT60DecayTime(BMStaticDelay *This, float rt60DecayTime){
     This->decayTime = rt60DecayTime;
     This->feedbackGain = rt60FeedbackGain(This->delayTimeInSeconds, rt60DecayTime);
     BMStaticDelay_setFeedbackMatrix(This);
@@ -213,7 +213,7 @@ void BMStaticDelay_setRT60DecayTime(BMStaticDelay* This, float rt60DecayTime){
 /*
  * @param amount in [0,1]. 1 is full crossover
  */
-void BMStaticDelay_setFeedbackCrossMix(BMStaticDelay* This, float amount){
+void BMStaticDelay_setFeedbackCrossMix(BMStaticDelay *This, float amount){
     This->crossMixAmount = amount;
     This->crossMixAngle = amount * M_PI_2;
     BMStaticDelay_setFeedbackMatrix(This);
@@ -228,7 +228,7 @@ void BMStaticDelay_setFeedbackCrossMix(BMStaticDelay* This, float amount){
 }
 
 
-void BMStaticDelay_updateLFO(BMStaticDelay* This){
+void BMStaticDelay_updateLFO(BMStaticDelay *This){
     if(This->updateLFO){
         This->updateLFO = false;
         BMQuadratureOscillator_setFrequency(&This->qosc, This->lfoFreq);
@@ -237,35 +237,35 @@ void BMStaticDelay_updateLFO(BMStaticDelay* This){
 
 
 
-void BMStaticDelay_setWetGain(BMStaticDelay* This, float gainDb){
+void BMStaticDelay_setWetGain(BMStaticDelay *This, float gainDb){
     BMSmoothGain_setGainDb(&This->wetGain, gainDb);
 }
 
 
-void BMStaticDelay_setDryGain(BMStaticDelay* This, float gainDb){
+void BMStaticDelay_setDryGain(BMStaticDelay *This, float gainDb){
     BMSmoothGain_setGainDb(&This->dryGain, gainDb);
 }
 
 
 
-void BMStaticDelay_setLowpassFc(BMStaticDelay* This, float fc){
+void BMStaticDelay_setLowpassFc(BMStaticDelay *This, float fc){
     assert(fc > 0.0f);
     This->lowpassFC = fc;
     BMMultiLevelBiquad_setLowPass12db(&This->filter, fc, Filter_LP_Level);
 }
 
-void BMStaticDelay_setHighpassFc(BMStaticDelay* This, float fc){
+void BMStaticDelay_setHighpassFc(BMStaticDelay *This, float fc){
     assert(fc > 0.0f);
     This->highpassFC = fc;
     BMMultiLevelBiquad_setHighPass12db(&This->filter, fc, Filter_HP_Level);
 }
 
-void BMStaticDelay_setBypass(BMStaticDelay* This, size_t level){
+void BMStaticDelay_setBypass(BMStaticDelay *This, size_t level){
     BMMultiLevelBiquad_setBypass(&This->filter, level);
 }
 
 
-void BMStaticDelay_destroy(BMStaticDelay* This){
+void BMStaticDelay_destroy(BMStaticDelay *This){
     // mark the delay uninitialised to prevent usage after deletion
     This->initComplete = 0;
     
@@ -355,7 +355,7 @@ static inline void processOneChannel(TPCircularBuffer* buffer, const void* input
 
 
 
-void static inline stereoBufferHelper(BMStaticDelay* This,
+void static inline stereoBufferHelper(BMStaticDelay *This,
                                       const float* inL, const float* inR,
                                       float* outL, float* outR,
                                       int framesProcessing){
@@ -421,7 +421,7 @@ void static inline stereoBufferHelper(BMStaticDelay* This,
 
 
 
-void BMStaticDelay_processBufferStereo(BMStaticDelay* This,
+void BMStaticDelay_processBufferStereo(BMStaticDelay *This,
                                        const float* inL, const float* inR,
                                        float* outL, float* outR,
                                        int numFrames){

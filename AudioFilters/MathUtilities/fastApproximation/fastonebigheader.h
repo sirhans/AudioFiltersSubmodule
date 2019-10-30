@@ -20,7 +20,7 @@
  *     products derived from this software without specific            *
  *     prior written permission.                                       *
  *                                                                     *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
+  *This SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
  * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,         *
  * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES               *
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE             *
@@ -69,7 +69,7 @@
  *     products derived from this software without specific            *
  *     prior written permission.                                       *
  *                                                                     *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
+  *This SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
  * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,         *
  * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES               *
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE             *
@@ -159,7 +159,7 @@ typedef union { v4sf f; v4si i; } v4sfv4sipun;
  *     products derived from this software without specific            *
  *     prior written permission.                                       *
  *                                                                     *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
+  *This SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
  * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,         *
  * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES               *
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE             *
@@ -294,7 +294,7 @@ vfasterexp (const v4sf p)
  *     products derived from this software without specific            *
  *     prior written permission.                                       *
  *                                                                     *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
+  *This SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
  * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,         *
  * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES               *
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE             *
@@ -437,7 +437,7 @@ vfasterlog (v4sf x)
  *     products derived from this software without specific            *
  *     prior written permission.                                       *
  *                                                                     *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
+  *This SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
  * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,         *
  * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES               *
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE             *
@@ -616,7 +616,7 @@ vfasterinverseerf (v4sf x)
  *     products derived from this software without specific            *
  *     prior written permission.                                       *
  *                                                                     *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
+  *This SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
  * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,         *
  * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES               *
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE             *
@@ -763,7 +763,7 @@ vfasterdigamma (v4sf x)
  *     products derived from this software without specific            *
  *     prior written permission.                                       *
  *                                                                     *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
+  *This SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
  * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,         *
  * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES               *
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE             *
@@ -899,7 +899,7 @@ vfastertanh (const v4sf p)
  *     products derived from this software without specific            *
  *     prior written permission.                                       *
  *                                                                     *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
+  *This SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
  * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,         *
  * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES               *
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE             *
@@ -1113,7 +1113,7 @@ vfasterlambertwexpx (v4sf x)
  *     products derived from this software without specific            *
  *     prior written permission.                                       *
  *                                                                     *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
+  *This SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
  * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,         *
  * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES               *
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE             *
@@ -1191,7 +1191,7 @@ vfasterpow (const v4sf x,
  *     products derived from this software without specific            *
  *     prior written permission.                                       *
  *                                                                     *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
+  *This SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
  * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,         *
  * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES               *
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE             *
@@ -1269,7 +1269,7 @@ vfastersigmoid (const v4sf x)
  *     products derived from this software without specific            *
  *     prior written permission.                                       *
  *                                                                     *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
+  *This SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND              *
  * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,         *
  * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES               *
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE             *

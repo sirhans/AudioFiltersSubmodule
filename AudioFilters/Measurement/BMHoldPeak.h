@@ -28,7 +28,7 @@ typedef struct BMHoldPeak {
  *
  * @param holdTimeLimit_seconds  sets the amount of time a peak value holds before it can be updated with a lower value
  */
-void BMHoldPeak_init(BMHoldPeak* This, float holdTimeLimit_seconds);
+void BMHoldPeak_init(BMHoldPeak *This, float holdTimeLimit_seconds);
 
 
 
@@ -41,14 +41,14 @@ void BMHoldPeak_init(BMHoldPeak* This, float holdTimeLimit_seconds);
  * @param fixedPeakR    (output) the held peak value Right channel
  * @param timeSinceLastUpdate_s   usually, this is equal to bufferSize / sampleRate
  */
-void BMHoldPeak_updateStereo(BMHoldPeak* This,
+void BMHoldPeak_updateStereo(BMHoldPeak *This,
                              float currentValL, float currentValR,
                              float* fixedPeakL, float* fixedPeakR,
                              float timeSinceLastUpdate_s);
 
 
 
-void BMHoldPeak_updateMono(BMHoldPeak* This,
+void BMHoldPeak_updateMono(BMHoldPeak *This,
                            float currentVal,
                            float* fixedPeak,
                            float timeSinceLastUpdate_s);

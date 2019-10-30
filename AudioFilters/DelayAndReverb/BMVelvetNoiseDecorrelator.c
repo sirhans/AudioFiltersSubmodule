@@ -23,7 +23,7 @@
 /*!
  *BMVelvetNoiseDecorrelator_init
  */
-void BMVelvetNoiseDecorrelator_init(BMVelvetNoiseDecorrelator* This,
+void BMVelvetNoiseDecorrelator_init(BMVelvetNoiseDecorrelator *This,
                                     float maxDelaySeconds,
                                     size_t numWetTaps,
                                     float rt60DecayTimeSeconds,
@@ -156,7 +156,7 @@ void BMVelvetNoiseDecorrelator_randomiseAll(BMVelvetNoiseDecorrelator *This){
  *
  * @abstract sets the wet/dry mix and issues the command to update the multitap delay
  */
-void BMVelvetNoiseDecorrelator_setWetMix(BMVelvetNoiseDecorrelator* This, float wetMix01){
+void BMVelvetNoiseDecorrelator_setWetMix(BMVelvetNoiseDecorrelator *This, float wetMix01){
 	This->wetMix = wetMix01;
 	
 	// we need a dry tap to set the mix; otherwise it's fiixed at 100% wet
@@ -188,7 +188,7 @@ void BMVelvetNoiseDecorrelator_setWetMix(BMVelvetNoiseDecorrelator* This, float 
 /*!
  *BMVelvetNoiseDecorrelator_free
  */
-void BMVelvetNoiseDecorrelator_free(BMVelvetNoiseDecorrelator* This){
+void BMVelvetNoiseDecorrelator_free(BMVelvetNoiseDecorrelator *This){
 	BMMultiTapDelay_free(&This->multiTapDelay);
 	
 	free(This->delayLengthsL);
@@ -207,7 +207,7 @@ void BMVelvetNoiseDecorrelator_free(BMVelvetNoiseDecorrelator* This){
 /*!
  *BMVelvetNoiseDecorrelator_processBufferStereo
  */
-void BMVelvetNoiseDecorrelator_processBufferStereo(BMVelvetNoiseDecorrelator* This,
+void BMVelvetNoiseDecorrelator_processBufferStereo(BMVelvetNoiseDecorrelator *This,
                                                    float* inputL,
                                                    float* inputR,
                                                    float* outputL,

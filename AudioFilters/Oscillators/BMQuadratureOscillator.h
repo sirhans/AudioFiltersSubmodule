@@ -72,7 +72,7 @@ typedef struct BMQuadratureOscillator {
  * @param fHz        frequency in Hz
  * @param sampleRate sample rate in Hz
  */
-void BMQuadratureOscillator_init(BMQuadratureOscillator* This,
+void BMQuadratureOscillator_init(BMQuadratureOscillator *This,
 								 float fHz,
 								 float sampleRate);
 
@@ -98,7 +98,7 @@ void BMQuadratureOscillator_setFrequency(BMQuadratureOscillator *This, float fHz
  * @param numSamples length of q and r
  *
  */
-void BMQuadratureOscillator_process(BMQuadratureOscillator* This,
+void BMQuadratureOscillator_process(BMQuadratureOscillator *This,
 									float* r,
 									float* q,
 									size_t numSamples);
@@ -117,7 +117,7 @@ void BMQuadratureOscillator_process(BMQuadratureOscillator* This,
  * @param numSamples length of arrays
  *
  */
-void BMQuadratureOscillator_volumeEnvelope4Stereo(BMQuadratureOscillator* This,
+void BMQuadratureOscillator_volumeEnvelope4Stereo(BMQuadratureOscillator *This,
 												  float** buffersL,
 												  float** buffersR,
 												  bool* zeros,

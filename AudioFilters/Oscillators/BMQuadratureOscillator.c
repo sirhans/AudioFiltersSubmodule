@@ -39,7 +39,7 @@ extern "C" {
     
     
     
-    void BMQuadratureOscillator_init(BMQuadratureOscillator* This,
+    void BMQuadratureOscillator_init(BMQuadratureOscillator *This,
                                      float fHz,
                                      float sampleRate){
         
@@ -71,7 +71,7 @@ extern "C" {
      * ];
      *
      */
-    void BMQuadratureOscillator_process(BMQuadratureOscillator* This,
+    void BMQuadratureOscillator_process(BMQuadratureOscillator *This,
                                             float* r,
                                             float* q,
                                             size_t numSamples){
@@ -89,7 +89,7 @@ extern "C" {
 	
 
 	
-	void BMQuadratureOscillator_volumeEnvelope4Stereo(BMQuadratureOscillator* This,
+	void BMQuadratureOscillator_volumeEnvelope4Stereo(BMQuadratureOscillator *This,
 												float** buffersL, float** buffersR,
 												bool* zeros,
 												size_t numSamples){

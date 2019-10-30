@@ -14,7 +14,7 @@
 extern "C" {
 #endif
 
-void BMRoundRobin_init(BMRoundRobin* This,
+void BMRoundRobin_init(BMRoundRobin *This,
                        float sampleRate,
                        float stableFrequencyWish,
                        size_t numTapsPerChannel){
@@ -48,7 +48,7 @@ void BMRoundRobin_init(BMRoundRobin* This,
 
 
 /*
- * This function sets indices and gain so that the multi-tap delay at the
+  *This function sets indices and gain so that the multi-tap delay at the
  * heart of this class has an impulse response with the following 
  * characteristics:
  *
@@ -66,7 +66,7 @@ void BMRoundRobin_init(BMRoundRobin* This,
  *    randomisation of the spectrum occurs mainly above a specified 
  *    threshold frequency.
  */
-void BMRoundRobin_RegenIndicesAndGain(BMRoundRobin* This){
+void BMRoundRobin_RegenIndicesAndGain(BMRoundRobin *This){
     BMRoundRobinSetting* setting = &This->setting;
     
     //use velvet noise to set output tap times
@@ -135,7 +135,7 @@ void BMRoundRobin_RegenIndicesAndGain(BMRoundRobin* This){
 
 
 
-void BMRoundRobin_NewNote(BMRoundRobin* This){
+void BMRoundRobin_NewNote(BMRoundRobin *This){
     //reset indices and gain;
     //set to multitap delay
     BMRoundRobinSetting* setting = &This->setting;
@@ -153,7 +153,7 @@ void BMRoundRobin_NewNote(BMRoundRobin* This){
 /*
  * free memory used by the struct at *This
  */
-void BMRoundRobin_destroy(BMRoundRobin* This){
+void BMRoundRobin_destroy(BMRoundRobin *This){
     BMMultiTapDelay_free(&This->delay);
     free(This->setting.indices);
     This->setting.indices = NULL;
@@ -170,7 +170,7 @@ void BMRoundRobin_destroy(BMRoundRobin* This){
  * Heads up: we could save a function call by calling the process buffer
  * function of multiTapDelay directly
  */
-void BMRoundRobin_processBufferStereo(BMRoundRobin* This,
+void BMRoundRobin_processBufferStereo(BMRoundRobin *This,
                                       float* inputL, float* inputR,
                                       float* outputL, float* outputR,
                                       size_t numSamples){
@@ -181,7 +181,7 @@ void BMRoundRobin_processBufferStereo(BMRoundRobin* This,
                                             numSamples);
 }
 
-void BMRoundRobin_processBufferMono(BMRoundRobin* This,
+void BMRoundRobin_processBufferMono(BMRoundRobin *This,
                                     float* input, float* output,
                                     size_t numSamples){
     BMMultiTapDelay_ProcessBufferMono(&This->delay,
@@ -189,7 +189,7 @@ void BMRoundRobin_processBufferMono(BMRoundRobin* This,
                                         numSamples);
 }
 
-void BMRoundRobin_testImpulseResponse(BMRoundRobin* This){
+void BMRoundRobin_testImpulseResponse(BMRoundRobin *This){
     BMMultiTapDelay_impulseResponse(&This->delay);
 }
 

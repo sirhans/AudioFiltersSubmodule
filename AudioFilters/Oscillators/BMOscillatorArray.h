@@ -52,7 +52,7 @@ extern "C" {
      *
      * ALL ARRAYS MUST HAVE AT LEAST length ELEMENTS
      */
-    void BMOscillatorArray_init(BMOscillatorArray* This,
+    void BMOscillatorArray_init(BMOscillatorArray *This,
                                 float* magnitude,
                                 float* phase,
                                 float* frequency,
@@ -66,7 +66,7 @@ extern "C" {
     /*
      * free up memory used by the struct
      */
-    void BMOscillatorArray_destroy(BMOscillatorArray* This);
+    void BMOscillatorArray_destroy(BMOscillatorArray *This);
     
     
     
@@ -82,7 +82,7 @@ extern "C" {
      * @param numSamples length of r
      *
      */
-    void BMOscillatorArray_processSample(BMOscillatorArray* This,
+    void BMOscillatorArray_processSample(BMOscillatorArray *This,
                                               float* output);
     
     

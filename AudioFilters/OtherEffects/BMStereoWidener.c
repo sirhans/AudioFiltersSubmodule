@@ -20,7 +20,7 @@ extern "C" {
 #include "BMStereoWidener.h"
 #include <assert.h>
 
-    void BMStereoWidener_processAudio(BMStereoWidener* This,
+    void BMStereoWidener_processAudio(BMStereoWidener *This,
                                       float* inL, float* inR,
                                       float* outL, float* outR,
                                       size_t numSamples){
@@ -62,7 +62,7 @@ extern "C" {
      * @param width - range of values is [0,2]
      0 is mono mixdown, 1 is bypass, 2 is max width
      */
-    void BMStereoWidener_setWidth(BMStereoWidener* This, float width){
+    void BMStereoWidener_setWidth(BMStereoWidener *This, float width){
         assert(width >= 0.0 && width <= 2.0);
         
         This->width = width;

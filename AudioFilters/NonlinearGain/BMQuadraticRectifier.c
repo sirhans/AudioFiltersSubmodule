@@ -10,14 +10,14 @@
 #include <simd/simd.h>
 
 
-void BMQuadraticRectifier_init(BMQuadraticRectifier* This, float kneeWidth){
+void BMQuadraticRectifier_init(BMQuadraticRectifier *This, float kneeWidth){
     BMQuadraticThreshold_initLower(&This->qtPos, 0, kneeWidth);
 //    BMQuadraticThreshold_initUpper(&This->qtNeg, 0, kneeWidth);
 }
 
 
 
-void BMQuadraticRectifier_processBufferVDSP(BMQuadraticRectifier* This,
+void BMQuadraticRectifier_processBufferVDSP(BMQuadraticRectifier *This,
                                         const float* input,
                                         float* outputPos, float* outputNeg,
                                         size_t numSamples){
@@ -38,19 +38,19 @@ void BMQuadraticRectifier_processBufferVDSP(BMQuadraticRectifier* This,
         
     // for the upper threshold,
     // where the input is less than the polynomial output, return the input
-    // *** This works because the input was clamped before curving ***
+    // ** *This works because the input was clamped before curving ***
     vDSP_vmin(input, 1, curvedNeg, 1, outputNeg, 1, numSamples);
     
     // for the lower threshold,
     // where the input is greater than the polynomical output, return the input
-    // *** This works because the input was clamped before curving ***
+    // ** *This works because the input was clamped before curving ***
     vDSP_vmax(input, 1, curvedPos, 1, outputPos, 1, numSamples);
 }
 
 
 
 
-void BMQuadraticRectifier_processBufferStereoSIMD(BMQuadraticRectifier* This,
+void BMQuadraticRectifier_processBufferStereoSIMD(BMQuadraticRectifier *This,
                                                   const float* inputL, const float* inputR,
                                                   float* outputPosL, float* outputNegL,
                                                   float* outputPosR, float* outputNegR,
@@ -66,20 +66,20 @@ void BMQuadraticRectifier_processBufferStereoSIMD(BMQuadraticRectifier* This,
         simd_float2 inClamped = simd_clamp(in, This->qtPos.lMinusW, This->qtPos.lPlusW);
 
         // evaluate the second order polynomials for the curves
-        simd_float2 inPos = inClamped * (inClamped * This->qtPos.coefficients[0] + This->qtPos.coefficients[1]) + This->qtPos.coefficients[2];
+        simd_float2 inPos = inClamped * (inClamped  *This->qtPos.coefficients[0] + This->qtPos.coefficients[1]) + This->qtPos.coefficients[2];
         // we are lucky that this next line happens to work
         simd_float2 inNeg = inClamped - inPos;
 
         // for the upper threshold,
         // where the input is less than the polynomial output, return the input
-        // *** This works because the input was clamped before curving ***
+        // ** *This works because the input was clamped before curving ***
         simd_float2 outputNeg = simd_min(in, inNeg);
         outputNegL[i] = outputNeg.x;
         outputNegR[i] = outputNeg.y;
 
         // for the lower threshold,
         // where the input is greater than the polynomical output, return the input
-        // *** This works because the input was clamped before curving ***
+        // ** *This works because the input was clamped before curving ***
         simd_float2 outputPos = simd_max(in, inPos);
         outputPosL[i] = outputPos.x;
         outputPosR[i] = outputPos.y;
@@ -92,7 +92,7 @@ void BMQuadraticRectifier_processBufferStereoSIMD(BMQuadraticRectifier* This,
  *
  * @abstract This was coded following after the SIMD version. It is faster than the SIMD version on iOS and slower than the SIMD version on Mac OS.
  */
-void BMQuadraticRectifier_processBufferStereoVDSP(BMQuadraticRectifier* This,
+void BMQuadraticRectifier_processBufferStereoVDSP(BMQuadraticRectifier *This,
                                               const float* inputL, const float* inputR,
                                               float* outputPosL, float* outputNegL,
                                               float* outputPosR, float* outputNegR,
@@ -123,13 +123,13 @@ void BMQuadraticRectifier_processBufferStereoVDSP(BMQuadraticRectifier* This,
 
     // for the upper threshold,
     // where the input is less than the polynomial output, return the input
-    // *** This works because the input was clamped before curving ***
+    // *** This works because the input was clipped before curving ***
     vDSP_vmin(inputL,1,curvedLNeg,1,outputNegL,1,numSamples);
     vDSP_vmin(inputR,1,curvedRNeg,1,outputNegR,1,numSamples);
 
     // for the lower threshold,
     // where the input is greater than the polynomical output, return the input
-    // *** This works because the input was clamped before curving ***
+    // *** This works because the input was clipped before curving ***
     vDSP_vmax(inputL,1,curvedLPos,1,outputPosL,1,numSamples);
     vDSP_vmax(inputR,1,curvedRPos,1,outputPosR,1,numSamples);
 }

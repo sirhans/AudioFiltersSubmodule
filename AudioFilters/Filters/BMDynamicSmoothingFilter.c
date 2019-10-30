@@ -33,7 +33,7 @@ static inline float DSControlCurve(float x){
 }
 
 
-void BMDynamicSmoothingFilter_initDefault(BMDynamicSmoothingFilter* This,
+void BMDynamicSmoothingFilter_initDefault(BMDynamicSmoothingFilter *This,
                                           float sampleRate){
     BMDynamicSmoothingFilter_init(This,
                                   BM_DSF_SENSITIVITY,
@@ -42,7 +42,7 @@ void BMDynamicSmoothingFilter_initDefault(BMDynamicSmoothingFilter* This,
 }
 
 
-void BMDynamicSmoothingFilter_init(BMDynamicSmoothingFilter* This,
+void BMDynamicSmoothingFilter_init(BMDynamicSmoothingFilter *This,
                                     float sensitivity,
                                     float minFc,
                                     float sampleRate){
@@ -51,7 +51,7 @@ void BMDynamicSmoothingFilter_init(BMDynamicSmoothingFilter* This,
 }
 
 
-void BMDynamicSmoothingFilter_processBuffer(BMDynamicSmoothingFilter* This,
+void BMDynamicSmoothingFilter_processBuffer(BMDynamicSmoothingFilter *This,
                                            const float* input,
                                            float* output,
                                            size_t numSamples){

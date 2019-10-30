@@ -19,7 +19,7 @@ extern "C" {
     
     void BMVelocityFilter_init(BMVelocityFilter* f, float sampleRate, bool stereo){
         // init the filter memory
-        BMMultiLevelBiquad_init(&f->bqf, 1, sampleRate, stereo, true,false);
+        BMMultiLevelBiquad_init(&f->This, 1, sampleRate, stereo, true,false);
         
         // configure defaults for the velocity simulation
         float centreVelocity = 100.0f;
@@ -36,13 +36,13 @@ extern "C" {
     
     
     void BMVelocityFilter_processBufferStereo(BMVelocityFilter* f, const float* inL, const float* inR, float* outL, float* outR, size_t numSamples){
-        BMMultiLevelBiquad_processBufferStereo(&f->bqf, inL, inR, outL, outR, numSamples);
+        BMMultiLevelBiquad_processBufferStereo(&f->This, inL, inR, outL, outR, numSamples);
     }
     
     
     
     void BMVelocityFilter_processBufferMono(BMVelocityFilter* f, const float* input, float* output, size_t numSamples){
-        BMMultiLevelBiquad_processBufferMono(&f->bqf, input, output, numSamples);
+        BMMultiLevelBiquad_processBufferMono(&f->This, input, output, numSamples);
     }
     
     
@@ -70,7 +70,7 @@ extern "C" {
         
         
         // set the high shelf filter gain and cutoff frequency
-        BMMultiLevelBiquad_setHighShelf(&f->bqf,
+        BMMultiLevelBiquad_setHighShelf(&f->This,
                                         fc,
                                         gain_db,
                                         0);
@@ -89,7 +89,7 @@ extern "C" {
     }
     
     void BMVelocityFilter_destroy(BMVelocityFilter* f){
-        BMMultiLevelBiquad_destroy(&f->bqf);
+        BMMultiLevelBiquad_destroy(&f->This);
     }
     
 #ifdef __cplusplus

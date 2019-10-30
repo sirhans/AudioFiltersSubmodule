@@ -33,7 +33,7 @@ typedef struct BMSimpleFDN {
  * @param maxDelayTimeSeconds   longest possible delay time
  * @param RT60DecayTimeSeconds  RT60 decay time
  */
-void BMSimpleFDN_init(BMSimpleFDN* This,
+void BMSimpleFDN_init(BMSimpleFDN *This,
                       float sampleRate,
                       size_t numDelays,
                       enum delayTimeMethod method,
@@ -42,7 +42,7 @@ void BMSimpleFDN_init(BMSimpleFDN* This,
                       float RT60DecayTimeSeconds);
 
 
-void BMSimpleFDN_processBuffer(BMSimpleFDN* This,
+void BMSimpleFDN_processBuffer(BMSimpleFDN *This,
                                const float* input,
                                float* output,
                                size_t numSamples);
@@ -56,9 +56,9 @@ void BMSimpleFDN_processBuffer(BMSimpleFDN* This,
  * @param IR            pointer to an array of length numSamples
  * @param numSamples    length of the array IR
  */
-void BMSimpleFDN_impulseResponse(BMSimpleFDN* This, float* IR, size_t numSamples);
+void BMSimpleFDN_impulseResponse(BMSimpleFDN *This, float* IR, size_t numSamples);
 
 
-void BMSimpleFDN_free(BMSimpleFDN* This);
+void BMSimpleFDN_free(BMSimpleFDN *This);
 
 #endif /* BMSimpleFDN_h */

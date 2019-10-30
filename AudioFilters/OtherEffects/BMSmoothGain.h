@@ -32,7 +32,7 @@ extern "C" {
      * @param This        pointer to an initialized BMSmoothGain struct
      * @param sampleRate  audio system sample rate; if you need to change this, you must re-initialize the struct
      */
-    void BMSmoothGain_init(BMSmoothGain* This, float sampleRate);
+    void BMSmoothGain_init(BMSmoothGain *This, float sampleRate);
     
     
     /*!
@@ -44,7 +44,7 @@ extern "C" {
      * @param outputL     left channel output buffer length >= numSamples
      * @param outputR     right channel output buffer length >= numSamples
      */
-    void BMSmoothGain_processBuffer(BMSmoothGain* This,
+    void BMSmoothGain_processBuffer(BMSmoothGain *This,
                                     const float* inputL, const float* inputR,
                                     float* outputL, float* outputR,
                                     size_t numSamples);
@@ -56,7 +56,7 @@ extern "C" {
      * @param input       input buffer length >= numSamples
      * @param output      output buffer length >= numSamples
      */
-    void BMSmoothGain_processBufferMono(BMSmoothGain* This,
+    void BMSmoothGain_processBufferMono(BMSmoothGain *This,
                                         const float* input,
                                         float* output,
                                         size_t numSamples);
@@ -71,7 +71,7 @@ extern "C" {
      * @param numChannels major dimension of inputs and outputs
      * @param numSamples  minor diminsion of inputs and outputs
      */
-    void BMSmoothGain_processBuffers(BMSmoothGain* This,
+    void BMSmoothGain_processBuffers(BMSmoothGain *This,
                                      const float** inputs,
                                      float** outputs,
                                      size_t numChannels,
@@ -84,7 +84,7 @@ extern "C" {
      * @param This        pointer to an initialized BMSmoothGain struct
      * @param gainDb      new target gain in decibels to be approached smoothly
      */
-    void BMSmoothGain_setGainDb(BMSmoothGain* This, float gainDb);
+    void BMSmoothGain_setGainDb(BMSmoothGain *This, float gainDb);
     
     
     
@@ -93,7 +93,7 @@ extern "C" {
      *
      * @abstract   returns the linear (voltage scale) gain 
      */
-    float BMSmoothGain_getGainLinear(BMSmoothGain* This);
+    float BMSmoothGain_getGainLinear(BMSmoothGain *This);
     
     
     
@@ -104,7 +104,7 @@ extern "C" {
      * @param This        pointer to an initialized BMSmoothGain struct
      * @return            gain in decibels
      */
-    float BMSmoothGain_getGainDb(BMSmoothGain* This);
+    float BMSmoothGain_getGainDb(BMSmoothGain *This);
 
 #endif /* BMSmoothGain_h */
 

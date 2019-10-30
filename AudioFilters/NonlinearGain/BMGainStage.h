@@ -96,13 +96,13 @@ extern "C" {
      *                    for guitar, set this to 7000 hz.
      *                    for full frequency range set it to 20khz
      */
-    void BMGainStage_init(BMGainStage* This,
+    void BMGainStage_init(BMGainStage *This,
                           float sampleRate,
                           float AAFilterFc);
     
     
     
-    void BMGainStage_destroy(BMGainStage* This);
+    void BMGainStage_destroy(BMGainStage *This);
     
     
     
@@ -113,7 +113,7 @@ extern "C" {
      * @param tightness  In [0,1]. 0 = saggyTube; 1 = hardTransistor
      *
      */
-    void BMGainStage_setTightness(BMGainStage* This, float tightness);
+    void BMGainStage_setTightness(BMGainStage *This, float tightness);
     
     
     
@@ -125,18 +125,7 @@ extern "C" {
      *                   the input but then squeezes output back down to [-2,2].
      *
      */
-    void BMGainStage_setGain(BMGainStage* This, float gain);
-    
-    
-    
-    /*!
-     * BMGainStage_setGain
-     *
-     * @param This       Pointer to an initialised gain stage
-     * @param gain       Input gain coefficient.
-     *
-     */
-    void BMGainStage_setGain(BMGainStage* This, float gain);
+    void BMGainStage_setGain(BMGainStage *This, float gain);
     
     
     
@@ -150,7 +139,7 @@ extern "C" {
      * @param biasRatio  biasRatio is bias / gain. Value should be in [0,1]
      *
      */
-    void BMGainStage_setBiasRatio(BMGainStage* This, float biasRatio);
+    void BMGainStage_setBiasRatio(BMGainStage *This, float biasRatio);
     
     
     
@@ -162,7 +151,7 @@ extern "C" {
      * @param type       BM_AMP_TYPE_TUBE | BM_AMP_TYPE_ASYMPTOTIC
      *
      */
-    void BMGainStage_setAmpType(BMGainStage* This, BMNonlinearityType type);
+    void BMGainStage_setAmpType(BMGainStage *This, BMNonlinearityType type);
     
     
     
@@ -174,7 +163,7 @@ extern "C" {
      * @param fc         Anti-alias lowpass filter cutoff
      *
      */
-    void BMGainStage_setAACutoff(BMGainStage* This, float fc);
+    void BMGainStage_setAACutoff(BMGainStage *This, float fc);
     
     
     
@@ -185,7 +174,7 @@ extern "C" {
      * @param sampleRate The sample rate of the input/output
      *
      */
-    void BMGainStage_setSampleRate(BMGainStage* This, float sampleRate);
+    void BMGainStage_setSampleRate(BMGainStage *This, float sampleRate);
     
     
     
@@ -200,12 +189,12 @@ extern "C" {
      *                All buffers must be at least this long.
      *
      */
-    void BMGainStage_processBufferMono(BMGainStage* This,
+    void BMGainStage_processBufferMono(BMGainStage *This,
                                        float* input,
                                        float* output,
                                        size_t length);
     
-    //    void BMGainStage_processAA(BMGainStage* This,
+    //    void BMGainStage_processAA(BMGainStage *This,
     //                               float* input,
     //                               float* output,
     //                               size_t numSamples);

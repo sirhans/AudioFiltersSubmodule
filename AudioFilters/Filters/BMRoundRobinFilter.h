@@ -23,7 +23,7 @@ extern "C" {
 #endif
     
     typedef struct BMRoundRobinFilter{
-        BMMultiLevelBiquad bqf;
+        BMMultiLevelBiquad This;
         float minFc, maxFc, gainRange_db, bandSpacing;
         size_t numBands;
         size_t numActiveBands;

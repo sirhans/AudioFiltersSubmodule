@@ -31,7 +31,7 @@ extern "C" {
         float low1z, low2z, g0, sensitivity;
     } BMDynamicSmoothingFilter;
     
-    void BMDynamicSmoothingFilter_processBuffer(BMDynamicSmoothingFilter* This,
+    void BMDynamicSmoothingFilter_processBuffer(BMDynamicSmoothingFilter *This,
                                                const float* input,
                                                float* output,
                                                size_t numSamples);
@@ -39,10 +39,10 @@ extern "C" {
     /*
      * Use this if you don't know what settings are approrpriate
      */
-    void BMDynamicSmoothingFilter_initDefault(BMDynamicSmoothingFilter* This,
+    void BMDynamicSmoothingFilter_initDefault(BMDynamicSmoothingFilter *This,
                                               float sampleRate);
     
-    void BMDynamicSmoothingFilter_init(BMDynamicSmoothingFilter* This,
+    void BMDynamicSmoothingFilter_init(BMDynamicSmoothingFilter *This,
                                         float sensitivity,
                                         float minFc,
                                         float sampleRate);
