@@ -846,6 +846,10 @@ void BMMultiLevelBiquad_setBellWithSkirt(BMMultiLevelBiquad *This, float fc, flo
     double bellGainV = BM_DB_TO_GAIN(bellGainDb);
     double skirtGainV = BM_DB_TO_GAIN(skirtGainDb);
     double wc = 2.0 * M_PI * fc / This->sampleRate;
+	
+	// compensation to make the filter match the Rusty Allred bell for negative bell gain. This is not exact but it comes close.
+	if(bellGainV < skirtGainV)
+		Q *= 0.5 * pow(M_SQRT2, wc / M_PI);
     
     // \[Beta][\[Omega]c_,Q_] := (1 - Tan[\[Omega]c/(2 Q)])/(1 + Tan[\[Omega]c/(2 Q)])
     double beta = (1.0 - tan(wc/(2.0*Q)))/(1.0 + tan(wc/(2.0*Q)));
