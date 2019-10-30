@@ -343,12 +343,12 @@ extern "C" {
     
     /*!
      * asymptoticLimitVector
+	 *
      * @param input      input array of length numSamples
      * @param output     output array of length numSamples
      * @param numSamples length of input and output
      * @brief a very soft limit clipping function
-     * @abstract up to limits of floating point precision, each input value maps to a different output. This means that regardless of how loud the input gets, the waveform never gets hard-clipped.
-     * @discussion for inputs in [-1,1], this function reduces the gain by 1/2 compared to the input. It has some nice bouindary conditions: f(0) = 0; f'(0) = 1; f(+-inf) = +-limit; f'(+-inf) = 0;
+     * @discussion up to limits of floating point precision, each input value maps to a different output. This means that regardless of how loud the input gets, the waveform never gets hard-clipped. for inputs in [-1,1], this function reduces the gain by 1/2 compared to the input. It has some nice bouindary conditions: f(0) = 0; f'(0) = 1; f(+-inf) = +-limit; f'(+-inf) = 0;
      * @code f(x,limit) = x / (1 + |x/limit|)
      */
     static inline void asymptoticLimitVector(const float* input, float* output, size_t numSamples){
