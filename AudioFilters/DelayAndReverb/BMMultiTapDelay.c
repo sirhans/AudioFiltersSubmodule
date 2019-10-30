@@ -94,7 +94,7 @@ void BMMultiTapDelay_initBypass(BMMultiTapDelay *This,
 
 
 void BMMultiTapDelay_initBuffer(BMMultiTapDelay* delay){
-    BMMultiTapDelaySetting* setting = &delay->setting;
+    //BMMultiTapDelaySetting* setting = &delay->setting;
     
     //init the rest
     size_t numberFrames = (delay->maxDelayTime + 1) + BM_BUFFER_CHUNK_SIZE;

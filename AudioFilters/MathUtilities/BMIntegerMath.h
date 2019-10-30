@@ -136,7 +136,7 @@ extern "C" {
     static bool witness(size_t n, size_t s, size_t d, size_t a)
     {
         size_t x = powerMod(a, d, n);
-        size_t y;
+        size_t y = 0;
         
         while (s) {
             y = (x * x) % n;

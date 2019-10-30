@@ -72,14 +72,17 @@ extern "C" {
         srand(0);
         BMEarlyReflection_RegenIndicesAndGain(This);
         
-        //last element = max indice
-        setting->indices[0][setting->numberTaps] = (sampleRate * endTimeMS)/1000;
+        //last element = max index
+		size_t maxIndex = (size_t)((sampleRate * endTimeMS)/1000.0);
+        setting->indices[0][setting->numberTaps] = maxIndex;
         
         // initialise the multi-tap delay
         BMMultiTapDelay_Init(&This->delay, stereo,
                              setting->indices[0], setting->indices[1],
+							 maxIndex,
                              setting->gain[0], setting->gain[1],
-                             numTapsPerChannel + 1,numTapsPerChannel + 1, sampleRate);
+                             numTapsPerChannel + 1,
+							 numTapsPerChannel + 1);
         
         // set wet and dry amounts
         BMEarlyReflections_setWetAmount(This,wetAmount);

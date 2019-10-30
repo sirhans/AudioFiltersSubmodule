@@ -36,7 +36,7 @@ void BMCompressor_initWithSettings(BMCompressor* compressor, float sampleRate, f
  * @param minGainDb    the lowest gain setting the compressor reached while processing the buffer
  * @param numSamples   length of arrays
  * @brief apply dynamic range compression to input; result in output (MONO)
- * @abstract result[i] is 1.0 where X[i] is within limits, 0.0 otherwise
+ * @notes result[i] is 1.0 where X[i] is within limits, 0.0 otherwise
  * @discussion returns floating point output for use in vectorised code without conditional branching
  * @code result[i] = -1.0f * (X[i] >= lowerLimit && X[i] <= upperLimit);
  * @warning no warnings

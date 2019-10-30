@@ -16,14 +16,10 @@ extern "C" {
 #include "BMPolyphaseIIR2Designer.h"
 #include "Constants.h"
     
-#define BM_UPSAMPLER_STAGE0_TRANSITION_BANDWIDTH 0.05
-#define BM_UPSAMPLER_STOPBAND_ATTENUATION_DB 110.0
-#define BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_NUMLEVELS 4
-#define BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_FC 19750.0
 
     
     
-    void BMUpsampler_init(BMUpsampler *This, bool stereo, size_t upsampleFactor){
+    void BMUpsampler_init(BMUpsampler* This, bool stereo, size_t upsampleFactor, enum resamplerType type){
         assert(isPowerOfTwo(upsampleFactor));
         
         This->upsampleFactor = upsampleFactor;
@@ -33,12 +29,15 @@ extern "C" {
         
         // allocate the array of 2x upsamplers
         This->upsamplers2x = malloc(sizeof(BMIIRUpsampler2x)*This->numStages);
+		
+		float stage0TransitionBW = BM_UPSAMPLER_STAGE0_TRANSITION_BANDWIDTH_FULL_SPECTRUM;
+		if(type == BMRESAMPLER_GUITAR) stage0TransitionBW = BM_UPSAMPLER_STAGE0_TRANSITION_BANDWIDTH_FULL_SPECTRUM;
+		if(type == BMRESAMPLER_INPUT_96KHZ) stage0TransitionBW = BM_UPSAMPLER_STAGE0_TRANSITION_BANDWIDTH_96KHZ_INPUT;
         
         // initialise each stage of upsampling
         for(size_t i=0; i<This->numStages; i++){
             // the transition bandwidth is wider for later stages
-            float transitionBandwidth = BMPolyphaseIIR2Designer_transitionBandwidthForStage(BM_UPSAMPLER_STAGE0_TRANSITION_BANDWIDTH,
-                                                                i);
+            float transitionBandwidth = BMPolyphaseIIR2Designer_transitionBandwidthForStage(stage0TransitionBW,i);
             BMIIRUpsampler2x_init(&This->upsamplers2x[i], BM_UPSAMPLER_STOPBAND_ATTENUATION_DB, transitionBandwidth, stereo);
         }
         
@@ -49,8 +48,19 @@ extern "C" {
         else
             This->bufferR = NULL;
         
-        BMMultiLevelBiquad_init(&This->secondStageAAFilter, BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_NUMLEVELS, 96000.0, true, false, false);
-        BMMultiLevelBiquad_setLegendreLP(&This->secondStageAAFilter, BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_FC, 0, BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_NUMLEVELS);
+		// set up the anti-ringing filter
+		float antiRingingFilterFc = 24000.0*(1.0 - BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_BW_FULL_SPECTRUM);
+		size_t numLevels = BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_NUMLEVELS_FULL_SPECTRUM;
+		if(type == BMRESAMPLER_GUITAR){
+			antiRingingFilterFc = 24000.0*(1.0 - BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_NUMLEVELS_FULL_SPECTRUM);
+			numLevels = BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_NUMLEVELS_96KHZ_INPUT;
+		}
+		if(type == BMRESAMPLER_INPUT_96KHZ){
+			antiRingingFilterFc = 24000.0*(1.0 - BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_BW_96KHZ_INPUT);
+			numLevels = BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_NUMLEVELS_96KHZ_INPUT;
+		}
+        BMMultiLevelBiquad_init(&This->secondStageAAFilter, numLevels, 96000.0, true, false, false);
+        BMMultiLevelBiquad_setLegendreLP(&This->secondStageAAFilter, antiRingingFilterFc, 0, numLevels);
     }
     
     
