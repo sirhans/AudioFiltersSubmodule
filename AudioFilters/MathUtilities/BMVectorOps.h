@@ -24,19 +24,17 @@ typedef unsigned vUInt32_32 __attribute__((ext_vector_type(32),aligned(4)));
 
 
 /*!
-* BMvInRangef
-* @param X input array
-* @param lowerLimit lower limit
-* @param upperLimit upper limit
-* @param result output array
-* @param length length of X and result
-* @return void
-* @brief test whether each element of X is in the specified range, vector float output
-* @abstract result[i] is 1.0 where X[i] is within limits, 0.0 otherwise
-* @discussion returns floating point output for use in vectorised code without conditional branching
-* @code result[i] = -1.0f * (X[i] >= lowerLimit && X[i] <= upperLimit);
-* @warning no warnings
-*/
+ * BMvInRangef
+ * 
+ * @param X input array
+ * @param lowerLimit lower limit
+ * @param upperLimit upper limit
+ * @param result output array
+ * @param length length of X and result
+ * @brief test whether each element of X is in the specified range, vector float output
+ * @notes result[i] is 1.0 where X[i] is within limits, 0.0 otherwise. Returns floating point output for use in vectorised code without conditional branching
+ * @code result[i] = -1.0f * (X[i] >= lowerLimit && X[i] <= upperLimit);
+ */
 static inline void BMvInRangef(const float* X,
                            float lowerLimit,
                            float upperLimit,
