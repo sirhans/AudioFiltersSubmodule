@@ -843,39 +843,45 @@ void BMMultiLevelBiquad_setBell(BMMultiLevelBiquad *This, float fc, float bandwi
 void BMMultiLevelBiquad_setBellWithSkirt(BMMultiLevelBiquad *This, float fc, float Q, float bellGainDb, float skirtGainDb, size_t level){
     assert(level < This->numLevels);
     
-    double bellGainV = BM_DB_TO_GAIN(bellGainDb);
-    double skirtGainV = BM_DB_TO_GAIN(skirtGainDb);
-    double wc = 2.0 * M_PI * fc / This->sampleRate;
+	float bellGainV = BM_DB_TO_GAIN(bellGainDb);
+	float skirtGainV = BM_DB_TO_GAIN(skirtGainDb);
+	float bellFilterGainV = bellGainV / skirtGainV;
 	
-	// compensation to make the filter match the Rusty Allred bell for negative bell gain. This is not exact but it comes close.
-	if(bellGainV < skirtGainV)
-		Q *= 0.5 * pow(M_SQRT2, wc / M_PI);
-    
-    // \[Beta][\[Omega]c_,Q_] := (1 - Tan[\[Omega]c/(2 Q)])/(1 + Tan[\[Omega]c/(2 Q)])
-    double beta = (1.0 - tan(wc/(2.0*Q)))/(1.0 + tan(wc/(2.0*Q)));
-    
-    // \[Gamma][\[Omega]c_] := -Cos[\[Omega]c]
-    double gamma = -cos(wc);
-    
-    // this filter is a mixture of an allpass filter with the unfiltered signal
-    // apg: allpass gain
-    double apg = (skirtGainV + bellGainV) * 0.5;
-    // ufg: unfiltered gain
-    double ufg = (skirtGainV - bellGainV) * 0.5;
-    
-    // allpass filter coefficients
-    // A[z_, \[Beta]_, \[Gamma]_] := (\[Beta] + \[Gamma] (1 + \[Beta])/z + 1/z^2)/(1 + \[Gamma] (1 + \[Beta])/z + \[Beta]/z^2)
-    double apb0 = beta;
-    double apb1 = gamma * (1.0 + beta);
-    double apb2 = 1.0;
-    double apa0 = 1.0;
-    double apa1 = gamma * (1.0 + beta);
-    double apa2 = beta;
-    
-    // allpass + unfiltered mixture b coefficients
-    double mixb0 = apg * apb0 + ufg * apa0;
-    double mixb1 = apg * apb1 + ufg * apa1;
-    double mixb2 = apg * apb2 + ufg * apa2;
+	double bandwidth = fc/Q;
+	double alpha =  tan( (M_PI * bandwidth)   / This->sampleRate);
+	double beta  = -cos( (2.0 * M_PI * fc) / This->sampleRate);
+	double oneOverD;
+	
+	double b0b,b1b,b2b,a1b,a2b;
+	
+	// set up bell filter coefficients to make the bell affect the
+	// difference (in dB) between the bell and skirt
+	if (bellFilterGainV < 1.0) {
+		oneOverD = 1.0 / (alpha + bellFilterGainV);
+		// feed-forward coefficients
+		b0b = (bellFilterGainV + alpha*bellFilterGainV) * oneOverD;
+		b1b = 2.0 * beta * bellFilterGainV * oneOverD;
+		b2b = (bellFilterGainV - alpha*bellFilterGainV) * oneOverD;
+		
+		// recursive coefficients
+		a1b = 2.0 * beta * bellFilterGainV * oneOverD;
+		a2b = (bellFilterGainV - alpha) * oneOverD;
+	} else { // gain >= 1
+		oneOverD = 1.0 / (alpha + 1.0);
+		// feed-forward coefficients
+		b0b = (1.0 + alpha*bellFilterGainV) * oneOverD;
+		b1b = 2.0 * beta * oneOverD;
+		b2b = (1.0 - alpha*bellFilterGainV) * oneOverD;
+		
+		// recursive coefficients
+		a1b = 2.0 * beta * oneOverD;
+		a2b = (1.0 - alpha) * oneOverD;
+	}
+	
+	// scale the entire filter so that the skirt matches the skirt gain
+	float b0bs = b0b*skirtGainV;
+	float b1bs = b1b*skirtGainV;
+	float b2bs = b2b*skirtGainV;
     
     // for left and right channels, set coefficients
     for(size_t i=0; i < This->numChannels; i++){
@@ -886,11 +892,11 @@ void BMMultiLevelBiquad_setBellWithSkirt(BMMultiLevelBiquad *This, float fc, flo
         double *a1 = b0 + 3;
         double *a2 = b0 + 4;
         
-        *b0 = mixb0;
-        *b1 = mixb1;
-        *b2 = mixb2;
-        *a1 = apa1;
-        *a2 = apa2;
+        *b0 = b0bs;
+        *b1 = b1bs;
+        *b2 = b2bs;
+        *a1 = a1b;
+        *a2 = a2b;
     }
     
     BMMultiLevelBiquad_queueUpdate(This);
