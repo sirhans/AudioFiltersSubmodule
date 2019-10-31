@@ -59,35 +59,67 @@ void BMHysteresisLimiter_processMonoRectifiedSimple(BMHysteresisLimiter *This,
                                       const float *inputPos, const float *inputNeg,
                                       float* outputPos, float* outputNeg,
                                       size_t numSamples){
-	
-	
     for(size_t i=0; i<numSamples; i++){
 		// positive output
-		float oPos = inputPos[i] * This->cL;
+		float oPos = inputPos[i] * This->c;
 		// update charge
-		This->cL = This->cL - oPos + This->halfR*(1.0f - This->cL);
+		This->c = This->c - oPos + This->halfR*(1.0f - This->c);
 		// negative output
-        float oNeg = inputNeg[i] * This->cL;
+        float oNeg = inputNeg[i] * This->c;
         // update charge
-		This->cL = This->cL + oNeg + This->halfR*(1.0f - This->cL);
-								  
+		This->c = This->c + oNeg + This->halfR*(1.0f - This->c);
+		// output
         outputPos[i] = oPos;
         outputNeg[i] = oNeg;
     }
 }
 
 
-float chargeRate(float timeTo90PercentChargeSeconds, float sampleRate){
-	// Mathematica: {{R -> -((Log[-0.9 + m])/t)}}
-	float t = timeTo90PercentChargeSeconds * sampleRate;
-	return -logf(1.0f - 0.90f) / t;
+
+void BMHysteresisLimiter_processStereoRectifiedSimple(BMHysteresisLimiter *This,
+													  const float *inputPosL, const float *inputPosR,
+													  const float *inputNegL, const float *inputNegR,
+													  float *outputPosL, float *outputPosR,
+													  float *outputNegL, float *outputNegR,
+													  size_t numSamples){
+    for(size_t i=0; i<numSamples; i++){
+		// positive output
+		simd_float2 iPos = simd_make_float2(inputPosL[i], inputPosR[i]);
+		simd_float2 oPos = iPos * This->cs;
+		// update charge
+		This->cs = This->cs - oPos + This->halfR * (1.0f - This->cs);
+		// negative output
+		simd_float2 iNeg = simd_make_float2(inputNegL[i], inputNegR[i]);
+		simd_float2 oNeg = iNeg * This->cs;
+        // update charge
+		This->cs = This->cs + oNeg + This->halfR * (1.0f - This->cs);
+		// output
+        outputPosL[i] = oPos.x;
+		outputPosR[i] = oPos.y;
+        outputNegL[i] = oNeg.x;
+		outputNegR[i] = oNeg.y;
+    }
 }
+
+
+void BMHysteresisLimiter_setChargeTime(BMHysteresisLimiter *This, float timeInSeconds){
+	float t = timeInSeconds * This->sampleRate;
+	
+	// Mathematica: {{R -> -((Log[-0.9 + m])/t)}}
+	This->R = -logf(1.0f - 0.90f) / t;
+	This->halfR = This->R * 0.5f;
+}
+
+
 
 
 void BMHysteresisLimiter_init(BMHysteresisLimiter *This,
 							  float chargeTimeSeconds,
 							  float sampleRate){
-	This->R = chargeRate(chargeTimeSeconds, sampleRate);
-	This->halfR = This->R * 0.5f;
-	This->cL = This->cR = 0.0f;
+	
+	This->sampleRate = sampleRate;
+	BMHysteresisLimiter_setChargeTime(This, chargeTimeSeconds);
+	
+	This->c = 0.0f;
+	This->cs = 0.0f;
 }

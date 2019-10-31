@@ -31,9 +31,11 @@
 #define BMHysteresisLimiter_h
 
 #include <stdio.h>
+#include <simd/simd.h>
 
 typedef struct BMHysteresisLimiter {
-    float cL, cR, R, halfR;
+    float c, R, halfR, sampleRate;
+	simd_float2 cs;
 } BMHysteresisLimiter;
 
 
@@ -51,6 +53,21 @@ void BMHysteresisLimiter_init(BMHysteresisLimiter *This,
 							  float sampleRate);
 
 
+
+
+
+/*!
+ *BMHysteresisLimiter_setChargeTime
+ *
+ * @param This pointer to an initialised struct
+ * @param timeInSeconds time to charge from 0 to 90%
+ */
+void BMHysteresisLimiter_setChargeTime(BMHysteresisLimiter *This, float timeInSeconds);
+
+
+
+
+
 /*!
  *BMHysteresisLimiter_processMonoRectifiedSimple
  *
@@ -66,22 +83,30 @@ void BMHysteresisLimiter_init(BMHysteresisLimiter *This,
 void BMHysteresisLimiter_processMonoRectifiedSimple(BMHysteresisLimiter *This,
                                       const float *inputPos, const float *inputNeg,
                                       float* outputPos, float* outputNeg,
-                                      size_t numSamples){
-	
-	
-    for(size_t i=0; i<numSamples; i++){
-		// positive output
-		float oPos = inputPos[i] * This->cL;
-		// update charge
-		This->cL = This->cL - oPos + This->halfR*(1.0f - This->cL);
-		// negative output
-        float oNeg = inputNeg[i] * This->cL;
-        // update charge
-		This->cL = This->cL + oNeg + This->halfR*(1.0f - This->cL);
-								  
-        outputPos[i] = oPos;
-        outputNeg[i] = oNeg;
-    }
-}
+													size_t numSamples);
+
+
+/*!
+ *BMHysteresisLimiter_processStereoRectifiedSimple
+ *
+ * @notes this is a simpler hysteresis model in the sense that it does not do zero-delay-feedback modeling of charge consumption. Rather the charge consumed at the current sample index removes charge from the capacitor for the next sample index.
+ *
+ * @param This pointer to an initialised struct
+ * @param inputPosL positive side rectified input. MUST BE IN [0,1)
+ * @param inputPosR positive side rectified input. MUST BE IN [0,1)
+ * @param inputNegL negative side rectified input. MUST BE IN (-1,0]
+ * @param inputNegR negative side rectified input. MUST BE IN (-1,0]
+ * @param outputPosL output array with length numSamples
+ * @param outputPosR output array with length numSamples
+ * @param outputNegL output array with length numSamples
+ * @param outputNegR output array with length numSamples
+ * @param numSamples length of inputs and outputs
+ */
+void BMHysteresisLimiter_processStereoRectifiedSimple(BMHysteresisLimiter *This,
+													  const float *inputPosL, const float *inputPosR,
+													  const float *inputNegL, const float *inputNegR,
+													  float *outputPosL, float *outputPosR,
+													  float *outputNegL, float *outputNegR,
+													  size_t numSamples);
 
 #endif /* BMHysteresisLimiter_h */

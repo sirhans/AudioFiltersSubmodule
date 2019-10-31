@@ -23,13 +23,14 @@ static inline void BMAsymptoticLimit(const float *input, float *output, size_t n
         out4[i] = in4[i] / (1.0f + simd_abs(in4[i]));
     
     // if numSamples isn't divisible by 4, clean up the last few
-    size_t cleanupStartIndex = numSamples - ((numSamples4 - 1) * 4);
+	size_t unprocessedSamples = numSamples % 4;
+    size_t cleanupStartIndex = numSamples - unprocessedSamples;
     for(size_t i=cleanupStartIndex; i<numSamples; i++)
         output[i] = input[i] / (1.0f + fabsf(input[i]));
 }
 
 
-static inline void BMAsymptoticLimitRectifiedInput(const float *inputPos, const float *inputNeg,
+static inline void BMAsymptoticLimitRectified(const float *inputPos, const float *inputNeg,
 												   float *outputPos, float* outputNeg,
 												   size_t numSamples){
     simd_float4 *in4Pos = (simd_float4*)inputPos;
@@ -45,10 +46,11 @@ static inline void BMAsymptoticLimitRectifiedInput(const float *inputPos, const 
 	}
     
     // if numSamples isn't divisible by 4, clean up the last few
-    size_t cleanupStartIndex = numSamples - ((numSamples4 - 1) * 4);
+	size_t unprocessedSamples = numSamples % 4;
+    size_t cleanupStartIndex = numSamples - unprocessedSamples;
 	for(size_t i=cleanupStartIndex; i<numSamples; i++){
         outputPos[i] = inputPos[i] / (1.0f + inputPos[i]);
-		outputNeg[i] = inputNeg[i] / (1.0f + inputNeg[i]);
+		outputNeg[i] = inputNeg[i] / (1.0f - inputNeg[i]);
 	}
 }
 
