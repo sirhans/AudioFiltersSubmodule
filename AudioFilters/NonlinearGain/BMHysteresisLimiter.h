@@ -34,7 +34,7 @@
 #include <simd/simd.h>
 
 typedef struct BMHysteresisLimiter {
-    float c, R, halfR, sampleRate;
+    float c, R, halfR, oneOverR;
 	simd_float2 cs;
 } BMHysteresisLimiter;
 
@@ -43,14 +43,9 @@ typedef struct BMHysteresisLimiter {
  *BMHysteresisLimiter_init
  *
  * @param This pointer to a BMHysteresisLimiter struct
- * @param chargeTimeSeconds seconds to go from 0 to 90% charge with the amp at rest
- * @param sampleRate audio sample rate
- *
  * @notes This function does not allocate dynamic memory on the heap
  */
-void BMHysteresisLimiter_init(BMHysteresisLimiter *This,
-							  float chargeTimeSeconds,
-							  float sampleRate);
+void BMHysteresisLimiter_init(BMHysteresisLimiter *This);
 
 
 
@@ -60,9 +55,9 @@ void BMHysteresisLimiter_init(BMHysteresisLimiter *This,
  *BMHysteresisLimiter_setChargeTime
  *
  * @param This pointer to an initialised struct
- * @param timeInSeconds time to charge from 0 to 90%
+ * @param limitDb this is the maximum output value the limiter is capable of sustaining without clipping.
  */
-void BMHysteresisLimiter_setChargeTime(BMHysteresisLimiter *This, float timeInSeconds);
+void BMHysteresisLimiter_setPowerLimit(BMHysteresisLimiter *This, float limitDb);
 
 
 

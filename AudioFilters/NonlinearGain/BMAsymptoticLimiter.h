@@ -30,6 +30,19 @@ static inline void BMAsymptoticLimit(const float *input, float *output, size_t n
 }
 
 
+
+
+/*!
+ *BMAsymptoticLimitRectified
+ *
+ * @notes we can omit the absolute value from out = in / (1+abs(in)) if we have rectified inputs. Using this function will therefore be faster than its non-rectified counterpart.
+ *
+ * @param inputPos positive rectified input array
+ * @param inputNeg negative rectified input array
+ * @param outputPos positive side output array
+ * @param outputNeg negative side output array
+ * @param numSamples length of input and output arrays
+ */
 static inline void BMAsymptoticLimitRectified(const float *inputPos, const float *inputNeg,
 												   float *outputPos, float* outputNeg,
 												   size_t numSamples){
