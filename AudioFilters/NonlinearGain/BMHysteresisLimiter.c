@@ -7,8 +7,8 @@
 //
 
 #include "BMHysteresisLimiter.h"
-#include <math.h>
 #include "BMAsymptoticLimiter.h"
+#include <math.h>
 #include <assert.h>
 #include "Constants.h"
 
@@ -19,14 +19,23 @@ void BMHysteresisLimiter_processMonoRectifiedSimple(BMHysteresisLimiter *This,
                                       const float *inputPos, const float *inputNeg,
                                       float* outputPos, float* outputNeg,
                                       size_t numSamples){
+	// create two alias pointers for code readability
+	float* limitedPos = outputPos;
+	float* limitedNeg = outputNeg;
+	
+	// apply asymptotic limit
+	BMAsymptoticLimitRectified(inputPos, inputNeg,
+							   limitedPos, limitedNeg,
+							   numSamples);
+	
     for(size_t i=0; i<numSamples; i++){
 		// positive output
-		float oPos = inputPos[i] * This->c;
+		float oPos = limitedPos[i] * This->c;
 		// update charge
 		This->c -= oPos;
 		This->c += This->halfR*(1.0f - This->c);
 		// negative output
-        float oNeg = inputNeg[i] * This->c;
+        float oNeg = limitedNeg[i] * This->c;
         // update charge
 		This->c += oNeg;
 		This->c += This->halfR*(1.0f - This->c);
@@ -39,20 +48,36 @@ void BMHysteresisLimiter_processMonoRectifiedSimple(BMHysteresisLimiter *This,
 
 
 void BMHysteresisLimiter_processStereoRectifiedSimple(BMHysteresisLimiter *This,
-													  const float *inputPosL, const float *inputPosR,
-													  const float *inputNegL, const float *inputNegR,
+													  const float *inputPosL,
+													  const float *inputPosR,
+													  const float *inputNegL,
+													  const float *inputNegR,
 													  float *outputPosL, float *outputPosR,
 													  float *outputNegL, float *outputNegR,
 													  size_t numSamples){
+	// create some alias pointers for code readability
+	float* limitedPosL = outputPosL;
+	float* limitedNegL = outputNegL;
+	float* limitedPosR = outputPosR;
+	float* limitedNegR = outputNegR;
+	
+	// apply asymptotic limit
+	BMAsymptoticLimitRectified(inputPosL, inputNegL,
+							   limitedPosL, limitedNegL,
+							   numSamples);
+	BMAsymptoticLimitRectified(inputPosR, inputNegR,
+							   limitedPosR, limitedNegR,
+							   numSamples);
+	
     for(size_t i=0; i<numSamples; i++){
 		// positive output
-		simd_float2 iPos = simd_make_float2(inputPosL[i], inputPosR[i]);
+		simd_float2 iPos = simd_make_float2(limitedPosL[i], limitedPosR[i]);
 		simd_float2 oPos = iPos * This->cs;
 		// update charge
 		This->cs -= oPos;
 		This->cs += This->halfR * (1.0f - This->cs);
 		// negative output
-		simd_float2 iNeg = simd_make_float2(inputNegL[i], inputNegR[i]);
+		simd_float2 iNeg = simd_make_float2(limitedNegL[i], limitedNegR[i]);
 		simd_float2 oNeg = iNeg * This->cs;
         // update charge
 		This->cs += oNeg;
@@ -66,6 +91,35 @@ void BMHysteresisLimiter_processStereoRectifiedSimple(BMHysteresisLimiter *This,
         outputNegL[i] = oNeg.x;
 		outputNegR[i] = oNeg.y;
     }
+}
+
+
+
+void BMHysteresisLimiter_processStereoSimple(BMHysteresisLimiter *This,
+											 const float *inputL, const float *inputR,
+											 float *outputL, float *outputR,
+											 size_t numSamples){
+	// create some aliases for code readability
+	float *limitedL = outputL;
+	float *limitedR = outputR;
+	
+	// apply asymptotic limit
+	BMAsymptoticLimit(inputL, limitedL, numSamples);
+	BMAsymptoticLimit(inputR, limitedR, numSamples);
+	
+	for(size_t i=0; i<numSamples; i++){
+		// output
+		simd_float2 in = simd_make_float2(limitedL[i], limitedR[i]);
+		simd_float2 out = in * This->cs;
+		// update charge
+		This->cs -= simd_abs(out);
+		This->cs += This->halfR * (1.0f - This->cs);
+		// scale to compensate for gain loss
+		out *= This->oneOverR;
+		// output
+		outputL[i] = out.x;
+		outputR[i] = out.y;
+	}
 }
 
 
