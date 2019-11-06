@@ -246,7 +246,7 @@ extern "C" {
     
 
 
-    void BMNoiseGate_setSidechainLowpass(BMNoiseGate *This, float fc){
+    void BMNoiseGate_setSidechainHighCut(BMNoiseGate *This, float fc){
 		assert(fc <= This->sidechainFilter.sampleRate/2.0f);
 		
         if (fc > 0.0f && fc != This->sidechainFilter.sampleRate/2.0f){
@@ -265,7 +265,7 @@ extern "C" {
 
 
  
-    void BMNoiseGate_setSidechainHighpass(BMNoiseGate *This, float fc){
+    void BMNoiseGate_setSidechainLowCut(BMNoiseGate *This, float fc){
 		assert(fc <= This->sidechainFilter.sampleRate/2.0f);
 		
         if (fc > 0.0f && fc != This->sidechainFilter.sampleRate/2.0f){
