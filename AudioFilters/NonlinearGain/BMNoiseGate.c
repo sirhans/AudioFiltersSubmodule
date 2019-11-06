@@ -17,17 +17,26 @@ extern "C" {
 #include <Accelerate/Accelerate.h>
 
     
-#define BM_NOISE_GATE_ATTACK_TIME 0.003
-#define BM_NOISE_GATE_RELEASE_TIME 1.0 / 10.0
+#define BM_NOISE_GATE_DEFAULT_ATTACK_TIME 0.001
+#define BM_NOISE_GATE_DEFAULT_RELEASE_TIME 0.150
+#define BM_NOISE_GATE_DEFAULT_CLOSED_GAIN -100.0f
     
     
 
     void BMNoiseGate_init(BMNoiseGate *This, float thresholdDb, float sampleRate){
+		// initialise the envelope follower
         BMEnvelopeFollower_initWithCustomNumStages(&This->envFollower, 3, 3, sampleRate);
+        BMNoiseGate_setReleaseTime(This, BM_NOISE_GATE_DEFAULT_RELEASE_TIME);
+        BMNoiseGate_setAttackTime(This, BM_NOISE_GATE_DEFAULT_ATTACK_TIME);
+		
+		// set the threshold
         BMNoiseGate_setThreshold(This, thresholdDb);
-        BMNoiseGate_setReleaseTime(This, BM_NOISE_GATE_RELEASE_TIME);
-        BMNoiseGate_setAttackTime(This, BM_NOISE_GATE_ATTACK_TIME);
-        BMMultiLevelBiquad_init(&This->sidechainFilter, 2, sampleRate, false, false, false);
+		
+		// set default closed gain
+		BMNoiseGate_setClosedGain(This, BM_NOISE_GATE_DEFAULT_CLOSED_GAIN);
+		
+		// init the filter for limiting the frequency range of the sidechain input
+        BMMultiLevelBiquad_init(&This->sidechainFilter, 2, sampleRate, false, true, false);
 		
 		// init the sidechain filter group delay compensation delay
 		This->sidechainMinFreq = 20.0f;
@@ -35,11 +44,10 @@ extern "C" {
 		BMShortSimpleDelay_init(&This->delay, 2, 10);
         
         // bypass the sidechain filters
-		BMMultiLevelBiquad_setBypass(&This->sidechainFilter, 0);
-		BMMultiLevelBiquad_setBypass(&This->sidechainFilter, 1);
         BMNoiseGate_setSidechainHighCut(This, 20000.0f);
         BMNoiseGate_setSidechainLowCut(This, 20.0f);
         
+		// init some variables that update while processing
         This->lastState = 0.0f;
         This->sidechainInputLeveldB = -128.0f;
         This->controlSignalLeveldB = -128.0f;
@@ -119,6 +127,7 @@ extern "C" {
                                    const float* inputL, const float* inputR,
                                    float* outputL, float* outputR,
                                    size_t numSamples){
+		assert(This->sidechainFilter.numChannels == 2);
         
         // begin chunked processing
         while (numSamples > 0){
@@ -183,11 +192,11 @@ extern "C" {
             // apply sidechain filters to the buffer
             BMMultiLevelBiquad_processBufferMono(&This->sidechainFilter, input, This->buffer, samplesProcessing);
             
-            // if abs(input) > threshold, buffer = 1, else buffer = 0
+            // if abs(input) > threshold, buffer = 1, else buffer = closedGain
             BMNoiseGate_thresholdClosedOpen(This, This->buffer, This->buffer, samplesProcessing);
             
-            //Filter the buffer, which now contains only closedGain and 0 values, to
-            //generate a gain control signal
+            // Filter the buffer, which now contains only closedGain and 1 values, to
+            // generate a gain control signal
             BMEnvelopeFollower_processBuffer(&This->envFollower, This->buffer, This->buffer, samplesProcessing);
             
             // Apply the gain control signal to the input and write to output

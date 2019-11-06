@@ -25,12 +25,12 @@ extern "C" {
 
 
 typedef struct BMNoiseGate {
-    float thresholdGain, lastState, closedGain, sidechainInputLeveldB, controlSignalLeveldB, sidechainMinFreq, sidechainMaxFreq;
     float buffer [BM_BUFFER_CHUNK_SIZE];
     BMEnvelopeFollower envFollower;
     BMMultiLevelBiquad sidechainFilter;
     BMLevelMeter sidechainInputMeter;
 	BMShortSimpleDelay delay;
+    float thresholdGain, lastState, closedGain, sidechainInputLeveldB, controlSignalLeveldB, sidechainMinFreq, sidechainMaxFreq;
 } BMNoiseGate;
 
 
