@@ -286,7 +286,9 @@ void BMEnvelopeFollower_free(BMEnvelopeFollower *This){
 
 
 
-
+/*!
+ *BMEnvelopeFollower_initWithCustomNumStages
+ */
 void BMEnvelopeFollower_initWithCustomNumStages(BMEnvelopeFollower *This,
                                                 size_t numReleaseStages,
                                                 size_t numAttackStages,

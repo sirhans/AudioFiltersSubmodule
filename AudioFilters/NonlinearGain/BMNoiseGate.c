@@ -18,14 +18,14 @@ extern "C" {
 
     
 #define BM_NOISE_GATE_DEFAULT_ATTACK_TIME 0.001
-#define BM_NOISE_GATE_DEFAULT_RELEASE_TIME 0.150
+#define BM_NOISE_GATE_DEFAULT_RELEASE_TIME 0.050
 #define BM_NOISE_GATE_DEFAULT_CLOSED_GAIN -100.0f
     
     
 
     void BMNoiseGate_init(BMNoiseGate *This, float thresholdDb, float sampleRate){
 		// initialise the envelope follower
-        BMEnvelopeFollower_initWithCustomNumStages(&This->envFollower, 3, 3, sampleRate);
+        BMEnvelopeFollower_initWithCustomNumStages(&This->envFollower, 5, 2, sampleRate);
         BMNoiseGate_setReleaseTime(This, BM_NOISE_GATE_DEFAULT_RELEASE_TIME);
         BMNoiseGate_setAttackTime(This, BM_NOISE_GATE_DEFAULT_ATTACK_TIME);
 		
