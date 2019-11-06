@@ -43,8 +43,8 @@ void BMAttackFilter_setCutoff(BMAttackFilter *This, float fc){
     
     // compute the three filter coefficients
     a1 = 1.0f / (1.0f + g * (g + (double)This->k));
-    a2 = a1  *This->g;
-    a3 = a2  *This->g;
+    a2 = a1  * This->g;
+    a3 = a2  * This->g;
 	
 	// copy the double precision filter coefficients in this function
 	// to the single precision coefficients in the filter struct
@@ -81,8 +81,8 @@ void BMReleaseFilter_setCutoff(BMReleaseFilter *This, float fc){
     
     // compute the three filter coefficients
     a1 = 1.0f / (1.0f + g * (g + (double)This->k));
-    a2 = This->a1  *This->g;
-    a3 = This->a2  *This->g;
+    a2 = a1  * This->g;
+    a3 = a2  * This->g;
 	
 	// copy the double precision filter coefficients in this function
 	// to the single precision coefficients in the filter struct
