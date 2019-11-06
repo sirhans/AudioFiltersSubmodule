@@ -374,13 +374,15 @@ void BMMultiLevelBiquad_destroy(BMMultiLevelBiquad *This){
 
 #pragma mark - Active level
 inline void BMMultiLevelBiquad_updateLevels(BMMultiLevelBiquad *This){
+	// vDSP_biquad doesn't support deactivating filters. To use vDSP_biquadm
+	// for mono filters, set the monoRealtimeUpdate argument to true when you
+	// init the filter.
+	assert(This->useBiquadm);
+	
     if(This->needUpdateActiveLevels){
         printf("disable un-active level\n");
-        //        for(int i=0;i<6;i++){
-        //            printf("%d\n",This->activeLevels[i]);
-        //        }
         This->needUpdateActiveLevels = false;
-        vDSP_biquadm_SetActiveFilters(This->multiChannelFilterSetup, This->activeLevels);
+		vDSP_biquadm_SetActiveFilters(This->multiChannelFilterSetup, This->activeLevels);
     }
 }
 
