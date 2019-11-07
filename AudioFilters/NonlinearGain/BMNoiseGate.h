@@ -23,14 +23,16 @@ extern "C" {
 #include "BMSFM.h"
 #include "BMShortSimpleDelay.h"
 
+
 typedef struct BMNoiseGate {
-    float thresholdGain, lastState, closedGain, sidechainInputLeveldB, controlSignalLeveldB, sidechainMinFreq, sidechainMaxFreq;
     float buffer [BM_BUFFER_CHUNK_SIZE];
     BMEnvelopeFollower envFollower;
     BMMultiLevelBiquad sidechainFilter;
     BMLevelMeter sidechainInputMeter;
 	BMShortSimpleDelay delay;
+    float thresholdGain, lastState, closedGain, sidechainInputLeveldB, controlSignalLeveldB, sidechainMinFreq, sidechainMaxFreq;
 } BMNoiseGate;
+
 
 /*!
  *BMNoiseGate_init
@@ -72,15 +74,18 @@ void BMNoiseGate_processStereo(BMNoiseGate *This,
  */
 void BMNoiseGate_setReleaseTime(BMNoiseGate *This,float releaseTimeSeconds);
 
+
 /*!
  *BMNoiseGate_setAttackTime
  */
 void BMNoiseGate_setAttackTime(BMNoiseGate *This,float attackTimeSeconds);
 
+
 /*!
  *BMNoiseGate_setThreshold
  */
 void BMNoiseGate_setThreshold(BMNoiseGate *This,float thresholdDb);
+
 
 /*!
  *BMNoiseGate_setClosedGain
@@ -91,26 +96,26 @@ void BMNoiseGate_setClosedGain(BMNoiseGate *This, float gainDb);
 
 
 /*!
- *BMNoiseGate_setSidechainLowpass
+ *BMNoiseGate_setSidechainHighCut
  *
  * @abstract set the lowpass filter cutoff frequency for the sidechain input
  *
  * @param This pointer to an initialised struct
  * @param fc   cutoff frequency or 0.0 for filter bypass
  */
-void BMNoiseGate_setSidechainLowpass(BMNoiseGate *This, float fc);
+void BMNoiseGate_setSidechainHighCut(BMNoiseGate *This, float fc);
 
 
 
 /*!
- *BMNoiseGate_setSidechainHighpass
+ *BMNoiseGate_setSidechainLowCut
  *
  * @abstract set the highpass filter cutoff frequency for the sidechain input
  *
  * @param This pointer to an initialised struct
  * @param fc   cutoff frequency or 0.0 for filter bypass
  */
-void BMNoiseGate_setSidechainHighpass(BMNoiseGate *This, float fc);
+void BMNoiseGate_setSidechainLowCut(BMNoiseGate *This, float fc);
 
 
 /*!
