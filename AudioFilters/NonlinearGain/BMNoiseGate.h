@@ -30,7 +30,7 @@ typedef struct BMNoiseGate {
     BMMultiLevelBiquad sidechainFilter;
     BMLevelMeter sidechainInputMeter;
 	BMShortSimpleDelay delay;
-    float thresholdGain, lastState, closedGain, sidechainInputLeveldB, controlSignalLeveldB, sidechainMinFreq, sidechainMaxFreq;
+    float thresholdGain, lastState, ratio, sidechainInputLeveldB, controlSignalLeveldB, sidechainMinFreq, sidechainMaxFreq;
 } BMNoiseGate;
 
 
@@ -88,11 +88,11 @@ void BMNoiseGate_setThreshold(BMNoiseGate *This,float thresholdDb);
 
 
 /*!
- *BMNoiseGate_setClosedGain
+ *BMNoiseGate_setRatio
  *
- * @abstract sets the gain of the noise gate when it's in the closed state
+ * @abstract sets the downward expansion ratio of the gate
  */
-void BMNoiseGate_setClosedGain(BMNoiseGate *This, float gainDb);
+void BMNoiseGate_setRatio(BMNoiseGate *This, float ratio);
 
 
 /*!

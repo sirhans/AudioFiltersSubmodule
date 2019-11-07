@@ -13,6 +13,9 @@
 
 #include <stdio.h>
 
+/*!
+ *BMAsymptoticLimit
+ */
 static inline void BMAsymptoticLimit(const float *input,
                                      float *output,
                                      float sampleRate,
