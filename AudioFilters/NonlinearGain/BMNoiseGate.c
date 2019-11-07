@@ -111,31 +111,44 @@ extern "C" {
         // rectify
         vvfabsf(This->buffer, This->buffer, &numSamplesI);
         
-        // convert the signal to log scale
-        vvlog2f(This->buffer, This->buffer, &numSamplesI);
-        
-        // convert the threshold to log scale
-        float logThresholdNeg = -log2f(This->thresholdGain);
-        
-        // signalLogScale - thresholdLogScale
-        // this is the opposite signof what we want but we do it this way
-        // because there is no vDSP_vssub for us to do what we actually want:
-        // (thresholdLogScale - signalLogScale)
-        vDSP_vsadd(This->buffer, 1, &logThresholdNeg, This->buffer, 1, numSamples);
-        
-        // clip the negative values to zero
-        float zero = 0.0f;
-        vDSP_vthr(This->buffer, 1, &zero, This->buffer, 1, numSamples);
-        
-        // multiply the values by -ratio to flip them negative and apply the
-        // ratio at the same time. The negative flip is necessary because we
-        // flipped the sign of the vDSP_vsadd operation above.
-        float negRatio = -This->ratio;
-        vDSP_vsmul(This->buffer,1,&negRatio,This->buffer,1,numSamples);
-        
-        // convert back to linear gain scale
-        float two = 2.0f;
-        vvpowf(This->buffer, This->buffer, &two, &numSamplesI);
+        // gate mode
+        if(This->ratio > 50.0f){
+            // subtract threshold
+            
+            // clip to [0,1]
+            
+            // ceiling
+        todo: code this
+        }
+        // downward expander mode
+        else {
+            
+            // convert the signal to log scale
+            vvlog2f(This->buffer, This->buffer, &numSamplesI);
+            
+            // convert the threshold to log scale
+            float logThresholdNeg = -log2f(This->thresholdGain);
+            
+            // signalLogScale - thresholdLogScale
+            // this is the opposite signof what we want but we do it this way
+            // because there is no vDSP_vssub for us to do what we actually want:
+            // (thresholdLogScale - signalLogScale)
+            vDSP_vsadd(This->buffer, 1, &logThresholdNeg, This->buffer, 1, numSamples);
+            
+            // clip the negative values to zero
+            float zero = 0.0f;
+            vDSP_vthr(This->buffer, 1, &zero, This->buffer, 1, numSamples);
+            
+            // multiply the values by -ratio to flip them negative and apply the
+            // ratio at the same time. The negative flip is necessary because we
+            // flipped the sign of the vDSP_vsadd operation above.
+            float negRatio = -This->ratio;
+            vDSP_vsmul(This->buffer,1,&negRatio,This->buffer,1,numSamples);
+            
+            // convert back to linear gain scale
+            float two = 2.0f;
+            vvpowf(This->buffer, This->buffer, &two, &numSamplesI);
+        }
     }
     
     
