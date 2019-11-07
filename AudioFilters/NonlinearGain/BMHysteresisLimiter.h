@@ -34,7 +34,7 @@
 #include <simd/simd.h>
 
 typedef struct BMHysteresisLimiter {
-    float c, R, halfR, oneOverR;
+    float c, R, oneOverR, sampleRate, sag, s, sR, halfSR;
 	simd_float2 cs;
 } BMHysteresisLimiter;
 
@@ -45,7 +45,7 @@ typedef struct BMHysteresisLimiter {
  * @param This pointer to a BMHysteresisLimiter struct
  * @notes This function does not allocate dynamic memory on the heap
  */
-void BMHysteresisLimiter_init(BMHysteresisLimiter *This);
+void BMHysteresisLimiter_init(BMHysteresisLimiter *This, float sampleRate);
 
 
 
@@ -59,8 +59,13 @@ void BMHysteresisLimiter_init(BMHysteresisLimiter *This);
  */
 void BMHysteresisLimiter_setPowerLimit(BMHysteresisLimiter *This, float limitDb);
 
-
-
+/*!
+ *BMHysteresisLimiter_setSag
+ *
+ * @param This pointer to an initialised struct
+ * @param sag larger values give slower charge time
+ */
+void BMHysteresisLimiter_setSag(BMHysteresisLimiter *This, float sag);
 
 
 /*!
