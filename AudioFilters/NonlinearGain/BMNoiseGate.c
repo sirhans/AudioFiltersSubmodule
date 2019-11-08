@@ -113,12 +113,17 @@ extern "C" {
         
         // gate mode
         if(This->ratio > 50.0f){
-            // subtract threshold
+            // subtract threshold to get 0 for values below threshold
+            float negThreshold = -This->thresholdGain;
+            vDSP_vsadd(This->buffer, 1, &negThreshold, This->buffer, 1, numSamples);
             
             // clip to [0,1]
+            float zero = 0.0f;
+            float one = 0.0f;
+            vDSP_vclip(This->buffer, 1, &zero, &one, This->buffer, 1, numSamples);
             
-            // ceiling
-        todo: code this
+            // output zero for values < threshold and 1 for values > threshold
+            vvceilf(This->buffer, This->buffer, &numSamplesI);
         }
         // downward expander mode
         else {
