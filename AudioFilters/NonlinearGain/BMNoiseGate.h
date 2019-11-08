@@ -30,7 +30,7 @@ typedef struct BMNoiseGate {
     BMMultiLevelBiquad sidechainFilter;
     BMLevelMeter sidechainInputMeter;
 	BMShortSimpleDelay delay;
-    float thresholdGain, lastState, ratio, sidechainInputLeveldB, controlSignalLeveldB, sidechainMinFreq, sidechainMaxFreq;
+    float thresholdGain, ratio, sidechainInputLeveldB, controlSignalLeveldB, sidechainMinFreq, sidechainMaxFreq;
 } BMNoiseGate;
 
 
