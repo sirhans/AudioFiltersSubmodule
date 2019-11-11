@@ -36,7 +36,7 @@
 
 typedef struct BMHysteresisLimiter {
 	BMMultiLevelBiquad AAFilter;
-    float c, R, halfR, oneOverR;
+    float c, R, oneOverR, sampleRate, sag, s, sR, halfSR;
 	simd_float2 cs;
 } BMHysteresisLimiter;
 
@@ -49,6 +49,7 @@ typedef struct BMHysteresisLimiter {
  * @param numChannels for non-rectified signal, mono=1 and stereo = 2. For rectified signal, stereo=2 and mono=4.
  */
 void BMHysteresisLimiter_init(BMHysteresisLimiter *This, float sampleRate, size_t numChannels);
+void BMHysteresisLimiter_init(BMHysteresisLimiter *This, float sampleRate);
 
 
 
@@ -68,8 +69,13 @@ void BMHysteresisLimiter_free(BMHysteresisLimiter *This);
  */
 void BMHysteresisLimiter_setPowerLimit(BMHysteresisLimiter *This, float limitDb);
 
-
-
+/*!
+ *BMHysteresisLimiter_setSag
+ *
+ * @param This pointer to an initialised struct
+ * @param sag larger values give slower charge time
+ */
+void BMHysteresisLimiter_setSag(BMHysteresisLimiter *This, float sag);
 
 
 /*!
