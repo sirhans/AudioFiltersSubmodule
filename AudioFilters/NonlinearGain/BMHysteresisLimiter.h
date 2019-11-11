@@ -32,8 +32,10 @@
 
 #include <stdio.h>
 #include <simd/simd.h>
+#include "BMMultiLevelBiquad.h"
 
 typedef struct BMHysteresisLimiter {
+	BMMultiLevelBiquad AAFilter;
     float c, R, halfR, oneOverR;
 	simd_float2 cs;
 } BMHysteresisLimiter;
@@ -42,11 +44,18 @@ typedef struct BMHysteresisLimiter {
 /*!
  *BMHysteresisLimiter_init
  *
- * @param This pointer to a BMHysteresisLimiter struct
- * @notes This function does not allocate dynamic memory on the heap
+ * @param This pointer to an uninitialised struct
+ * @param sampleRate audio system sample rate
+ * @param numChannels for non-rectified signal, mono=1 and stereo = 2. For rectified signal, stereo=2 and mono=4.
  */
-void BMHysteresisLimiter_init(BMHysteresisLimiter *This);
+void BMHysteresisLimiter_init(BMHysteresisLimiter *This, float sampleRate, size_t numChannels);
 
+
+
+/*!
+ *BMHysteresisLimiter_free
+ */
+void BMHysteresisLimiter_free(BMHysteresisLimiter *This);
 
 
 
