@@ -49,7 +49,6 @@ typedef struct BMHysteresisLimiter {
  * @param numChannels for non-rectified signal, mono=1 and stereo = 2. For rectified signal, stereo=2 and mono=4.
  */
 void BMHysteresisLimiter_init(BMHysteresisLimiter *This, float sampleRate, size_t numChannels);
-void BMHysteresisLimiter_init(BMHysteresisLimiter *This, float sampleRate);
 
 
 

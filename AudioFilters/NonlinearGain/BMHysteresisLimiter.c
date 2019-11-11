@@ -190,7 +190,16 @@ void BMHysteresisLimiter_init(BMHysteresisLimiter *This, float sampleRate, size_
 									 BM_HYSTERESISLIMITER_AA_FILTER_FC,
 									 0,
 									 1);
+
+    This->sampleRate = sampleRate;
+	BMHysteresisLimiter_setPowerLimit(This, BM_HYSTERESISLIMITER_DEFAULT_POWER_LIMIT);
+    BMHysteresisLimiter_setSag(This, BM_HYSTERESISLIMITER_DEFAULT_SAG);
 	
+	This->c = 0.0f;
+	This->cs = 0.0f;
+}
+
+
 
 
 
@@ -202,17 +211,6 @@ void BMHysteresisLimiter_setSag(BMHysteresisLimiter *This, float sag){
     This->halfSR = This->sR * 0.5f;
 }
 
-
-
-
-
-    This->sampleRate = sampleRate;
-	BMHysteresisLimiter_setPowerLimit(This, BM_HYSTERESISLIMITER_DEFAULT_POWER_LIMIT);
-    BMHysteresisLimiter_setSag(This, BM_HYSTERESISLIMITER_DEFAULT_SAG);
-	
-	This->c = 0.0f;
-	This->cs = 0.0f;
-}
 
 
 
