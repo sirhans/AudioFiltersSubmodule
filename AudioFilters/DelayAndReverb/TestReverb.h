@@ -3,7 +3,7 @@
 //  BMAudioFilters
 //
 //  Created by Nguyen Minh Tien on 4/26/18.
-//  Copyright © 2018 Hans. All rights reserved.
+//  Anyone may use this file without restrictions of any kind
 //
 
 #ifndef TestReverb_h
