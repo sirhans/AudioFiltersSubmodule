@@ -47,7 +47,7 @@ extern "C" {
 		BMShortSimpleDelay_init(&This->delay, 2, 10);
 		
 		// bypass the sidechain filters
-		BMNoiseGate_setSidechainHighCut(This, sampleRate * 0.95);
+		BMNoiseGate_setSidechainHighCut(This, sampleRate * 0.5 * 0.95);
 		BMNoiseGate_setSidechainLowCut(This, 20.0f);
 		
 		// init the sidechain input level metre
