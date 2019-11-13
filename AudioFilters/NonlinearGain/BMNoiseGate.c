@@ -47,7 +47,7 @@ extern "C" {
 		BMShortSimpleDelay_init(&This->delay, 2, 10);
 		
 		// bypass the sidechain filters
-		BMNoiseGate_setSidechainHighCut(This, 20000.0f);
+		BMNoiseGate_setSidechainHighCut(This, sampleRate * 0.95);
 		BMNoiseGate_setSidechainLowCut(This, 20.0f);
 		
 		// init the sidechain input level metre
@@ -311,8 +311,8 @@ extern "C" {
 	void BMNoiseGate_setSidechainHighCut(BMNoiseGate *This, float fc){
 		assert(fc <= This->sidechainFilter.sampleRate/2.0f);
 		
-		// disable the filter if the cutoff is greater than 18000 Hz
-		if (fc < 18000.0f){
+		// disable the filter if the cutoff is greater than 3/4 of the sample rate
+		if (fc/This->sidechainFilter.sampleRate < 0.75f){
 			BMMultiLevelBiquad_setActiveOnLevel(&This->sidechainFilter, true, 1);
 			BMMultiLevelBiquad_setLowPass6db(&This->sidechainFilter, fc, 1);
 			This->sidechainMaxFreq = fc;
