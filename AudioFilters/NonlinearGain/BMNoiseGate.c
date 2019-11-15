@@ -20,8 +20,10 @@ extern "C" {
 #define BM_NOISE_GATE_DEFAULT_ATTACK_TIME 0.001
 #define BM_NOISE_GATE_DEFAULT_RELEASE_TIME 0.080
 #define BM_NOISE_GATE_DEFAULT_RATIO 1.0f
-#define BM_NOISE_GATE_HYSTERESIS_WIDTH_UPPER 1.25893 // 2 dB
-#define BM_NOISE_GATE_HYSTERESIS_WIDTH_LOWER 0.794328 // -2dB
+#define BM_NOISE_GATE_HYSTERESIS_WIDTH_UPPER 1.333 // 2.5 dB
+#define BM_NOISE_GATE_HYSTERESIS_WIDTH_LOWER 0.750 // -2.5 dB
+#define BM_NOISE_GATE_RELEASE_SECTIONS 4
+#define BM_NOISE_GATE_ATTACK_SECTIONS 2
 	
 	// forward declarations
 	void BMNoiseGate_gainComputer(BMNoiseGate *This, size_t numSamples);
@@ -30,7 +32,7 @@ extern "C" {
 	
 	void BMNoiseGate_init(BMNoiseGate *This, float thresholdDb, float sampleRate){
 		// initialise the envelope follower
-		BMEnvelopeFollower_initWithCustomNumStages(&This->envFollower, 5, 2, sampleRate);
+		BMEnvelopeFollower_initWithCustomNumStages(&This->envFollower, BM_NOISE_GATE_RELEASE_SECTIONS, BM_NOISE_GATE_ATTACK_SECTIONS, sampleRate);
 		BMNoiseGate_setReleaseTime(This, BM_NOISE_GATE_DEFAULT_RELEASE_TIME);
 		BMNoiseGate_setAttackTime(This, BM_NOISE_GATE_DEFAULT_ATTACK_TIME);
 		
