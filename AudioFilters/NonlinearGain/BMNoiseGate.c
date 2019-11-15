@@ -301,7 +301,7 @@ extern "C" {
 	
 	
 	float BMNoiseGate_getSidechainInputRMSLevelDB(BMNoiseGate *This){
-		return This->sidechainInputLevelPeakdB;
+		return This->sidechainInputLevelRMSdB;
 	}
 
 
@@ -309,7 +309,7 @@ extern "C" {
 	
 	
 	float BMNoiseGate_getSidechainInputPeakLevelDB(BMNoiseGate *This){
-		return This->sidechainInputLevelRMSdB;
+		return This->sidechainInputLevelPeakdB;
 	}
 	
 	
