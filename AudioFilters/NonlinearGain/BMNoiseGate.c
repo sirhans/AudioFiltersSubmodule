@@ -311,8 +311,8 @@ extern "C" {
 	void BMNoiseGate_setSidechainHighCut(BMNoiseGate *This, float fc){
 		assert(fc <= This->sidechainFilter.sampleRate/2.0f);
 		
-		// disable the filter if the cutoff is greater than 3/4 of the sample rate
-		if (fc/This->sidechainFilter.sampleRate < 0.75f){
+		// disable the filter if the cutoff is greater than 75% of the sample rate
+		if (fc/This->sidechainFilter.sampleRate < 0.75f * 0.5f){
 			BMMultiLevelBiquad_setActiveOnLevel(&This->sidechainFilter, true, 1);
 			BMMultiLevelBiquad_setLowPass6db(&This->sidechainFilter, fc, 1);
 			This->sidechainMaxFreq = fc;
