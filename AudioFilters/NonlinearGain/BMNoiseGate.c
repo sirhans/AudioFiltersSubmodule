@@ -54,7 +54,8 @@ extern "C" {
 		BMLevelMeter_init(&This->sidechainInputMeter, sampleRate);
 		
 		// init some variables that update while processing
-		This->sidechainInputLeveldB = -128.0f;
+		This->sidechainInputLevelPeakdB = -128.0f;
+		This->sidechainInputLevelRMSdB = -128.0f;
 		This->controlSignalLeveldB = -128.0f;
 	}
 	
@@ -172,12 +173,11 @@ extern "C" {
 		BMMultiLevelBiquad_processBufferMono(&This->sidechainFilter, input, This->buffer, samplesProcessing);
 		
 		// measure the peak level of the sidechain input
-		float unused;
-		BMLevelMeter_peakLevelMono(&This->sidechainInputMeter,
-								   This->buffer,
-								   &This->sidechainInputLeveldB,
-								   &unused,
-								   samplesProcessing);
+		BMLevelMeter_RMSandPeakMono(&This->sidechainInputMeter,
+									This->buffer,
+									&This->sidechainInputLevelRMSdB,
+									&This->sidechainInputLevelPeakdB,
+									samplesProcessing);
 		
 		// apply downward expansion to the sidechain buffer
 		BMNoiseGate_gainComputer(This, samplesProcessing);
@@ -300,8 +300,16 @@ extern "C" {
 	
 	
 	
-	float BMNoiseGate_getSidechainInputLevelDB(BMNoiseGate *This){
-		return This->sidechainInputLeveldB;
+	float BMNoiseGate_getSidechainInputRMSLevelDB(BMNoiseGate *This){
+		return This->sidechainInputLevelPeakdB;
+	}
+
+
+	
+	
+	
+	float BMNoiseGate_getSidechainInputPeakLevelDB(BMNoiseGate *This){
+		return This->sidechainInputLevelRMSdB;
 	}
 	
 	

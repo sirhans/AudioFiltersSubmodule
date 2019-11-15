@@ -30,7 +30,7 @@ typedef struct BMNoiseGate {
     BMMultiLevelBiquad sidechainFilter;
     BMLevelMeter sidechainInputMeter;
 	BMShortSimpleDelay delay;
-    float thresholdGain, ratio, sidechainInputLeveldB, controlSignalLeveldB, sidechainMinFreq, sidechainMaxFreq;
+    float thresholdGain, ratio, sidechainInputLevelRMSdB, sidechainInputLevelPeakdB, controlSignalLeveldB, sidechainMinFreq, sidechainMaxFreq;
 } BMNoiseGate;
 
 
@@ -129,9 +129,17 @@ float BMNoiseGate_getGateVolumeDB(BMNoiseGate *This);
 /*!
  * BMNoiseGate_getSidechainInputLevelDB
  *
- * @return   the most recent RMS power level of the sidechain input in decibels
+ * @return   the most recent RMS power level of the sidechain input in decibels with fast metre speed
  */
-float BMNoiseGate_getSidechainInputLevelDB(BMNoiseGate *This);
+float BMNoiseGate_getSidechainInputRMSLevelDB(BMNoiseGate *This);
+
+
+/*!
+ * BMNoiseGate_getSidechainInputLevelDB
+ *
+ * @return   the most recent PEAK power level of the sidechain input in decibels with slow metre speed
+ */
+float BMNoiseGate_getSidechainInputPeakLevelDB(BMNoiseGate *This);
 
 
 #ifdef __cplusplus

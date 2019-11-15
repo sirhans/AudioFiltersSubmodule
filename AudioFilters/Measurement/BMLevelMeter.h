@@ -105,6 +105,28 @@ void BMLevelMeter_peakLevelMono(BMLevelMeter *This,
                                 float* fastPeak_dB,
                                 float* slowPeak_dB,
                                 size_t bufferLength);
+
+
+
+
+
+/*!
+ * BMLevelMeter_RMSandPeakMono
+ *
+ * @abstract scan a stereo pair of audio buffers to get the peak value. Then filter the time series of peaks so that we get a value that goes up instantaneously and down more slowly. Filter a second time to get a value that goes down even more slowly. The fastPeak values are useful for a level meter. The slowPeak values are useful for an indicator that shows what level the peak has reached in recent history.
+ *
+ * @param input an array of audio samples with length = bufferLength
+ * @param fastRMS_dB pointer to a scalar decibel value that tracks the RMS power quickly
+ * @param slowPeak_dB pointer to a scalar decibel that tracks the peak more slowly
+ * @param bufferLength length of inputL and inputR. This should be the length of the actual audio buffer. If the buffer length changes from one function call to the next, this class will automatically adjust the filter frequencies to keep the release time constant.
+ */
+void BMLevelMeter_RMSandPeakMono(BMLevelMeter *This,
+                                const float* input,
+                                float* fastRMS_dB,
+                                float* slowPeak_dB,
+                                size_t bufferLength);
+
+
   
 
 /*!
