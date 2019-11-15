@@ -305,10 +305,6 @@ extern "C" {
 	
 	
 	float BMNoiseGate_getGateVolumeDB(BMNoiseGate *This){
-		// return 0 dB if the gate is bypassed
-		if(This->ratio == 1) return 0.0f;
-		
-		// otherwise return the actual control signal level
 		return This->controlSignalLeveldB;
 	}
 	
@@ -377,6 +373,14 @@ extern "C" {
 		assert(ratio >= 1.0f);
 		
 		This->ratio = ratio;
+		
+		// if the ratio is bypassing the gate, set the level metre variables to
+		// indicate the the gate is off
+		if(ratio == 1.0f){
+			This->controlSignalLeveldB = 0.0f;
+			This->sidechainInputLevelRMSdB = -128.0f;
+			This->sidechainInputLevelPeakdB = -128.0f;
+		}
 	}
 	
 	
