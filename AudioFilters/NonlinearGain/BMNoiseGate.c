@@ -20,6 +20,8 @@ extern "C" {
 #define BM_NOISE_GATE_DEFAULT_ATTACK_TIME 0.001
 #define BM_NOISE_GATE_DEFAULT_RELEASE_TIME 0.080
 #define BM_NOISE_GATE_DEFAULT_RATIO 1.0f
+#define BM_NOISE_GATE_HYSTERESIS_WIDTH_UPPER 1.25893 // 2 dB
+#define BM_NOISE_GATE_HYSTERESIS_WIDTH_LOWER 0.794328 // -2dB
 	
 	// forward declarations
 	void BMNoiseGate_gainComputer(BMNoiseGate *This, size_t numSamples);
@@ -114,8 +116,16 @@ extern "C" {
 		
 		// gate mode
 		if(This->ratio > 50.0f){
+			// if the gate is closed, increase the threshold by a few dB.
+			// otherwise decrease it.
+			float hysteresisThreshold = This->thresholdGain;
+			if (This->controlSignalLeveldB < -6.0f)
+				hysteresisThreshold *= BM_NOISE_GATE_HYSTERESIS_WIDTH_UPPER;
+			else
+				hysteresisThreshold *= BM_NOISE_GATE_HYSTERESIS_WIDTH_LOWER;
+			
 			// subtract threshold to get 0 for values below threshold
-			float negThreshold = -This->thresholdGain;
+			float negThreshold = -hysteresisThreshold;
 			vDSP_vsadd(This->buffer, 1, &negThreshold, This->buffer, 1, numSamples);
 			
 			// clip to [0,1]
