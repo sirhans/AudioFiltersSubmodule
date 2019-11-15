@@ -16,13 +16,14 @@
 #include <stddef.h>
 #include <math.h>
 #include "Constants.h"
+#include <simd/simd.h>
 
 
 #ifdef __cplusplus
 extern "C" {
 #endif
     
-#define BMREVERB_MATRIXATTENUATION 0.5 // 1/sqrt(4) keep the mixing unitary
+#define BMREVERB_MATRIXATTENUATION 0.5 // keep the mixing unitary
     
     /*
      * these functions should be called only from functions within this file
@@ -40,6 +41,7 @@ extern "C" {
     void BMReverbRandomiseOrder(float* list, size_t seed, size_t length);
     void BMReverbInitDelayOutputSigns(struct BMReverb* rv);
     void BMReverbUpdateSettings(struct BMReverb* rv);
+	void BlockCirculantMix4(simd_float4 *in,simd_float4 *out,simd_float1 matrixAttenuation,size_t numBlocks);
     
     
     
@@ -107,8 +109,6 @@ extern "C" {
         size_t bufferedProcessingIndex = 0;
         while (samplesLeftToMix != 0) {
             
-        
-            
             // backup the input to allow in place processing
             memcpy(rv->dryL, inputL+bufferedProcessingIndex, sizeof(float)*samplesMixingNext);
             memcpy(rv->dryR, inputR+bufferedProcessingIndex, sizeof(float)*samplesMixingNext);
@@ -118,7 +118,6 @@ extern "C" {
             // process the reverb to get the wet signal
             for (size_t i=bufferedProcessingIndex; i < bufferedProcessingIndex+samplesMixingNext; i++)
                 BMReverbProcessWetSample(rv, inputL[i], inputR[i], &outputL[i], &outputR[i]);
-            
             
             
             // mix R and L wet signals
@@ -286,7 +285,7 @@ extern "C" {
     
     // updates the high shelf filters after a change in FC or gain
     void BMReverbUpdateDecayHighShelfFilters(struct BMReverb* rv){
-        BMBiquadArray_setHighDecayFDN(&rv->HSFArray, rv->delayTimes, rv->highShelfFC, rv->rt60, rv->rt60/rv->hfDecayMultiplier, rv->numDelays);
+        BMBiquadArray4_setHighDecayFDN(&rv->HSFArray, rv->delayTimes, rv->highShelfFC, rv->rt60, rv->rt60/rv->hfDecayMultiplier, rv->numDelays);
     }
     
     
@@ -294,7 +293,7 @@ extern "C" {
     
     // updates the low shelf filters after a change in FC or gain
     void BMReverbUpdateDecayLowShelfFilters(struct BMReverb* rv){
-        BMBiquadArray_setLowDecayFDN(&rv->LSFArray, rv->delayTimes, rv->lowShelfFC, rv->rt60, rv->rt60/rv->lfDecayMultiplier, rv->numDelays);
+        BMBiquadArray4_setLowDecayFDN(&rv->LSFArray, rv->delayTimes, rv->lowShelfFC, rv->rt60, rv->rt60/rv->lfDecayMultiplier, rv->numDelays);
     }
     
     
@@ -433,15 +432,15 @@ extern "C" {
     
     
     void BMReverbUpdateNumDelayUnits(struct BMReverb* rv){
+		assert(rv->newNumDelayUnits % 4 == 0);
+		
         /*
          * before beginning, calculate some frequently reused values
          */
-        size_t delayUnits = rv->newNumDelayUnits;
-        rv->numDelays = delayUnits*4;
-        rv->delayUnits = delayUnits;
-        rv->halfNumDelays = delayUnits*2;
-        rv->fourthNumDelays = delayUnits;
-        rv->threeFourthsNumDelays = delayUnits*3;
+		rv->delayUnits = rv->newNumDelayUnits;
+        rv->numDelays = rv->newNumDelayUnits*4;
+        rv->halfNumDelays = rv->numDelays/2;
+		rv->fourthNumDelays = rv->numDelays/4;
         // we compute attenuation on half delays because the reverb is stereo
         rv->inputAttenuation = 1.0f/sqrt((float)rv->halfNumDelays);
         
@@ -455,11 +454,11 @@ extern "C" {
         rv->bufferLengths = malloc(sizeof(size_t)*rv->numDelays);
         rv->delayTimes = malloc(rv->numDelays*sizeof(float));
         rv->feedbackBuffers = malloc(rv->numDelays*sizeof(float));
-        vDSP_vclr(rv->feedbackBuffers, 1, rv->numDelays);
+        vDSP_vclr((float*)rv->feedbackBuffers, 1, rv->numDelays);
         rv->rwIndices = malloc(rv->numDelays*sizeof(size_t));
         rv->bufferStartIndices = malloc(rv->numDelays*sizeof(size_t));
         rv->bufferEndIndices = malloc(rv->numDelays*sizeof(size_t));
-        rv->mixingBuffers = malloc(rv->numDelays*sizeof(float));
+//        rv->mixingBuffers = malloc(rv->numDelays*sizeof(float));
         rv->decayGainAttenuation = malloc(rv->numDelays*sizeof(float));
         rv->leftOutputTemp = malloc(BM_BUFFER_CHUNK_SIZE*sizeof(float));
         rv->dryL = malloc(BM_BUFFER_CHUNK_SIZE*sizeof(float));
@@ -473,21 +472,21 @@ extern "C" {
         BMReverbInitDelayOutputSigns(rv);
         
         
-        /*
-         * create pointers to facilitate mixing
-         */
-        rv->fb0 = rv->feedbackBuffers+(0*rv->fourthNumDelays);
-        rv->fb1 = rv->feedbackBuffers+(1*rv->fourthNumDelays);
-        rv->fb2 = rv->feedbackBuffers+(2*rv->fourthNumDelays);
-        rv->fb3 = rv->feedbackBuffers+(3*rv->fourthNumDelays);
-        rv->mb0 = rv->mixingBuffers+(0*rv->fourthNumDelays);
-        rv->mb1 = rv->mixingBuffers+(1*rv->fourthNumDelays);
-        rv->mb2 = rv->mixingBuffers+(2*rv->fourthNumDelays);
-        rv->mb3 = rv->mixingBuffers+(3*rv->fourthNumDelays);
+//        /*
+//         * create pointers to facilitate mixing
+//         */
+//        rv->fb0 = (float*)rv->feedbackBuffers+(0*rv->fourthNumDelays);
+//        rv->fb1 = (float*)rv->feedbackBuffers+(1*rv->fourthNumDelays);
+//        rv->fb2 = (float*)rv->feedbackBuffers+(2*rv->fourthNumDelays);
+//        rv->fb3 = (float*)rv->feedbackBuffers+(3*rv->fourthNumDelays);
+//        rv->mb0 = rv->mixingBuffers+(0*rv->fourthNumDelays);
+//        rv->mb1 = rv->mixingBuffers+(1*rv->fourthNumDelays);
+//        rv->mb2 = rv->mixingBuffers+(2*rv->fourthNumDelays);
+//        rv->mb3 = rv->mixingBuffers+(3*rv->fourthNumDelays);
         
         // init shelf filter arrays for high and low frequency decay
-        BMBiquadArray_init(&rv->HSFArray, rv->numDelays, rv->sampleRate);
-        BMBiquadArray_init(&rv->LSFArray, rv->numDelays, rv->sampleRate);
+        BMBiquadArray4_init(&rv->HSFArray, rv->numDelays, rv->sampleRate);
+        BMBiquadArray4_init(&rv->LSFArray, rv->numDelays, rv->sampleRate);
         
         /*
          * Allocate memory for the network delay buffers and update all the
@@ -540,19 +539,19 @@ extern "C" {
     }
     
     
-    // sets the cutoff frequency of a second order butterworth highpass
-    // filter on the wet signal.  (that's 12db cutoff slope).  This does
+    // sets the cutoff frequency of a first order butterworth highpass
+    // filter on the wet signal.  (that's 6db cutoff slope).  This does
     // not affect the dry signal at all.
     void BMReverbSetHighPassFC(struct BMReverb* rv, float fc){
-        BMMultiLevelBiquad_setHighPass12db(&rv->mainFilter, fc, 0);
+        BMMultiLevelBiquad_setHighPass6db(&rv->mainFilter, fc, 0);
     }
     
     
-    // sets the cutoff frequency of a second order butterworth lowpass
-    // filter on the wet signal.  (that's 12db cutoff slope).  This does
+    // sets the cutoff frequency of a first order butterworth lowpass
+    // filter on the wet signal.  (that's 6db cutoff slope).  This does
     // not affect the dry signal at all.
     void BMReverbSetLowPassFC(struct BMReverb* rv, float fc){
-        BMMultiLevelBiquad_setLowPass12db(&rv->mainFilter, fc, 0);
+        BMMultiLevelBiquad_setLowPass6db(&rv->mainFilter, fc, 0);
     }
     
     
@@ -564,7 +563,7 @@ extern "C" {
         rv->bufferStartIndices = NULL;
         rv->bufferEndIndices = NULL;
         rv->rwIndices = NULL;
-        rv->mixingBuffers = NULL;
+//        rv->mixingBuffers = NULL;
         rv->delayTimes = NULL;
         rv->decayGainAttenuation = NULL;
         rv->leftOutputTemp = NULL;
@@ -583,7 +582,7 @@ extern "C" {
         free(rv->bufferStartIndices);
         free(rv->bufferEndIndices);
         free(rv->rwIndices);
-        free(rv->mixingBuffers);
+//        free(rv->mixingBuffers);
         free(rv->delayTimes);
         free(rv->decayGainAttenuation);
         free(rv->leftOutputTemp);
@@ -592,52 +591,101 @@ extern "C" {
         free(rv->dryR);
         BMMultiLevelBiquad_destroy(&rv->mainFilter);
         
-        BMBiquadArray_free(&rv->HSFArray);
-        BMBiquadArray_free(&rv->HSFArray);
+        BMBiquadArray4_free(&rv->LSFArray);
+        BMBiquadArray4_free(&rv->HSFArray);
         
         BMReverbPointersToNull(rv);
     }
     
-    
-    
+	
+	
+	
+	/*
+	* Mix the feedback signal
+	*
+	* The code below does the first two stages of a fast hadamard transform,
+	* followed by some swapping.
+	* Leaving the transform incomplete is equivalent to using a
+	* block-circulant mixing matrix. Typically, block circulant mixing is
+	* done using the last two stages of the fast hadamard transform. Here
+	* we use the first two stages instead because it permits us to do
+	* vectorised additions and subtractions with a stride of 1.
+	*
+	* Regarding block-circulant mixing, see: https://www.researchgate.net/publication/282252790_Flatter_Frequency_Response_from_Feedback_Delay_Network_Reverbs
+	*
+	*
+	* If you prefer a full fast Hadamard transform to this block-circulant
+	* mixing, simply replace the code from here to the end of this function
+	* with a call to BMFastHadamardTransform(...) as defined in
+	* BMFastHadamard.h
+	*
+	*/
+	__inline void BlockCirculantMix4(simd_float4 *in,
+									 simd_float4 *out,
+									 simd_float1 matrixAttenuation,
+									 size_t numBlocks){
+		size_t halfNumBlocks = numBlocks/2;
+		size_t fourthNumBlocks = numBlocks/4;
+		simd_float4 *inHalf = in + halfNumBlocks;
+		simd_float4 *outHalf = out + halfNumBlocks;
+		simd_float4 *outFourth = out + fourthNumBlocks;
+		simd_float4 *outThreeFourths = outHalf + fourthNumBlocks;
+		for(size_t i=0; i<halfNumBlocks; i++){
+			// first half = first half plus second half
+			out[i] = (in[i] + inHalf[i]) * matrixAttenuation;
+			// second half = first half minus second half
+			outHalf[i] = (in[i] - inHalf[i]) * matrixAttenuation;
+		}
+		for(size_t i=0; i<fourthNumBlocks; i++){
+			// first fourth equals first forth + second fourth
+			out[i] = out[i] + outFourth[i];
+			// second fourth equals first forth - second fourth
+			outFourth[i] = out[i] - outFourth[i];
+			// third fourth equals third fourth + fourth fourth
+			outHalf[i] = outHalf[i] + outThreeFourths[i];
+			// fourth fourth equals third fourth - fourth fourth
+			outThreeFourths[i] = outHalf[i] - outThreeFourths[i];
+		}
+		
+		// rotate the output by one position so that the signal has to pass
+		// numDelays/4 delays before completing the circuit
+		simd_float1 lastElement = out[numBlocks-1].w;
+		memmove(1 + (float*)out,out, numBlocks*sizeof(simd_float4));
+		out[0].x = lastElement;
+	}
+	
+	
+	
     
     
     // process a single sample of input from right and left channels
     // the output is 100% wet
     __inline void BMReverbProcessWetSample(struct BMReverb* rv, float inputL, float inputR, float* outputL, float* outputR){
-        
-        /*
-         * mix feedback from previous sample with the fresh inputs
-         */
-        // attenuate the input to preserve the volume before splitting the signal
-        float attenuatedInputL = inputL * rv->inputAttenuation;
-        float attenuatedInputR = inputR * rv->inputAttenuation;
-        // left channel mixes into the first n/2 delays
-        vDSP_vsadd(rv->feedbackBuffers, 1, &attenuatedInputL, rv->feedbackBuffers, 1, rv->halfNumDelays);
-        // right channel mixes into the second n/2 delays
-        vDSP_vsadd(rv->feedbackBuffers+rv->halfNumDelays, 1, &attenuatedInputR, rv->feedbackBuffers+rv->halfNumDelays, 1, rv->halfNumDelays);
-        
-        
-        
-        // broadband decay
-        vDSP_vmul(rv->feedbackBuffers, 1, rv->decayGainAttenuation, 1, rv->feedbackBuffers, 1, rv->numDelays);
+		
+		// attenuate the input and set up a float4 vector to mix into the FDN
+		simd_float4 attenuatedInput = simd_make_float4(inputL,inputR,inputL,inputR);
+		attenuatedInput *= rv->inputAttenuation;
+		
+		// mix input and apply broadband decay
+		for(size_t i=0; i<rv->fourthNumDelays; i++)
+			rv->feedbackBuffers[i] = simd_muladd(rv->decayGainAttenuation[i], rv->feedbackBuffers[i], attenuatedInput);
         
         // high frequency decay
-        BMBiquadArray_processSample(&rv->HSFArray, rv->feedbackBuffers, rv->feedbackBuffers, rv->numDelays);
+        BMBiquadArray4_processSample(&rv->HSFArray, rv->feedbackBuffers, rv->feedbackBuffers, rv->fourthNumDelays);
         
         // low frequency decay
-        BMBiquadArray_processSample(&rv->HSFArray, rv->feedbackBuffers, rv->feedbackBuffers, rv->numDelays);
-        
-        
-        
-        
+        BMBiquadArray4_processSample(&rv->HSFArray, rv->feedbackBuffers, rv->feedbackBuffers, rv->fourthNumDelays);
         
         /*
          * write the mixture of input and feedback back into the delays
          */
-        for (size_t i=0; i < rv->numDelays; i++)
-            rv->delayLines[rv->rwIndices[i]] = rv->feedbackBuffers[i];
-        
+		size_t j=0;
+		for (size_t i=0; i < rv->fourthNumDelays; i++){
+            rv->delayLines[rv->rwIndices[j++]] = rv->feedbackBuffers[i].x;
+			rv->delayLines[rv->rwIndices[j++]] = rv->feedbackBuffers[i].y;
+			rv->delayLines[rv->rwIndices[j++]] = rv->feedbackBuffers[i].z;
+			rv->delayLines[rv->rwIndices[j++]] = rv->feedbackBuffers[i].w;
+		}
         
         
         /*
@@ -646,86 +694,32 @@ extern "C" {
         BMReverbIncrementIndices(rv);
         
         
-        
         /*
          * read output from delays into the feedback buffers
          */
         // vDSP_vgathr indexes 1 as the first element of the array so we have to
         // add +1 to the reference to delayLines to compensate
-        vDSP_vgathr(rv->delayLines+1, rv->rwIndices, 1, rv->feedbackBuffers, 1, rv->numDelays);
-        //for (size_t i=0; i < rv->numDelays; i++)
-        //    rv->feedbackBuffers[i] = rv->delayLines[rv->rwIndices[i]];
-        
-        
-        
+        vDSP_vgathr(rv->delayLines+1, rv->rwIndices, 1, (float*)rv->feedbackBuffers, 1, rv->numDelays);
         
         
         /*
          * sum the delay line outputs to right and left channel outputs
          */
-        // randomise the signs of the output from each delay, caching in mb0
-        vDSP_vmul(rv->feedbackBuffers, 1, rv->delayOutputSigns, 1, rv->mb0, 1, rv->numDelays);
-        // first half of delays sum to left out
-        vDSP_sve(rv->mb0, 1, outputL, rv->halfNumDelays);
-        // second half of delays sum to right out
-        vDSP_sve(rv->mb2, 1, outputR, rv->halfNumDelays);
-        
-        
-        
-        
-        /*
-         * Mix the feedback signal
-         *
-         * The code below does the first two stages of a fast hadamard transform,
-         * followed by some swapping.
-         * Leaving the transform incomplete is equivalent to using a
-         * block-circulant mixing matrix. Typically, block circulant mixing is
-         * done using the last two stages of the fast hadamard transform. Here
-         * we use the first two stages instead because it permits us to do
-         * vectorised additions and subtractions with a stride of 1.
-         *
-         * Regarding block-circulant mixing, see: https://www.researchgate.net/publication/282252790_Flatter_Frequency_Response_from_Feedback_Delay_Network_Reverbs
-         *
-         *
-         * If you prefer a full fast Hadamard transform to this block-circulant
-         * mixing, simply replace the code from here to the end of this function
-         * with a call to BMFastHadamardTransform(...) as defined in 
-         * BMFastHadamard.h
-         *
-         */
-        //
-        // Stage 1 of Fast Hadamard Transform
-        //
-        // 1st half + 2nd half => 1st half
-        vDSP_vadd(rv->fb0, 1, rv->fb2, 1, rv->mb0, 1, rv->halfNumDelays);
-        // 1st half - 2nd half => 2nd half
-        vDSP_vsub(rv->fb0, 1, rv->fb2, 1, rv->mb2, 1, rv->halfNumDelays);
-        //
-        //
-        // Stage 2 of Fast Hadamard Transform
-        //
-        // 1st fourth + 2nd fourth => 1st fourth
-        vDSP_vadd(rv->mb0, 1, rv->mb1, 1, rv->fb0, 1, rv->fourthNumDelays);
-        // 1st fourth - 2nd fourth => 2nd fourth
-        vDSP_vsub(rv->mb0, 1, rv->mb1, 1, rv->fb1, 1, rv->fourthNumDelays);
-        // 3rd fourth + 4th fourth => 3rd fourth
-        vDSP_vadd(rv->mb2, 1, rv->mb3, 1, rv->fb2, 1, rv->fourthNumDelays);
-        // 3rd fourth - 4th fourth => 4th fourth
-        vDSP_vsub(rv->mb2, 1, rv->mb3, 1, rv->fb3, 1, rv->fourthNumDelays);
-        //
-        // attenuate to keep the mixing transformation unitary
-        //float endElement = rv->feedbackBuffers[(rv->numDelays)-1];
-        vDSP_vsmul(rv->feedbackBuffers, 1, &rv->matrixAttenuation, rv->feedbackBuffers, 1, rv->numDelays);
-        //
-        // rotate the values in the feedback buffer by one position
-        //
-        // the rotation ensures that a signal entering delay n does not
-        // return back to the nth delay until after it has passed through
-        // numDelays/4 other delays.
-        float endElement = rv->feedbackBuffers[(rv->numDelays)-1];
-        memmove(rv->feedbackBuffers+1, rv->feedbackBuffers, sizeof(float)*(rv->numDelays-1));
-        rv->feedbackBuffers[0] = endElement;
-    }
+		*outputL = *outputR = 0.0f;
+		for(size_t i=0; i<rv->fourthNumDelays; i++){
+			// apply the signs of the output taps
+			simd_float4 temp = rv->feedbackBuffers[i] * rv->delayOutputSigns[i];
+			// sum two elements to left output
+			*outputL += simd_reduce_add(temp.xy);
+			// sum two elements to right output
+			*outputR += simd_reduce_add(temp.zw);
+		}
+		
+		// mix the feedback
+		BlockCirculantMix4(rv->feedbackBuffers, rv->feedbackBuffers, rv->matrixAttenuation, rv->fourthNumDelays);
+		for(size_t i=0; i<rv->numDelays; i++)
+			assert(rv->rwIndices[i] < 138200);
+	}
     
     
 #ifdef __cplusplus

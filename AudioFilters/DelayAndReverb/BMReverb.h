@@ -17,6 +17,7 @@
 
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
+#include <simd/simd.h>
 #else
 #include "BMCrossPlatformVDSP.h"
 #endif
@@ -43,13 +44,16 @@ extern "C" {
     
     // the CReverb struct
     typedef struct BMReverb {
-        float *delayLines, *feedbackBuffers, *mixingBuffers, *fb0, *fb1, *fb2, *fb3, *mb0, *mb1, *mb2, *mb3,  *delayTimes, *decayGainAttenuation, *leftOutputTemp, *delayOutputSigns, *dryL, *dryR;
+		simd_float4 *feedbackBuffers, *decayGainAttenuation;
+		simd_float1 matrixAttenuation;
+        float *delayLines, *delayTimes, *leftOutputTemp, *delayOutputSigns, *dryL, *dryR;
+		
         size_t *bufferLengths, *bufferStartIndices, *bufferEndIndices, *rwIndices;
-        float minDelay_seconds, maxDelay_seconds, sampleRate, wetGain, dryGain, inputAttenuation, matrixAttenuation, straightStereoMix, crossStereoMix, hfDecayMultiplier, lfDecayMultiplier, highShelfFC, lowShelfFC, rt60, slowDecayRT60, highpassFC, lowpassFC;
-        size_t delayUnits, newNumDelayUnits, numDelays, halfNumDelays, fourthNumDelays, threeFourthsNumDelays, samplesTillNextWrap, totalSamples;
+        float minDelay_seconds, maxDelay_seconds, sampleRate, wetGain, dryGain, inputAttenuation, straightStereoMix, crossStereoMix, hfDecayMultiplier, lfDecayMultiplier, highShelfFC, lowShelfFC, rt60, slowDecayRT60, highpassFC, lowpassFC;
+        size_t delayUnits, newNumDelayUnits, numDelays, halfNumDelays, fourthNumDelays, samplesTillNextWrap, totalSamples;
         bool settingsQueuedForUpdate, preDelayUpdate;
-        BMBiquadArray HSFArray;
-        BMBiquadArray LSFArray;
+        BMBiquadArray4 HSFArray;
+        BMBiquadArray4 LSFArray;
         BMMultiLevelBiquad mainFilter;
     } BMReverb;
     
