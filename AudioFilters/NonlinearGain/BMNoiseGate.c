@@ -305,6 +305,10 @@ extern "C" {
 	
 	
 	float BMNoiseGate_getGateVolumeDB(BMNoiseGate *This){
+		// return 0 dB if the gate is bypassed
+		if(This->ratio == 1) return 0.0f;
+		
+		// otherwise return the actual control signal level
 		return This->controlSignalLeveldB;
 	}
 	
