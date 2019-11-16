@@ -73,6 +73,7 @@ void BMCompressor_Free(BMCompressor *This){
     This->buffer1 = NULL;
     free(This->buffer2);
     This->buffer2 = NULL;
+	BMEnvelopeFollower_free(&This->envelopeFollower);
 }
 
 
@@ -250,6 +251,7 @@ void BMCompressor_SetReleaseTime(BMCompressor *This, float releaseTime){
 void BMCompressor_SetSampleRate(BMCompressor *This, float sampleRate){
     assert(sampleRate > 0.0f);
     
+	BMEnvelopeFollower_free(&This->envelopeFollower);
     BMEnvelopeFollower_init(&This->envelopeFollower, sampleRate);
     BMEnvelopeFollower_setAttackTime(&This->envelopeFollower, This->attackTime);
     BMEnvelopeFollower_setReleaseTime(&This->envelopeFollower, This->releaseTime);

@@ -18,7 +18,7 @@
 #include "BMQuadraticThreshold.h"
 
 typedef struct{
-    float thresholdInDB,kneeWidthInDB, releaseTime, attackTime,slope;
+    float thresholdInDB, kneeWidthInDB, releaseTime, attackTime,slope;
     BMEnvelopeFollower envelopeFollower;
     BMQuadraticThreshold quadraticThreshold;
     float *buffer1, *buffer2;
