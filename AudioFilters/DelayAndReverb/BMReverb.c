@@ -710,9 +710,9 @@ extern "C" {
 			// apply the signs of the output taps
 			simd_float4 temp = rv->feedbackBuffers[i] * rv->delayOutputSigns[i];
 			// sum two elements to left output
-			*outputL += simd_reduce_add(temp.xy);
+			*outputL += simd_reduce_add(temp.xz);
 			// sum two elements to right output
-			*outputR += simd_reduce_add(temp.zw);
+			*outputR += simd_reduce_add(temp.yw);
 		}
 		
 		// mix the feedback
