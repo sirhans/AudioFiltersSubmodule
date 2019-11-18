@@ -18,10 +18,10 @@ extern "C" {
     // forward declarations
     void BMBiquadArray_setHighDecayFDN(BMBiquadArray *This, float* delayTimesSeconds, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels);
     void BMBiquadArray_setLowDecayFDN(BMBiquadArray *This, float* delayTimesSeconds, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels);
-    void setBypass(float* b0, float* b1, float* b2, float* a1, float* a2);
+    void BMBiquadArray_setBypass(float* b0, float* b1, float* b2, float* a1, float* a2);
     void BMBiquadArray4_setHighDecayFDN(BMBiquadArray4 *This, float* delayTimesSeconds, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels);
     void BMBiquadArray4_setLowDecayFDN(BMBiquadArray4 *This, float* delayTimesSeconds, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels);
-    void setBypass4(simd_float4* b0, simd_float4* b1, simd_float4* b2, simd_float4* a1, simd_float4* a2);
+    void BMBiquadArray4_setBypass(simd_float4* b0, simd_float4* b1, simd_float4* b2, simd_float4* a1, simd_float4* a2);
     
     
     
@@ -54,7 +54,7 @@ extern "C" {
         
         // bypass all the filters
         for(size_t i=0; i<numChannels; i++)
-            setBypass(&This->b0[i], &This->b1[i], &This->b2[i],
+            BMBiquadArray_setBypass(&This->b0[i], &This->b1[i], &This->b2[i],
                       &This->a1neg[i], &This->a2neg[i]);
     }
     
@@ -85,7 +85,7 @@ extern "C" {
         
         // bypass all the filters
         for(size_t i=0; i<This->numChannelsOver4; i++)
-            setBypass4(&This->b0[i], &This->b1[i], &This->b2[i],
+            BMBiquadArray4_setBypass(&This->b0[i], &This->b1[i], &This->b2[i],
                       &This->a1neg[i], &This->a2neg[i]);
     }
     
@@ -98,7 +98,7 @@ extern "C" {
     /*
      * Set the given coefficients to bypass the filter
      */
-    void setBypass(float* b0, float* b1, float* b2, float* a1, float* a2){
+    void BMBiquadArray_setBypass(float* b0, float* b1, float* b2, float* a1, float* a2){
         *b0 = 1.0;
         *b1 = *b2 = *a1 = *a2 = 0.0;
     }
@@ -108,7 +108,7 @@ extern "C" {
     /*
      * Set the given coefficients to bypass the filter
      */
-    void setBypass4(simd_float4 *b0,
+    void BMBiquadArray4_setBypass(simd_float4 *b0,
 					simd_float4 *b1,
 					simd_float4 *b2,
 					simd_float4 *a1,
@@ -161,7 +161,7 @@ extern "C" {
 		 * the formulae above do not work when the gain is 1.0, so for
 		 * that case we bypass the filter
 		 */
-		if (gain == 1.0) setBypass(b0, b1, b2, a1Neg, a2Neg);
+		if (gain == 1.0) BMBiquadArray_setBypass(b0, b1, b2, a1Neg, a2Neg);
 	}
 	
     
@@ -263,7 +263,7 @@ extern "C" {
 		 * the formulae above do not work when the gain is 1.0, so for
 		 * that case we bypass the filter
 		 */
-		if (gain == 1.0) setBypass(b0, b1, b2, a1Neg, a2Neg);
+		if (gain == 1.0) BMBiquadArray_setBypass(b0, b1, b2, a1Neg, a2Neg);
 	}
 	
 	
