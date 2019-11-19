@@ -39,7 +39,7 @@ extern "C" {
     void BMReverbProcessWetSample(struct BMReverb *This, float inputL, float inputR, float* outputL, float* outputR);
     void BMReverbUpdateNumDelayUnits(struct BMReverb *This);
     void BMReverbPointersToNull(struct BMReverb *This);
-    void BMReverbRandomiseOrder(float* list, size_t seed, size_t length);
+    void BMReverbRandomiseOrder(float* list, size_t seed, size_t stride, size_t length);
     void BMReverbInitDelayOutputSigns(struct BMReverb *This);
     void BMReverbUpdateSettings(struct BMReverb *This);
     
@@ -75,7 +75,7 @@ extern "C" {
         BMReverbSetLowPassFC(This, BMREVERB_LOWPASS_FC);
         BMReverbSetWetGain(This, BMREVERB_WETMIX);
         BMReverbSetCrossStereoMix(This, BMREVERB_CROSSSTEREOMIX);
-
+        
         
         // initialize all the delays and delay-dependent settings
         BMReverbUpdateNumDelayUnits(This);
@@ -96,7 +96,7 @@ extern "C" {
             memset(outputR, 0, sizeof(float)*numSamples);
             return;
         }
-
+        
         
         // this requires buffer memory so we do it in limited sized chunks to
         // avoid having to adjust the buffer length at runtime
@@ -110,7 +110,7 @@ extern "C" {
             memcpy(This->dryR, inputR+bufferedProcessingIndex, sizeof(float)*samplesMixingNext);
             
             // process the reverb to get the wet signal
-			for (size_t i=bufferedProcessingIndex; i < bufferedProcessingIndex+samplesMixingNext; i++)
+            for (size_t i=bufferedProcessingIndex; i < bufferedProcessingIndex+samplesMixingNext; i++)
                 BMReverbProcessWetSample(This, inputL[i], inputR[i], &outputL[i], &outputR[i]);
             
             // mix R and L wet signals
@@ -120,8 +120,8 @@ extern "C" {
             vDSP_vsmsma(outputR+bufferedProcessingIndex, 1, &This->straightStereoMix, outputL+bufferedProcessingIndex, 1, &This->crossStereoMix, outputR+bufferedProcessingIndex, 1, samplesMixingNext);
             // copy left temp back to left output
             memcpy(outputL+bufferedProcessingIndex, This->leftOutputTemp, sizeof(float)*samplesMixingNext);
-			
-			
+            
+            
             // mix dry and wet signals
             vDSP_vsmsma(This->dryL, 1, &This->dryGain, outputL+bufferedProcessingIndex, 1, &This->wetGain, outputL+bufferedProcessingIndex, 1, samplesMixingNext);
             vDSP_vsmsma(This->dryR, 1, &This->dryGain, outputR+bufferedProcessingIndex, 1, &This->wetGain, outputR+bufferedProcessingIndex, 1, samplesMixingNext);
@@ -133,7 +133,7 @@ extern "C" {
         }
         
         // filter the wet output signal (highpass and lowpass)
-//        BMMultiLevelBiquad_processBufferStereo(&This->mainFilter, outputL, outputR, outputL, outputR, numSamples);
+        //        BMMultiLevelBiquad_processBufferStereo(&This->mainFilter, outputL, outputR, outputL, outputR, numSamples);
         
         /*
          * if an update requiring memory allocation was requested, do it now.
@@ -153,7 +153,7 @@ extern "C" {
         BMReverbUpdateNumDelayUnits(This);
     }
     
-
+    
     
     
     // this is the decay time of the reverb in normal operation
@@ -179,20 +179,19 @@ extern "C" {
     
     void BMReverbInitDelayOutputSigns(struct BMReverb *This){
         // init delay output signs with an equal number of + and - for each channel
-        float one = 1.0, negativeOne = -1.0;
-        // left
-        vDSP_vfill(&one, ((float*)&This->delayOutputSigns)+0*This->fourthNumDelays, 1, This->fourthNumDelays);
-        vDSP_vfill(&negativeOne, ((float*)&This->delayOutputSigns)+1*This->fourthNumDelays, 1, This->fourthNumDelays);
-        // right
-        vDSP_vfill(&one, ((float*)&This->delayOutputSigns)+2*This->fourthNumDelays, 1, This->fourthNumDelays);
-        vDSP_vfill(&negativeOne, ((float*)&This->delayOutputSigns)+3*This->fourthNumDelays, 1, This->fourthNumDelays);
+        for(size_t i=0; i<This->delayUnits; i++){
+            // L and R positive
+            This->delayOutputSigns[i].xy = 1.0f;
+            // L and R negative
+            This->delayOutputSigns[i].zw = -1.0f;
+        }
         
         // randomise the order of the signs for each channel
-        unsigned int seed = 1;
+        unsigned int seed = 17;
         // left
-        BMReverbRandomiseOrder(((float*)&This->delayOutputSigns), seed, This->halfNumDelays);
+        BMReverbRandomiseOrder(((float*)&This->delayOutputSigns), seed, 2, This->halfNumDelays);
         //right
-        BMReverbRandomiseOrder(((float*)&This->delayOutputSigns)+This->halfNumDelays, seed, This->halfNumDelays);
+        BMReverbRandomiseOrder(((float*)&This->delayOutputSigns)+1, seed+1, 2,  This->halfNumDelays);
     }
     
     
@@ -217,7 +216,7 @@ extern "C" {
     
     
     
-
+    
     
     
     // sets the cutoff frequency of the high shelf filters that increase
@@ -353,33 +352,97 @@ extern "C" {
     
     
     
+    float BMReverbRandomInRange(float min, float max){
+        double random = (double)arc4random() / (double)UINT32_MAX;
+        return min + fmod(random, max - min);
+    }
+    
+    
+    
+    
+    
+    /*!
+     *BMReverbRandomsInRange
+     *
+     * @abstract generate length random floats between min and max, ensuring that the average is near (max-min)/2
+     */
+    void BMReverbRandomsInRange(float min, float max, float* randomOutput, size_t length){
+        float targetMean = (max-min)/2.0f;
+        float actualMean = targetMean;
+        size_t i;
+        for(i=0; i<length-1; i++){
+            float tempMin = min;
+            float tempMax = max;
+            // if the actual mean is below the target mean, increase the min boundary
+            if(actualMean < targetMean){
+                // how much does the mean have to shift?
+                float meanShift = targetMean - actualMean;
+                // how much will the next random number influence the mean?
+                float influence = 1.0f / ((float)i+1.0f);
+                // how much does the mean of the next number have to shift, taking into account the influence of that number?
+                meanShift /= influence;
+                // how much does the min have to shift in order to affect the desired mean shift on the next number?
+                float minShift = meanShift * 2.0f;
+                // set the min for the next random number
+                tempMin = min + minShift;
+            }
+            else{
+                // how much does the mean have to shift?
+                float meanShift = targetMean - actualMean;
+                // how much will the next random number influence the mean?
+                float influence = 1.0f / ((float)i+1.0f);
+                // how much does the mean of the next number have to shift, taking into account the influence of that number?
+                meanShift /= influence;
+                // how much does the min have to shift in order to affect the desired mean shift on the next number?
+                float maxShift = meanShift * 2.0f;
+                // set the min for the next random number
+                tempMax = max + maxShift;
+            }
+            
+            // generate the next random number
+            randomOutput[i] = BMReverbRandomInRange(tempMin, tempMax);
+            
+            // get the mean value of the numbers we have so far
+            vDSP_meanv(randomOutput, 1, &actualMean, i+1);
+        }
+        
+        // set the last number deterministically so that the actual mean is exactly equal to the target mean
+        randomOutput[i] = targetMean + (targetMean - actualMean);
+    }
+    
+
+    
+    
+    
+    // https://rosettacode.org/wiki/Category:C
+    void BMReverbInsertionSort(float* a, int n){
+        for(size_t i = 1; i < n; ++i) {
+            float tmp = a[i];
+            size_t j = i;
+            while(j > 0 && tmp < a[j - 1]) {
+                a[j] = a[j - 1];
+                --j;
+            }
+            a[j] = tmp;
+        }
+    }
+    
+    
+    
+    
     
     // generate an evenly spaced but randomly jittered list of times between min and max
     void BMReverbUpdateDelayTimes(struct BMReverb *This){
         
-        float spacing = (This->maxDelay_seconds - This->minDelay_seconds) / (float)This->halfNumDelays;
+        BMReverbRandomsInRange(This->minDelay_seconds, This->maxDelay_seconds,This->delayTimes,This->numDelays);
         
-        // generate an evenly spaced list of times between min and max
-        // left channel
-        vDSP_vramp(&This->minDelay_seconds, &spacing, This->delayTimes, 1, This->halfNumDelays);
-        // right channel
-        vDSP_vramp(&This->minDelay_seconds, &spacing, This->delayTimes+This->halfNumDelays, 1, This->halfNumDelays);
-        
-        // Seed the random number generator for consistency. Doing this ensures
-        // that we get the same delay times every time we run the reverb.
-        srand(111);
-        
-        // jitter the times so that the spacing is not perfectly even
-        for (size_t i = 0; i < This->numDelays; i++)
-            This->delayTimes[i] += spacing * ((float)rand() / (float) RAND_MAX);
-        
+        BMReverbInsertionSort(This->delayTimes, (int)This->numDelays);
         
         // randomise the order of the list of delay times
         // left channel
-        BMReverbRandomiseOrder(This->delayTimes, 17, This->halfNumDelays);
+        BMReverbRandomiseOrder(&This->delayTimes[0], 1, 2, This->halfNumDelays);
         // right channel
-        BMReverbRandomiseOrder(This->delayTimes+This->halfNumDelays, 4, This->halfNumDelays);
-        
+        BMReverbRandomiseOrder(&This->delayTimes[1], 17, 2, This->halfNumDelays);
         
         // convert times from milliseconds to samples and count the total
         This->totalSamples = 0;
@@ -388,11 +451,9 @@ extern "C" {
             This->totalSamples += This->bufferLengths[i];
         }
         
-        
         // allocate memory for the main delays in the network
         if (This->delayLines) free(This->delayLines);
-        This->delayLines = malloc(sizeof(float)*This->totalSamples);
-        vDSP_vclr(This->delayLines,1, This->totalSamples);
+        This->delayLines = calloc(This->totalSamples,sizeof(float));
         
         // The following depend on delay time and have to be updated
         // whenever there is a change
@@ -413,72 +474,63 @@ extern "C" {
     
     
     
-
-
+    
+    
     void BMReverbUpdateNumDelayUnits(struct BMReverb *This){
-		assert(This->newNumDelayUnits % 4 == 0);
-
+        
         /*
          * before beginning, calculate some frequently reused values
          */
-		This->delayUnits = This->newNumDelayUnits;
+        This->delayUnits = This->newNumDelayUnits;
         This->numDelays = This->newNumDelayUnits*4;
         This->halfNumDelays = This->numDelays/2;
-		This->fourthNumDelays = This->numDelays/4;
+        This->fourthNumDelays = This->numDelays/4;
         // we compute attenuation on half delays because the reverb is stereo
         This->inputAttenuation = 1.0f/sqrtf((float)This->halfNumDelays);
-
+        
         // free old memory if necessary
-        if (This->bufferLengths) BMReverbFree(This);
-
-
+        if (This->leftOutputTemp) BMReverbFree(This);
+        
+        
         /*
-         * allocate memory for smaller buffers
+         * allocate memory for buffers
          */
-        This->bufferLengths = malloc(sizeof(size_t)*This->numDelays);
-        This->delayTimes = malloc(This->numDelays*sizeof(float));
-        vDSP_vclr((float*)&This->feedbackBuffers, 1, This->numDelays);
-        This->rwIndices = malloc(This->numDelays*sizeof(size_t));
-        This->bufferStartIndices = malloc(This->numDelays*sizeof(size_t));
-        This->bufferEndIndices = malloc(This->numDelays*sizeof(size_t));
         This->leftOutputTemp = malloc(BM_BUFFER_CHUNK_SIZE*sizeof(float));
         This->dryL = malloc(BM_BUFFER_CHUNK_SIZE*sizeof(float));
         This->dryR = malloc(BM_BUFFER_CHUNK_SIZE*sizeof(float));
-
-
+        
+        
         /*
          * set randomised signs for the output taps
          */
         BMReverbInitDelayOutputSigns(This);
-
+        
         // init shelf filter arrays for high and low frequency decay
         BMFirstOrderArray4x4_init(&This->HSFArray, This->numDelays, This->sampleRate);
         BMFirstOrderArray4x4_init(&This->LSFArray, This->numDelays, This->sampleRate);
-
+        
         /*
          * Allocate memory for the network delay buffers and update all the
          * delay-time-dependent parameters
          */
         BMReverbUpdateDelayTimes(This);
-
-
-
+        
         This->settingsQueuedForUpdate = false;
     }
-
+    
     
     
     // randomise the order of a list of floats
-    void BMReverbRandomiseOrder(float* list, size_t seed, size_t length){
+    void BMReverbRandomiseOrder(float* list, size_t seed, size_t stride, size_t length){
         // seed the random number generator so we get the same result every time
         srand((int)seed);
         
         for (int i = 0; i<length; i++) {
-            int j = rand() % (int)length;
+            int j = (int)stride*(rand() % (int)(length/stride));
             
             // swap i with j
-            float temp = list[i];
-            list[i] = list[j];
+            float temp = list[i*stride];
+            list[i*stride] = list[j];
             list[j] = temp;
         }
     }
@@ -525,11 +577,6 @@ extern "C" {
     
     void BMReverbPointersToNull(struct BMReverb *This){
         This->delayLines = NULL;
-        This->bufferLengths = NULL;
-        This->bufferStartIndices = NULL;
-        This->bufferEndIndices = NULL;
-        This->rwIndices = NULL;
-        This->delayTimes = NULL;
         This->leftOutputTemp = NULL;
         This->dryL = NULL;
         This->dryR = NULL;
@@ -540,11 +587,6 @@ extern "C" {
     
     void BMReverbFree(struct BMReverb *This){
         free(This->delayLines);
-        free(This->bufferLengths);
-        free(This->bufferStartIndices);
-        free(This->bufferEndIndices);
-        free(This->rwIndices);
-        free(This->delayTimes);
         free(This->leftOutputTemp);
         free(This->dryL);
         free(This->dryR);
@@ -552,36 +594,36 @@ extern "C" {
         
         BMReverbPointersToNull(This);
     }
-	
-	
-	
+    
+    
+    
     
     
     // process a single sample of input from right and left channels
     // the output is 100% wet
     __inline void BMReverbProcessWetSample(struct BMReverb *This, float inputL, float inputR, float* outputL, float* outputR){
-		
-		// attenuate the input and set up a float4 vector to mix into the FDN
-		simd_float4 attenuatedInput = simd_make_float4(inputL,inputR,inputL,inputR);
-		attenuatedInput *= This->inputAttenuation;
-		
-		// mix input and apply broadband decay
-		for(size_t i=0; i<This->fourthNumDelays; i++)
-			This->feedbackBuffers[i] = simd_muladd(This->decayGainAttenuation[i], This->feedbackBuffers[i], attenuatedInput);
-	
+        
+        // attenuate the input and set up a float4 vector to mix into the FDN
+        simd_float4 attenuatedInput = simd_make_float4(inputL,inputR,inputL,inputR);
+        attenuatedInput *= This->inputAttenuation;
+        
+        // mix input and apply broadband decay
+        for(size_t i=0; i<This->fourthNumDelays; i++)
+            This->feedbackBuffers[i] = (attenuatedInput + This->feedbackBuffers[i]) * This->decayGainAttenuation[i];
+        
         // high frequency decay
-//        BMFirstOrderArray4x4_processSample(&This->HSFArray, This->feedbackBuffers, This->feedbackBuffers, This->fourthNumDelays);
-
+        //        BMFirstOrderArray4x4_processSample(&This->HSFArray, This->feedbackBuffers, This->feedbackBuffers, This->fourthNumDelays);
+        
         /*
          * write the mixture of input and feedback back into the delays
          */
-		size_t j=0;
-		for (size_t i=0; i < This->fourthNumDelays; i++){
+        size_t j=0;
+        for (size_t i=0; i < This->fourthNumDelays; i++){
             This->delayLines[This->rwIndices[j++]] = This->feedbackBuffers[i].x;
-			This->delayLines[This->rwIndices[j++]] = This->feedbackBuffers[i].y;
-			This->delayLines[This->rwIndices[j++]] = This->feedbackBuffers[i].z;
-			This->delayLines[This->rwIndices[j++]] = This->feedbackBuffers[i].w;
-		}
+            This->delayLines[This->rwIndices[j++]] = This->feedbackBuffers[i].y;
+            This->delayLines[This->rwIndices[j++]] = This->feedbackBuffers[i].z;
+            This->delayLines[This->rwIndices[j++]] = This->feedbackBuffers[i].w;
+        }
         
         
         /*
@@ -601,21 +643,21 @@ extern "C" {
         /*
          * sum the delay line outputs to right and left channel outputs
          */
-		*outputL = *outputR = 0.0f;
-		for(size_t i=0; i<This->fourthNumDelays; i++){
-			// apply the signs of the output taps
-			simd_float4 temp = This->feedbackBuffers[i] * This->delayOutputSigns[i];
-			// sum two elements to left output
-			*outputL += temp.x + temp.z;
-			// sum two elements to right output
-			*outputR += temp.y + temp.w;
-		}
-		
-		// mix the feedback
-		BMBlockCirculantMix4x4(This->feedbackBuffers, This->feedbackBuffers);
-		for(size_t i=0; i<This->fourthNumDelays; i++)
-			This->feedbackBuffers[i] *= BMREVERB_MATRIX_ATTENUATION;
-	}
+        *outputL = *outputR = 0.0f;
+        for(size_t i=0; i<This->fourthNumDelays; i++){
+            // apply the signs of the output taps
+            simd_float4 temp = This->feedbackBuffers[i] * This->delayOutputSigns[i];
+            // sum two elements to left output
+            *outputL += temp.x + temp.z;
+            // sum two elements to right output
+            *outputR += temp.y + temp.w;
+        }
+        
+        // mix the feedback
+        BMBlockCirculantMix4x4(This->feedbackBuffers, This->feedbackBuffers);
+        for(size_t i=0; i<This->fourthNumDelays; i++)
+            This->feedbackBuffers[i] *= BMREVERB_MATRIX_ATTENUATION;
+    }
     
     
 #ifdef __cplusplus

@@ -25,6 +25,7 @@
 // default settings
 #define BMREVERB_WETMIX 0.15 // dryMix = sqrt(1 - wetMix^2)
 #define BMREVERB_NUMDELAYUNITS 4 // each unit contains 4 delays
+#define BMREVERB_NUMDELAYS 4 * BMREVERB_NUMDELAYUNITS
 #define BMREVERB_PREDELAY 0.007 // (in seconds)
 #define BMREVERB_ROOMSIZE 0.100 // (seconds of sound travel time)
 #define BMREVERB_DEFAULTSAMPLERATE 44100.0
@@ -44,12 +45,15 @@ extern "C" {
     
     // the CReverb struct
     typedef struct BMReverb {
-		simd_float4 feedbackBuffers[4];
-		simd_float4 decayGainAttenuation [4];
-		simd_float4 delayOutputSigns[4];
-        float *delayLines, *delayTimes, *leftOutputTemp, *dryL, *dryR;
-		
-        size_t *bufferLengths, *bufferStartIndices, *bufferEndIndices, *rwIndices;
+		simd_float4 feedbackBuffers[BMREVERB_NUMDELAYUNITS];
+		simd_float4 decayGainAttenuation [BMREVERB_NUMDELAYUNITS];
+		simd_float4 delayOutputSigns[BMREVERB_NUMDELAYUNITS];
+        float *delayLines, *leftOutputTemp, *dryL, *dryR;
+        float delayTimes[BMREVERB_NUMDELAYS];
+        size_t bufferLengths[BMREVERB_NUMDELAYS];
+        size_t bufferStartIndices[BMREVERB_NUMDELAYS];
+        size_t bufferEndIndices[BMREVERB_NUMDELAYS];
+        size_t rwIndices[BMREVERB_NUMDELAYS];
         float inputAttenuation, minDelay_seconds, maxDelay_seconds, sampleRate, wetGain, dryGain, straightStereoMix, crossStereoMix, hfDecayMultiplier, lfDecayMultiplier, highShelfFC, lowShelfFC, rt60, slowDecayRT60, highpassFC, lowpassFC;
         size_t delayUnits, newNumDelayUnits, numDelays, halfNumDelays, fourthNumDelays, samplesTillNextWrap, totalSamples;
         bool settingsQueuedForUpdate, preDelayUpdate;
