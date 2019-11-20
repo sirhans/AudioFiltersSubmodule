@@ -12,7 +12,7 @@
 #define BMReverb_h
 
 #include <stdio.h>
-#include "BMBiquadArray.h"
+#include "BMFirstOrderArray.h"
 #include "BMMultiLevelBiquad.h"
 
 #ifdef __APPLE__
@@ -25,10 +25,11 @@
 // default settings
 #define BMREVERB_WETMIX 0.15 // dryMix = sqrt(1 - wetMix^2)
 #define BMREVERB_NUMDELAYUNITS 4 // each unit contains 4 delays
+#define BMREVERB_NUMDELAYS 4 * BMREVERB_NUMDELAYUNITS
 #define BMREVERB_PREDELAY 0.007 // (in seconds)
 #define BMREVERB_ROOMSIZE 0.100 // (seconds of sound travel time)
 #define BMREVERB_DEFAULTSAMPLERATE 44100.0
-#define BMREVERB_HIGHSHELFFC 8000.0 // above this frequency decay is faster
+#define BMREVERB_HIGHSHELFFC 1500.0 // above this frequency decay is faster
 #define BMREVERB_HFDECAYMULTIPLIER 6.0 // HF decay is this many times faster
 #define BMREVERB_LOWSHELFFC 500.0 // above this frequency decay is faster
 #define BMREVERB_LFDECAYMULTIPLIER 6.0 // LF decay is this many times faster
@@ -44,16 +45,20 @@ extern "C" {
     
     // the CReverb struct
     typedef struct BMReverb {
-		simd_float4 *feedbackBuffers, *decayGainAttenuation;
-		simd_float1 matrixAttenuation;
-        float *delayLines, *delayTimes, *leftOutputTemp, *delayOutputSigns, *dryL, *dryR;
-		
-        size_t *bufferLengths, *bufferStartIndices, *bufferEndIndices, *rwIndices;
-        float minDelay_seconds, maxDelay_seconds, sampleRate, wetGain, dryGain, inputAttenuation, straightStereoMix, crossStereoMix, hfDecayMultiplier, lfDecayMultiplier, highShelfFC, lowShelfFC, rt60, slowDecayRT60, highpassFC, lowpassFC;
+		simd_float4 feedbackBuffers[BMREVERB_NUMDELAYUNITS];
+		simd_float4 decayGainAttenuation [BMREVERB_NUMDELAYUNITS];
+		simd_float4 delayOutputSigns[BMREVERB_NUMDELAYUNITS];
+        float *delayLines, *leftOutputTemp, *dryL, *dryR;
+        float delayTimes[BMREVERB_NUMDELAYS];
+        size_t bufferLengths[BMREVERB_NUMDELAYS];
+        size_t bufferStartIndices[BMREVERB_NUMDELAYS];
+        size_t bufferEndIndices[BMREVERB_NUMDELAYS];
+        size_t rwIndices[BMREVERB_NUMDELAYS];
+        float inputAttenuation, minDelay_seconds, maxDelay_seconds, sampleRate, wetGain, dryGain, straightStereoMix, crossStereoMix, hfDecayMultiplier, lfDecayMultiplier, highShelfFC, lowShelfFC, rt60, slowDecayRT60, highpassFC, lowpassFC;
         size_t delayUnits, newNumDelayUnits, numDelays, halfNumDelays, fourthNumDelays, samplesTillNextWrap, totalSamples;
         bool settingsQueuedForUpdate, preDelayUpdate;
-        BMBiquadArray4 HSFArray;
-        BMBiquadArray4 LSFArray;
+        BMFirstOrderArray4x4 HSFArray;
+		BMFirstOrderArray4x4 LSFArray;
         BMMultiLevelBiquad mainFilter;
     } BMReverb;
     
@@ -65,11 +70,11 @@ extern "C" {
     
     
     // initialisation and cleanup
-    void BMReverbInit(struct BMReverb* rv, float sampleRate);
-    void BMReverbFree(struct BMReverb* rv);
+    void BMReverbInit(struct BMReverb *This, float sampleRate);
+    void BMReverbFree(struct BMReverb *This);
     
     // main audio processing function
-    void BMReverbProcessBuffer(struct BMReverb* rv, const float* inputL, const float* inputR, float* outputL, float* outputR, size_t numSamples);
+    void BMReverbProcessBuffer(struct BMReverb *This, const float* inputL, const float* inputR, float* outputL, float* outputR, size_t numSamples);
     
     
     /*
@@ -77,13 +82,13 @@ extern "C" {
      */
     
     // wetGain in [0.0,1.0]. As wet gain increases, dry gain decreases automatically to keep a constant output volume.
-    void BMReverbSetWetGain(struct BMReverb* rv, float wetGain);
+    void BMReverbSetWetGain(struct BMReverb *This, float wetGain);
     
     
     // crossMix in [0.0,1.0]. Sets amount of mixing betwee L and R channels.
     // 1.0 meanse that L and R signals are mixed in equal amounts to
     // both channels.  This setting has no effect on the dry signal
-    void BMReverbSetCrossStereoMix(struct BMReverb* rv, float crossMix);
+    void BMReverbSetCrossStereoMix(struct BMReverb *This, float crossMix);
     
     
     // setting multiplier=n means that high frequencies decay n times faster
@@ -91,16 +96,16 @@ extern "C" {
     // gently sloped, so this setting will have some effect on the decay
     // time of frequencies below the HFDecayFC.
     // multiplier must be >= 1.0;
-    void BMReverbSetHFDecayMultiplier(struct BMReverb* rv, float multiplier);
+    void BMReverbSetHFDecayMultiplier(struct BMReverb *This, float multiplier);
     //
-    void BMReverbSetLFDecayMultiplier(struct BMReverb* rv, float multiplier);
+    void BMReverbSetLFDecayMultiplier(struct BMReverb *This, float multiplier);
     
     
     // sets the cutoff frequency of the filters that do high frequency decay
-    void BMReverbSetHFDecayFC(struct BMReverb* rv, float fc);
+    void BMReverbSetHFDecayFC(struct BMReverb *This, float fc);
     
     // sets the cutoff frequency of the filters that do low frequency decay
-    void BMReverbSetLFDecayFC(struct BMReverb* rv, float fc);
+    void BMReverbSetLFDecayFC(struct BMReverb *This, float fc);
     
     
     // RT60 measures the time it takes for the reverb to decay to -60db
@@ -111,13 +116,13 @@ extern "C" {
     // 1.3 = moderately sized auditorium
     // 2.3 = huge auditorium
     // 10  = world's longest echoing cathedral
-    void BMReverbSetRT60DecayTime(struct BMReverb* rv, float rt60);
+    void BMReverbSetRT60DecayTime(struct BMReverb *This, float rt60);
     
     
     // sets the sustain mode on=true or off=false.  This can be used to
     // simulate a sustain pedal effect by temporarily switching the reverb
     // to a long RT60 decay time.
-    void BMReverbSetSlowDecayState(struct BMReverb* rv, bool slowDecay);
+    void BMReverbSetSlowDecayState(struct BMReverb *This, bool slowDecay);
     
     
     
@@ -135,7 +140,7 @@ extern "C" {
     // denser, smoother echoes.  However, the smaller networks have a more
     // dynamic sound that changes over time so using more delayUnits does not
     // necessarily give you better sound.
-    void BMReverbSetNumDelayUnits(struct BMReverb* rv, size_t delayUnits);
+    void BMReverbSetNumDelayUnits(struct BMReverb *This, size_t delayUnits);
     
     
     
@@ -161,7 +166,7 @@ extern "C" {
     // setting a long pre-delay makes the sound muddled.
     //
     // preDelay << roomSize
-    void BMReverbSetRoomSize(struct BMReverb* rv,
+    void BMReverbSetRoomSize(struct BMReverb *This,
                              float preDelay_seconds,
                              float roomSize_seconds);
     
@@ -171,19 +176,19 @@ extern "C" {
     // sample rate you set, even if it's not correct, but setting this
     // correctly will ensure that delay times and filter frequencies are
     // calculated correctly.
-    void BMReverbSetSampleRate(struct BMReverb* rv, float sampleRate);
+    void BMReverbSetSampleRate(struct BMReverb *This, float sampleRate);
     
     
     // sets the cutoff frequency of a second order butterworth highpass
     // filter on the wet signal.  (that's 12db cutoff slope).  This does
     // not affect the dry signal at all.
-    void BMReverbSetHighPassFC(struct BMReverb* rv, float fc);
+    void BMReverbSetHighPassFC(struct BMReverb *This, float fc);
     
     
     // sets the cutoff frequency of a second order butterworth lowpass
     // filter on the wet signal.  (that's 12db cutoff slope).  This does
     // not affect the dry signal at all.
-    void BMReverbSetLowPassFC(struct BMReverb* rv, float fc);
+    void BMReverbSetLowPassFC(struct BMReverb *This, float fc);
     
 	
 	// computes the appropriate feedback gain attenuation
