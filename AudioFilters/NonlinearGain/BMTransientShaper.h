@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include "BMEnvelopeFollower.h"
+#include "Constants.h"
 
 
 typedef struct BMTransientEnveloper {
@@ -37,6 +38,11 @@ typedef struct BMTransientEnveloper {
 
 typedef struct BMTransientShaper {
     BMTransientEnveloper enveloper;
+	float attackEnv [BM_BUFFER_CHUNK_SIZE];
+	float postAttackEnv [BM_BUFFER_CHUNK_SIZE];
+	float releaseEnv [BM_BUFFER_CHUNK_SIZE];
+	float buffer1 [BM_BUFFER_CHUNK_SIZE];
+	float attackStrength, postAttackStrength, releaseStrength;
 } BMTransientShaper;
 
 
@@ -87,14 +93,14 @@ void BMTransientShaper_setReleaseStrength(BMTransientShaper *This, float strengt
 /*!
  *BMTransientShaper_setAttackTime
  */
-void BMTransientShaper_setAttackTime(BMTransientShaper *This, float timeInMS);
+void BMTransientShaper_setAttackTime(BMTransientShaper *This, float timeInSeconds);
 
 
 
 /*!
  *BMTransientShaper_setPostAttackTime
  */
-void BMTransientShaper_setPostAttackTime(BMTransientShaper *This, float timeInMS);
+void BMTransientShaper_setPostAttackTime(BMTransientShaper *This, float timeInSeconds);
 
 
 
@@ -102,7 +108,7 @@ void BMTransientShaper_setPostAttackTime(BMTransientShaper *This, float timeInMS
 /*!
  *BMTransientShaper_setReleaseTime
  */
-void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float timeInMS);
+void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float timeInSeconds);
 
 
 
