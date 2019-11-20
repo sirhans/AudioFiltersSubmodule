@@ -55,6 +55,9 @@ extern "C" {
         
         // initialize the main filter setup
         BMMultiLevelBiquad_init(&This->mainFilter, 2, sampleRate, true, true, false);
+		
+		// initialize the wet/dry mixer
+		BMWetDryMixer_init(sampleRate);
         
         // initialize default settings
         This->sampleRate = sampleRate;
@@ -113,13 +116,13 @@ extern "C" {
             for (size_t i=bufferedProcessingIndex; i < bufferedProcessingIndex+samplesMixingNext; i++)
                 BMReverbProcessWetSample(This, inputL[i], inputR[i], &outputL[i], &outputR[i]);
             
-            // mix R and L wet signals
-            // mix left and right to left temp
-            vDSP_vsmsma(outputL+bufferedProcessingIndex, 1, &This->straightStereoMix, outputR+bufferedProcessingIndex, 1, &This->crossStereoMix, This->leftOutputTemp, 1, samplesMixingNext);
-            // mix right and left to right
-            vDSP_vsmsma(outputR+bufferedProcessingIndex, 1, &This->straightStereoMix, outputL+bufferedProcessingIndex, 1, &This->crossStereoMix, outputR+bufferedProcessingIndex, 1, samplesMixingNext);
-            // copy left temp back to left output
-            memcpy(outputL+bufferedProcessingIndex, This->leftOutputTemp, sizeof(float)*samplesMixingNext);
+//            // mix R and L wet signals
+//            // mix left and right to left temp
+//            vDSP_vsmsma(outputL+bufferedProcessingIndex, 1, &This->straightStereoMix, outputR+bufferedProcessingIndex, 1, &This->crossStereoMix, This->leftOutputTemp, 1, samplesMixingNext);
+//            // mix right and left to right
+//            vDSP_vsmsma(outputR+bufferedProcessingIndex, 1, &This->straightStereoMix, outputL+bufferedProcessingIndex, 1, &This->crossStereoMix, outputR+bufferedProcessingIndex, 1, samplesMixingNext);
+//            // copy left temp back to left output
+//            memcpy(outputL+bufferedProcessingIndex, This->leftOutputTemp, sizeof(float)*samplesMixingNext);
             
             
             // mix dry and wet signals
@@ -364,7 +367,7 @@ extern "C" {
     /*!
      *BMReverbRandomsInRange
      *
-     * @abstract generate length random floats between min and max, ensuring that the average is near (max-min)/2
+     * @abstract generate length random floats between min and max, ensuring that the average is (max-min)/2
      */
     void BMReverbRandomsInRange(float min, float max, float* randomOutput, size_t length){
         float targetMean = (max-min)/2.0f;
@@ -373,26 +376,22 @@ extern "C" {
         for(i=0; i<length-1; i++){
             float tempMin = min;
             float tempMax = max;
+			
+			// how much does the mean have to shift?
+			float meanShift = targetMean - actualMean;
+			// how much will the next random number influence the mean?
+			float influence = 1.0f / ((float)i+1.0f);
+			// how much does the mean of the next number have to shift, taking into account the influence of that number?
+			meanShift /= influence;
+			
             // if the actual mean is below the target mean, increase the min boundary
             if(actualMean < targetMean){
-                // how much does the mean have to shift?
-                float meanShift = targetMean - actualMean;
-                // how much will the next random number influence the mean?
-                float influence = 1.0f / ((float)i+1.0f);
-                // how much does the mean of the next number have to shift, taking into account the influence of that number?
-                meanShift /= influence;
                 // how much does the min have to shift in order to affect the desired mean shift on the next number?
                 float minShift = meanShift * 2.0f;
                 // set the min for the next random number
                 tempMin = min + minShift;
             }
             else{
-                // how much does the mean have to shift?
-                float meanShift = targetMean - actualMean;
-                // how much will the next random number influence the mean?
-                float influence = 1.0f / ((float)i+1.0f);
-                // how much does the mean of the next number have to shift, taking into account the influence of that number?
-                meanShift /= influence;
                 // how much does the min have to shift in order to affect the desired mean shift on the next number?
                 float maxShift = meanShift * 2.0f;
                 // set the min for the next random number
@@ -655,6 +654,8 @@ extern "C" {
         
         // mix the feedback
         BMBlockCirculantMix4x4(This->feedbackBuffers, This->feedbackBuffers);
+		
+		// attenuate to keep the feedback unitary
         for(size_t i=0; i<This->fourthNumDelays; i++)
             This->feedbackBuffers[i] *= BMREVERB_MATRIX_ATTENUATION;
     }

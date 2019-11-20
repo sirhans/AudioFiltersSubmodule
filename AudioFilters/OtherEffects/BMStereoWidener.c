@@ -48,9 +48,6 @@ extern "C" {
         vDSP_vsmul(This->mid, 1, &midAdjust, This->mid, 1, numSamples);
         vDSP_vsmul(This->side, 1, &sideAdjust, This->side, 1, numSamples);
         
-        
-        
-        
         // convert back to stereo
         BMMidSideMatrixConvert(This->mid, This->side, outL, outR, numSamples);
     }
