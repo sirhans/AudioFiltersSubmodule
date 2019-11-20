@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include "BMEnvelopeFollower.h"
+#include "Constants.h"
 
 
 typedef struct BMTransientEnveloper {
@@ -37,31 +38,80 @@ typedef struct BMTransientEnveloper {
 
 typedef struct BMTransientShaper {
     BMTransientEnveloper enveloper;
+	float attackEnv [BM_BUFFER_CHUNK_SIZE];
+	float postAttackEnv [BM_BUFFER_CHUNK_SIZE];
+	float releaseEnv [BM_BUFFER_CHUNK_SIZE];
+	float buffer1 [BM_BUFFER_CHUNK_SIZE];
+	float attackStrength, postAttackStrength, releaseStrength;
 } BMTransientShaper;
 
 
 
 /*!
- * BMTransientEnveloper_processBuffer
- * @abstract used as a component of a transient shaper
+ *BMTransientShaper_init
  *
- * @param This             pointer to an initialised BMEnvelopeFollower struct
- * @param input            single channel input array
- * @param attackEnvelope   positive values indicate that we are in the attack portion. output values in range: [0,input]
- * @param afterAttackEnvelope positive values indicate that we are in the portion immediately after the attack range: [0,+?]
- * @param releaseEnvelope  positive values indicate that we are in the release portion. output values in range: [0,input]
+ * @abstract this function does not allocate heap memory
  */
-void BMTransientEnveloper_processBuffer(BMTransientEnveloper *This,
-                                        const float* input,
-                                        float* attackEnvelope,
-                                        float* afterAttackEnvelope,
-                                        float* releaseEnvelope,
-                                        size_t numSamples);
+void BMTransientShaper_init(BMTransientShaper *This, float sampleRate);
 
-void BMTransientEnveloper_setAttackOnsetTime(BMTransientEnveloper *This, float seconds);
 
-void BMTransientEnveloper_setAttackDuration(BMTransientEnveloper *This, float seconds);
+/*!
+ *BMTransientShaper_processBufferStereo
+ */
+void BMTransientShaper_processBufferStereo(BMTransientShaper *This,
+										   const float* inL, const float* inR,
+										   float* outL, float* outR,
+										   size_t numSamples);
 
-void BMTransientEnveloper_setReleaseDuration(BMEnvelopeFollower *This, float seconds);
+/*!
+ *BMTransientShaper_setAttackStrength
+ *
+ * @param This pointer to an initialised struct
+ * @param strength in -1,1
+ */
+void BMTransientShaper_setAttackStrength(BMTransientShaper *This, float strength);
+
+
+/*!
+ *BMTransientShaper_setPostAttackStrength
+ *
+ * @param This pointer to an initialised struct
+ * @param strength in -1,1
+ */
+void BMTransientShaper_setPostAttackStrength(BMTransientShaper *This, float strength);
+
+
+/*!
+ *BMTransientShaper_setReleaseStrength
+ *
+ * @param This pointer to an initialised struct
+ * @param strength in -1,1
+ */
+void BMTransientShaper_setReleaseStrength(BMTransientShaper *This, float strength);
+
+
+/*!
+ *BMTransientShaper_setAttackTime
+ */
+void BMTransientShaper_setAttackTime(BMTransientShaper *This, float timeInSeconds);
+
+
+
+/*!
+ *BMTransientShaper_setPostAttackTime
+ */
+void BMTransientShaper_setPostAttackTime(BMTransientShaper *This, float timeInSeconds);
+
+
+
+
+/*!
+ *BMTransientShaper_setReleaseTime
+ */
+void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float timeInSeconds);
+
+
+
+
 
 #endif /* BMTransientShaper_h */
