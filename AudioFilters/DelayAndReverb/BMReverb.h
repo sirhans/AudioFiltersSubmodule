@@ -14,6 +14,8 @@
 #include <stdio.h>
 #include "BMFirstOrderArray.h"
 #include "BMMultiLevelBiquad.h"
+#include "BMWetDryMixer.h"
+#include "BMStereoWidener.h"
 
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
@@ -36,7 +38,7 @@
 #define BMREVERB_RT60 1.2 // overall decay time
 #define BMREVERB_HIGHPASS_FC 30.0 // highpass filter on wet out
 #define BMREVERB_LOWPASS_FC 1200.0 // lowpass filter on wet out
-#define BMREVERB_CROSSSTEREOMIX 0.4 // mixing betwee L and R wet outputs
+#define BMREVERB_STEREOWIDTH 1.0 // mixing betwee L and R wet outputs
 #define BMREVERB_SLOWDECAYRT60 8.0 // RT60 time when hold pedal is down
 
 #ifdef __cplusplus
@@ -60,6 +62,8 @@ extern "C" {
         BMFirstOrderArray4x4 HSFArray;
 		BMFirstOrderArray4x4 LSFArray;
         BMMultiLevelBiquad mainFilter;
+		BMWetDryMixer wetDryMixer;
+		BMStereoWidener stereoWidth;
     } BMReverb;
     
     
@@ -80,15 +84,23 @@ extern "C" {
     /*
      * settings that can be safely changed during reverb operation
      */
+
+	/*!
+	 *BMReverbSetWetGain
+	 *
+	 * @param This pointer to a wet-dry mixer struct (doesn't have to be initialized)
+	 * @param wetMix 0=all dry; 1=all wet
+	 */
+    void BMReverbSetWetMix(struct BMReverb *This, float wetMix);
     
-    // wetGain in [0.0,1.0]. As wet gain increases, dry gain decreases automatically to keep a constant output volume.
-    void BMReverbSetWetGain(struct BMReverb *This, float wetGain);
     
-    
-    // crossMix in [0.0,1.0]. Sets amount of mixing betwee L and R channels.
-    // 1.0 meanse that L and R signals are mixed in equal amounts to
-    // both channels.  This setting has no effect on the dry signal
-    void BMReverbSetCrossStereoMix(struct BMReverb *This, float crossMix);
+    /*!
+	 *BMReverbSetStereoWidth
+	 *
+	 * @param This pointer to an initialised struct
+	 * @param width 0=mono, 1=fullstereo, 2=L and R channels are opposite signs and cancel out when mixed to mono.
+	 */
+    void BMReverbSetStereoWidth(struct BMReverb *This, float width);
     
     
     // setting multiplier=n means that high frequencies decay n times faster
