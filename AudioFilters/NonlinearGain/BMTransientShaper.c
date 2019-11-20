@@ -22,7 +22,6 @@
 
 
 
-
 void BMTransientEnveloper_init(BMTransientEnveloper *This, float sampleRate){
     
     /*
@@ -62,6 +61,34 @@ void BMTransientEnveloper_init(BMTransientEnveloper *This, float sampleRate){
                                   BMTRANS_DYNAMIC_SMOOTHING_MIN_FC,
                                   sampleRate);
 }
+
+
+
+
+
+/*!
+ * BMTransientEnveloper_processBuffer
+ * @abstract used as a component of a transient shaper
+ *
+ * @param This             pointer to an initialised BMEnvelopeFollower struct
+ * @param input            single channel input array
+ * @param attackEnvelope   positive values indicate that we are in the attack portion. output values in range: [0,input]
+ * @param afterAttackEnvelope positive values indicate that we are in the portion immediately after the attack range: [0,+?]
+ * @param releaseEnvelope  positive values indicate that we are in the release portion. output values in range: [0,input]
+ */
+void BMTransientEnveloper_processBuffer(BMTransientEnveloper *This,
+                                        const float* input,
+                                        float* attackEnvelope,
+                                        float* afterAttackEnvelope,
+                                        float* releaseEnvelope,
+                                        size_t numSamples);
+
+
+void BMTransientEnveloper_setAttackOnsetTime(BMTransientEnveloper *This, float seconds);
+
+void BMTransientEnveloper_setAttackDuration(BMTransientEnveloper *This, float seconds);
+
+void BMTransientEnveloper_setReleaseDuration(BMEnvelopeFollower *This, float seconds);
 
 
 
@@ -230,3 +257,80 @@ void BMTransientEnveloper_processBuffer(BMTransientEnveloper *This,
     vDSP_vsub(fastAttack, 1, slowAttack, 1, afterAttackEnvelope, 1, numSamples);
     
 }
+
+
+
+
+
+
+/*!
+ *BMTransientShaper_init
+ */
+void BMTransientShaper_init(BMTransientShaper *This, float sampleRate){
+	BMTransientEnveloper_init(&This->enveloper, sampleRate);
+}
+
+
+/*!
+ *BMTransientShaper_free
+ */
+void BMTransientShaper_free(BMTransientShaper *This){
+	BMTransientEnveloper_free(&This->enveloper);
+}
+
+
+/*!
+ *BMTransientShaper_processBufferStereo
+ */
+void BMTransientShaper_processBufferStereo(BMTransientShaper *This,
+										   const float* inL, const float* inR,
+										   float* outL, float* outR,
+										   size_t numSamples);
+
+/*!
+ *BMTransientShaper_setAttackStrength
+ *
+ * @param This pointer to an initialised struct
+ * @param strength in -1,1
+ */
+void BMTransientShaper_setAttackStrength(BMTransientShaper *This, float strength);
+
+
+/*!
+ *BMTransientShaper_setPostAttackStrength
+ *
+ * @param This pointer to an initialised struct
+ * @param strength in -1,1
+ */
+void BMTransientShaper_setPostAttackStrength(BMTransientShaper *This, float strength);
+
+
+/*!
+ *BMTransientShaper_setReleaseStrength
+ *
+ * @param This pointer to an initialised struct
+ * @param strength in -1,1
+ */
+void BMTransientShaper_setReleaseStrength(BMTransientShaper *This, float strength);
+
+
+/*!
+ *BMTransientShaper_setAttackTime
+ */
+void BMTransientShaper_setAttackTime(BMTransientShaper *This, float timeInMS);
+
+
+
+/*!
+ *BMTransientShaper_setPostAttackTime
+ */
+void BMTransientShaper_setPostAttackTime(BMTransientShaper *This, float timeInMS);
+
+
+
+
+/*!
+ *BMTransientShaper_setReleaseTime
+ */
+void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float timeInMS);
+

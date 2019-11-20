@@ -43,13 +43,11 @@ typedef struct BMTransientShaper {
 
 /*!
  *BMTransientShaper_init
+ *
+ * @abstract this function does not allocate heap memory
  */
 void BMTransientShaper_init(BMTransientShaper *This, float sampleRate);
 
-/*!
- *BMTransientShaper_free
- */
-void BMTransientShaper_free(BMTransientShaper *This);
 
 /*!
  *BMTransientShaper_processBufferStereo
@@ -109,27 +107,5 @@ void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float timeInMS);
 
 
 
-/*!
- * BMTransientEnveloper_processBuffer
- * @abstract used as a component of a transient shaper
- *
- * @param This             pointer to an initialised BMEnvelopeFollower struct
- * @param input            single channel input array
- * @param attackEnvelope   positive values indicate that we are in the attack portion. output values in range: [0,input]
- * @param afterAttackEnvelope positive values indicate that we are in the portion immediately after the attack range: [0,+?]
- * @param releaseEnvelope  positive values indicate that we are in the release portion. output values in range: [0,input]
- */
-void BMTransientEnveloper_processBuffer(BMTransientEnveloper *This,
-                                        const float* input,
-                                        float* attackEnvelope,
-                                        float* afterAttackEnvelope,
-                                        float* releaseEnvelope,
-                                        size_t numSamples);
-
-void BMTransientEnveloper_setAttackOnsetTime(BMTransientEnveloper *This, float seconds);
-
-void BMTransientEnveloper_setAttackDuration(BMTransientEnveloper *This, float seconds);
-
-void BMTransientEnveloper_setReleaseDuration(BMEnvelopeFollower *This, float seconds);
 
 #endif /* BMTransientShaper_h */
