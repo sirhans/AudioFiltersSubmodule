@@ -42,6 +42,74 @@ typedef struct BMTransientShaper {
 
 
 /*!
+ *BMTransientShaper_init
+ */
+void BMTransientShaper_init(BMTransientShaper *This, float sampleRate);
+
+/*!
+ *BMTransientShaper_free
+ */
+void BMTransientShaper_free(BMTransientShaper *This);
+
+/*!
+ *BMTransientShaper_processBufferStereo
+ */
+void BMTransientShaper_processBufferStereo(BMTransientShaper *This,
+										   const float* inL, const float* inR,
+										   float* outL, float* outR,
+										   size_t numSamples);
+
+/*!
+ *BMTransientShaper_setAttackStrength
+ *
+ * @param This pointer to an initialised struct
+ * @param strength in -1,1
+ */
+void BMTransientShaper_setAttackStrength(BMTransientShaper *This, float strength);
+
+
+/*!
+ *BMTransientShaper_setPostAttackStrength
+ *
+ * @param This pointer to an initialised struct
+ * @param strength in -1,1
+ */
+void BMTransientShaper_setPostAttackStrength(BMTransientShaper *This, float strength);
+
+
+/*!
+ *BMTransientShaper_setReleaseStrength
+ *
+ * @param This pointer to an initialised struct
+ * @param strength in -1,1
+ */
+void BMTransientShaper_setReleaseStrength(BMTransientShaper *This, float strength);
+
+
+/*!
+ *BMTransientShaper_setAttackTime
+ */
+void BMTransientShaper_setAttackTime(BMTransientShaper *This, float timeInMS);
+
+
+
+/*!
+ *BMTransientShaper_setPostAttackTime
+ */
+void BMTransientShaper_setPostAttackTime(BMTransientShaper *This, float timeInMS);
+
+
+
+
+/*!
+ *BMTransientShaper_setReleaseTime
+ */
+void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float timeInMS);
+
+
+
+
+/*!
  * BMTransientEnveloper_processBuffer
  * @abstract used as a component of a transient shaper
  *
