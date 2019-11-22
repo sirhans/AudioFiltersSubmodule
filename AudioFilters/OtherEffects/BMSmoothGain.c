@@ -284,6 +284,7 @@ extern "C" {
         // convert dB scale to linear scale gain
         float gain = BM_DB_TO_GAIN(gainDb);
         
+		// turn off the gain completely if the input is FLT_MIN
         if(gainDb == FLT_MIN) gain = 0.0f;
         
         // if this is a legitimate gain change, set the new target and switch to
@@ -293,6 +294,30 @@ extern "C" {
             This->inTransition = true;
         }
     }
+	
+	
+	
+	
+	/*!
+	 * BMSmoothGain_setGainDbInstant
+	 *
+	 * @abstract This sets the gain immediately without smoothing the transition
+	 *
+	 * @param This        pointer to an initialized BMSmoothGain struct
+	 * @param gainDb      new target gain in decibels to be approached smoothly
+	 */
+	void BMSmoothGain_setGainDbInstant(BMSmoothGain *This, float gainDb){
+		// convert dB scale to linear scale gain
+        float gain = BM_DB_TO_GAIN(gainDb);
+        
+		// turn off the gain completely if the input is FLT_MIN
+        if(gainDb == FLT_MIN) gain = 0.0f;
+		
+        // if this is a legitimate gain change, set the gain immediately and exit the transition state
+		This->gain = gain;
+		This->nextGainTarget = gain;
+		This->inTransition = false;
+	}
     
     
     
