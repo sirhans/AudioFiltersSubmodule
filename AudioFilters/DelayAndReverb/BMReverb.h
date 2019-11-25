@@ -51,7 +51,7 @@ extern "C" {
 		simd_float4 decayGainAttenuation [BMREVERB_NUMDELAYUNITS];
 		simd_float4 delayOutputSigns[BMREVERB_NUMDELAYUNITS];
         float *delayLines, *leftOutputTemp, *dryL, *dryR;
-        float delayTimes[BMREVERB_NUMDELAYS];
+        //float delayTimes[BMREVERB_NUMDELAYS];
         size_t bufferLengths[BMREVERB_NUMDELAYS];
         size_t bufferStartIndices[BMREVERB_NUMDELAYS];
         size_t bufferEndIndices[BMREVERB_NUMDELAYS];
