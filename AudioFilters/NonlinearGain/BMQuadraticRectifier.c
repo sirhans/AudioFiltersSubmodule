@@ -12,15 +12,14 @@
 
 void BMQuadraticRectifier_init(BMQuadraticRectifier *This, float kneeWidth){
     BMQuadraticThreshold_initLower(&This->qtPos, 0, kneeWidth);
-//    BMQuadraticThreshold_initUpper(&This->qtNeg, 0, kneeWidth);
 }
 
 
 
 void BMQuadraticRectifier_processBufferVDSP(BMQuadraticRectifier *This,
-                                        const float* input,
-                                        float* outputPos, float* outputNeg,
-                                        size_t numSamples){
+											const float* input,
+											float* outputPos, float* outputNeg,
+											size_t numSamples){
     // clip the input to the curved region for the upper and lower thresholds
     //
     // both pos and neg sides clip at the same boundaries so we can

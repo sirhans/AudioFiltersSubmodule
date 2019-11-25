@@ -38,9 +38,9 @@ void BMQuadraticRectifier_init(BMQuadraticRectifier *This, float kneeWidth);
  *BMQuadraticRectifier_processBuffer
  */
 void BMQuadraticRectifier_processBufferVDSP(BMQuadraticRectifier *This,
-                                        const float* input,
-                                        float* outputPos, float* outputNeg,
-                                        size_t numSamples);
+											const float* input,
+											float* outputPos, float* outputNeg,
+											size_t numSamples);
 
 
 /*!
