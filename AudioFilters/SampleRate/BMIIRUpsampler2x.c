@@ -50,8 +50,8 @@ size_t BMIIRUpsampler2x_init (BMIIRUpsampler2x *This,
     
     // set up the filters
     float sampleRate = 48000.0f; // the filters will ignore this, but we have to set it to some dummy value.
-    BMMultiLevelBiquad_init(&This->even, This->numBiquadStages, sampleRate, stereo, false, false);
-    BMMultiLevelBiquad_init(&This->odd, This->numBiquadStages, sampleRate, stereo, false, false);
+    BMMultiLevelBiquad_init(&This->even, This->numBiquadStages, sampleRate, stereo, true, false);
+    BMMultiLevelBiquad_init(&This->odd, This->numBiquadStages, sampleRate, stereo, true, false);
     BMIIRUpsampler2x_setCoefs(This, coefficientArray);
     
     
