@@ -22,7 +22,8 @@ void BMHysteresisLimiter_processMonoRectifiedSimple(BMHysteresisLimiter *This,
                                       const float *inputPos, const float *inputNeg,
                                       float* outputPos, float* outputNeg,
                                       size_t numSamples){
-	assert(This->AAFilter.numChannels == 2);
+	assert(This->AAFilter.numChannels == 2 &&
+		   numSamples % 2 == 0);
 	
 	// create two alias pointers for code readability
 	float* limitedPos = outputPos;
@@ -42,6 +43,12 @@ void BMHysteresisLimiter_processMonoRectifiedSimple(BMHysteresisLimiter *This,
 										   numSamples);
 	
     for(size_t i=0; i<numSamples; i++){
+		// we alternate the order in which the positive and negative signals
+		// consume charge in order to avoid biasing the signal by always consuming
+		// from one side before the other
+		
+		// Positive, then negative
+		
 		// positive output
 		float oPos = limitedPos[i] * This->c;
 		// update charge
@@ -53,9 +60,30 @@ void BMHysteresisLimiter_processMonoRectifiedSimple(BMHysteresisLimiter *This,
 		This->c += oNeg * This->s;
 		This->c += This->halfSR*(1.0f - This->c);
 		// output
-        outputPos[i] = oPos*This->oneOverR;
-        outputNeg[i] = oNeg*This->oneOverR;
+        outputPos[i] = oPos;
+        outputNeg[i] = oNeg;
+		
+		
+		// Negative, then positive
+		i++;
+		// negative output
+        oNeg = limitedNeg[i] * This->c;
+        // update charge
+		This->c += oNeg * This->s;
+		This->c += This->halfSR*(1.0f - This->c);
+		// positive output
+		oPos = limitedPos[i] * This->c;
+		// update charge
+		This->c -= oPos * This->s;
+		This->c += This->halfSR*(1.0f - This->c);
+		// output
+        outputPos[i] = oPos;
+        outputNeg[i] = oNeg;
     }
+	
+	// scale to compensate for gain loss
+	vDSP_vsmul(outputPos,1,&This->oneOverR,outputPos,1,numSamples);
+	vDSP_vsmul(outputNeg,1,&This->oneOverR,outputNeg,1,numSamples);
 }
 
 
@@ -70,7 +98,8 @@ void BMHysteresisLimiter_processStereoRectifiedSimple(BMHysteresisLimiter *This,
 													  float *outputPosL, float *outputPosR,
 													  float *outputNegL, float *outputNegR,
 													  size_t numSamples){
-	assert(This->AAFilter.numChannels == 4);
+	assert(This->AAFilter.numChannels == 4 &&
+		   numSamples % 2 == 0);
 	
 	// create some alias pointers for code readability
 	float* limitedPosL = outputPosL;
@@ -106,6 +135,12 @@ void BMHysteresisLimiter_processStereoRectifiedSimple(BMHysteresisLimiter *This,
 	
 	
     for(size_t i=0; i<numSamples; i++){
+		// we alternate the order in which the positive and negative signals
+		// consume charge in order to avoid biasing the signal by always consuming
+		// from one side before the other
+		
+		// Positive, then negative
+		//
 		// positive output
 		simd_float2 iPos = simd_make_float2(limitedPosL[i], limitedPosR[i]);
 		simd_float2 oPos = iPos * This->cs;
@@ -118,15 +153,39 @@ void BMHysteresisLimiter_processStereoRectifiedSimple(BMHysteresisLimiter *This,
         // update charge
 		This->cs += This->s * oNeg;
 		This->cs += This->halfSR * (1.0f - This->cs);
-		// scale to compensate for gain loss
-		oPos *= This->oneOverR;
-		oNeg *= This->oneOverR;
+		// output
+        outputPosL[i] = oPos.x;
+		outputPosR[i] = oPos.y;
+        outputNegL[i] = oNeg.x;
+		outputNegR[i] = oNeg.y;
+		
+		
+		// negative, then positive
+		i++;
+		// negative output
+		iNeg = simd_make_float2(limitedNegL[i], limitedNegR[i]);
+		oNeg = iNeg * This->cs;
+        // update charge
+		This->cs += This->s * oNeg;
+		This->cs += This->halfSR * (1.0f - This->cs);
+		// positive output
+		iPos = simd_make_float2(limitedPosL[i], limitedPosR[i]);
+		oPos = iPos * This->cs;
+		// update charge
+		This->cs -= This->s * oPos;
+		This->cs += This->halfSR * (1.0f - This->cs);
 		// output
         outputPosL[i] = oPos.x;
 		outputPosR[i] = oPos.y;
         outputNegL[i] = oNeg.x;
 		outputNegR[i] = oNeg.y;
     }
+	
+	// scale to compensate for gain loss
+	vDSP_vsmul(outputPosL,1,&This->oneOverR,outputPosL,1,numSamples);
+	vDSP_vsmul(outputPosR,1,&This->oneOverR,outputPosR,1,numSamples);
+	vDSP_vsmul(outputNegL,1,&This->oneOverR,outputNegL,1,numSamples);
+	vDSP_vsmul(outputNegR,1,&This->oneOverR,outputNegR,1,numSamples);
 }
 
 
@@ -183,6 +242,15 @@ void BMHysteresisLimiter_setPowerLimit(BMHysteresisLimiter *This, float limitDb)
 }
 
 
+
+
+void BMHysteresisLimiter_setAAFilterFC(BMHysteresisLimiter *This, float fc){
+	BMMultiLevelBiquad_setLowPass6db(&This->AAFilter, fc, 0);
+}
+
+
+
+
 void BMHysteresisLimiter_init(BMHysteresisLimiter *This, float sampleRate, size_t numChannels){
 	assert(numChannels == 1 || numChannels == 2 || numChannels == 4);
 	
@@ -193,10 +261,7 @@ void BMHysteresisLimiter_init(BMHysteresisLimiter *This, float sampleRate, size_
 		BMMultiLevelBiquad_init(&This->AAFilter, 1, sampleRate, true, false, false);
 	if(numChannels == 4)
 		BMMultiLevelBiquad_init4(&This->AAFilter, 1, sampleRate, false);
-	BMMultiLevelBiquad_setLegendreLP(&This->AAFilter,
-									 BM_HYSTERESISLIMITER_AA_FILTER_FC,
-									 0,
-									 1);
+	BMHysteresisLimiter_setAAFilterFC(This,BM_HYSTERESISLIMITER_AA_FILTER_FC);
 
     This->sampleRate = sampleRate;
 	BMHysteresisLimiter_setPowerLimit(This, BM_HYSTERESISLIMITER_DEFAULT_POWER_LIMIT);
