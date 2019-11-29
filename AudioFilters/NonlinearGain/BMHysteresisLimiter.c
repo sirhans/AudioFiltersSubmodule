@@ -18,7 +18,7 @@
 
 
 
-void BMHysteresisLimiter_processMonoRectifiedSimple(BMHysteresisLimiter *This,
+void BMHysteresisLimiter_processMonoRectified(BMHysteresisLimiter *This,
                                       const float *inputPos, const float *inputNeg,
                                       float* outputPos, float* outputNeg,
                                       size_t numSamples){
@@ -49,16 +49,28 @@ void BMHysteresisLimiter_processMonoRectifiedSimple(BMHysteresisLimiter *This,
 		
 		// Positive, then negative
 		
+//		// positive output
+//		float oPos = limitedPos[i] * This->c;
+//		// update charge
+//		This->c -= oPos * This->s;
+//		This->c += This->halfSR*(1.0f - This->c);
+//		// negative output
+//        float oNeg = limitedNeg[i] * This->c;
+//        // update charge
+//		This->c += oNeg * This->s;
+//		This->c += This->halfSR*(1.0f - This->c);
 		// positive output
-		float oPos = limitedPos[i] * This->c;
+		float charge = This->halfSR * (1.0f - This->c);
+		float oPos = limitedPos[i] * (This->c + charge);
 		// update charge
 		This->c -= oPos * This->s;
-		This->c += This->halfSR*(1.0f - This->c);
+		This->c += charge;
 		// negative output
-        float oNeg = limitedNeg[i] * This->c;
+		charge = This->halfSR * (1.0f - This->c);
+        float oNeg = limitedNeg[i] * (This->c + charge);
         // update charge
 		This->c += oNeg * This->s;
-		This->c += This->halfSR*(1.0f - This->c);
+		This->c += charge;
 		// output
         outputPos[i] = oPos;
         outputNeg[i] = oNeg;
@@ -66,16 +78,28 @@ void BMHysteresisLimiter_processMonoRectifiedSimple(BMHysteresisLimiter *This,
 		
 		// Negative, then positive
 		i++;
+//		// negative output
+//        oNeg = limitedNeg[i] * This->c;
+//        // update charge
+//		This->c += oNeg * This->s;
+//		This->c += This->halfSR*(1.0f - This->c);
+//		// positive output
+//		oPos = limitedPos[i] * This->c;
+//		// update charge
+//		This->c -= oPos * This->s;
+//		This->c += This->halfSR*(1.0f - This->c);
 		// negative output
-        oNeg = limitedNeg[i] * This->c;
+		charge = This->halfSR * (1.0f - This->c);
+        oNeg = limitedNeg[i] * (This->c + charge);
         // update charge
 		This->c += oNeg * This->s;
-		This->c += This->halfSR*(1.0f - This->c);
+		This->c += charge;
 		// positive output
-		oPos = limitedPos[i] * This->c;
+		charge = This->halfSR * (1.0f - This->c);
+		oPos = limitedPos[i] * (This->c + charge);
 		// update charge
 		This->c -= oPos * This->s;
-		This->c += This->halfSR*(1.0f - This->c);
+		This->c += charge;
 		// output
         outputPos[i] = oPos;
         outputNeg[i] = oNeg;
@@ -90,7 +114,7 @@ void BMHysteresisLimiter_processMonoRectifiedSimple(BMHysteresisLimiter *This,
 
 
 
-void BMHysteresisLimiter_processStereoRectifiedSimple(BMHysteresisLimiter *This,
+void BMHysteresisLimiter_processStereoRectified(BMHysteresisLimiter *This,
 													  const float *inputPosL,
 													  const float *inputPosR,
 													  const float *inputNegL,
@@ -142,17 +166,19 @@ void BMHysteresisLimiter_processStereoRectifiedSimple(BMHysteresisLimiter *This,
 		// Positive, then negative
 		//
 		// positive output
+		simd_float2 charge = This->halfSR * (1.0f - This->cs);
 		simd_float2 iPos = simd_make_float2(limitedPosL[i], limitedPosR[i]);
-		simd_float2 oPos = iPos * This->cs;
+		simd_float2 oPos = iPos * (This->cs + charge);
 		// update charge
 		This->cs -= This->s * oPos;
-		This->cs += This->halfSR * (1.0f - This->cs);
+		This->cs += charge;
 		// negative output
+		charge = This->halfSR * (1.0f - This->cs);
 		simd_float2 iNeg = simd_make_float2(limitedNegL[i], limitedNegR[i]);
-		simd_float2 oNeg = iNeg * This->cs;
+		simd_float2 oNeg = iNeg * (This->cs + charge);
         // update charge
 		This->cs += This->s * oNeg;
-		This->cs += This->halfSR * (1.0f - This->cs);
+		This->cs += charge;
 		// output
         outputPosL[i] = oPos.x;
 		outputPosR[i] = oPos.y;
@@ -163,17 +189,19 @@ void BMHysteresisLimiter_processStereoRectifiedSimple(BMHysteresisLimiter *This,
 		// negative, then positive
 		i++;
 		// negative output
+		charge = This->halfSR * (1.0f - This->cs);
 		iNeg = simd_make_float2(limitedNegL[i], limitedNegR[i]);
-		oNeg = iNeg * This->cs;
+		oNeg = iNeg * (This->cs + charge);
         // update charge
 		This->cs += This->s * oNeg;
-		This->cs += This->halfSR * (1.0f - This->cs);
+		This->cs += charge;
 		// positive output
+		charge = This->halfSR * (1.0f - This->cs);
 		iPos = simd_make_float2(limitedPosL[i], limitedPosR[i]);
-		oPos = iPos * This->cs;
+		oPos = iPos * (This->cs + charge);
 		// update charge
 		This->cs -= This->s * oPos;
-		This->cs += This->halfSR * (1.0f - This->cs);
+		This->cs += charge;
 		// output
         outputPosL[i] = oPos.x;
 		outputPosR[i] = oPos.y;
@@ -245,7 +273,10 @@ void BMHysteresisLimiter_setPowerLimit(BMHysteresisLimiter *This, float limitDb)
 
 
 void BMHysteresisLimiter_setAAFilterFC(BMHysteresisLimiter *This, float fc){
-	BMMultiLevelBiquad_setLowPass6db(&This->AAFilter, fc, 0);
+	for(size_t i=0; i<This->AAFilter.numLevels; i++){
+//		BMMultiLevelBiquad_setLinkwitzRileyLP(&This->AAFilter, fc, i);
+		BMMultiLevelBiquad_setLowPass6db(&This->AAFilter, fc, 0);
+	}
 }
 
 
@@ -255,12 +286,13 @@ void BMHysteresisLimiter_init(BMHysteresisLimiter *This, float sampleRate, size_
 	assert(numChannels == 1 || numChannels == 2 || numChannels == 4);
 	
 	// init the AA filter
+	size_t numLevels = 1;
 	if(numChannels == 1)
-		BMMultiLevelBiquad_init(&This->AAFilter, 1, sampleRate, false, false, false);
+		BMMultiLevelBiquad_init(&This->AAFilter, numLevels, sampleRate, false, false, false);
 	if(numChannels == 2)
-		BMMultiLevelBiquad_init(&This->AAFilter, 1, sampleRate, true, false, false);
+		BMMultiLevelBiquad_init(&This->AAFilter, numLevels, sampleRate, true, false, false);
 	if(numChannels == 4)
-		BMMultiLevelBiquad_init4(&This->AAFilter, 1, sampleRate, false);
+		BMMultiLevelBiquad_init4(&This->AAFilter, numLevels, sampleRate, false);
 	BMHysteresisLimiter_setAAFilterFC(This,BM_HYSTERESISLIMITER_AA_FILTER_FC);
 
     This->sampleRate = sampleRate;
