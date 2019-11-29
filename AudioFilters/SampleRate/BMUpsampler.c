@@ -59,7 +59,7 @@ extern "C" {
 			antiRingingFilterFc = 24000.0*(1.0 - BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_BW_96KHZ_INPUT);
 			numLevels = BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_NUMLEVELS_96KHZ_INPUT;
 		}
-        BMMultiLevelBiquad_init(&This->secondStageAAFilter, numLevels, 96000.0, true, false, false);
+        BMMultiLevelBiquad_init(&This->secondStageAAFilter, numLevels, 96000.0, stereo, true, false);
         BMMultiLevelBiquad_setLegendreLP(&This->secondStageAAFilter, antiRingingFilterFc, 0, numLevels);
     }
     
@@ -86,10 +86,14 @@ extern "C" {
             bool outputToBuffer = This->numStages % 2 == 0;
             
             // process stage 0
-            if(outputToBuffer)
+			if(outputToBuffer){
                 BMIIRUpsampler2x_processBufferMono(&This->upsamplers2x[0], input, This->bufferL, inputSize);
-            else
+				BMMultiLevelBiquad_processBufferMono(&This->secondStageAAFilter, This->bufferL, This->bufferL, inputSize*2);
+			}
+			else {
                 BMIIRUpsampler2x_processBufferMono(&This->upsamplers2x[0], input, output, inputSize);
+				BMMultiLevelBiquad_processBufferMono(&This->secondStageAAFilter, output, output, inputSize*2);
+			}
             outputToBuffer = !outputToBuffer;
             
             // process other stages if they are available
