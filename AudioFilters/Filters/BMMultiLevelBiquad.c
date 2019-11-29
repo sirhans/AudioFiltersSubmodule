@@ -144,7 +144,7 @@ void BMMultiLevelBiquad_processBufferMono(BMMultiLevelBiquad *This, const float*
         vDSP_biquad(This->singleChannelFilterSetup, This->monoDelays, input, 1, output, 1, numSamples);
     }
     
-    BMSmoothGain_processBufferMono(&This->gain, input, output, numSamples);
+    BMSmoothGain_processBufferMono(&This->gain, output, output, numSamples);
 }
 
 
@@ -218,7 +218,7 @@ void BMMultiLevelBiquad_init(BMMultiLevelBiquad *This,
     
     // Allocate 2*numLevels + 2 floats for mono delay memory
     if(!This->useBiquadm)
-        This->monoDelays = malloc( sizeof(float)* (2*numLevels + 2) );
+        This->monoDelays = calloc((2*numLevels + 2),sizeof(float));
     
     
     // start with all levels on bypass
@@ -310,8 +310,9 @@ inline void BMMultiLevelBiquad_updateNow(BMMultiLevelBiquad *This){
             // update the coefficients
             vDSP_biquadm_SetCoefficientsSingle(This->multiChannelFilterSetup, This->coefficients_f, 0, 0, This->numLevels, This->numChannels);
         }
-        // not using realtime updates
-    } else {
+    }
+	// not using realtime updates
+	else {
         BMMultiLevelBiquad_recreate(This);
     }
     
