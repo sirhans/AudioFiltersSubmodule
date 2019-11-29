@@ -8,6 +8,12 @@
 
 #include "BMQuadraticRectifier.h"
 #include <simd/simd.h>
+#include "Constants.h"
+
+
+void BMQuadraticRectifier_processSample(BMQuadraticRectifier *This,
+										float input,
+										float* outputPos, float* outputNeg);
 
 
 void BMQuadraticRectifier_init(BMQuadraticRectifier *This, float kneeWidth){
@@ -16,7 +22,7 @@ void BMQuadraticRectifier_init(BMQuadraticRectifier *This, float kneeWidth){
 
 
 
-void BMQuadraticRectifier_processBufferVDSP(BMQuadraticRectifier *This,
+void BMQuadraticRectifier_processBufferMonoVDSP(BMQuadraticRectifier *This,
 											const float* input,
 											float* outputPos, float* outputNeg,
 											size_t numSamples){
@@ -49,13 +55,125 @@ void BMQuadraticRectifier_processBufferVDSP(BMQuadraticRectifier *This,
 
 
 
+inline void BMQuadraticRectifier_processSample(BMQuadraticRectifier *This,
+											   float input,
+											   float* outputPos, float* outputNeg){
+	
+	// clamp the input to the curved region for the upper and lower thresholds
+	//
+	// for the rectifier, both sides clamp at the same boundaries so we can
+	// get away with a single clamp function
+	simd_float1 inClamped = simd_clamp(input, This->qtPos.lMinusW, This->qtPos.lPlusW);
+	
+	// evaluate the second order polynomials for the curves
+	simd_float1 inPos = inClamped * (inClamped  *This->qtPos.coefficients[0] + This->qtPos.coefficients[1]) + This->qtPos.coefficients[2];
+	// we are lucky that this next line happens to work
+	simd_float1 inNeg = inClamped - inPos;
+	
+	// for the upper threshold,
+	// where the input is less than the polynomial output, return the input
+	// ** *This works because the input was clamped before curving ***
+	*outputNeg = simd_min(input, inNeg);
+	
+	// for the lower threshold,
+	// where the input is greater than the polynomical output, return the input
+	// ** *This works because the input was clamped before curving ***
+	*outputPos = simd_max(input, inPos);
+}
+
+
+
+
+void BMQuadraticRectifier_processBufferMonoSIMDAligned(BMQuadraticRectifier *This,
+													   const simd_float4 *input,
+													   simd_float4 *outputPos, simd_float4 *outputNeg,
+													   size_t numSamples){
+	numSamples /= 4;
+	while(numSamples>0){
+		
+        // clamp the input to the curved region for the upper and lower thresholds
+        //
+        // for the rectifier, both sides clamp at the same boundaries so we can
+        // get away with a single clamp function
+        simd_float4 inClamped = simd_clamp(*input, This->qtPos.lMinusW, This->qtPos.lPlusW);
+
+        // evaluate the second order polynomials for the curves
+        simd_float4 inPos = inClamped * (inClamped  *This->qtPos.coefficients[0] + This->qtPos.coefficients[1]) + This->qtPos.coefficients[2];
+        // we are lucky that this next line happens to work
+        simd_float4 inNeg = inClamped - inPos;
+
+        // for the upper threshold,
+        // where the input is less than the polynomial output, return the input
+        // ** *This works because the input was clamped before curving ***
+        *outputNeg = simd_min(*input, inNeg);
+
+        // for the lower threshold,
+        // where the input is greater than the polynomical output, return the input
+        // ** *This works because the input was clamped before curving ***
+        *outputPos = simd_max(*input, inPos);
+		
+		input++;
+		outputPos++;
+		outputNeg++;
+		numSamples--;
+    }
+}
+
+
+
+
+
+
+void BMQuadraticRectifier_processBufferMonoSIMD(BMQuadraticRectifier *This,
+                                                  const float* input,
+                                                  float* outputPos, float* outputNeg,
+                                                  size_t numSamples){
+	// get to the aligned part of the input
+	size_t i=0;
+	while(!is_aligned(input+i,sizeof(simd_float4))){
+		BMQuadraticRectifier_processSample(This,*(input+i),outputPos+i,outputNeg+i);
+		i++;
+	}
+	
+	// advance pointers
+	numSamples -= i;
+	input += i;
+	outputPos += i;
+	outputNeg += i;
+	
+	// now the input is aligned. If the outputs are also aligned, go ahead with the simd method
+	if(is_aligned(outputPos,sizeof(simd_float4)) && is_aligned(outputNeg,sizeof(simd_float4))){
+		// SIMD process aligned
+		BMQuadraticRectifier_processBufferMonoSIMDAligned(This, (const simd_float4*)input, (simd_float4*)outputPos, (simd_float4*)outputNeg, numSamples);
+		
+		// advance pointers
+		size_t samplesLeft = numSamples % 4;
+		size_t samplesProcessedSimd = numSamples - samplesLeft;
+		input += samplesProcessedSimd;
+		outputPos += samplesProcessedSimd;
+		outputNeg += samplesProcessedSimd;
+		
+		// clean up remaining samples
+		for(size_t i=0; i<samplesLeft; i++)
+			BMQuadraticRectifier_processSample(This,*input,outputPos+i,outputNeg+i);
+	}
+	
+	// the input is not aligned; Use the VDSP method instead
+	else {
+		printf("not aligned\n");
+		BMQuadraticRectifier_processBufferMonoVDSP(This, input, outputPos, outputNeg, numSamples);
+	}
+}
+
+
+
+
 
 void BMQuadraticRectifier_processBufferStereoSIMD(BMQuadraticRectifier *This,
                                                   const float* inputL, const float* inputR,
                                                   float* outputPosL, float* outputNegL,
                                                   float* outputPosR, float* outputNegR,
                                                   size_t numSamples){
-
     for(size_t i=0; i<numSamples; i++){
         simd_float2 in = {inputL[i],inputR[i]};
 
@@ -85,6 +203,9 @@ void BMQuadraticRectifier_processBufferStereoSIMD(BMQuadraticRectifier *This,
         outputPosR[i] = outputPos.y;
     }
 }
+
+
+
 
 
 /*!
