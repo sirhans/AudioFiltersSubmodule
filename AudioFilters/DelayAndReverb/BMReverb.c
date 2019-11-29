@@ -18,6 +18,7 @@
 #include "Constants.h"
 #include <simd/simd.h>
 #include "BMFastHadamard.h"
+#include <mactypes.h>
 
 
 #ifdef __cplusplus
@@ -378,7 +379,7 @@ extern "C" {
 	 * @returns a random number in [min,max]
 	 */
     size_t BMReverbRandomInRangeUI(size_t min, size_t max){
-        size_t output = min + (size_t)arc4random_uniform(1+(uint32)max-(uint32)min);
+        size_t output = min + (size_t)arc4random_uniform(1+(UInt32)max-(UInt32)min);
 		assert(output >= min && output <=max);
 		return output;
     }
