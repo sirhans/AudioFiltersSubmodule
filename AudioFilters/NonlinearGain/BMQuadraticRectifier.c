@@ -20,30 +20,31 @@ void BMQuadraticRectifier_processBufferVDSP(BMQuadraticRectifier *This,
 											const float* input,
 											float* outputPos, float* outputNeg,
 											size_t numSamples){
-    // clip the input to the curved region for the upper and lower thresholds
+    // clamp the input to the curved region for the upper and lower thresholds
     //
-    // both pos and neg sides clip at the same boundaries so we can
+    // for the rectifier, both sides clamp at the same boundaries so we can
     // get away with a single clamp function
     float *clipped = outputNeg;
     vDSP_vclip(input, 1, &This->qtPos.lMinusW, &This->qtPos.lPlusW, clipped, 1, numSamples);
-        
+    
     // evaluate the second order polynomials for the curves
     float *curvedPos = outputPos;
     vDSP_vsmsa(clipped, 1, &This->qtPos.coefficients[0], &This->qtPos.coefficients[1], curvedPos, 1, numSamples);
-        
+    vDSP_vmsa(clipped, 1, curvedPos, 1, &This->qtPos.coefficients[2], curvedPos, 1, numSamples);
+    
     // we are lucky that this next line happens to work
-    float *curvedNeg = outputNeg;
+    float* curvedNeg = outputNeg;
     vDSP_vsub(curvedPos, 1, clipped, 1, curvedNeg, 1, numSamples);
-        
+
     // for the upper threshold,
     // where the input is less than the polynomial output, return the input
-    // ** *This works because the input was clamped before curving ***
-    vDSP_vmin(input, 1, curvedNeg, 1, outputNeg, 1, numSamples);
-    
+    // *** This works because the input was clipped before curving ***
+    vDSP_vmin(input,1,curvedNeg,1,outputNeg,1,numSamples);
+
     // for the lower threshold,
     // where the input is greater than the polynomical output, return the input
-    // ** *This works because the input was clamped before curving ***
-    vDSP_vmax(input, 1, curvedPos, 1, outputPos, 1, numSamples);
+    // *** This works because the input was clipped before curving ***
+    vDSP_vmax(input,1,curvedPos,1,outputPos,1,numSamples);
 }
 
 
