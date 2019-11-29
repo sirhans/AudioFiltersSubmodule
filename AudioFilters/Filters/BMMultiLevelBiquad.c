@@ -381,7 +381,7 @@ inline void BMMultiLevelBiquad_updateLevels(BMMultiLevelBiquad *This){
 	assert(This->useBiquadm);
 	
     if(This->needUpdateActiveLevels){
-        printf("disable un-active level\n");
+        printf("disabling inactive filter levels\n");
         This->needUpdateActiveLevels = false;
 		vDSP_biquadm_SetActiveFilters(This->multiChannelFilterSetup, This->activeLevels);
     }

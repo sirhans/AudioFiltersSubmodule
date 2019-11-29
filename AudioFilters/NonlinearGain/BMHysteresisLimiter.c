@@ -14,7 +14,7 @@
 
 #define BM_HYSTERESISLIMITER_DEFAULT_POWER_LIMIT -45.0f
 #define BM_HYSTERESISLIMITER_AA_FILTER_FC 20000.0f
-#define BM_HYSTERESISLIMITER_DEFAULT_SAG 1.0f / 400.0f
+#define BM_HYSTERESISLIMITER_DEFAULT_SAG 1.0f / 20.0f
 
 
 
@@ -97,6 +97,13 @@ void BMHysteresisLimiter_processStereoRectifiedSimple(BMHysteresisLimiter *This,
 										   limitedPosL, limitedNegL,
 										   limitedPosR, limitedNegR,
 										   numSamples);
+	
+//	// bypass the transformer sag model
+//	memcpy(outputPosL, limitedPosL, numSamples*sizeof(float));
+//	memcpy(outputPosR, limitedPosR, numSamples*sizeof(float));
+//	memcpy(outputNegL, limitedNegL, numSamples*sizeof(float));
+//	memcpy(outputNegR, limitedNegR, numSamples*sizeof(float));
+	
 	
     for(size_t i=0; i<numSamples; i++){
 		// positive output
