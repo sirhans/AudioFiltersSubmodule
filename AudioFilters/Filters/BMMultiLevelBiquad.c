@@ -773,6 +773,16 @@ void BMMultiLevelBiquad_setLowShelfAdjustableSlope(BMMultiLevelBiquad *This, flo
 
 
 
+
+void BMMultiLevelBiquad_setBellQ(BMMultiLevelBiquad *This, float fc, float Q, float gain_db, size_t level){
+	BMMultiLevelBiquad_setBell(This, fc, fc/Q, gain_db, level);
+}
+
+
+
+
+
+
 // based on formulae in 2.3.8 in Digital Filters are for Everyone,
 // 2nd ed. by Rusty Allred
 void BMMultiLevelBiquad_setBell(BMMultiLevelBiquad *This, float fc, float bandwidth, float gain_db, size_t level){

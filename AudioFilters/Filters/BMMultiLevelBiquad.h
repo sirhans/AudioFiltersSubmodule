@@ -101,9 +101,22 @@ void BMMultiLevelBiquad_init4(BMMultiLevelBiquad* This,
 void BMMultiLevelBiquad_destroy(BMMultiLevelBiquad* This);
 
 
-// set a bell-shape filter at on the specified level in both channels
-// and update filter settings
+/*!
+ *BMMultiLevelBiquad_setBell
+ *
+ * @abstract sets a bell filter with frequency, bandwidth (Hz) and gain
+ */
 void BMMultiLevelBiquad_setBell(BMMultiLevelBiquad* This, float fc, float bandwidth, float gain_db, size_t level);
+
+
+/*!
+ *BMMultiLevelBiquad_setBellQ
+ *
+ * @abstract sets a bell filter with frequency, Q, and gain
+ */
+void BMMultiLevelBiquad_setBellQ(BMMultiLevelBiquad *This, float fc, float Q, float gain_db, size_t level);
+
+
 
 
 /*!
