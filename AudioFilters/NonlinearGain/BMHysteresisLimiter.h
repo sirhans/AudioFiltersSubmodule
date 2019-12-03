@@ -77,10 +77,20 @@ void BMHysteresisLimiter_setPowerLimit(BMHysteresisLimiter *This, float limitDb)
 void BMHysteresisLimiter_setSag(BMHysteresisLimiter *This, float sag);
 
 
+
 /*!
- *BMHysteresisLimiter_processMonoRectifiedSimple
+ *BMHysteresisLimiter_setAAFilterFC
  *
- * @notes this is a simpler hysteresis model in the sense that it does not do complete zero-delay-feedback modeling of charge consumption. Rather the charge consumed at the current sample index removes charge from the capacitor for the next sample index.
+ * @param This pointer to an initialised struct
+ * @param fc cutoff frequency of the antialiasing filter
+ */
+void BMHysteresisLimiter_setAAFilterFC(BMHysteresisLimiter *This, float fc);
+
+
+
+
+/*!
+ *BMHysteresisLimiter_processMonoRectified
  *
  * @param This pointer to an initialised struct
  * @param inputPos positive side rectified input. MUST BE IN [0,FLT_MAX]
@@ -89,7 +99,7 @@ void BMHysteresisLimiter_setSag(BMHysteresisLimiter *This, float sag);
  * @param outputNeg output array with length numSamples
  * @param numSamples length of inputs and outputs
  */
-void BMHysteresisLimiter_processMonoRectifiedSimple(BMHysteresisLimiter *This,
+void BMHysteresisLimiter_processMonoRectified(BMHysteresisLimiter *This,
                                       const float *inputPos, const float *inputNeg,
                                       float* outputPos, float* outputNeg,
 													size_t numSamples);
@@ -116,9 +126,7 @@ void BMHysteresisLimiter_processStereoSimple(BMHysteresisLimiter *This,
 
 
 /*!
- *BMHysteresisLimiter_processStereoRectifiedSimple
- *
- * @notes this is a simpler hysteresis model in the sense that it does not do zero-delay-feedback modeling of charge consumption. Rather the charge consumed at the current sample index removes charge from the capacitor for the next sample index.
+ *BMHysteresisLimiter_processStereoRectified
  *
  * @param This pointer to an initialised struct
  * @param inputPosL positive side rectified input. MUST BE IN [0,FLT_MAX]
@@ -131,7 +139,7 @@ void BMHysteresisLimiter_processStereoSimple(BMHysteresisLimiter *This,
  * @param outputNegR output array with length numSamples
  * @param numSamples length of inputs and outputs
  */
-void BMHysteresisLimiter_processStereoRectifiedSimple(BMHysteresisLimiter *This,
+void BMHysteresisLimiter_processStereoRectified(BMHysteresisLimiter *This,
 													  const float *inputPosL, const float *inputPosR,
 													  const float *inputNegL, const float *inputNegR,
 													  float *outputPosL, float *outputPosR,

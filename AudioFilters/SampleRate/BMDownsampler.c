@@ -72,7 +72,7 @@ extern "C" {
 			antiRingingFilterFc = 24000.0*(1.0 - BM_DOWNSAMPLER_ANTIRINGING_FILTER_BW_96KHZ_INPUT);
 			numLevels = BM_DOWNSAMPLER_ANTIRINGING_FILTER_NUMLEVELS_96KHZ_INPUT;
 		}
-        BMMultiLevelBiquad_init(&This->antiRingingFilter, numLevels, 96000.0, true, false, false);
+        BMMultiLevelBiquad_init(&This->antiRingingFilter, numLevels, 96000.0, stereo, true, false);
         BMMultiLevelBiquad_setLegendreLP(&This->antiRingingFilter, antiRingingFilterFc, 0, numLevels);
     }
     
@@ -128,11 +128,14 @@ extern "C" {
                 
                 // when we reach the last stage, output straight to the output buffer
                 inputSize /= 2;
-                if(outputToBuffer1)
+				if (outputToBuffer1) {
+					BMMultiLevelBiquad_processBufferMono(&This->antiRingingFilter, This->bufferL2, This->bufferL2, inputSize);
                     BMIIRDownsampler2x_processBufferMono(&This->downsamplers2x[This->numStages-1], This->bufferL2, output, inputSize);
-                else
+				}
+				else {
+					BMMultiLevelBiquad_processBufferMono(&This->antiRingingFilter, This->bufferL1, This->bufferL1, inputSize);
                     BMIIRDownsampler2x_processBufferMono(&This->downsamplers2x[This->numStages-1], This->bufferL1, output, inputSize);
-                
+				}
             }
             
             numSamplesIn -= samplesProcessing;
