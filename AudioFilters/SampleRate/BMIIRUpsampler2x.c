@@ -90,9 +90,9 @@ double* BMIIRUpsampler2x_genCoefficients(BMIIRUpsampler2x *This, float minStopba
     
     printf("BMUpsampler: numCoefficients before rounding: %zu\n",This->numCoefficients);
     
-//    // if numCoefficients is not divisible by four, increase to the nearest multiple of four
-//    if(This->numCoefficients % 4 != 0)
-//        This->numCoefficients += (4 - This->numCoefficients%4);
+    //    // if numCoefficients is not divisible by four, increase to the nearest multiple of four
+    //    if(This->numCoefficients % 4 != 0)
+    //        This->numCoefficients += (4 - This->numCoefficients%4);
     
     // if numCoefficients is not divisible by two, increase to the nearest multiple of two
     if(This->numCoefficients % 2 != 0)
@@ -135,7 +135,7 @@ void BMIIRUpsampler2x_free (BMIIRUpsampler2x *This){
 
 void BMIIRUpsampler2x_setCoefs (BMIIRUpsampler2x *This, const double* coef_arr){
     assert (coef_arr != 0);
-
+    
     /*
      * In theory, the ordering of the filters is irrelevant. We simply need
      * to put all the allpass filters with even numbered coefficients into

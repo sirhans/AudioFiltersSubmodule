@@ -9,14 +9,14 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+    
 #include <assert.h>
 #include "BMUpsampler.h"
 #include "BMIntegerMath.h"
 #include "BMPolyphaseIIR2Designer.h"
 #include "Constants.h"
     
-
+    
     
     
     void BMUpsampler_init(BMUpsampler* This, bool stereo, size_t upsampleFactor, enum resamplerType type){
@@ -29,10 +29,10 @@ extern "C" {
         
         // allocate the array of 2x upsamplers
         This->upsamplers2x = malloc(sizeof(BMIIRUpsampler2x)*This->numStages);
-		
-		float stage0TransitionBW = BM_UPSAMPLER_STAGE0_TRANSITION_BANDWIDTH_FULL_SPECTRUM;
-		if(type == BMRESAMPLER_GUITAR) stage0TransitionBW = BM_UPSAMPLER_STAGE0_TRANSITION_BANDWIDTH_FULL_SPECTRUM;
-		if(type == BMRESAMPLER_INPUT_96KHZ) stage0TransitionBW = BM_UPSAMPLER_STAGE0_TRANSITION_BANDWIDTH_96KHZ_INPUT;
+        
+        float stage0TransitionBW = BM_UPSAMPLER_STAGE0_TRANSITION_BANDWIDTH_FULL_SPECTRUM;
+        if(type == BMRESAMPLER_GUITAR) stage0TransitionBW = BM_UPSAMPLER_STAGE0_TRANSITION_BANDWIDTH_FULL_SPECTRUM;
+        if(type == BMRESAMPLER_INPUT_96KHZ) stage0TransitionBW = BM_UPSAMPLER_STAGE0_TRANSITION_BANDWIDTH_96KHZ_INPUT;
         
         // initialise each stage of upsampling
         for(size_t i=0; i<This->numStages; i++){
@@ -48,18 +48,18 @@ extern "C" {
         else
             This->bufferR = NULL;
         
-		// set up the anti-ringing filter
-		float antiRingingFilterFc = 24000.0*(1.0 - BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_BW_FULL_SPECTRUM);
-		size_t numLevels = BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_NUMLEVELS_FULL_SPECTRUM;
-		if(type == BMRESAMPLER_GUITAR){
-			antiRingingFilterFc = 24000.0*(1.0 - BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_NUMLEVELS_FULL_SPECTRUM);
-			numLevels = BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_NUMLEVELS_96KHZ_INPUT;
-		}
-		if(type == BMRESAMPLER_INPUT_96KHZ){
-			antiRingingFilterFc = 24000.0*(1.0 - BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_BW_96KHZ_INPUT);
-			numLevels = BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_NUMLEVELS_96KHZ_INPUT;
-		}
-        BMMultiLevelBiquad_init(&This->secondStageAAFilter, numLevels, 96000.0, true, false, false);
+        // set up the anti-ringing filter
+        float antiRingingFilterFc = 24000.0*(1.0 - BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_BW_FULL_SPECTRUM);
+        size_t numLevels = BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_NUMLEVELS_FULL_SPECTRUM;
+        if(type == BMRESAMPLER_GUITAR){
+            antiRingingFilterFc = 24000.0*(1.0 - BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_NUMLEVELS_FULL_SPECTRUM);
+            numLevels = BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_NUMLEVELS_96KHZ_INPUT;
+        }
+        if(type == BMRESAMPLER_INPUT_96KHZ){
+            antiRingingFilterFc = 24000.0*(1.0 - BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_BW_96KHZ_INPUT);
+            numLevels = BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_NUMLEVELS_96KHZ_INPUT;
+        }
+        BMMultiLevelBiquad_init(&This->secondStageAAFilter, numLevels, 96000.0, stereo, true, false);
         BMMultiLevelBiquad_setLegendreLP(&This->secondStageAAFilter, antiRingingFilterFc, 0, numLevels);
     }
     
@@ -86,10 +86,14 @@ extern "C" {
             bool outputToBuffer = This->numStages % 2 == 0;
             
             // process stage 0
-            if(outputToBuffer)
+            if(outputToBuffer){
                 BMIIRUpsampler2x_processBufferMono(&This->upsamplers2x[0], input, This->bufferL, inputSize);
-            else
+                BMMultiLevelBiquad_processBufferMono(&This->secondStageAAFilter, This->bufferL, This->bufferL, inputSize*2);
+            }
+            else{
                 BMIIRUpsampler2x_processBufferMono(&This->upsamplers2x[0], input, output, inputSize);
+                BMMultiLevelBiquad_processBufferMono(&This->secondStageAAFilter, output, output, inputSize*2);
+            }
             outputToBuffer = !outputToBuffer;
             
             // process other stages if they are available
@@ -110,7 +114,7 @@ extern "C" {
             output += samplesProcessing*This->upsampleFactor;
         }
     }
-
+    
     
     
     void BMUpsampler_processBufferStereo(BMUpsampler *This, const float* inputL, const float* inputR, float* outputL, float* outputR, size_t numSamplesIn){

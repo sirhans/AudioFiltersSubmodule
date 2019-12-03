@@ -1385,8 +1385,7 @@ void BMMultilevelBiquad_setAllpass1stOrder(BMMultiLevelBiquad *This, double c, s
         double* a1 = b2 + 1;
         double* a2 = a1 + 1;
         
-        // 2nd order allpass transfer function, calculated in Mathematica
-        // by computing the product of 2 first order allpass filters
+        // 1st order allpass transfer function
         //
         //         c + z^-1
         // H(z) = ----------
