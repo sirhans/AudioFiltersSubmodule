@@ -16,8 +16,6 @@ extern "C" {
     
     
     // forward declarations
-    void BMFirstOrderArray4x4_setHighDecayFDN(BMFirstOrderArray4x4 *This, float* delayTimesSeconds, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels);
-    void BMFirstOrderArray4x4_setLowDecayFDN(BMFirstOrderArray4x4 *This, float* delayTimesSeconds, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels);
     void BMFirstOrderArray4x4_setBypass(simd_float4* b0, simd_float4* b1, simd_float4* a1);
     
     
@@ -157,15 +155,17 @@ extern "C" {
     /*
      * Set filter gain to acheive desired RT60 decay time
      *
-     * @param delayTimes     length in seconds of the delay line where the filter is applied
+     * @param delayTimesSamples     length in samples of the delay line where the filter is applied
      * @param gains          this is our output
      * @param unfilteredRT60 decay time in seconds before filtering
      * @param filteredRT60   total decay time of the filtered part of the spectrum
+	 * @param sampleRate
      */
-    void BMFirstOrderArray4x4_shelfFilterGainHelper(float* delayTimes, float* gains, float unfilteredRT60, float filteredRT60, size_t numChannels){
+    void BMFirstOrderArray4x4_shelfFilterGainHelper(size_t* delayTimesSamples, float* gains, float unfilteredRT60, float filteredRT60, size_t numChannels, float sampleRate){
         for(size_t i=0; i<numChannels; i++){
+			float delayTime = (float)delayTimesSamples[i] / sampleRate;
 
-            float t = (delayTimes[i] / filteredRT60) - (delayTimes[i] / unfilteredRT60);
+            float t = (delayTime / filteredRT60) - (delayTime / unfilteredRT60);
             float filterGain = pow(10.0, -3.0 * t);
             
             gains[i] = filterGain;
@@ -177,13 +177,13 @@ extern "C" {
 	
 	
 	
-	void BMFirstOrderArray4x4_setHighDecayFDN(BMFirstOrderArray4x4 *This, float* delayTimesSeconds, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels){
+	void BMFirstOrderArray4x4_setHighDecayFDN(BMFirstOrderArray4x4 *This, size_t *delayTimesSamples, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels){
 		   
 		   // allocate memory to store the gain for each filter
 		   float* gains = malloc(sizeof(float)*numChannels);
 		   
 		   // find the gain setting to produce the specified decay time
-		   BMFirstOrderArray4x4_shelfFilterGainHelper(delayTimesSeconds, gains, unfilteredRT60, filteredRT60, numChannels);
+		   BMFirstOrderArray4x4_shelfFilterGainHelper(delayTimesSamples, gains, unfilteredRT60, filteredRT60, numChannels, This->sampleRate);
 		   
 		   // set the filters
 		   BMFirstOrderArray4x4_setHighShelf(This, gains, fc, numChannels);
@@ -198,13 +198,13 @@ extern "C" {
 	
 	
 	
-	void BMFirstOrderArray4x4_setLowDecayFDN(BMFirstOrderArray4x4 *This, float* delayTimesSeconds, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels){
+	void BMFirstOrderArray4x4_setLowDecayFDN(BMFirstOrderArray4x4 *This, size_t *delayTimesSamples, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels){
             
             // allocate memory to store the gain for each filter
             float* gains = malloc(sizeof(float)*numChannels);
             
             // find the gain setting to produce the specified decay time
-            BMFirstOrderArray4x4_shelfFilterGainHelper(delayTimesSeconds, gains, unfilteredRT60, filteredRT60, numChannels);
+            BMFirstOrderArray4x4_shelfFilterGainHelper(delayTimesSamples, gains, unfilteredRT60, filteredRT60, numChannels, This->sampleRate);
             
             // set the filters
             BMFirstOrderArray4x4_setLowShelf(This, gains, fc, numChannels);

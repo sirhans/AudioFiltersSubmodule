@@ -144,7 +144,7 @@ void BMMultiLevelBiquad_processBufferMono(BMMultiLevelBiquad *This, const float*
         vDSP_biquad(This->singleChannelFilterSetup, This->monoDelays, input, 1, output, 1, numSamples);
     }
     
-    BMSmoothGain_processBufferMono(&This->gain, input, output, numSamples);
+    BMSmoothGain_processBufferMono(&This->gain, output, output, numSamples);
 }
 
 
@@ -218,7 +218,7 @@ void BMMultiLevelBiquad_init(BMMultiLevelBiquad *This,
     
     // Allocate 2*numLevels + 2 floats for mono delay memory
     if(!This->useBiquadm)
-        This->monoDelays = malloc( sizeof(float)* (2*numLevels + 2) );
+        This->monoDelays = calloc((2*numLevels + 2),sizeof(float));
     
     
     // start with all levels on bypass
@@ -310,8 +310,9 @@ inline void BMMultiLevelBiquad_updateNow(BMMultiLevelBiquad *This){
             // update the coefficients
             vDSP_biquadm_SetCoefficientsSingle(This->multiChannelFilterSetup, This->coefficients_f, 0, 0, This->numLevels, This->numChannels);
         }
-        // not using realtime updates
-    } else {
+    }
+	// not using realtime updates
+	else {
         BMMultiLevelBiquad_recreate(This);
     }
     
@@ -380,7 +381,7 @@ inline void BMMultiLevelBiquad_updateLevels(BMMultiLevelBiquad *This){
 	assert(This->useBiquadm);
 	
     if(This->needUpdateActiveLevels){
-        printf("disable un-active level\n");
+        printf("disabling inactive filter levels\n");
         This->needUpdateActiveLevels = false;
 		vDSP_biquadm_SetActiveFilters(This->multiChannelFilterSetup, This->activeLevels);
     }
@@ -768,6 +769,16 @@ void BMMultiLevelBiquad_setLowShelfAdjustableSlope(BMMultiLevelBiquad *This, flo
     
     BMMultiLevelBiquad_queueUpdate(This);
 }
+
+
+
+
+
+void BMMultiLevelBiquad_setBellQ(BMMultiLevelBiquad *This, float fc, float Q, float gain_db, size_t level){
+	BMMultiLevelBiquad_setBell(This, fc, fc/Q, gain_db, level);
+}
+
+
 
 
 
@@ -1385,8 +1396,7 @@ void BMMultilevelBiquad_setAllpass1stOrder(BMMultiLevelBiquad *This, double c, s
         double* a1 = b2 + 1;
         double* a2 = a1 + 1;
         
-        // 2nd order allpass transfer function, calculated in Mathematica
-        // by computing the product of 2 first order allpass filters
+        // 1st order allpass transfer function
         //
         //         c + z^-1
         // H(z) = ----------
