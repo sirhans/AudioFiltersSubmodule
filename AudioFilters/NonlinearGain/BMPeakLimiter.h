@@ -37,6 +37,14 @@ void BMPeakLimiter_init(BMPeakLimiter *This, bool stereo, float sampleRate);
 void BMPeakLimiter_free(BMPeakLimiter *This);
 
 
+
+/*!
+ *BMPeakLimiter_setThreshold
+ */
+void BMPeakLimiter_setThreshold(BMPeakLimiter *This, float thresholdDb);
+
+
+
 /*!
  *BMPeakLimiter_setLookahead
  */

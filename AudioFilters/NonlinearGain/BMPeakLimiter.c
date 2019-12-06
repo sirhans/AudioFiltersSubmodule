@@ -10,7 +10,7 @@
 #include <string.h>
 #include <Accelerate/Accelerate.h>
 
-#define BM_PEAK_LIMITER_LOOKAHEAD_TIME_DV 0.0005f
+#define BM_PEAK_LIMITER_LOOKAHEAD_TIME_DV 0.00015f
 #define BM_PEAK_LIMITER_RELEASE_TIME_DV 0.150f
 #define BM_PEAK_LIMITER_THRESHOLD_GAIN_DV 1.0f
 
@@ -18,10 +18,10 @@
 
 void BMPeakLimiter_init(BMPeakLimiter *This, bool stereo, float sampleRate){
 	This->sampleRate = sampleRate;
-	This->lookaheadTime = BM_PEAK_LIMITER_LOOKAHEAD_TIME_DV;
+	This->lookaheadTime = This->targetLookaheadTime = BM_PEAK_LIMITER_LOOKAHEAD_TIME_DV;
 	
 	// init the envelope follower
-	BMEnvelopeFollower_initWithCustomNumStages(&This->envelopeFollower, 2, 2, sampleRate);
+	BMEnvelopeFollower_initWithCustomNumStages(&This->envelopeFollower, 3, 3, sampleRate);
 	BMEnvelopeFollower_setAttackTime(&This->envelopeFollower, This->lookaheadTime);
 	BMEnvelopeFollower_setReleaseTime(&This->envelopeFollower, BM_PEAK_LIMITER_RELEASE_TIME_DV);
 	
@@ -55,6 +55,12 @@ void BMPeakLimiter_setLookahead(BMPeakLimiter *This, float timeInSeconds){
 
 void BMPeakLimiter_setReleaseTime(BMPeakLimiter *This, float timeInSeconds){
 	BMEnvelopeFollower_setReleaseTime(&This->envelopeFollower, timeInSeconds);
+}
+
+
+
+void BMPeakLimiter_setThreshold(BMPeakLimiter *This, float thresholdDb){
+	This->thresholdGain = BM_DB_TO_GAIN(thresholdDb);
 }
 
 
@@ -96,12 +102,15 @@ void BMPeakLimiter_processStereo(BMPeakLimiter *This,
 			// take the max of the left and right channels into the control signal buffer
 			vDSP_vmax(This->bufferL, 1, This->bufferR, 1, This->controlSignal, 1, samplesProcessing);
 			
-			// control signal = threshold / controlSignal
-			// if we were to multiply the result by the input, the output would be nothing but +/- threshold
-			vDSP_svdiv(&This->thresholdGain, This->controlSignal, 1, This->controlSignal, 1, samplesProcessing);
+			// replace values below the threshold with the threshold itself
+			vDSP_vthr(This->controlSignal, 1, &This->thresholdGain, This->controlSignal, 1, samplesProcessing);
 			
 			// apply an envelope follower to the control signal to smooth it out
 			BMEnvelopeFollower_processBuffer(&This->envelopeFollower, This->controlSignal, This->controlSignal, samplesProcessing);
+			
+			// control signal = threshold / controlSignal
+			// if we were to multiply the result by the input, the output would be nothing but +/- threshold
+			vDSP_svdiv(&This->thresholdGain, This->controlSignal, 1, This->controlSignal, 1, samplesProcessing);
 			
 			// delay the input
 			const float* inputs [2] = {inL,inR};
@@ -143,14 +152,17 @@ void BMPeakLimiter_processMono(BMPeakLimiter *This,
 			size_t samplesProcessing = BM_MIN(BM_BUFFER_CHUNK_SIZE, numSamples);
 			
 			// rectify the input into the control signal buffer
-			vDSP_vabs(input, 1, This->bufferL, 1, samplesProcessing);
+			vDSP_vabs(input, 1, This->controlSignal, 1, samplesProcessing);
+			
+			// replace values below the threshold with the threshold itself
+			vDSP_vthr(This->controlSignal, 1, &This->thresholdGain, This->controlSignal, 1, samplesProcessing);
+			
+			// apply an envelope follower to the control signal to smooth it out
+			BMEnvelopeFollower_processBuffer(&This->envelopeFollower, This->controlSignal, This->controlSignal, samplesProcessing);
 			
 			// control signal = threshold / controlSignal
 			// if we were to multiply the result by the input, the output would be nothing but +/- threshold
 			vDSP_svdiv(&This->thresholdGain, This->controlSignal, 1, This->controlSignal, 1, samplesProcessing);
-			
-			// apply an envelope follower to the control signal to smooth it out
-			BMEnvelopeFollower_processBuffer(&This->envelopeFollower, This->controlSignal, This->controlSignal, samplesProcessing);
 			
 			// delay the input
 			const float* inputs [1] = {input};
