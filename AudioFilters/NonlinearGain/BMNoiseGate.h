@@ -91,6 +91,9 @@ void BMNoiseGate_setThreshold(BMNoiseGate *This,float thresholdDb);
  *BMNoiseGate_setRatio
  *
  * @abstract sets the downward expansion ratio of the gate
+ *
+ * @param This pointer to an initialised struct
+ * @param ratio set > 50 for gate mode, otherwise it's the downward expansion ratio
  */
 void BMNoiseGate_setRatio(BMNoiseGate *This, float ratio);
 
