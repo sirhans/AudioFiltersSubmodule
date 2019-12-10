@@ -76,9 +76,8 @@ void BMSmoothSwitch_processBufferStereo(BMSmoothSwitch *This,
             // otherwise do nothing
         }
         
-        // if the switch is off
+        // if the switch is off set the output to zero
         else {
-            // set the output to zero
             memset(outL,0,sizeof(float)*numSamples);
             memset(outR,0,sizeof(float)*numSamples);
         }
