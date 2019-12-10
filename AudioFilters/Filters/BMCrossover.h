@@ -127,10 +127,10 @@ void BMCrossover_setCutoff(BMCrossover *This, float cutoff);
  * @param numSamples - number of samples to process. all arrays must have at least this length
  */
 void BMCrossover_processStereo(BMCrossover *This,
-                               const float* inL, const float* inR,
-                               float* lowpassL, float* lowpassR,
-                               float* highpassL, float* highpassR,
-                               size_t numSamples);
+							   const float* inL, const float* inR,
+							   float* lowpassL, float* lowpassR,
+							   float* highpassL, float* highpassR,
+							   size_t numSamples);
 
 
 
@@ -282,6 +282,18 @@ void BMCrossover4way_processStereo(BMCrossover4way *This,
                                    float* band3L, float* band3R,
                                    float* band4L, float* band4R,
                                    size_t numSamples);
+
+
+
+/*!
+ *BMCrossover3way_processMono
+ */
+void BMCrossover3way_processMono(BMCrossover3way *This,
+								   const float* inL,
+								   float* lowL,
+								   float* midL,
+								   float* highL,
+								 size_t numSamples);
 
 
 
