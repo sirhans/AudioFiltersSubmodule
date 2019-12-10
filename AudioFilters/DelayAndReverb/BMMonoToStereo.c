@@ -12,7 +12,7 @@
 #define BM_MTS_RT60 0.50f
 #define BM_MTS_LOW_CROSSOVER_FC 350.0f
 #define BM_MTS_HIGH_CROSSOVER_FC 1200.0f
-#define BM_MTS_TAPS_PER_CHANNEL 16
+#define BM_MTS_TAPS_PER_CHANNEL 24
 #define BM_MTS_WET_MIX 0.95f
 #define BM_MTS_DECORRELATOR_FREQUENCY_BAND_WIDTH 20.0f
 #define BM_MTS_DIFFUSION_TIME 1.0f / BM_MTS_DECORRELATOR_FREQUENCY_BAND_WIDTH
@@ -22,7 +22,8 @@
 /*!
  *BMMonoToStereo_init
  */
-void BMMonoToStereo_init(BMMonoToStereo *This, float sampleRate){
+void BMMonoToStereo_init(BMMonoToStereo *This, float sampleRate, bool stereoInput){
+	This->stereoInput = stereoInput;
 	
 	// initialise the velvet noise decorrelator that does the main work
 	BMVelvetNoiseDecorrelator_init(&This->vnd,
@@ -42,7 +43,7 @@ void BMMonoToStereo_init(BMMonoToStereo *This, float sampleRate){
                          BM_MTS_HIGH_CROSSOVER_FC,
                          sampleRate,
                          false,
-                         true);
+                         stereoInput);
 	
 	// allocate memory for buffers
 	size_t numBuffers = 6;
@@ -69,35 +70,69 @@ void BMMonoToStereo_processBuffer(BMMonoToStereo *This,
 	while(numSamples > 0){
 		size_t samplesProcessing = BM_MIN(numSamples, BM_BUFFER_CHUNK_SIZE);
 	
-		// split low, mid, and high
-		BMCrossover3way_processStereo(&This->crossover,
-                                      inputL, inputR,
-                                      This->lowL, This->lowR,
-                                      This->midL, This->midR,
-                                      This->highL, This->highR,
-                                      samplesProcessing);
+		if(This->stereoInput){
+			// split low, mid, and high
+			BMCrossover3way_processStereo(&This->crossover,
+										  inputL, inputR,
+										  This->lowL, This->lowR,
+										  This->midL, This->midR,
+										  This->highL, This->highR,
+										  samplesProcessing);
+			
+			
+			// process the Velvet Noise Decorrelator on the mid frequencies
+			BMVelvetNoiseDecorrelator_processBufferStereo(&This->vnd,
+														  This->midL, This->midR,
+														  This->midL, This->midR,
+														  samplesProcessing);
+			
+			// combine the low and mid back together
+			vDSP_vadd(This->lowL, 1, This->midL, 1, This->midL, 1, samplesProcessing);
+			vDSP_vadd(This->lowR, 1, This->midR, 1, This->midR, 1, samplesProcessing);
+			
+			// combine the mid and high back together
+			vDSP_vadd(This->midL, 1, This->highL, 1, outputL, 1, samplesProcessing);
+			vDSP_vadd(This->midR, 1, This->highR, 1, outputR, 1, samplesProcessing);
+			
+			// advance pointers
+			numSamples -= samplesProcessing;
+			inputL     += samplesProcessing;
+			inputR     += samplesProcessing;
+			outputL    += samplesProcessing;
+			outputR    += samplesProcessing;
+		}
 		
-		
-		// process the Velvet Noise Decorrelator on the mid frequencies
-		BMVelvetNoiseDecorrelator_processBufferStereo(&This->vnd,
-													  This->midL, This->midR,
-													  This->midL, This->midR,
-													  samplesProcessing);
-		
-		// combine the low and mid back together
-		vDSP_vadd(This->lowL, 1, This->midL, 1, This->midL, 1, samplesProcessing);
-		vDSP_vadd(This->lowR, 1, This->midR, 1, This->midR, 1, samplesProcessing);
-		
-		// combine the mid and high back together
-		vDSP_vadd(This->midL, 1, This->highL, 1, outputL, 1, samplesProcessing);
-		vDSP_vadd(This->midR, 1, This->highR, 1, outputR, 1, samplesProcessing);
-		
-		// advance pointers
-		numSamples -= samplesProcessing;
-		inputL     += samplesProcessing;
-		inputR     += samplesProcessing;
-		outputL    += samplesProcessing;
-		outputR    += samplesProcessing;
+		// mono input
+		else {
+			// split low, mid, and high
+			BMCrossover3way_processMono(&This->crossover,
+										inputL,
+										This->lowL,
+										This->midL,
+										This->highL,
+										samplesProcessing);
+			
+			
+			// process the Velvet Noise Decorrelator on the mid frequencies
+			BMVelvetNoiseDecorrelator_processBufferMonoToStereo(&This->vnd,
+																This->midL,
+																This->midL, This->midR,
+																samplesProcessing);
+			
+			// combine the low and mid back together
+			vDSP_vadd(This->lowL, 1, This->midL, 1, This->midL, 1, samplesProcessing);
+			vDSP_vadd(This->lowL, 1, This->midR, 1, This->midR, 1, samplesProcessing);
+			
+			// combine the mid and high back together
+			vDSP_vadd(This->midL, 1, This->highL, 1, outputL, 1, samplesProcessing);
+			vDSP_vadd(This->midR, 1, This->highL, 1, outputR, 1, samplesProcessing);
+			
+			// advance pointers
+			numSamples -= samplesProcessing;
+			inputL     += samplesProcessing;
+			outputL    += samplesProcessing;
+			outputR    += samplesProcessing;
+		}
 	}
 }
 

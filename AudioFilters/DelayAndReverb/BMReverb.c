@@ -44,6 +44,7 @@ extern "C" {
 	void BMReverbRandomiseOrderF(float* list, size_t seed, size_t stride, size_t length);
     void BMReverbInitDelayOutputSigns(struct BMReverb *This);
     void BMReverbUpdateSettings(struct BMReverb *This);
+	void BMReverbSetMidScoopGain(struct BMReverb *This, float gainDb);
     
     
     
@@ -56,7 +57,7 @@ extern "C" {
         BMReverbPointersToNull(This);
         
         // initialize the main filter setup
-        BMMultiLevelBiquad_init(&This->mainFilter, 2, sampleRate, true, true, false);
+        BMMultiLevelBiquad_init(&This->mainFilter, 3, sampleRate, true, true, false);
 		
 		// initialize the wet/dry mixer
 		BMWetDryMixer_init(&This->wetDryMixer,sampleRate);
@@ -77,6 +78,7 @@ extern "C" {
         This->newNumDelayUnits = BMREVERB_NUMDELAYUNITS;
         This->preDelayUpdate = false;
         BMReverbSetHighPassFC(This, BMREVERB_HIGHPASS_FC);
+		BMReverbSetMidScoopGain(This,BMREVERB_MID_SCOOP_GAIN);
         BMReverbSetLowPassFC(This, BMREVERB_LOWPASS_FC);
         BMReverbSetWetMix(This, BMREVERB_WETMIX);
         BMReverbSetStereoWidth(This, BMREVERB_STEREOWIDTH);
@@ -653,6 +655,12 @@ extern "C" {
     void BMReverbSetLowPassFC(struct BMReverb *This, float fc){
         BMMultiLevelBiquad_setLowPass6db(&This->mainFilter, fc, 1);
     }
+	
+	
+	
+	void BMReverbSetMidScoopGain(struct BMReverb *This, float gainDb){
+		BMMultiLevelBiquad_setBellQ(&This->mainFilter, BMREVERB_MID_SCOOP_FC, BMREVERB_MID_SCOOP_Q, gainDb, 2);
+	}
     
     
     

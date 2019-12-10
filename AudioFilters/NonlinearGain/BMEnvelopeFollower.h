@@ -93,12 +93,12 @@ void BMEnvelopeFollower_initWithCustomNumStages(BMEnvelopeFollower *This, size_t
 /*!
  * BMEnvelopeFollower_setAttackTime
  */
-void BMEnvelopeFollower_setAttackTime(BMEnvelopeFollower *This, float attackTime);
+void BMEnvelopeFollower_setAttackTime(BMEnvelopeFollower *This, float attackTimeSeconds);
 
 /*!
  * BMEnvelopeFollower_setReleaseTime
  */
-void BMEnvelopeFollower_setReleaseTime(BMEnvelopeFollower *This, float releaseTime);
+void BMEnvelopeFollower_setReleaseTime(BMEnvelopeFollower *This, float releaseTimeSeconds);
 
 /*!
  * BMAttackFilter_init

@@ -77,4 +77,13 @@ void BMVelvetNoiseDecorrelator_processBufferStereo(BMVelvetNoiseDecorrelator *Th
                                                    size_t length);
 
 
+/*!
+ *BMVelvetNoiseDecorrelator_processBufferMonoToStereo
+ */
+void BMVelvetNoiseDecorrelator_processBufferMonoToStereo(BMVelvetNoiseDecorrelator *This,
+                                                   float* inputL,
+                                                   float* outputL, float* outputR,
+                                                   size_t length);
+
+
 #endif /* BMVelvetNoiseDecorrelator_h */
