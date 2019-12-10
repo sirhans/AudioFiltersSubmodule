@@ -326,17 +326,17 @@ void BMEnvelopeFollower_initWithCustomNumStages(BMEnvelopeFollower *This,
 
 
 
-void BMEnvelopeFollower_setAttackTime(BMEnvelopeFollower *This, float attackTime){
-    assert(attackTime >= 0.0f);
+void BMEnvelopeFollower_setAttackTime(BMEnvelopeFollower *This, float attackTimeSeconds){
+    assert(attackTimeSeconds >= 0.0f);
     
     // if the attack time is zero, don't process the attack at all
-    if(attackTime == 0.0f || This->numAttackStages == 0){
+    if(attackTimeSeconds == 0.0f || This->numAttackStages == 0){
         This->processAttack = false;
     }
     
     // for non-zero attack time, set the attack filter frequency
     else {
-        float attackFc = ARTimeToCutoffFrequency(attackTime,This->numAttackStages);
+        float attackFc = ARTimeToCutoffFrequency(attackTimeSeconds,This->numAttackStages);
         This->processAttack = true;
         for(size_t i=0; i<This->numAttackStages; i++)
             BMAttackFilter_setCutoff(&This->attackFilters[i],attackFc);
