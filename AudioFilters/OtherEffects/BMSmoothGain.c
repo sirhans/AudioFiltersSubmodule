@@ -22,6 +22,7 @@ extern "C" {
         return pow(BM_DB_TO_GAIN(dB),1.0/numSamples);
     }
     
+    
     void BMSmoothGain_init(BMSmoothGain *This, float sampleRate){
         This->gain = This->gainTarget = 1.0f;
         This->inTransition = false;
@@ -285,11 +286,11 @@ extern "C" {
         float gain = BM_DB_TO_GAIN(gainDb);
         
 		// turn off the gain completely if the input is FLT_MIN
-        if(gainDb == FLT_MIN) gain = 0.0f;
+        if(gainDb == FLT_MIN) gain = BM_DB_TO_GAIN(-110.0f);
         
         // if this is a legitimate gain change, set the new target and switch to
         // transition state
-        if (gain != This->nextGainTarget){
+        if (gain != This->nextGainTarget) {
             This->nextGainTarget = gain;
             This->inTransition = true;
         }
