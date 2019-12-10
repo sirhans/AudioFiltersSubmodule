@@ -88,7 +88,7 @@ extern "C" {
                                                           cutoff,
                                                           0);
             // highpass fourth order
-            BMMultiLevelBiquad_setLinkwitzRileyHP4thOrder(&This->lp,
+            BMMultiLevelBiquad_setLinkwitzRileyHP4thOrder(&This->hp,
                                                           cutoff,
                                                           0);
         } else {
