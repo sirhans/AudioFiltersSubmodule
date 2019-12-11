@@ -32,7 +32,7 @@
 #define BMREVERB_PREDELAY 0.007 // (in seconds)
 #define BMREVERB_ROOMSIZE 0.100 // (seconds of sound travel time)
 #define BMREVERB_DEFAULTSAMPLERATE 44100.0
-#define BMREVERB_HIGHSHELFFC 1500.0 // above this frequency decay is faster
+#define BMREVERB_HIGHSHELFFC 1400.0 // above this frequency decay is faster
 #define BMREVERB_HFDECAYMULTIPLIER 6.0 // HF decay is this many times faster
 #define BMREVERB_LOWSHELFFC 500.0 // above this frequency decay is faster
 #define BMREVERB_LFDECAYMULTIPLIER 6.0 // LF decay is this many times faster
