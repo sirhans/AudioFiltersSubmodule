@@ -23,9 +23,9 @@ void BMSmoothSwitch_init(BMSmoothSwitch *This, float sampleRate){
     // start at unity gain
     BMSmoothGain_setGainDbInstant(&This->gainControl, 0.0f);
 	
-	// speed up the fade rate to 10x faster than the default setting
-	This->gainControl.perSampleRatioDown = pow(This->gainControl.perSampleRatioDown,10.0);
-	This->gainControl.perSampleRatioUp = pow(This->gainControl.perSampleRatioUp,10.0);
+	// speed up the fade rate to 3x faster than the default setting
+	This->gainControl.perSampleRatioDown = pow(This->gainControl.perSampleRatioDown,3.0);
+	This->gainControl.perSampleRatioUp = pow(This->gainControl.perSampleRatioUp,3.0);
 }
 
 
