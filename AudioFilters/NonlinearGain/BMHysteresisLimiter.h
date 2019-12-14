@@ -77,14 +77,17 @@ void BMHysteresisLimiter_setPowerLimit(BMHysteresisLimiter *This, float limitDb)
 void BMHysteresisLimiter_setSag(BMHysteresisLimiter *This, float sag);
 
 
-
-/*!
- *BMHysteresisLimiter_setAAFilterFC
- *
- * @param This pointer to an initialised struct
- * @param fc cutoff frequency of the antialiasing filter
- */
-void BMHysteresisLimiter_setAAFilterFC(BMHysteresisLimiter *This, float fc);
+/*************************************************************
+ * We don't allow the cutoff of the AA filter to be adjusted *
+ *************************************************************/
+//
+///*!
+// *BMHysteresisLimiter_setAAFilterFC
+// *
+// * @param This pointer to an initialised struct
+// * @param fc cutoff frequency of the antialiasing filter
+// */
+//void BMHysteresisLimiter_setAAFilterFC(BMHysteresisLimiter *This, float fc);
 
 
 

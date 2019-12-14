@@ -17,7 +17,7 @@
 #include "BMInterleaver.h"
 #include "Constants.h"
 
-#define BM_DOWNSAMPLER_CHUNK_SIZE BM_BUFFER_CHUNK_SIZE * 4
+#define BM_DOWNSAMPLER_CHUNK_SIZE BM_BUFFER_CHUNK_SIZE * 8
 
 // forward declaration of internal function
 double* BMIIRDownsampler2x_genCoefficients(BMIIRDownsampler2x *This, float minStopbandAttenuationDb, float maxTransitionBandwidth);
