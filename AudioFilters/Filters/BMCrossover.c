@@ -119,23 +119,23 @@ extern "C" {
      * @param highpassL  - highpass output left
      * @param highpassR  - highpass output right
      * @param numSamples - number of samples to process. all arrays must have at least this length
-     */
-    void BMCrossover_processStereo(BMCrossover *This,
-                                   const float* inL, const float* inR,
-                                   float* lowpassL, float* lowpassR,
-                                   float* highpassL, float* highpassR,
-                                   size_t numSamples){
-        assert(This->stereo);
-        
-        BMMultiLevelBiquad_processBufferStereo(&This->lp,
-                                               inL, inR,
-                                               lowpassL, lowpassR,
-                                               numSamples);
-        BMMultiLevelBiquad_processBufferStereo(&This->hp,
-                                               inL, inR,
-                                               highpassL, highpassR,
-                                               numSamples);
-    }
+	 */
+	void BMCrossover_processStereo(BMCrossover *This,
+								   const float* inL, const float* inR,
+								   float* lowpassL, float* lowpassR,
+								   float* highpassL, float* highpassR,
+								   size_t numSamples){
+		assert(This->stereo);
+		
+		BMMultiLevelBiquad_processBufferStereo(&This->lp,
+											   inL, inR,
+											   lowpassL, lowpassR,
+											   numSamples);
+		BMMultiLevelBiquad_processBufferStereo(&This->hp,
+											   inL, inR,
+											   highpassL, highpassR,
+											   numSamples);
+	}
     
     
     
@@ -377,6 +377,43 @@ extern "C" {
         BMMultiLevelBiquad_processBufferStereo(&This->mid,
                                                midL, midR,
                                                midL, midR,
+                                               numSamples);
+    }
+	
+	
+	
+	
+	void BMCrossover3way_processMono(BMCrossover3way *This,
+                                       const float* inL,
+                                       float* lowL,
+                                       float* midL,
+                                       float* highL,
+                                       size_t numSamples){
+        assert(!This->stereo);
+        
+        // split the low part of the signal off, processing it through
+        // both crossovers to preserve phase
+        BMMultiLevelBiquad_processBufferMono(&This->low,
+                                               inL,
+                                               lowL,
+                                               numSamples);
+        
+        // split the mid and high, buffer to mid
+        BMMultiLevelBiquad_processBufferMono(&This->midAndHigh,
+                                               inL,
+                                               midL,
+                                               numSamples);
+        
+        // split the high from the mid
+        BMMultiLevelBiquad_processBufferMono(&This->high,
+                                               midL,
+                                               highL,
+                                               numSamples);
+        
+        // remove the high from the mid
+        BMMultiLevelBiquad_processBufferMono(&This->mid,
+                                               midL,
+                                               midL,
                                                numSamples);
     }
     

@@ -13,8 +13,9 @@
 #include "Constants.h"
 
 #define BM_HYSTERESISLIMITER_DEFAULT_POWER_LIMIT -45.0f
-#define BM_HYSTERESISLIMITER_AA_FILTER_FC 20000.0f
+#define BM_HYSTERESISLIMITER_AA_FILTER_FC 12000.0f
 #define BM_HYSTERESISLIMITER_DEFAULT_SAG 1.0f / (4000.0f)
+
 
 
 
@@ -257,25 +258,41 @@ void BMHysteresisLimiter_processStereoSimple(BMHysteresisLimiter *This,
 
 
 
-
-
-void BMHysteresisLimiter_setPowerLimit(BMHysteresisLimiter *This, float limitDb){
-	assert(limitDb <= 0.0f);
-	float limit01 = BM_DB_TO_GAIN(limitDb);
-	
-	This->R = limit01;
-	This->oneOverR = 1.0 / limit01;
+void BMHysteresisLimiter_updateSettings(BMHysteresisLimiter *This){
+    This->s = 1.0f / (This->sampleRate * This->sag);
+    This->oneOverR = 1.0 / This->R;
     This->sR = This->s * This->R;
     This->halfSR = This->sR * 0.5f;
 }
 
 
 
+void BMHysteresisLimiter_setPowerLimit(BMHysteresisLimiter *This, float limitDb){
+    assert(limitDb <= 0.0f);
+    This->R = BM_DB_TO_GAIN(limitDb);
+    BMHysteresisLimiter_updateSettings(This);
+}
+
+
+
+
+
+void BMHysteresisLimiter_setSag(BMHysteresisLimiter *This, float sag){
+    assert(sag > 0.0);
+    This->sag = sag;
+    BMHysteresisLimiter_updateSettings(This);
+}
+
+
+
+
 
 void BMHysteresisLimiter_setAAFilterFC(BMHysteresisLimiter *This, float fc){
+    // safety check: don't let fc exceed 90% of the Nyquist frequency
+    fc = BM_MIN(This->sampleRate * 0.5f * 0.9f, fc);
+    // set the AA filters
 	for(size_t i=0; i<This->AAFilter.numLevels; i++){
-//		BMMultiLevelBiquad_setLinkwitzRileyLP(&This->AAFilter, fc, i);
-		BMMultiLevelBiquad_setLowPass6db(&This->AAFilter, fc, 0);
+		BMMultiLevelBiquad_setLowPass6db(&This->AAFilter, fc, i);
 	}
 }
 
@@ -284,6 +301,8 @@ void BMHysteresisLimiter_setAAFilterFC(BMHysteresisLimiter *This, float fc){
 
 void BMHysteresisLimiter_init(BMHysteresisLimiter *This, float sampleRate, size_t numChannels){
 	assert(numChannels == 1 || numChannels == 2 || numChannels == 4);
+    
+    This->sampleRate = sampleRate;
 	
 	// init the AA filter
 	size_t numLevels = 1;
@@ -295,24 +314,11 @@ void BMHysteresisLimiter_init(BMHysteresisLimiter *This, float sampleRate, size_
 		BMMultiLevelBiquad_init4(&This->AAFilter, numLevels, sampleRate, false);
 	BMHysteresisLimiter_setAAFilterFC(This,BM_HYSTERESISLIMITER_AA_FILTER_FC);
 
-    This->sampleRate = sampleRate;
 	BMHysteresisLimiter_setPowerLimit(This, BM_HYSTERESISLIMITER_DEFAULT_POWER_LIMIT);
     BMHysteresisLimiter_setSag(This, BM_HYSTERESISLIMITER_DEFAULT_SAG);
 	
 	This->c = 0.0f;
 	This->cs = 0.0f;
-}
-
-
-
-
-
-void BMHysteresisLimiter_setSag(BMHysteresisLimiter *This, float sag){
-    assert(sag > 0.0);
-    This->sag = sag;
-    This->s = 1.0f / (This->sampleRate * sag);
-    This->sR = This->s * This->R;
-    This->halfSR = This->sR * 0.5f;
 }
 
 

@@ -19,13 +19,14 @@ typedef struct BMMonoToStereo {
     BMCrossover3way crossover;
     BMVelvetNoiseDecorrelator vnd;
 	float *lowL, *lowR, *midL, *midR, *highL, *highR;
+	bool stereoInput;
 } BMMonoToStereo;
 
 
 /*!
  *BMMonoToStereo_init
  */
-void BMMonoToStereo_init(BMMonoToStereo *This, float sampleRate);
+void BMMonoToStereo_init(BMMonoToStereo *This, float sampleRate, bool stereoInput);
 
 
 /*!
