@@ -12,7 +12,7 @@
 #include <stdio.h>
 
 typedef struct BMHugeReverb {
-	BMFDN16 
+//	BMFDN16 
 } BMHugeReverb;
 
 #endif /* BMHugeReverb_h */

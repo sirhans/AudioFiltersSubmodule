@@ -64,22 +64,24 @@ void BMAudioStreamConverter_init(BMAudioStreamConverter *This,
 	
 	// is the resampler going to be stereo or mono?
 	bool stereoResampling = false;
-	if(outputFormat.mChannelsPerFrame == 2)
+	if(outputFormat.mChannelsPerFrame == 2 && inputFormat.mChannelsPerFrame == 2)
 		stereoResampling = true;
 	
 	// init the resampler
 	BMUpsampler_init(&This->upsampler, stereoResampling, BM_SRC_STAGE_1_OVERSAMPLE_FACTOR, BMRESAMPLER_FULL_SPECTRUM);
 	
-	// init the fractional offset of the output buffer read index
-	This->nextStartIndex = 0.0;
+	// init the fractional offset of the output buffer read index.
+    // we init to 1 so that there is room for vDSP_vqint to read back one index
+	This->nextStartIndex = 1.0;
 	
 	// set the conversion ratio
 	This->conversionRatio = (double)outputFormat.mSampleRate / (double)inputFormat.mSampleRate;
 	
 	// init the input and output buffers
-	size_t numChannels = 1; if(This->stereoResampling) numChannels = 2;
+	size_t numChannels = 1;
+    if(This->stereoResampling) numChannels = 2;
 	for(size_t i=0; i<numChannels; i++){
-		TPCircularBufferInit(&This->outputBuffers[i], BM_SRC_OUTPUT_BUFFER_LENGTH);
+		TPCircularBufferInit(&This->outputBuffers[i], (uint32_t)BM_SRC_OUTPUT_BUFFER_LENGTH);
 		This->inputBuffers[i] = calloc(sizeof(float),BM_SRC_INPUT_BUFFER_LENGTH);
 	}
 }
@@ -138,7 +140,7 @@ size_t BMAudioStreamConverter_convert(BMAudioStreamConverter *This,
 	 * convert short to float if necessary *
 	 ***************************************/
 	//
-	if(0 != (This->input.mFormatFlags & kAudioFormatFlagIsFloat)){
+	if(0 == (This->input.mFormatFlags & kAudioFormatFlagIsFloat)){
 		for(size_t i=0; i<This->input.mChannelsPerFrame; i++){
 
 			// convert from short to float
@@ -209,7 +211,7 @@ size_t BMAudioStreamConverter_convert(BMAudioStreamConverter *This,
 	double readIndexStride = (double)BM_SRC_STAGE_1_OVERSAMPLE_FACTOR / This->conversionRatio;
 	double remainder = fmod(maxEndIndex-startIndex,readIndexStride);
 	double endIndex = maxEndIndex - remainder;
-	// vDSP_vlint requires that the integer portion of endIndex be less than (samplesAvailable - 2)
+	// vDSP_vqint requires that the integer portion of endIndex be less than (samplesAvailable - 2)
 	while((size_t)floor(endIndex) >= (samplesAvailable - 2))
 		endIndex -= readIndexStride;
 	//
@@ -229,8 +231,9 @@ size_t BMAudioStreamConverter_convert(BMAudioStreamConverter *This,
 	double nextIndex = endIndex + readIndexStride;
 	//
 	// what is the first integer read index that will be used to produce the
-	// next buffer of output?
-	size_t firstReadIndexNextBuffer = (size_t)floor(nextIndex);
+	// next buffer of output? (we subtract 1 because vDSP_vqlint reads one index
+    // behind the integer part of the given index)
+	size_t firstReadIndexNextBuffer = (size_t)floor(nextIndex) - 1;
 	//
 	// how many of the bytes in the read buffer will not need to be read again next time?
 	long bytesConsumed_sInt = sizeof(float) * firstReadIndexNextBuffer;
@@ -238,15 +241,15 @@ size_t BMAudioStreamConverter_convert(BMAudioStreamConverter *This,
 	
 	
 	
-	/**************************************************************
-	 * linear interpolation downsample output buffers into output *
-	 **************************************************************/
+	/*****************************************************************
+	 * quadratic interpolation downsample output buffers into output *
+	 *****************************************************************/
 	//
 	for(size_t i=0; i<numChannelsResampling; i++){
 		
-		// use linear interpolation to copy from the output buffer to the output
+		// use quadratic interpolation to copy from the output buffer to the output
 		// at the fractional indices calculated above
-		vDSP_vlint(outputPointers[i],
+		vDSP_vqint(outputPointers[i],
 				   This->indexBuffer, 1,
 				   output[i], 1,
 				   numSamplesOut_i,
