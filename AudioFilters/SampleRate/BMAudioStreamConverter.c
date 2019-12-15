@@ -8,9 +8,12 @@
 
 #include "BMAudioStreamConverter.h"
 #include "Constants.h"
+#include <simd/simd.h>
 #define BM_SRC_STAGE_1_OVERSAMPLE_FACTOR 4
 #define BM_SRC_INPUT_BUFFER_LENGTH BM_SRC_MAX_OUTPUT_LENGTH * sizeof(float)
 #define BM_SRC_OUTPUT_BUFFER_LENGTH BM_SRC_INPUT_BUFFER_LENGTH * BM_SRC_STAGE_1_OVERSAMPLE_FACTOR
+#define BM_SRC_SAMPLES_CLEARANCE_BEFORE 1
+#define BM_SCR_SAMPLES_CLEARANCE_AFTER 2
 
 
 void BMAudioStreamConverter_init(BMAudioStreamConverter *This,
@@ -103,6 +106,36 @@ void BMAudioStreamConverter_free(BMAudioStreamConverter *This){
 	
 	// free the upsampler
 	BMUpsampler_free(&This->upsampler);
+}
+
+
+
+
+inline void BM_qint(const float *A, const float *indices, float* output, size_t numSamples){
+    for(size_t i=0; i<numSamples; i++){
+        float index_f = indices[i];
+        float fractionalPart = index_f - floorf(index_f);
+        float integerPart = round(index_f - fractionalPart);
+        size_t integerPart_i = (size_t)integerPart;
+        simd_float3 a;
+        float delta;
+        if(fractionalPart < 0.5f){
+            a = simd_make_float3(A[integerPart_i-1],
+                                 A[integerPart_i],
+                                 A[integerPart_i+1]);
+            delta = fractionalPart + 1.0f;
+            
+        } else {
+            a = simd_make_float3(A[integerPart_i],
+                                 A[integerPart_i+1],
+                                 A[integerPart_i+2]);
+            delta = fractionalPart;
+        }
+        simd_float3 x = simd_make_float3(0.5 * (delta - 1.0f) * (delta - 2.0f),
+                                         -delta * (delta - 2.0f),
+                                         0.5 * delta * (delta - 1.0f));
+        output[i] = simd_dot(a, x);
+    }
 }
 
 
@@ -211,8 +244,8 @@ size_t BMAudioStreamConverter_convert(BMAudioStreamConverter *This,
 	double readIndexStride = (double)BM_SRC_STAGE_1_OVERSAMPLE_FACTOR / This->conversionRatio;
 	double remainder = fmod(maxEndIndex-startIndex,readIndexStride);
 	double endIndex = maxEndIndex - remainder;
-	// vDSP_vqint requires that the integer portion of endIndex be less than (samplesAvailable - 2)
-	while((size_t)floor(endIndex) >= (samplesAvailable - 2))
+	// our interpolation function requires that the integer portion of endIndex be less than (samplesAvailable - BM_SCR_SAMPLES_CLEARANCE_AFTER)
+	while((size_t)floor(endIndex) >= (samplesAvailable - BM_SCR_SAMPLES_CLEARANCE_AFTER))
 		endIndex -= readIndexStride;
 	//
 	// calculate the number of samples we will output
@@ -231,9 +264,10 @@ size_t BMAudioStreamConverter_convert(BMAudioStreamConverter *This,
 	double nextIndex = endIndex + readIndexStride;
 	//
 	// what is the first integer read index that will be used to produce the
-	// next buffer of output? (we subtract 1 because vDSP_vqlint reads one index
-    // behind the integer part of the given index)
-	size_t firstReadIndexNextBuffer = (size_t)floor(nextIndex) - 1;
+	// next buffer of output? (we subtract BM_SCR_SAMPLES_CLEARANCE_BEFORE
+    // because our interpolation function may read some indices before the
+    // integer part of the given index)
+	size_t firstReadIndexNextBuffer = (size_t)floor(nextIndex) - BM_SRC_SAMPLES_CLEARANCE_BEFORE;
 	//
 	// how many of the bytes in the read buffer will not need to be read again next time?
 	long bytesConsumed_sInt = sizeof(float) * firstReadIndexNextBuffer;
