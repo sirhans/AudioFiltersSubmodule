@@ -10,7 +10,7 @@
 #include "Constants.h"
 #include <simd/simd.h>
 
-#define BM_SRC_STAGE_1_OVERSAMPLE_FACTOR 4
+#define BM_SRC_STAGE_1_OVERSAMPLE_FACTOR 8
 #define BM_SRC_INPUT_BUFFER_LENGTH BM_SRC_MAX_OUTPUT_LENGTH * sizeof(float)
 #define BM_SRC_OUTPUT_BUFFER_LENGTH BM_SRC_INPUT_BUFFER_LENGTH * BM_SRC_STAGE_1_OVERSAMPLE_FACTOR
 #define BM_SRC_SAMPLES_CLEARANCE_BEFORE 1
@@ -134,49 +134,16 @@ void BM_qint(const float *A, const float *indices, float* output, size_t numSamp
         simd_float3 a;
         float delta;
 		
-		// the following code exactly matches the VDSP output:
-//		a = simd_make_float3(A[integerPart_i-1],
-//							  A[integerPart_i],
-//							  A[integerPart_i+1]);
-//		 delta = fractionalPart + 1.0f;
-		
-		// the following code is also bad
-//		if(fractionalPart < 0.5){
-//			fractionalPart += 1.0f;
-//		} else {
-//			integerPart_i += 1;
-//		}
-		
 		// the following code is slightly better than VDSP output
 		a = simd_make_float3(A[integerPart_i-1],
 							A[integerPart_i],
 							A[integerPart_i+1]);
 		delta = fractionalPart;
 		
-		// the following code seems to match what Julius Smith recommends but
-		// the spectrogram has much more aliasing
-//        if(fractionalPart < 0.5f){
-//            a = simd_make_float3(A[integerPart_i-1],
-//                                 A[integerPart_i],
-//                                 A[integerPart_i+1]);
-//            delta = fractionalPart + 1.0f;
-//        } else {
-//            a = simd_make_float3(A[integerPart_i],
-//                                 A[integerPart_i+1],
-//                                 A[integerPart_i+2]);
-//            delta = fractionalPart;
-//        }
-		
-		// the following code is worse
-//		a = simd_make_float3(A[integerPart_i-1],
-//							 A[integerPart_i],
-//							 A[integerPart_i+1]);
-//		delta = 0.5 + fractionalPart;
-		
-        simd_float3 x = simd_make_float3(0.5 * (delta - 1.0f) * (delta - 2.0f),
-                                         -delta * (delta - 2.0f),
-                                         0.5 * delta * (delta - 1.0f));
-        output[i] = simd_dot(a, x);
+		simd_float3 x = simd_make_float3((delta - 1.0f) * (delta - 2.0f),
+										 -2.0f * delta * (delta - 2.0f),
+										 delta * (delta - 1.0f));
+        output[i] = simd_dot(a, x) * 0.5f;
     }
 }
 
@@ -388,9 +355,9 @@ size_t BMAudioStreamConverter_convert(BMAudioStreamConverter *This,
 	This->nextStartIndex = BM_intAsDoubleFix(This->nextStartIndex);
 	
 	
-	/**************************************************************
-	 * filter out sounds above the Nyquist frequency of the input *
-	 **************************************************************/
+	/**********************************************************************
+	 * antialiasing filter to remove artefacts of low-order interpolation *
+	 **********************************************************************/
 	//
 	if(This->stereoResampling)
 		BMMultiLevelBiquad_processBufferStereo(&This->aaFilter,
