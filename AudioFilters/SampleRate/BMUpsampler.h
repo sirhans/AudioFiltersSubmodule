@@ -26,13 +26,14 @@ extern "C" {
 #define BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_BW_FULL_SPECTRUM 0.177
 #define BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_BW_96KHZ_INPUT 0.45
     
-enum resamplerType {BMRESAMPLER_FULL_SPECTRUM, BMRESAMPLER_GUITAR, BMRESAMPLER_INPUT_96KHZ};
+enum resamplerType {BMRESAMPLER_FULL_SPECTRUM, BMRESAMPLER_GUITAR, BMRESAMPLER_INPUT_96KHZ, BMRESAMPLER_FULL_SPECTRUM_NO_STAGE2_FILTER};
 
     typedef struct BMUpsampler {
         BMIIRUpsampler2x* upsamplers2x;
         BMMultiLevelBiquad secondStageAAFilter;
         float *bufferL, *bufferR;
         size_t numStages, upsampleFactor;
+		bool useSecondStageFilter;
     } BMUpsampler;
     
     

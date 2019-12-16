@@ -23,6 +23,9 @@ extern "C" {
         assert(isPowerOfTwo(upsampleFactor));
         
         This->upsampleFactor = upsampleFactor;
+		This->useSecondStageFilter = true;
+		if(type == BMRESAMPLER_FULL_SPECTRUM_NO_STAGE2_FILTER)
+			This->useSecondStageFilter = false;
         
         if(upsampleFactor > 0){
             
@@ -91,11 +94,14 @@ extern "C" {
                 // process stage 0
                 if(outputToBuffer){
                     BMIIRUpsampler2x_processBufferMono(&This->upsamplers2x[0], input, This->bufferL, inputSize);
-                    BMMultiLevelBiquad_processBufferMono(&This->secondStageAAFilter, This->bufferL, This->bufferL, inputSize*2);
+					if(This->useSecondStageFilter)
+						BMMultiLevelBiquad_processBufferMono(&This->secondStageAAFilter, This->bufferL, This->bufferL, inputSize*2);
                 }
                 else{
                     BMIIRUpsampler2x_processBufferMono(&This->upsamplers2x[0], input, output, inputSize);
-                    BMMultiLevelBiquad_processBufferMono(&This->secondStageAAFilter, output, output, inputSize*2);
+					
+					if(This->useSecondStageFilter)
+						BMMultiLevelBiquad_processBufferMono(&This->secondStageAAFilter, output, output, inputSize*2);
                 }
                 outputToBuffer = !outputToBuffer;
                 
