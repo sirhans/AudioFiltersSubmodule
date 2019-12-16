@@ -22,15 +22,17 @@
 #include "BMUpsampler.h"
 #include <AudioToolbox/AudioToolbox.h>
 #include "TPCircularBuffer.h"
+#include "BMMultiLevelBiquad.h"
 
 #define BM_SRC_MAX_OUTPUT_LENGTH 2048
 
 typedef struct BMSampleRateConverter {
 	BMUpsampler upsampler;
-	TPCircularBuffer outputBuffers [2];
+	TPCircularBuffer upsampledBuffers [2];
+	BMMultiLevelBiquad aaFilter;
 	float *inputBuffers [2];
 	float indexBuffer [BM_SRC_MAX_OUTPUT_LENGTH];
-	AudioStreamBasicDescription input, output;
+	AudioStreamBasicDescription inputFormat, outputFormat;
 	double nextStartIndex, conversionRatio;
 	bool stereoResampling;
 } BMAudioStreamConverter;
