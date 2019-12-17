@@ -26,7 +26,7 @@ typedef struct BMSFM {
  * @param This   pointer to a BMSFM struct
  * @param inputLength  FFT window length
  */
-void BMSFM_init(BMSFM* This, size_t inputLength);
+void BMSFM_init(BMSFM *This, size_t inputLength);
 
 
 
@@ -37,7 +37,7 @@ void BMSFM_init(BMSFM* This, size_t inputLength);
  * @param This   pointer to an initialised BMSFM struct
  * @abstract free memory
  */
-void BMSFM_free(BMSFM* This);
+void BMSFM_free(BMSFM *This);
 
 
 
@@ -48,7 +48,26 @@ void BMSFM_free(BMSFM* This);
  * @param input  an array of floats with length = inputLength
  * @param inputLength   length of input
  */
-float BMSFM_process(BMSFM* This, float* input, size_t inputLength);
+float BMSFM_process(BMSFM *This, float* input, size_t inputLength);
+
+
+/*!
+ *BMGeometricMean
+ *
+ * @abstract returns the geometric mean of the elements in the array input
+ *
+ * @param input array of inputs with length inputLength
+ * @param inputLength length of input array
+ */
+float BMGeometricMean(float* input, size_t inputLength);
+
+
+/*!
+ *BMGeometricMean2
+ *
+ * @abstract returns the geometric mean of a and b
+ */
+float BMGeometricMean2(float a, float b);
 
 
 #endif /* BMSFM_h */

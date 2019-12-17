@@ -20,11 +20,11 @@ extern "C" {
     void randomiseOrder(bool* list, size_t length);
     
     void BMRoundRobinFilter_processBufferStereo(BMRoundRobinFilter* f, const float* inL, const float* inR, float* outL, float* outR, size_t numSamples){
-        BMMultiLevelBiquad_processBufferStereo(&f->bqf, inL, inR, outL, outR, numSamples);
+        BMMultiLevelBiquad_processBufferStereo(&f->This, inL, inR, outL, outR, numSamples);
     }
     
     void BMRoundRobinFilter_processBufferMono(BMRoundRobinFilter* f, const float* input, float* output, size_t numSamples){
-        BMMultiLevelBiquad_processBufferMono(&f->bqf, input, output, numSamples);
+        BMMultiLevelBiquad_processBufferMono(&f->This, input, output, numSamples);
     }
     
     void BMRoundRobinFilter_init(BMRoundRobinFilter* f, float sampleRate, size_t numBands, size_t numActiveBands, float minFc, float maxFc, float gainRange_db, bool stereo){
@@ -47,7 +47,7 @@ extern "C" {
                 f->activeBands[i]=false;
         }
         
-        BMMultiLevelBiquad_init(&f->bqf, numActiveBands, sampleRate, stereo, true,false);
+        BMMultiLevelBiquad_init(&f->This, numActiveBands, sampleRate, stereo, true,false);
         
         // initialize the round robin filter with a random setting
         BMRoundRobinFilter_newNote(f);
@@ -66,7 +66,7 @@ extern "C" {
     //        float gain_db = (((float)rand()/(float)RAND_MAX)-0.5)*2.0*f->gainRange_db;
     //
     //        // note that Q = peakSpacing
-    //        BMMultiLevelBiquad_setBell(&(f->bqf), fc, peakSpacing, gain_db, i);
+    //        BMMultiLevelBiquad_setBell(&(f->This), fc, peakSpacing, gain_db, i);
     //
     //        // move the fc over for the next peak
     //        fc += peakSpacing;
@@ -105,7 +105,7 @@ extern "C" {
                 // randomise the sign of the gain
                 if (rand()%2==0)
                     gain_db *= -1.0f;
-                BMMultiLevelBiquad_setBell(&(f->bqf), fc, q, gain_db, level++);
+                BMMultiLevelBiquad_setBell(&(f->This), fc, q, gain_db, level++);
             }
             
             // move the fc over for the next peak
@@ -114,7 +114,7 @@ extern "C" {
     }
     
     void BMRoundRobinFilter_destroy(BMRoundRobinFilter* f){
-        BMMultiLevelBiquad_destroy(&f->bqf);
+        BMMultiLevelBiquad_destroy(&f->This);
         free(f->activeBands);
         f->activeBands = NULL;
     }

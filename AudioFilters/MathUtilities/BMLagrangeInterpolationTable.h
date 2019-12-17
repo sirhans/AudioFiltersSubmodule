@@ -26,16 +26,16 @@ extern "C" {
     }BMLagrangeInterpolationTable;
     
     
-    void BMLagrangeInterpolationTable_init(BMLagrangeInterpolationTable* This,
+    void BMLagrangeInterpolationTable_init(BMLagrangeInterpolationTable *This,
                                            size_t interpolationOrder,
                                            size_t length);
     
     
-    void BMLagrangeInterpolationTable_destroy(BMLagrangeInterpolationTable* This);
+    void BMLagrangeInterpolationTable_destroy(BMLagrangeInterpolationTable *This);
     
     
     
-    size_t BMLagrangInterpolationTable_getIndex(BMLagrangeInterpolationTable* This, float delta);
+    size_t BMLagrangInterpolationTable_getIndex(BMLagrangeInterpolationTable *This, float delta);
 
 #endif /* BMLagrangeInterpolationTable_h */
 

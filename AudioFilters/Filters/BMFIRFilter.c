@@ -37,7 +37,7 @@ extern "C" {
      * @param coefficients   filter kernel
      * @param length         length of coefficients
      */
-    void BMFIRFilter_init(BMFIRFilter* This,
+    void BMFIRFilter_init(BMFIRFilter *This,
                           float* coefficients,
                           size_t length){
         
@@ -81,7 +81,7 @@ extern "C" {
     }
     
     
-    void BMFIRFilter_process(BMFIRFilter* This,
+    void BMFIRFilter_process(BMFIRFilter *This,
                              float* input,
                              float* output,
                              size_t numSamples){
@@ -142,7 +142,7 @@ extern "C" {
     }
     
     
-    void BMFIRFilter_free(BMFIRFilter* This){
+    void BMFIRFilter_free(BMFIRFilter *This){
         TPCircularBufferCleanup(&This->inputBuffer);
         
         free(This->coefficients);
@@ -158,9 +158,9 @@ extern "C" {
     
     /*
      * The calling function must ensure that the length of IR is at least
-     * This->length.
+      *This->length.
      */
-    void BMFIRFilter_impulseResponse(BMFIRFilter* This, float* IR){
+    void BMFIRFilter_impulseResponse(BMFIRFilter *This, float* IR){
         
         // set up the input long enough to flush the zeros out of the buffer
         // and produce the IR

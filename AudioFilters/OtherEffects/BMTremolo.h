@@ -18,7 +18,7 @@
 //  float fadeTime = 0.75f;  // to full width 0.75 second after note start
 //  float sampleRate = 44100.0f // sample rate at 44.1 khz
 //
-//   BMTremolo_init(BMTremolo* This,
+//   BMTremolo_init(BMTremolo *This,
 //                  rate,
 //                  width,
 //                  float modRate,
@@ -56,7 +56,7 @@ extern "C" {
      * @param fadeInTime_seconds - starting from zero tremolo, how long before full width?
      * @param sampleRate - audio system sample rate
      */
-    void BMTremolo_init(BMTremolo* This,
+    void BMTremolo_init(BMTremolo *This,
                     float rate_hz,
                     float width_dB,
                     float modRate_hz,
@@ -70,7 +70,7 @@ extern "C" {
     /*
      * Call this function before each new note to reset the fade
      */
-    void BMTremolo_newNote(BMTremolo* This);
+    void BMTremolo_newNote(BMTremolo *This);
 
     
     
@@ -82,7 +82,7 @@ extern "C" {
      * @param output  buffer of audio output samples, input == output is OK
      * @param numSamples length of input, output
      */
-    void BMTremolo_processAudioMono(BMTremolo* This,
+    void BMTremolo_processAudioMono(BMTremolo *This,
                                     float* input,
                                     float* output,
                                     size_t numSamples);
@@ -98,7 +98,7 @@ extern "C" {
      * @param outR  right channel of output, input == output is OK
      * @param numSamples   length of inL, inR, outL, and outR
      */
-    void BMTremolo_processAudioStereo(BMTremolo* This,
+    void BMTremolo_processAudioStereo(BMTremolo *This,
                                     float* inL, float* inR,
                                     float* outL, float* outR,
                                     size_t numSamples);
@@ -107,9 +107,9 @@ extern "C" {
     /*
      * @param scale In [0,1]. Adjusts the width (actual witdh = wModDepth_0to1*scale)
      *
-     * This is used for implementation of modulation wheel controllers
+      *This is used for implementation of modulation wheel controllers
      */
-    void BMTremolo_setWidthScale(BMTremolo* This, float scale);
+    void BMTremolo_setWidthScale(BMTremolo *This, float scale);
     
     
 #ifdef __cplusplus

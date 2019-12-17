@@ -25,7 +25,7 @@ extern "C" {
      * @param fourthOrder - true: 4th order, false: 2nd order
      * @param stereo      - true: stereo, false: mono
      */
-    void BMCrossover_init(BMCrossover* This,
+    void BMCrossover_init(BMCrossover *This,
                           float cutoff,
                           float sampleRate,
                           bool fourthOrder,
@@ -64,7 +64,7 @@ extern "C" {
     /*
      * Free memory used by the filters
      */
-    void BMCrossover_free(BMCrossover* This){
+    void BMCrossover_free(BMCrossover *This){
         BMMultiLevelBiquad_destroy(&This->lp);
         BMMultiLevelBiquad_destroy(&This->hp);
     }
@@ -77,7 +77,7 @@ extern "C" {
     /*
      * @param cutoff - cutoff frequency in Hz
      */
-    void BMCrossover_setCutoff(BMCrossover* This, float cutoff){
+    void BMCrossover_setCutoff(BMCrossover *This, float cutoff){
         
         if(This->fourthOrder){
             // the fourth order crossover uses pairs of
@@ -119,23 +119,23 @@ extern "C" {
      * @param highpassL  - highpass output left
      * @param highpassR  - highpass output right
      * @param numSamples - number of samples to process. all arrays must have at least this length
-     */
-    void BMCrossover_processStereo(BMCrossover* This,
-                                   const float* inL, const float* inR,
-                                   float* lowpassL, float* lowpassR,
-                                   float* highpassL, float* highpassR,
-                                   size_t numSamples){
-        assert(This->stereo);
-        
-        BMMultiLevelBiquad_processBufferStereo(&This->lp,
-                                               inL, inR,
-                                               lowpassL, lowpassR,
-                                               numSamples);
-        BMMultiLevelBiquad_processBufferStereo(&This->hp,
-                                               inL, inR,
-                                               highpassL, highpassR,
-                                               numSamples);
-    }
+	 */
+	void BMCrossover_processStereo(BMCrossover *This,
+								   const float* inL, const float* inR,
+								   float* lowpassL, float* lowpassR,
+								   float* highpassL, float* highpassR,
+								   size_t numSamples){
+		assert(This->stereo);
+		
+		BMMultiLevelBiquad_processBufferStereo(&This->lp,
+											   inL, inR,
+											   lowpassL, lowpassR,
+											   numSamples);
+		BMMultiLevelBiquad_processBufferStereo(&This->hp,
+											   inL, inR,
+											   highpassL, highpassR,
+											   numSamples);
+	}
     
     
     
@@ -151,7 +151,7 @@ extern "C" {
      * @param highpass   - highpass output
      * @param numSamples - number of samples to process. all arrays must have at least this length
      */
-    void BMCrossover_processMono(BMCrossover* This,
+    void BMCrossover_processMono(BMCrossover *This,
                                  float* input,
                                  float* lowpass,
                                  float* highpass,
@@ -224,7 +224,7 @@ extern "C" {
      * @param fourthOrder - true: 4th order, false: 2nd order
      * @param stereo      - true: stereo, false: mono
      */
-    void BMCrossover3way_init(BMCrossover3way* This,
+    void BMCrossover3way_init(BMCrossover3way *This,
                               float cutoff1,
                               float cutoff2,
                               float sampleRate,
@@ -285,7 +285,7 @@ extern "C" {
     /*!
      *BMCrossover3way_free
      */
-    void BMCrossover3way_free(BMCrossover3way* This){
+    void BMCrossover3way_free(BMCrossover3way *This){
         // audio filters
         BMMultiLevelBiquad_destroy(&This->low);
         BMMultiLevelBiquad_destroy(&This->midAndHigh);
@@ -385,6 +385,43 @@ extern "C" {
                                                midL, midR,
                                                numSamples);
     }
+	
+	
+	
+	
+	void BMCrossover3way_processMono(BMCrossover3way *This,
+                                       const float* inL,
+                                       float* lowL,
+                                       float* midL,
+                                       float* highL,
+                                       size_t numSamples){
+        assert(!This->stereo);
+        
+        // split the low part of the signal off, processing it through
+        // both crossovers to preserve phase
+        BMMultiLevelBiquad_processBufferMono(&This->low,
+                                               inL,
+                                               lowL,
+                                               numSamples);
+        
+        // split the mid and high, buffer to mid
+        BMMultiLevelBiquad_processBufferMono(&This->midAndHigh,
+                                               inL,
+                                               midL,
+                                               numSamples);
+        
+        // split the high from the mid
+        BMMultiLevelBiquad_processBufferMono(&This->high,
+                                               midL,
+                                               highL,
+                                               numSamples);
+        
+        // remove the high from the mid
+        BMMultiLevelBiquad_processBufferMono(&This->mid,
+                                               midL,
+                                               midL,
+                                               numSamples);
+    }
     
     
     
@@ -428,7 +465,7 @@ extern "C" {
      * @param fourthOrder - true: 4th order, false: 2nd order
      * @param stereo      - true: stereo, false: mono
      */
-    void BMCrossover4way_init(BMCrossover4way* This,
+    void BMCrossover4way_init(BMCrossover4way *This,
                               float cutoff1,
                               float cutoff2,
                               float cutoff3,
@@ -504,7 +541,7 @@ extern "C" {
     /*!
      *BMCrossover4way_free
      */
-    void BMCrossover4way_free(BMCrossover4way* This){
+    void BMCrossover4way_free(BMCrossover4way *This){
         BMMultiLevelBiquad_destroy(&This->band1);
         BMMultiLevelBiquad_destroy(&This->band2);
         BMMultiLevelBiquad_destroy(&This->band3);
@@ -696,7 +733,7 @@ extern "C" {
     
     
 
-    //void BMMultiLevelBiquad_tfMagVector(BMMultiLevelBiquad* bqf, const float *frequency, float *magnitude, size_t length);
+    //void BMMultiLevelBiquad_tfMagVector(BMMultiLevelBiquad* This, const float *frequency, float *magnitude, size_t length);
     /*!
      *BMCrossover4way_tfMagVectors
      *

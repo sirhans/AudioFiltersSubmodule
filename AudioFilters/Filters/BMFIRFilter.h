@@ -33,7 +33,7 @@ extern "C" {
      * @param coefficients   filter kernel
      * @param length         length of coefficients
      */
-    void BMFIRFilter_init(BMFIRFilter* This,
+    void BMFIRFilter_init(BMFIRFilter *This,
                             float* coefficients,
                             size_t length);
     
@@ -42,15 +42,15 @@ extern "C" {
      * @param input  length must be at least numSamples
      * @param output length must be at least numSamples
      */
-    void BMFIRFilter_process(BMFIRFilter* This, float* input, float* output, size_t numSamples);
+    void BMFIRFilter_process(BMFIRFilter *This, float* input, float* output, size_t numSamples);
     
     
-    void BMFIRFilter_free(BMFIRFilter* This);
+    void BMFIRFilter_free(BMFIRFilter *This);
     
     
     /*
      * The calling function must ensure that the length of IR is at least
-     * This->IRLength.
+      *This->IRLength.
      */
     void BMFIRFilter_impulseResponse(BMFIRFilter *This, float* IR);
     

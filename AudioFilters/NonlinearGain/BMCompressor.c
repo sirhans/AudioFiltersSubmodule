@@ -18,7 +18,7 @@
 #include "Constants.h"
 
 
-void BMCompressor_init(BMCompressor* This, float sampleRate){
+void BMCompressor_init(BMCompressor *This, float sampleRate){
     float threshold = -10.0f;
     float kneeWidth = 25.0f;
     float ratio = 4.0f;
@@ -45,7 +45,7 @@ void BMCompressor_init(BMCompressor* This, float sampleRate){
  * @param attackTime       time from onset of note to 90% compressor gain change
  * @param releaseTime      time from release of note to 90% compressor gain change
  */
-void BMCompressor_initWithSettings(BMCompressor* This, float sampleRate, float thresholdInDB, float kneeWidthInDB, float ratio, float attackTime, float releaseTime){
+void BMCompressor_initWithSettings(BMCompressor *This, float sampleRate, float thresholdInDB, float kneeWidthInDB, float ratio, float attackTime, float releaseTime){
     
     This->slope = 1.0f - (1.0f / ratio);
     This->thresholdInDB = thresholdInDB;
@@ -68,11 +68,12 @@ void BMCompressor_initWithSettings(BMCompressor* This, float sampleRate, float t
 /*
  * Free memory used by temp buffers
  */
-void BMCompressor_Free(BMCompressor* This){
+void BMCompressor_Free(BMCompressor *This){
     free(This->buffer1);
     This->buffer1 = NULL;
     free(This->buffer2);
     This->buffer2 = NULL;
+	BMEnvelopeFollower_free(&This->envelopeFollower);
 }
 
 
@@ -80,7 +81,7 @@ void BMCompressor_Free(BMCompressor* This){
 
 
 
-void BMCompressor_ProcessBufferMono(BMCompressor* This, const float* input, float* output, float* minGainDb, size_t numSamples){
+void BMCompressor_ProcessBufferMono(BMCompressor *This, const float* input, float* output, float* minGainDb, size_t numSamples){
     
     // prepare to track the minimum gain
     float minGainThisChunk;
@@ -142,7 +143,7 @@ void BMCompressor_ProcessBufferMono(BMCompressor* This, const float* input, floa
 
 
 
-void BMCompressor_ProcessBufferStereo(BMCompressor* This,
+void BMCompressor_ProcessBufferStereo(BMCompressor *This,
                                       float* inputL, float* inputR,
                                       float* outputL, float* outputR,
                                       float* minGainDb, size_t numSamples){
@@ -209,47 +210,48 @@ void BMCompressor_ProcessBufferStereo(BMCompressor* This,
     *minGainDb = minGainWholeBuffer;
 }
 
-void updateThreshold(BMCompressor* This){
+void updateThreshold(BMCompressor *This){
     BMQuadraticThreshold_initLower(&This->quadraticThreshold,
                                    This->thresholdInDB,
                                    This->kneeWidthInDB);
 }
 
-void BMCompressor_SetThresholdInDB(BMCompressor* This, float threshold){
+void BMCompressor_SetThresholdInDB(BMCompressor *This, float threshold){
     This->thresholdInDB = threshold;
     updateThreshold(This);
 }
 
-void BMCompressor_SetKneeWidthInDB(BMCompressor* This, float knee){
+void BMCompressor_SetKneeWidthInDB(BMCompressor *This, float knee){
     assert(knee >= 0.0f);
     
     This->kneeWidthInDB = knee;
     updateThreshold(This);
 }
 
-void BMCompressor_SetRatio(BMCompressor* This, float ratio){
+void BMCompressor_SetRatio(BMCompressor *This, float ratio){
     assert(ratio > 0.0);
     
     This->slope = 1.0f - (1.0f / ratio);
 }
 
-void BMCompressor_SetAttackTime(BMCompressor* This, float attackTime){
+void BMCompressor_SetAttackTime(BMCompressor *This, float attackTime){
     assert(attackTime >= 0.0f);
     
     This->attackTime = attackTime;
     BMEnvelopeFollower_setAttackTime(&This->envelopeFollower, attackTime);
 }
 
-void BMCompressor_SetReleaseTime(BMCompressor* This, float releaseTime){
+void BMCompressor_SetReleaseTime(BMCompressor *This, float releaseTime){
     assert(releaseTime > 0.0f);
     
     This->releaseTime = releaseTime;
     BMEnvelopeFollower_setReleaseTime(&This->envelopeFollower, releaseTime);
 }
 
-void BMCompressor_SetSampleRate(BMCompressor* This, float sampleRate){
+void BMCompressor_SetSampleRate(BMCompressor *This, float sampleRate){
     assert(sampleRate > 0.0f);
     
+	BMEnvelopeFollower_free(&This->envelopeFollower);
     BMEnvelopeFollower_init(&This->envelopeFollower, sampleRate);
     BMEnvelopeFollower_setAttackTime(&This->envelopeFollower, This->attackTime);
     BMEnvelopeFollower_setReleaseTime(&This->envelopeFollower, This->releaseTime);

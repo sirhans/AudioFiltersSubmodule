@@ -12,12 +12,12 @@
 #include "Constants.h"
 
 void BMMultiTapDelay_initBuffer(BMMultiTapDelay* delay);
-void BMMultiTapDelay_PerformReInitBuffer(BMMultiTapDelay* This);
+void BMMultiTapDelay_PerformReInitBuffer(BMMultiTapDelay *This);
 
 
 
 
-void BMMultiTapDelay_Init(BMMultiTapDelay* This,
+void BMMultiTapDelay_Init(BMMultiTapDelay *This,
                           bool isStereo,
                           size_t* delayTimesL, size_t* delayTimesR,
                           size_t maxDelayTime,
@@ -33,16 +33,16 @@ void BMMultiTapDelay_Init(BMMultiTapDelay* This,
     This->numTaps = numTaps;
     This->maxDelayTime = maxDelayTime;
     
-    This->buffer = malloc(sizeof(TPCircularBuffer) * This->numberChannel);
-    This->tempBuffer = malloc(sizeof(float*) * This->numberChannel);
+    This->buffer = malloc(sizeof(TPCircularBuffer)  *This->numberChannel);
+    This->tempBuffer = malloc(sizeof(float*)  *This->numberChannel);
     
-    This->input = malloc(sizeof(float*) * This->numberChannel);
-    This->output = malloc(sizeof(float*) * This->numberChannel);
-    setting->gains = malloc(sizeof(float*) * This->numberChannel);
-    setting->indices = malloc(sizeof(size_t*) * This->numberChannel);
-    setting->delayTimes = malloc(sizeof(size_t*) * This->numberChannel);
-    This->tempGains = malloc(sizeof(float*) * This->numberChannel);
-    This->tempIndices = malloc(sizeof(size_t*) * This->numberChannel);
+    This->input = malloc(sizeof(float*)  *This->numberChannel);
+    This->output = malloc(sizeof(float*)  *This->numberChannel);
+    setting->gains = malloc(sizeof(float*)  *This->numberChannel);
+    setting->indices = malloc(sizeof(size_t*)  *This->numberChannel);
+    setting->delayTimes = malloc(sizeof(size_t*)  *This->numberChannel);
+    This->tempGains = malloc(sizeof(float*)  *This->numberChannel);
+    This->tempIndices = malloc(sizeof(size_t*)  *This->numberChannel);
     
     // alias the input arrays that have l and r channels into
     // multi-dimensional arrays so we can iterate the channels with a for
@@ -94,7 +94,7 @@ void BMMultiTapDelay_initBypass(BMMultiTapDelay *This,
 
 
 void BMMultiTapDelay_initBuffer(BMMultiTapDelay* delay){
-    BMMultiTapDelaySetting* setting = &delay->setting;
+    //BMMultiTapDelaySetting* setting = &delay->setting;
     
     //init the rest
     size_t numberFrames = (delay->maxDelayTime + 1) + BM_BUFFER_CHUNK_SIZE;
@@ -299,7 +299,7 @@ void BMMultiTapDelay_clearBuffers(BMMultiTapDelay* delay){
 /*
  *  Free memory of the struct at *This
  */
-void BMMultiTapDelay_free(BMMultiTapDelay* This){
+void BMMultiTapDelay_free(BMMultiTapDelay *This){
     BMMultiTapDelaySetting *setting = &This->setting;
     
     for (int i=0; i<This->numberChannel; i++) {
@@ -355,7 +355,7 @@ void BMMultiTapDelay_free(BMMultiTapDelay* This){
     This->tempIndices = NULL;
 }
 
-void BMMultiTapDelay_PerformUpdateIndices(BMMultiTapDelay* This){
+void BMMultiTapDelay_PerformUpdateIndices(BMMultiTapDelay *This){
     //write data from tempArray
     BMMultiTapDelaySetting* setting = &This->setting;
     for (int i=0; i<This->numberChannel; i++) {
@@ -368,7 +368,7 @@ void BMMultiTapDelay_PerformUpdateIndices(BMMultiTapDelay* This){
 
 
 
-void BMMultiTapDelay_PerformUpdateGains(BMMultiTapDelay* This){
+void BMMultiTapDelay_PerformUpdateGains(BMMultiTapDelay *This){
     //write data from tempArray
     BMMultiTapDelaySetting* setting = &This->setting;
     for (int i=0; i<This->numberChannel; i++) {
@@ -381,7 +381,7 @@ void BMMultiTapDelay_PerformUpdateGains(BMMultiTapDelay* This){
 
 
 
-void BMMultiTapDelay_setDelayTimes(BMMultiTapDelay* This,
+void BMMultiTapDelay_setDelayTimes(BMMultiTapDelay *This,
                                    size_t* delayTimesL, size_t* delayTimesR){
     
     This->_needUpdateIndices = false;
@@ -398,7 +398,7 @@ void BMMultiTapDelay_setDelayTimes(BMMultiTapDelay* This,
 
 
 
-void BMMultiTapDelay_setDelayTimeNumTap(BMMultiTapDelay* This,
+void BMMultiTapDelay_setDelayTimeNumTap(BMMultiTapDelay *This,
                                         size_t* delayTimesL, size_t* delayTimesR,
                                         size_t numTaps){
     assert(numTaps <= This->maxTaps);
@@ -424,7 +424,7 @@ void BMMultiTapDelay_setDelayTimeNumTap(BMMultiTapDelay* This,
 
 
 
-void BMMultiTapDelay_setGains(BMMultiTapDelay* This, float* gainL, float* gainR){
+void BMMultiTapDelay_setGains(BMMultiTapDelay *This, float* gainL, float* gainR){
     This->_needUpdateGain = false;
     
     for (int i=0; i< This->numberChannel; i++) {
@@ -440,7 +440,7 @@ void BMMultiTapDelay_setGains(BMMultiTapDelay* This, float* gainL, float* gainR)
 /*
  *  Print the impulse response to standard output for testing
  */
-void BMMultiTapDelay_impulseResponse(BMMultiTapDelay* This){
+void BMMultiTapDelay_impulseResponse(BMMultiTapDelay *This){
     // we include the right channel if the output is stereo
     bool includeRightChannel = This->setting.isStereo;
     

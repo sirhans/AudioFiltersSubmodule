@@ -22,8 +22,7 @@
 
 
 
-
-void BMTransientEnveloper_init(BMTransientEnveloper* This, float sampleRate){
+void BMTransientEnveloper_init(BMTransientEnveloper *This, float sampleRate){
     
     /*
      * attack transient filters
@@ -67,7 +66,35 @@ void BMTransientEnveloper_init(BMTransientEnveloper* This, float sampleRate){
 
 
 
-void BMTransientEnveloper_setAttackOnsetTime(BMTransientEnveloper* This, float seconds){
+/*!
+ * BMTransientEnveloper_processBuffer
+ * @abstract used as a component of a transient shaper
+ *
+ * @param This             pointer to an initialised BMEnvelopeFollower struct
+ * @param input            single channel input array
+ * @param attackEnvelope   positive values indicate that we are in the attack portion. output values in range: [0,input]
+ * @param afterAttackEnvelope positive values indicate that we are in the portion immediately after the attack range: [0,+?]
+ * @param releaseEnvelope  positive values indicate that we are in the release portion. output values in range: [0,input]
+ */
+void BMTransientEnveloper_processBuffer(BMTransientEnveloper *This,
+                                        const float* input,
+                                        float* attackEnvelope,
+                                        float* afterAttackEnvelope,
+                                        float* releaseEnvelope,
+                                        size_t numSamples);
+
+
+void BMTransientEnveloper_setAttackOnsetTime(BMTransientEnveloper *This, float seconds);
+
+void BMTransientEnveloper_setAttackDuration(BMTransientEnveloper *This, float seconds);
+
+void BMTransientEnveloper_setReleaseDuration(BMTransientEnveloper *This, float seconds);
+
+
+
+
+
+void BMTransientEnveloper_setAttackOnsetTime(BMTransientEnveloper *This, float seconds){
     if(seconds > 0){
         float attackOnsetFc = ARTimeToCutoffFrequency(seconds, BMENV_NUM_STAGES);
     
@@ -81,7 +108,7 @@ void BMTransientEnveloper_setAttackOnsetTime(BMTransientEnveloper* This, float s
 
 
 
-void BMTransientEnveloper_setAttackDuration(BMTransientEnveloper* This, float seconds){
+void BMTransientEnveloper_setAttackDuration(BMTransientEnveloper *This, float seconds){
     
     float attackDurationFc = ARTimeToCutoffFrequency(seconds, BMENV_NUM_STAGES);
     
@@ -92,14 +119,14 @@ void BMTransientEnveloper_setAttackDuration(BMTransientEnveloper* This, float se
 
 
 
-void BMTransientEnveloper_setReleaseDuration(BMEnvelopeFollower* This, float seconds){
+void BMTransientEnveloper_setReleaseDuration(BMTransientEnveloper *This, float seconds){
     
 }
 
 
 
 
-void BMTransientEnveloper_processBuffer(BMTransientEnveloper* This,
+void BMTransientEnveloper_processBuffer(BMTransientEnveloper *This,
                                         const float* input,
                                         float* attackEnvelope,
                                         float* afterAttackEnvelope,
@@ -230,3 +257,126 @@ void BMTransientEnveloper_processBuffer(BMTransientEnveloper* This,
     vDSP_vsub(fastAttack, 1, slowAttack, 1, afterAttackEnvelope, 1, numSamples);
     
 }
+
+
+
+
+
+
+/*!
+ *BMTransientShaper_init
+ */
+void BMTransientShaper_init(BMTransientShaper *This, float sampleRate){
+	BMTransientEnveloper_init(&This->enveloper, sampleRate);
+}
+
+
+
+/*!
+ *BMTransientShaper_processBufferStereo
+ */
+void BMTransientShaper_processBufferStereo(BMTransientShaper *This,
+										   const float* inL, const float* inR,
+										   float* outL, float* outR,
+										   size_t numSamples){
+	while(numSamples > 0){
+		size_t numSamplesProcessing = BM_MIN(numSamples, BM_BUFFER_CHUNK_SIZE);
+		
+		// mix to mono
+		float half = 0.5;
+		vDSP_vasm(inL, 1, inR, 1, &half, This->buffer1, 1, numSamplesProcessing);
+		
+		// compute the three envelopes
+		BMTransientEnveloper_processBuffer(&This->enveloper,
+										   This->buffer1,
+										   This->attackEnv,
+										   This->postAttackEnv,
+										   This->releaseEnv,
+										   numSamplesProcessing);
+		
+		// create an alias for readibility
+		float* controlSignal = This->buffer1;
+		
+		// apply the attack envelope to the control signal
+		float one = 1.0f;
+		vDSP_vsmsa(This->attackEnv, 1, &This->attackStrength, &one, controlSignal, 1, numSamplesProcessing);
+		
+		// apply the post-attack
+		vDSP_vsma(This->postAttackEnv, 1, &This->postAttackStrength, controlSignal, 1, controlSignal, 1, numSamplesProcessing);
+		
+		// apply the release
+		vDSP_vsma(This->releaseEnv, 1, &This->releaseStrength, controlSignal, 1, controlSignal, 1, numSamplesProcessing);
+		
+		// multiply the control signal by the input and write to output
+		vDSP_vmul(controlSignal, 1, inL, 1, outL, 1, numSamplesProcessing);
+		vDSP_vmul(controlSignal, 1, inR, 1, outR, 1, numSamplesProcessing);
+		
+		// advance pointers
+		inL += numSamplesProcessing;
+		inR += numSamplesProcessing;
+		outL += numSamplesProcessing;
+		outR += numSamplesProcessing;
+		numSamples -= numSamplesProcessing;
+	}
+}
+
+
+/*!
+ *BMTransientShaper_setAttackStrength
+ *
+ * @param This pointer to an initialised struct
+ * @param strength in -1,1
+ */
+void BMTransientShaper_setAttackStrength(BMTransientShaper *This, float strength){
+	This->attackStrength = strength;
+}
+
+
+/*!
+ *BMTransientShaper_setPostAttackStrength
+ *
+ * @param This pointer to an initialised struct
+ * @param strength in -1,1
+ */
+void BMTransientShaper_setPostAttackStrength(BMTransientShaper *This, float strength){
+	This->postAttackStrength = strength;
+}
+
+
+/*!
+ *BMTransientShaper_setReleaseStrength
+ *
+ * @param This pointer to an initialised struct
+ * @param strength in -1,1
+ */
+void BMTransientShaper_setReleaseStrength(BMTransientShaper *This, float strength){
+	This->releaseStrength = strength;
+}
+
+
+/*!
+ *BMTransientShaper_setAttackTime
+ */
+void BMTransientShaper_setAttackTime(BMTransientShaper *This, float timeInSeconds){
+	BMTransientEnveloper_setAttackDuration(&This->enveloper, timeInSeconds);
+}
+
+
+
+/*!
+ *BMTransientShaper_setPostAttackTime
+ */
+void BMTransientShaper_setPostAttackTime(BMTransientShaper *This, float timeInSeconds){
+	// ?
+}
+
+
+
+
+/*!
+ *BMTransientShaper_setReleaseTime
+ */
+void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float timeInSeconds){
+	BMTransientEnveloper_setReleaseDuration(&This->enveloper, timeInSeconds);
+}
+

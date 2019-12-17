@@ -13,6 +13,7 @@
 #include "BMVelvetNoise.h"
 #include "BMReverb.h"
 #include "BMVectorOps.h"
+#include "BMReverb.h"
 
 
 #define BM_VND_WET_MIX 0.40f
@@ -23,7 +24,7 @@
 /*!
  *BMVelvetNoiseDecorrelator_init
  */
-void BMVelvetNoiseDecorrelator_init(BMVelvetNoiseDecorrelator* This,
+void BMVelvetNoiseDecorrelator_init(BMVelvetNoiseDecorrelator *This,
                                     float maxDelaySeconds,
                                     size_t numWetTaps,
                                     float rt60DecayTimeSeconds,
@@ -120,18 +121,23 @@ void BMVelvetNoiseDecorrelator_genRandTapTimes(BMVelvetNoiseDecorrelator *This){
 		This->delayLengthsR[0] = 0;
 	}
 	
-	// find out how many milliseconds in one sample
-	float oneSampleMs = 1000.0f / This->sampleRate;
+//	// find out how many milliseconds in one sample
+//	float oneSampleMs = 1000.0f / This->sampleRate;
+//
+//	// use the velvet noise algorithm to set the delay tap times
+//	BMVelvetNoise_setTapIndices(oneSampleMs,
+//								This->maxDelayTimeS * 1000.0f,
+//								This->delayLengthsL + shift,
+//								This->sampleRate, This->numWetTaps);
+//	BMVelvetNoise_setTapIndices(oneSampleMs,
+//								This->maxDelayTimeS * 1000.0f,
+//								This->delayLengthsR + shift,
+//								This->sampleRate, This->numWetTaps);
 	
-	// use the velvet noise algorithm to set the delay tap times
-	BMVelvetNoise_setTapIndices(oneSampleMs,
-								This->maxDelayTimeS * 1000.0f,
-								This->delayLengthsL + shift,
-								This->sampleRate, This->numWetTaps);
-	BMVelvetNoise_setTapIndices(oneSampleMs,
-								This->maxDelayTimeS * 1000.0f,
-								This->delayLengthsR + shift,
-								This->sampleRate, This->numWetTaps);
+	// use the randoms-in-range algorithm to set delay tap times
+	size_t min = ceil(This->maxDelayTimeS / This->numWetTaps);
+	size_t max = ceil(This->maxDelayTimeS * This->sampleRate);
+	BMReverbRandomsInRange(min, max, This->delayLengthsR + shift, This->numWetTaps);
 	
 	BMMultiTapDelay_setDelayTimes(&This->multiTapDelay, This->delayLengthsL, This->delayLengthsR);
 }
@@ -156,7 +162,7 @@ void BMVelvetNoiseDecorrelator_randomiseAll(BMVelvetNoiseDecorrelator *This){
  *
  * @abstract sets the wet/dry mix and issues the command to update the multitap delay
  */
-void BMVelvetNoiseDecorrelator_setWetMix(BMVelvetNoiseDecorrelator* This, float wetMix01){
+void BMVelvetNoiseDecorrelator_setWetMix(BMVelvetNoiseDecorrelator *This, float wetMix01){
 	This->wetMix = wetMix01;
 	
 	// we need a dry tap to set the mix; otherwise it's fiixed at 100% wet
@@ -188,7 +194,7 @@ void BMVelvetNoiseDecorrelator_setWetMix(BMVelvetNoiseDecorrelator* This, float 
 /*!
  *BMVelvetNoiseDecorrelator_free
  */
-void BMVelvetNoiseDecorrelator_free(BMVelvetNoiseDecorrelator* This){
+void BMVelvetNoiseDecorrelator_free(BMVelvetNoiseDecorrelator *This){
 	BMMultiTapDelay_free(&This->multiTapDelay);
 	
 	free(This->delayLengthsL);
@@ -207,7 +213,7 @@ void BMVelvetNoiseDecorrelator_free(BMVelvetNoiseDecorrelator* This){
 /*!
  *BMVelvetNoiseDecorrelator_processBufferStereo
  */
-void BMVelvetNoiseDecorrelator_processBufferStereo(BMVelvetNoiseDecorrelator* This,
+void BMVelvetNoiseDecorrelator_processBufferStereo(BMVelvetNoiseDecorrelator *This,
                                                    float* inputL,
                                                    float* inputR,
                                                    float* outputL,
@@ -216,6 +222,21 @@ void BMVelvetNoiseDecorrelator_processBufferStereo(BMVelvetNoiseDecorrelator* Th
 	// all processing is done by the multi-tap delay class
     BMMultiTapDelay_processBufferStereo(&This->multiTapDelay,
 										inputL, inputR,
+										outputL, outputR,
+										length);
+}
+
+
+
+
+
+void BMVelvetNoiseDecorrelator_processBufferMonoToStereo(BMVelvetNoiseDecorrelator *This,
+														 float* inputL,
+														 float* outputL, float* outputR,
+														 size_t length){
+	// all processing is done by the multi-tap delay class
+	BMMultiTapDelay_processBufferStereo(&This->multiTapDelay,
+										inputL, inputL,
 										outputL, outputR,
 										length);
 }

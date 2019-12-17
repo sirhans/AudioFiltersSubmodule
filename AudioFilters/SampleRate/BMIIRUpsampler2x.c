@@ -17,18 +17,18 @@
 #include "BMInterleaver.h"
 #include "Constants.h"
 
-#define BM_UPSAMPLER_CHUNK_SIZE BM_BUFFER_CHUNK_SIZE * 4
+#define BM_UPSAMPLER_CHUNK_SIZE BM_BUFFER_CHUNK_SIZE * 8
 
 
 
 // forward declaration of internal function
-double* BMIIRUpsampler2x_genCoefficients(BMIIRUpsampler2x* This, float minStopbandAttenuationDb, float maxTransitionBandwidth);
+double* BMIIRUpsampler2x_genCoefficients(BMIIRUpsampler2x *This, float minStopbandAttenuationDb, float maxTransitionBandwidth);
 
 
 
 
 
-size_t BMIIRUpsampler2x_init (BMIIRUpsampler2x* This,
+size_t BMIIRUpsampler2x_init (BMIIRUpsampler2x *This,
                               float minStopbandAttenuationDb,
                               float maxTransitionBandwidth,
                               bool stereo){
@@ -50,8 +50,8 @@ size_t BMIIRUpsampler2x_init (BMIIRUpsampler2x* This,
     
     // set up the filters
     float sampleRate = 48000.0f; // the filters will ignore this, but we have to set it to some dummy value.
-    BMMultiLevelBiquad_init(&This->even, This->numBiquadStages, sampleRate, stereo, false, false);
-    BMMultiLevelBiquad_init(&This->odd, This->numBiquadStages, sampleRate, stereo, false, false);
+    BMMultiLevelBiquad_init(&This->even, This->numBiquadStages, sampleRate, stereo, true, false);
+    BMMultiLevelBiquad_init(&This->odd, This->numBiquadStages, sampleRate, stereo, true, false);
     BMIIRUpsampler2x_setCoefs(This, coefficientArray);
     
     
@@ -83,16 +83,16 @@ size_t BMIIRUpsampler2x_init (BMIIRUpsampler2x* This,
  * @param minStopbandAttenuationDb     the AA filters will acheive at least this much stopband attenuation. specified in dB as a positive number.
  * @param maxTransitionBandwidth       the AA filters will not let the transition bandwidth exceed this value. In (0,0.5).
  */
-double* BMIIRUpsampler2x_genCoefficients(BMIIRUpsampler2x* This, float minStopbandAttenuationDb, float maxTransitionBandwidth){
+double* BMIIRUpsampler2x_genCoefficients(BMIIRUpsampler2x *This, float minStopbandAttenuationDb, float maxTransitionBandwidth){
     // find out how many allpass filter stages it will take to acheive the
     // required stopband attenuation and transition bandwidth
     This->numCoefficients = BMPolyphaseIIR2Designer_computeNbrCoefsFromProto(minStopbandAttenuationDb, maxTransitionBandwidth);
     
     printf("BMUpsampler: numCoefficients before rounding: %zu\n",This->numCoefficients);
     
-//    // if numCoefficients is not divisible by four, increase to the nearest multiple of four
-//    if(This->numCoefficients % 4 != 0)
-//        This->numCoefficients += (4 - This->numCoefficients%4);
+    //    // if numCoefficients is not divisible by four, increase to the nearest multiple of four
+    //    if(This->numCoefficients % 4 != 0)
+    //        This->numCoefficients += (4 - This->numCoefficients%4);
     
     // if numCoefficients is not divisible by two, increase to the nearest multiple of two
     if(This->numCoefficients % 2 != 0)
@@ -112,7 +112,7 @@ double* BMIIRUpsampler2x_genCoefficients(BMIIRUpsampler2x* This, float minStopba
 
 
 
-void BMIIRUpsampler2x_free (BMIIRUpsampler2x* This){
+void BMIIRUpsampler2x_free (BMIIRUpsampler2x *This){
     
     BMMultiLevelBiquad_destroy(&This->even);
     BMMultiLevelBiquad_destroy(&This->odd);
@@ -133,9 +133,9 @@ void BMIIRUpsampler2x_free (BMIIRUpsampler2x* This){
 
 
 
-void BMIIRUpsampler2x_setCoefs (BMIIRUpsampler2x* This, const double* coef_arr){
+void BMIIRUpsampler2x_setCoefs (BMIIRUpsampler2x *This, const double* coef_arr){
     assert (coef_arr != 0);
-
+    
     /*
      * In theory, the ordering of the filters is irrelevant. We simply need
      * to put all the allpass filters with even numbered coefficients into
@@ -179,7 +179,7 @@ void BMIIRUpsampler2x_setCoefs (BMIIRUpsampler2x* This, const double* coef_arr){
 
 
 
-void BMIIRUpsampler2x_processBufferMono(BMIIRUpsampler2x* This, const float* input, float* output, size_t numSamplesIn){
+void BMIIRUpsampler2x_processBufferMono(BMIIRUpsampler2x *This, const float* input, float* output, size_t numSamplesIn){
     assert(!This->stereo);
     assert(input != output);
     
@@ -210,7 +210,7 @@ void BMIIRUpsampler2x_processBufferMono(BMIIRUpsampler2x* This, const float* inp
 
 
 
-void BMIIRUpsampler2x_processBufferStereo (BMIIRUpsampler2x* This, const float* inputL, const float* inputR, float* outputL, float* outputR, size_t numSamplesIn){
+void BMIIRUpsampler2x_processBufferStereo (BMIIRUpsampler2x *This, const float* inputL, const float* inputR, float* outputL, float* outputR, size_t numSamplesIn){
     assert(This->stereo);
     assert(inputL != outputL);
     assert(inputR != outputR);

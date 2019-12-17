@@ -11,7 +11,7 @@
 #include <stdbool.h>
 
 // forward declaration
-void BMHoldPeak_updateOneChannel(BMHoldPeak* This,
+void BMHoldPeak_updateOneChannel(BMHoldPeak *This,
                                  float currentVal,
                                  float* fixedPeak,
                                  float timeSinceLastUpdate_s,
@@ -22,7 +22,7 @@ void BMHoldPeak_updateOneChannel(BMHoldPeak* This,
 
 
 
-void BMHoldPeak_init(BMHoldPeak* This, float holdTimeLimit_seconds){
+void BMHoldPeak_init(BMHoldPeak *This, float holdTimeLimit_seconds){
     // float maxValL, maxValR, peakHoldTimeLimit, peakHoldTimeL, peakHoldTimeR;
     This->maxValL = FLT_MIN;
     This->maxValR = FLT_MIN;
@@ -34,7 +34,7 @@ void BMHoldPeak_init(BMHoldPeak* This, float holdTimeLimit_seconds){
 
 
 
-void BMHoldPeak_updateStereo(BMHoldPeak* This,
+void BMHoldPeak_updateStereo(BMHoldPeak *This,
                        float currentValL, float currentValR,
                        float* fixedPeakL, float* fixedPeakR,
                        float timeSinceLastUpdate_s){
@@ -46,7 +46,7 @@ void BMHoldPeak_updateStereo(BMHoldPeak* This,
 
 
 
-void BMHoldPeak_updateMono(BMHoldPeak* This,
+void BMHoldPeak_updateMono(BMHoldPeak *This,
                              float currentVal,
                              float* fixedPeak,
                              float timeSinceLastUpdate_s){
@@ -58,7 +58,7 @@ void BMHoldPeak_updateMono(BMHoldPeak* This,
 
 
 
-inline void BMHoldPeak_updateOneChannel(BMHoldPeak* This,
+inline void BMHoldPeak_updateOneChannel(BMHoldPeak *This,
                                         float currentVal,
                                         float* fixedPeak,
                                         float timeSinceLastUpdate_s,

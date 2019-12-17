@@ -38,24 +38,24 @@ extern "C" {
     
     
     
-    void BMInterpolatedDelay_init(BMInterpolatedDelay* This,
+    void BMInterpolatedDelay_init(BMInterpolatedDelay *This,
                                   bool stereo,
                                   float initialLengthInSamples,
                                   size_t interpolationOrder,
                                   size_t maxLengthSamples);
     
     
-    void BMInterpolatedDelay_destroy(BMInterpolatedDelay* This);
+    void BMInterpolatedDelay_destroy(BMInterpolatedDelay *This);
     
     
-    static __inline__ __attribute__((always_inline)) void BMInterpolatedDelay_processSampleLinearInterpMono(BMInterpolatedDelay* This,
+    static __inline__ __attribute__((always_inline)) void BMInterpolatedDelay_processSampleLinearInterpMono(BMInterpolatedDelay *This,
                                                           float in,
                                                           float* out);
     
     
     
     
-    static __inline__ __attribute__((always_inline)) void BMInterpolatedDelay_processSampleLinearInterpStereo(BMInterpolatedDelay* This,
+    static __inline__ __attribute__((always_inline)) void BMInterpolatedDelay_processSampleLinearInterpStereo(BMInterpolatedDelay *This,
                                                             float inL,
                                                             float inR,
                                                             float* outL,

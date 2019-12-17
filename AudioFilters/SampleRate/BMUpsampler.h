@@ -17,12 +17,23 @@ extern "C" {
 #include <MacTypes.h>
 #include "BMIIRUpsampler2x.h"
 #include "BMMultiLevelBiquad.h"
+
+#define BM_UPSAMPLER_STAGE0_TRANSITION_BANDWIDTH_FULL_SPECTRUM 0.05
+#define BM_UPSAMPLER_STAGE0_TRANSITION_BANDWIDTH_96KHZ_INPUT 0.1
+#define BM_UPSAMPLER_STOPBAND_ATTENUATION_DB 110.0
+#define BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_NUMLEVELS_FULL_SPECTRUM 4
+#define BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_NUMLEVELS_96KHZ_INPUT 2
+#define BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_BW_FULL_SPECTRUM 0.177
+#define BM_UPSAMPLER_SECOND_STAGE_AA_FILTER_BW_96KHZ_INPUT 0.45
     
+enum resamplerType {BMRESAMPLER_FULL_SPECTRUM, BMRESAMPLER_GUITAR, BMRESAMPLER_INPUT_96KHZ, BMRESAMPLER_FULL_SPECTRUM_NO_STAGE2_FILTER};
+
     typedef struct BMUpsampler {
         BMIIRUpsampler2x* upsamplers2x;
         BMMultiLevelBiquad secondStageAAFilter;
         float *bufferL, *bufferR;
         size_t numStages, upsampleFactor;
+		bool useSecondStageFilter;
     } BMUpsampler;
     
     
@@ -32,8 +43,9 @@ extern "C" {
      * @param This   pointer to an upsampler struct
      * @param stereo set true if you need stereo processing; false for mono
      * @param upsampleFactor supported values: 2^n
+	 * @param type   BM_RESAMPLER_FULL_SPECTRUM | BM_RESAMPLER_GUITAR | BM_RESAMPLER_96KHZ_INPUT
      */
-    void BMUpsampler_init(BMUpsampler* This, bool stereo, size_t upsampleFactor);
+    void BMUpsampler_init(BMUpsampler* This, bool stereo, size_t upsampleFactor, enum resamplerType type);
     
     
     
@@ -45,7 +57,7 @@ extern "C" {
      * @param output   length = numSamplesIn * upsampleFactor
      * @param numSamplesIn  number of input samples to process
      */
-    void BMUpsampler_processBufferMono(BMUpsampler* This, const float* input, float* output, size_t numSamplesIn);
+    void BMUpsampler_processBufferMono(BMUpsampler *This, const float* input, float* output, size_t numSamplesIn);
 
     
     /*!
@@ -58,10 +70,10 @@ extern "C" {
      * @param outputR   length = numSamplesIn * upsampleFactor
      * @param numSamplesIn  number of input samples to process
      */
-    void BMUpsampler_processBufferStereo(BMUpsampler* This, const float* inputL, const float* inputR, float* outputL, float* outputR, size_t numSamplesIn);
+    void BMUpsampler_processBufferStereo(BMUpsampler *This, const float* inputL, const float* inputR, float* outputL, float* outputR, size_t numSamplesIn);
     
     
-    void BMUpsampler_free(BMUpsampler* This);
+    void BMUpsampler_free(BMUpsampler *This);
     
     
     /*!
@@ -69,7 +81,7 @@ extern "C" {
      * @param IR array for IR output with length = IRLength
      * @param IRLength must be divisible by upsampleFactor
      */
-    void BMUpsampler_impulseResponse(BMUpsampler* This, float* IR, size_t IRLength);
+    void BMUpsampler_impulseResponse(BMUpsampler *This, float* IR, size_t IRLength);
     
 #endif /* BMUpsampler_h */
 

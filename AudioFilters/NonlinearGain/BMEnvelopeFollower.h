@@ -65,7 +65,7 @@ typedef struct BMEnvelopeFollower {
 /*!
  * BMEnvelopeFollower_processBuffer
  */
-void BMEnvelopeFollower_processBuffer(BMEnvelopeFollower* This,
+void BMEnvelopeFollower_processBuffer(BMEnvelopeFollower *This,
                                       const float* input,
                                       float* output,
                                       size_t numSamples);
@@ -73,47 +73,47 @@ void BMEnvelopeFollower_processBuffer(BMEnvelopeFollower* This,
 /*!
  * BMEnvelopeFollower_init
  */
-void BMEnvelopeFollower_init(BMEnvelopeFollower* This, float sampleRate);
+void BMEnvelopeFollower_init(BMEnvelopeFollower *This, float sampleRate);
 
 
 /*!
  * BMEnvelopeFollower_free
  */
-void BMEnvelopeFollower_free(BMEnvelopeFollower* This);
+void BMEnvelopeFollower_free(BMEnvelopeFollower *This);
 
 
 
 /*!
  * BMEnvelopeFollower_initWithCustomNumStages
  */
-void BMEnvelopeFollower_initWithCustomNumStages(BMEnvelopeFollower* This, size_t numReleaseStages, size_t numAttackStages, float sampleRate);
+void BMEnvelopeFollower_initWithCustomNumStages(BMEnvelopeFollower *This, size_t numReleaseStages, size_t numAttackStages, float sampleRate);
 
 
 
 /*!
  * BMEnvelopeFollower_setAttackTime
  */
-void BMEnvelopeFollower_setAttackTime(BMEnvelopeFollower* This, float attackTime);
+void BMEnvelopeFollower_setAttackTime(BMEnvelopeFollower *This, float attackTimeSeconds);
 
 /*!
  * BMEnvelopeFollower_setReleaseTime
  */
-void BMEnvelopeFollower_setReleaseTime(BMEnvelopeFollower* This, float releaseTime);
+void BMEnvelopeFollower_setReleaseTime(BMEnvelopeFollower *This, float releaseTimeSeconds);
 
 /*!
  * BMAttackFilter_init
  */
-void BMAttackFilter_init(BMAttackFilter* This, float fc, float sampleRate);
+void BMAttackFilter_init(BMAttackFilter *This, float fc, float sampleRate);
 
 /*!
  * BMReleaseFilter_init
  */
-void BMReleaseFilter_init(BMReleaseFilter* This, float fc, float sampleRate);
+void BMReleaseFilter_init(BMReleaseFilter *This, float fc, float sampleRate);
 
 /*!
  * BMAttackFilter_processBuffer
  */
-void BMAttackFilter_processBuffer(BMAttackFilter* This,
+void BMAttackFilter_processBuffer(BMAttackFilter *This,
                                   const float* input,
                                   float* output,
                                   size_t numSamples);
@@ -121,7 +121,7 @@ void BMAttackFilter_processBuffer(BMAttackFilter* This,
 /*!
  * BMReleaseFilter_processBuffer
  */
-void BMReleaseFilter_processBuffer(BMReleaseFilter* This,
+void BMReleaseFilter_processBuffer(BMReleaseFilter *This,
                                    const float* input,
                                    float* output,
                                    size_t numSamples);
@@ -132,7 +132,7 @@ void BMReleaseFilter_processBuffer(BMReleaseFilter* This,
  *
  * @abstract inverts the signal before and after processing
  */
-void BMReleaseFilter_processBufferNegative(BMReleaseFilter* This,
+void BMReleaseFilter_processBufferNegative(BMReleaseFilter *This,
                                    const float* input,
                                    float* output,
                                    size_t numSamples);
@@ -141,25 +141,25 @@ void BMReleaseFilter_processBufferNegative(BMReleaseFilter* This,
 /*!
  * BMAttackFilter_setCutoff
  */
-void BMAttackFilter_setCutoff(BMAttackFilter* This, float fc);
+void BMAttackFilter_setCutoff(BMAttackFilter *This, float fc);
 
 
 /*!
  * BMReleaseFilter_setCutoff
  */
-void BMReleaseFilter_setCutoff(BMReleaseFilter* This, float fc);
+void BMReleaseFilter_setCutoff(BMReleaseFilter *This, float fc);
 
 
 /*!
  * BMReleaseFilter_updateSampleRate
  */
-void BMReleaseFilter_updateSampleRate(BMReleaseFilter* This, float sampleRate);
+void BMReleaseFilter_updateSampleRate(BMReleaseFilter *This, float sampleRate);
 
 
 /*!
  * BMAttackFilter_updateSampleRate
  */
-void BMAttackFilter_updateSampleRate(BMAttackFilter* This, float sampleRate);
+void BMAttackFilter_updateSampleRate(BMAttackFilter *This, float sampleRate);
 
 
 /*!

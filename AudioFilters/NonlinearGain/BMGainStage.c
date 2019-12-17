@@ -38,7 +38,7 @@ extern "C" {
      *                    for guitar, set this to 7000 hz.
      *                    for full frequency range set it to 20khz
      */
-    void BMGainStage_init(BMGainStage* This, float sampleRate, float AAfilterFc){
+    void BMGainStage_init(BMGainStage *This, float sampleRate, float AAfilterFc){
         
         /*
          * init the anti-aliasing filter
@@ -107,7 +107,7 @@ extern "C" {
      * @param tightness  In [0,1]. 0 = saggy tube; 1 = hard transistor
      *
      */
-    void BMGainStage_setTightness(BMGainStage* This, float tightness){
+    void BMGainStage_setTightness(BMGainStage *This, float tightness){
         assert(tightness >= 0.0 && tightness <= 1.0);
         
         /*
@@ -137,14 +137,14 @@ extern "C" {
     
     
     
-    void BMGainStage_setAmpType(BMGainStage* This, BMNonlinearityType type){
+    void BMGainStage_setAmpType(BMGainStage *This, BMNonlinearityType type){
         This->ampType = type;
     }
     
     
     
     
-    void BMGainStage_setGain(BMGainStage* This, float gain){
+    void BMGainStage_setGain(BMGainStage *This, float gain){
         This->gain = gain;
         This->bias = This->biasRatio * gain;
     }
@@ -152,17 +152,17 @@ extern "C" {
     
     
     
-    void BMGainStage_setBiasRatio(BMGainStage* This, float biasRatio){
+    void BMGainStage_setBiasRatio(BMGainStage *This, float biasRatio){
         assert(fabsf(biasRatio) <= 1.0);
         
         This->biasRatio = biasRatio;
-        This->bias = biasRatio * This->gain;
+        This->bias = biasRatio  *This->gain;
     }
     
     
     
     
-    void BMGainStage_setAACutoff(BMGainStage* This, float fc){
+    void BMGainStage_setAACutoff(BMGainStage *This, float fc){
         This->aaFc = fc;
         BMMultiLevelBiquad_setHighOrderBWLP(&This->aaFilter, fc, 0,
                                             BMGAINSTAGE_AAFILTER_NUMLEVELS);
@@ -172,7 +172,7 @@ extern "C" {
     
     
     
-    void BMGainStage_setSampleRate(BMGainStage* This, float sampleRate){
+    void BMGainStage_setSampleRate(BMGainStage *This, float sampleRate){
         // destroy the old aa filter
         BMMultiLevelBiquad_destroy(&This->aaFilter);
         
@@ -343,12 +343,12 @@ extern "C" {
     
     /*!
      * asymptoticLimitVector
+	 *
      * @param input      input array of length numSamples
      * @param output     output array of length numSamples
      * @param numSamples length of input and output
      * @brief a very soft limit clipping function
-     * @abstract up to limits of floating point precision, each input value maps to a different output. This means that regardless of how loud the input gets, the waveform never gets hard-clipped.
-     * @discussion for inputs in [-1,1], this function reduces the gain by 1/2 compared to the input. It has some nice bouindary conditions: f(0) = 0; f'(0) = 1; f(+-inf) = +-limit; f'(+-inf) = 0;
+     * @discussion up to limits of floating point precision, each input value maps to a different output. This means that regardless of how loud the input gets, the waveform never gets hard-clipped. for inputs in [-1,1], this function reduces the gain by 1/2 compared to the input. It has some nice bouindary conditions: f(0) = 0; f'(0) = 1; f(+-inf) = +-limit; f'(+-inf) = 0;
      * @code f(x,limit) = x / (1 + |x/limit|)
      */
     static inline void asymptoticLimitVector(const float* input, float* output, size_t numSamples){
@@ -393,7 +393,7 @@ extern "C" {
     
     
     
-    void dualResTube(BMGainStage* This, float* input, float* output, size_t numSamples){
+    void dualResTube(BMGainStage *This, float* input, float* output, size_t numSamples){
         for(size_t i=0; i<numSamples;i++){
             /*
              * code comments in this section are from the Mathematica prototype
@@ -407,8 +407,8 @@ extern "C" {
              */
             // cPos += (t - cPos)/ t;
             // cNeg += (t - cNeg) / t;
-            This->cPos += (This->t - This->cPos) * This->tInv;
-            This->cNeg += (This->t - This->cNeg) * This->tInv;
+            This->cPos += (This->t - This->cPos)  *This->tInv;
+            This->cNeg += (This->t - This->cNeg)  *This->tInv;
             
             /*
              * Blend smoothly between the push and pull sides of the class AB amp
@@ -430,7 +430,7 @@ extern "C" {
              */
             // we get an error if c<0, so we limit to prevent that. Such an error only occurs
             // for extremely high input gain, on the order of +60 db outside of [-1,1]
-            output[i] = c * asymptoticLimitSingle(input[i] * This->tInv);
+            output[i] = c * asymptoticLimitSingle(input[i]  *This->tInv);
             
             
             /*
@@ -462,7 +462,7 @@ extern "C" {
     
     
     
-    void singleResTube(BMGainStage* This, float* input, float* output, size_t numSamples){
+    void singleResTube(BMGainStage *This, float* input, float* output, size_t numSamples){
         for(size_t i=0; i<numSamples;i++){
             /*
              * code comments in this section are from the Mathematica prototype
@@ -475,7 +475,7 @@ extern "C" {
              * charge reservoir.
              */
             // cPos += (t - cPos)/ t;
-            This->cPos += (This->t - This->cPos) * This->tInv;
+            This->cPos += (This->t - This->cPos)  *This->tInv;
             
             
             /*
@@ -483,8 +483,8 @@ extern "C" {
              * charge reservoir that is full.
              */
             // Y[[i]] = AsymptoticLimit[c * X[[i]] , c] / t;
-            output[i] = This->cPos * smootherstepSingle(input[i]) * This->tInv;
-            //output[i] = BMGainStage_asymptoticLimitSingle(This->cPos * input[i], This->cPos) * This->tInv;
+            output[i] = This->cPos * smootherstepSingle(input[i])  *This->tInv;
+            //output[i] = BMGainStage_asymptoticLimitSingle(This->cPos * input[i], This->cPos)  *This->tInv;
             
             
             /*
@@ -499,7 +499,7 @@ extern "C" {
     
     
     
-    void lowpassClippedDifference(BMGainStage* This, float* input, float* output, size_t numSamples){
+    void lowpassClippedDifference(BMGainStage *This, float* input, float* output, size_t numSamples){
         
         while(numSamples > 0){
             size_t samplesProcessing = MIN(numSamples,BM_BUFFER_CHUNK_SIZE);
@@ -550,7 +550,7 @@ extern "C" {
      * @abstract Process tube-like gain on a buffer of samples
      *
      */
-    void BMGainStage_processBufferMono(BMGainStage* This,
+    void BMGainStage_processBufferMono(BMGainStage *This,
                                        float* input,
                                        float* output,
                                        size_t numSamples){
@@ -591,7 +591,7 @@ extern "C" {
     
     
     
-    void BMGainStage_destroy(BMGainStage* This){
+    void BMGainStage_destroy(BMGainStage *This){
         BMMultiLevelBiquad_destroy(&This->aaFilter);
         BMMultiLevelBiquad_destroy(&This->clipLP);
         free(This->tempBuffer);

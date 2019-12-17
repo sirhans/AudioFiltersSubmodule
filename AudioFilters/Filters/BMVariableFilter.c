@@ -13,7 +13,7 @@ extern "C" {
 #include "BMVariableFilter.h"
 #include <Accelerate/Accelerate.h>
 
-//    void BMReleaseFilter_setCutoff(BMReleaseFilter* This, float fc){
+//    void BMReleaseFilter_setCutoff(BMReleaseFilter *This, float fc){
 //        This->fc = fc;
 //
 //        // compute the input gain to the integrators
@@ -28,13 +28,13 @@ extern "C" {
 //
 //        // compute the three filter coefficients
 //        This->a1 = 1.0f / (1.0f + This->g * (This->g + This->k));
-//        This->a2 = This->a1 * This->g;
-//        This->a3 = This->a2 * This->g;
+//        This->a2 = This->a1  *This->g;
+//        This->a3 = This->a2  *This->g;
 //    }
     
     
     
-    void BMVariableFilter_freqSweepMono(BMVariableFilter* This,
+    void BMVariableFilter_freqSweepMono(BMVariableFilter *This,
                                         const float* audioInput,
                                         const float* cutoffControl,
                                         float* audioOutput,
@@ -77,8 +77,8 @@ extern "C" {
                 
                 // process the state variable filter
                 float v3 = audioInput[i] - This->ic2;
-                float v1 = This->a1[i] * This->ic1 + This->a2[i] * v3;
-                float v2 = This->ic2 + This->a2[i] * This->ic1 + This->a3[i] * v3;
+                float v1 = This->a1[i]  *This->ic1 + This->a2[i] * v3;
+                float v2 = This->ic2 + This->a2[i]  *This->ic1 + This->a3[i] * v3;
                 
                 // update the state variables
                 This->ic1 = 2.0f * v1 - This->ic1;
@@ -99,7 +99,7 @@ extern "C" {
     
     
     
-    void BMVariableFilter_freqAndQSweepMono(BMVariableFilter* This,
+    void BMVariableFilter_freqAndQSweepMono(BMVariableFilter *This,
                                         const float* audioInput,
                                         const float* cutoffControl,
                                         const float* qControl,
@@ -147,8 +147,8 @@ extern "C" {
                 
                 // process the state variable filter
                 float v3 = audioInput[i] - This->ic2;
-                float v1 = This->a1[i] * This->ic1 + This->a2[i] * v3;
-                float v2 = This->ic2 + This->a2[i] * This->ic1 + This->a3[i] * v3;
+                float v1 = This->a1[i]  *This->ic1 + This->a2[i] * v3;
+                float v2 = This->ic2 + This->a2[i]  *This->ic1 + This->a3[i] * v3;
                 
                 // update the state variables
                 This->ic1 = 2.0f * v1 - This->ic1;

@@ -28,7 +28,7 @@ extern "C" {
      *
      * ALL ARRAYS MUST HAVE AT LEAST length ELEMENTS
      */
-    void BMOscillatorArray_init(BMOscillatorArray* This,
+    void BMOscillatorArray_init(BMOscillatorArray *This,
                                 float* magnitude,
                                 float* phase,
                                 float* frequency,
@@ -66,7 +66,7 @@ extern "C" {
     
     
     
-    void BMOscillatorArray_destroy(BMOscillatorArray* This){
+    void BMOscillatorArray_destroy(BMOscillatorArray *This){
         free(This->m11);
         free(This->m12);
         free(This->m21);
@@ -95,7 +95,7 @@ extern "C" {
      * @param output     pointer to the output
      *
      */
-    void BMOscillatorArray_processSample(BMOscillatorArray* This,
+    void BMOscillatorArray_processSample(BMOscillatorArray *This,
                                          float* output){
         // the following is a vectorised multiplication:
         //

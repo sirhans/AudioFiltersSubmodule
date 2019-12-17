@@ -79,14 +79,14 @@ typedef struct BMCrossover4way {
 
 
 /*
- * This function must be called prior to use
+  *This function must be called prior to use
  *
  * @param cutoff      - cutoff frequency in hz
  * @param sampleRate  - sample rate in hz
  * @param fourthOrder - true: 4th order, false: 2nd order
  * @param stereo      - true: stereo, false: mono
  */
-void BMCrossover_init(BMCrossover* This,
+void BMCrossover_init(BMCrossover *This,
                       float cutoff,
                       float sampleRate,
                       bool fourthOrder,
@@ -99,7 +99,7 @@ void BMCrossover_init(BMCrossover* This,
 /*
  * Free memory used by the filters
  */
-void BMCrossover_free(BMCrossover* This);
+void BMCrossover_free(BMCrossover *This);
 
 
 
@@ -108,7 +108,7 @@ void BMCrossover_free(BMCrossover* This);
 /*
  * @param cutoff - cutoff frequency in Hz
  */
-void BMCrossover_setCutoff(BMCrossover* This, float cutoff);
+void BMCrossover_setCutoff(BMCrossover *This, float cutoff);
 
 
 
@@ -126,11 +126,11 @@ void BMCrossover_setCutoff(BMCrossover* This, float cutoff);
  * @param highpassR  - highpass output right
  * @param numSamples - number of samples to process. all arrays must have at least this length
  */
-void BMCrossover_processStereo(BMCrossover* This,
-                               const float* inL, const float* inR,
-                               float* lowpassL, float* lowpassR,
-                               float* highpassL, float* highpassR,
-                               size_t numSamples);
+void BMCrossover_processStereo(BMCrossover *This,
+							   const float* inL, const float* inR,
+							   float* lowpassL, float* lowpassR,
+							   float* highpassL, float* highpassR,
+							   size_t numSamples);
 
 
 
@@ -142,7 +142,7 @@ void BMCrossover_processStereo(BMCrossover* This,
  * @param highpass   - highpass output
  * @param numSamples - number of samples to process. all arrays must have at least this length
  */
-void BMCrossover_processMono(BMCrossover* This,
+void BMCrossover_processMono(BMCrossover *This,
                              float* input,
                              float* lowpass,
                              float* highpass,
@@ -187,7 +187,7 @@ void BMCrossover_tfMagVectors(BMCrossover *This,
  * @param fourthOrder - true: 4th order, false: 2nd order
  * @param stereo      - true: stereo, false: mono
  */
-void BMCrossover3way_init(BMCrossover3way* This,
+void BMCrossover3way_init(BMCrossover3way *This,
                           float cutoff1,
                           float cutoff2,
                           float sampleRate,
@@ -198,7 +198,7 @@ void BMCrossover3way_init(BMCrossover3way* This,
 /*!
  *BMCrossover3way_free
  */
-void BMCrossover3way_free(BMCrossover3way* This);
+void BMCrossover3way_free(BMCrossover3way *This);
 
 
 
@@ -261,7 +261,7 @@ void BMCrossover3way_tfMagVectors(BMCrossover3way *This,
  * @param fourthOrder - true: 4th order, false: 2nd order
  * @param stereo      - true: stereo, false: mono
  */
-void BMCrossover4way_init(BMCrossover4way* This,
+void BMCrossover4way_init(BMCrossover4way *This,
                           float cutoff1,
                           float cutoff2,
                           float cutoff3,
@@ -274,7 +274,7 @@ void BMCrossover4way_init(BMCrossover4way* This,
 /*!
  *BMCrossover4way_free
  */
-void BMCrossover4way_free(BMCrossover4way* This);
+void BMCrossover4way_free(BMCrossover4way *This);
 
 
 
@@ -288,6 +288,18 @@ void BMCrossover4way_processStereo(BMCrossover4way *This,
                                    float* band3L, float* band3R,
                                    float* band4L, float* band4R,
                                    size_t numSamples);
+
+
+
+/*!
+ *BMCrossover3way_processMono
+ */
+void BMCrossover3way_processMono(BMCrossover3way *This,
+								   const float* inL,
+								   float* lowL,
+								   float* midL,
+								   float* highL,
+								 size_t numSamples);
 
 
 

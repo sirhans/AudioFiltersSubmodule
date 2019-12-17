@@ -22,7 +22,8 @@ extern "C" {
         return pow(BM_DB_TO_GAIN(dB),1.0/numSamples);
     }
     
-    void BMSmoothGain_init(BMSmoothGain* This, float sampleRate){
+    
+    void BMSmoothGain_init(BMSmoothGain *This, float sampleRate){
         This->gain = This->gainTarget = 1.0f;
         This->inTransition = false;
         
@@ -35,7 +36,7 @@ extern "C" {
     }
     
     
-    void BMSmoothGain_processBuffer(BMSmoothGain* This,
+    void BMSmoothGain_processBuffer(BMSmoothGain *This,
                                     const float* inputL, const float* inputR,
                                     float* outputL, float* outputR,
                                     size_t numSamples){
@@ -69,8 +70,8 @@ extern "C" {
             size_t i=0;
             while (i < geometricFadeLength) {
                 This->gain *= perSampleRatio;
-                outputL[i] = inputL[i] * This->gain;
-                outputR[i] = inputR[i] * This->gain;
+                outputL[i] = inputL[i]  *This->gain;
+                outputR[i] = inputR[i]  *This->gain;
                 i++;
             }
             
@@ -80,8 +81,8 @@ extern "C" {
             float tolerance = 0.00001;
             while (i < numSamples  &&  error > tolerance){
                 This->gain += 0.05f * error;
-                outputL[i] = inputL[i] * This->gain;
-                outputR[i] = inputR[i] * This->gain;
+                outputL[i] = inputL[i]  *This->gain;
+                outputR[i] = inputR[i]  *This->gain;
                 error = This->gainTarget - This->gain;
                 i++;
             }
@@ -119,7 +120,7 @@ extern "C" {
     
     
     
-     void BMSmoothGain_processBuffers(BMSmoothGain* This,
+     void BMSmoothGain_processBuffers(BMSmoothGain *This,
                                       const float** inputs,
                                       float** outputs,
                                       size_t numChannels,
@@ -155,7 +156,7 @@ extern "C" {
              while (i < geometricFadeLength) {
                  This->gain *= perSampleRatio;
                  for(size_t j=0; j<numChannels; j++)
-                     outputs[j][i] = inputs[j][i] * This->gain;
+                     outputs[j][i] = inputs[j][i]  *This->gain;
                  i++;
              }
              
@@ -166,7 +167,7 @@ extern "C" {
              while (i < numSamples  &&  error > tolerance){
                  This->gain += 0.05f * error;
                  for(size_t j=0; j<numChannels; j++)
-                     outputs[j][i] = inputs[j][i] * This->gain;
+                     outputs[j][i] = inputs[j][i]  *This->gain;
                  error = This->gainTarget - This->gain;
                  i++;
              }
@@ -203,7 +204,7 @@ extern "C" {
     
     
     
-    void BMSmoothGain_processBufferMono(BMSmoothGain* This,
+    void BMSmoothGain_processBufferMono(BMSmoothGain *This,
                                         const float* input,
                                         float* output,
                                         size_t numSamples){
@@ -236,7 +237,7 @@ extern "C" {
             size_t i=0;
             while (i < geometricFadeLength) {
                 This->gain *= perSampleRatio;
-                output[i] = input[i] * This->gain;
+                output[i] = input[i]  *This->gain;
                 i++;
             }
             
@@ -246,7 +247,7 @@ extern "C" {
             float tolerance = 0.00001;
             while (i < numSamples  &&  error > tolerance){
                 This->gain += 0.05f * error;
-                output[i] = input[i] * This->gain;
+                output[i] = input[i]  *This->gain;
                 error = This->gainTarget - This->gain;
                 i++;
             }
@@ -280,30 +281,55 @@ extern "C" {
     
     
     
-    void BMSmoothGain_setGainDb(BMSmoothGain* This, float gainDb){
+    void BMSmoothGain_setGainDb(BMSmoothGain *This, float gainDb){
         // convert dB scale to linear scale gain
         float gain = BM_DB_TO_GAIN(gainDb);
         
-        if(gainDb == FLT_MIN) gain = 0.0f;
+		// turn off the gain completely if the input is FLT_MIN
+        if(gainDb == FLT_MIN) gain = BM_DB_TO_GAIN(-110.0f);
         
         // if this is a legitimate gain change, set the new target and switch to
         // transition state
-        if (gain != This->nextGainTarget){
+        if (gain != This->nextGainTarget) {
             This->nextGainTarget = gain;
             This->inTransition = true;
         }
     }
+	
+	
+	
+	
+	/*!
+	 * BMSmoothGain_setGainDbInstant
+	 *
+	 * @abstract This sets the gain immediately without smoothing the transition
+	 *
+	 * @param This        pointer to an initialized BMSmoothGain struct
+	 * @param gainDb      new target gain in decibels to be approached smoothly
+	 */
+	void BMSmoothGain_setGainDbInstant(BMSmoothGain *This, float gainDb){
+		// convert dB scale to linear scale gain
+        float gain = BM_DB_TO_GAIN(gainDb);
+        
+		// turn off the gain completely if the input is FLT_MIN
+        if(gainDb == FLT_MIN) gain = 0.0f;
+		
+        // if this is a legitimate gain change, set the gain immediately and exit the transition state
+		This->gain = gain;
+		This->nextGainTarget = gain;
+		This->inTransition = false;
+	}
     
     
     
     
-    float BMSmoothGain_getGainDb(BMSmoothGain* This){
+    float BMSmoothGain_getGainDb(BMSmoothGain *This){
         return BM_GAIN_TO_DB(This->gainTarget);
     }
     
     
     
-    float BMSmoothGain_getGainLinear(BMSmoothGain* This){
+    float BMSmoothGain_getGainLinear(BMSmoothGain *This){
         return This->gainTarget;
     }
     

@@ -30,17 +30,25 @@ typedef struct BMQuadraticRectifier {
 /*!
  *BMQuadraticRectifier_init
  */
-void BMQuadraticRectifier_init(BMQuadraticRectifier* This, float kneeWidth);
+void BMQuadraticRectifier_init(BMQuadraticRectifier *This, float kneeWidth);
 
 
 
 /*!
- *BMQuadraticRectifier_processBuffer
+ *BMQuadraticRectifier_processBufferMonoVDSP
  */
-void BMQuadraticRectifier_processBufferVDSP(BMQuadraticRectifier* This,
-                                        const float* input,
-                                        float* outputPos, float* outputNeg,
-                                        size_t numSamples);
+void BMQuadraticRectifier_processBufferMonoVDSP(BMQuadraticRectifier *This,
+											const float* input,
+											float* outputPos, float* outputNeg,
+											size_t numSamples);
+
+/*!
+ *BMQuadraticRectifier_processBufferMonoSIMD
+ */
+void BMQuadraticRectifier_processBufferMonoSIMD(BMQuadraticRectifier *This,
+												const float* input,
+												float* outputPos, float* outputNeg,
+												size_t numSamples);
 
 
 /*!
@@ -48,7 +56,7 @@ void BMQuadraticRectifier_processBufferVDSP(BMQuadraticRectifier* This,
  *
  * @notes This is faster on intel
  */
-void BMQuadraticRectifier_processBufferStereoSIMD(BMQuadraticRectifier* This,
+void BMQuadraticRectifier_processBufferStereoSIMD(BMQuadraticRectifier *This,
                                                   const float* inputL, const float* inputR,
                                                   float* outputPosL, float* outputNegL,
                                                   float* outputPosR, float* outputNegR,
@@ -60,7 +68,7 @@ void BMQuadraticRectifier_processBufferStereoSIMD(BMQuadraticRectifier* This,
  *
  *  @notes this is faster on ARM
  */
-void BMQuadraticRectifier_processBufferStereoVDSP(BMQuadraticRectifier* This,
+void BMQuadraticRectifier_processBufferStereoVDSP(BMQuadraticRectifier *This,
                                                   const float* inputL, const float* inputR,
                                                   float* outputPosL, float* outputNegL,
                                                   float* outputPosR, float* outputNegR,

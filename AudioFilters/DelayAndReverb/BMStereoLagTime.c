@@ -13,10 +13,10 @@
 #include <Accelerate/Accelerate.h>
 #include "Constants.h"
 
-static inline void BMStereoLagTime_vProcessOneChannel(BMStereoLagTime* This,TPCircularBuffer* circularBuffer,float* delaySamples, size_t desiredDS, float* tempBuffer,float* strideIdx,float* strideBuffer,float speed,size_t* samplesToReachTarget,float* inBuffer, float* outBuffer,size_t numSamples);
-void BMStereoLagTime_prepareLGIBuffer(BMStereoLagTime* This,size_t bufferSize);
+static inline void BMStereoLagTime_vProcessOneChannel(BMStereoLagTime *This,TPCircularBuffer* circularBuffer,float* delaySamples, size_t desiredDS, float* tempBuffer,float* strideIdx,float* strideBuffer,float speed,size_t* samplesToReachTarget,float* inBuffer, float* outBuffer,size_t numSamples);
+void BMStereoLagTime_prepareLGIBuffer(BMStereoLagTime *This,size_t bufferSize);
 
-void BMStereoLagTime_init(BMStereoLagTime* This,size_t maxDelayTimeInMilSecond,size_t sampleRate){
+void BMStereoLagTime_init(BMStereoLagTime *This,size_t maxDelayTimeInMilSecond,size_t sampleRate){
     //init buffer
     This->sampleRate = sampleRate;
     This->maxDelaySamples = (uint32_t)ceilf((maxDelayTimeInMilSecond/1000. * sampleRate)/BM_BUFFER_CHUNK_SIZE) * BM_BUFFER_CHUNK_SIZE;
@@ -45,7 +45,7 @@ void BMStereoLagTime_init(BMStereoLagTime* This,size_t maxDelayTimeInMilSecond,s
     BMStereoLagTime_prepareLGIBuffer(This, AudioBufferLength);
 }
 
-void BMStereoLagTime_prepareLGIBuffer(BMStereoLagTime* This,size_t bufferSize){
+void BMStereoLagTime_prepareLGIBuffer(BMStereoLagTime *This,size_t bufferSize){
     BMLagrangeInterpolation_init(&This->lgInterpolation, LGI_Order);
     //Stride
     size_t strideSize = bufferSize * LGI_Order;
@@ -64,15 +64,15 @@ void BMStereoLagTime_prepareLGIBuffer(BMStereoLagTime* This,size_t bufferSize){
     This->lgiUpBuffer = malloc(sizeof(float) * bufferSize * LGI_Order);
 }
 
-void BMStereoLagTime_destroy(BMStereoLagTime* This){
+void BMStereoLagTime_destroy(BMStereoLagTime *This){
     TPCircularBufferCleanup(&This->bufferL);
     TPCircularBufferCleanup(&This->bufferR);
     
     BMLagrangeInterpolation_destroy(&This->lgInterpolation);
 }
 
-void BMStereoLagTime_setDelayLeft(BMStereoLagTime* This,size_t delayInMilSecond){
-    int32_t delaySample = delayInMilSecond/ 1000. * This->sampleRate;
+void BMStereoLagTime_setDelayLeft(BMStereoLagTime *This,size_t delayInMilSecond){
+    int32_t delaySample = delayInMilSecond/ 1000.  *This->sampleRate;
     if(delaySample!=This->targetDSL){
         This->targetDSL = delaySample;
         This->targetDSR = 0;
@@ -80,8 +80,8 @@ void BMStereoLagTime_setDelayLeft(BMStereoLagTime* This,size_t delayInMilSecond)
     }
 }
 
-void BMStereoLagTime_setDelayRight(BMStereoLagTime* This,size_t delayInMilSecond){
-    int32_t delaySample = delayInMilSecond/ 1000. * This->sampleRate;
+void BMStereoLagTime_setDelayRight(BMStereoLagTime *This,size_t delayInMilSecond){
+    int32_t delaySample = delayInMilSecond/ 1000.  *This->sampleRate;
     if(delaySample!=This->targetDSR){
         This->targetDSR = delaySample;
         This->targetDSL = 0;
@@ -89,17 +89,17 @@ void BMStereoLagTime_setDelayRight(BMStereoLagTime* This,size_t delayInMilSecond
     }
 }
 
-void BMStereoLagTime_updateTargetDelaySamples(BMStereoLagTime* This){
+void BMStereoLagTime_updateTargetDelaySamples(BMStereoLagTime *This){
     if(This->shouldUpdateDS){
         This->shouldUpdateDS = false;
         This->desiredDSL = This->targetDSL;
         This->desiredDSR = This->targetDSR;
         //calculate speed
-        This->sampleToReachTargetL = 0.5 * This->sampleRate;
+        This->sampleToReachTargetL = 0.5  *This->sampleRate;
         float dsIdxStep = (This->desiredDSL - This->delaySamplesL)/This->sampleToReachTargetL;
         This->speedL = 1 - dsIdxStep;
         
-        This->sampleToReachTargetR = 0.5 * This->sampleRate;
+        This->sampleToReachTargetR = 0.5  *This->sampleRate;
         dsIdxStep = (This->desiredDSR - This->delaySamplesR)/This->sampleToReachTargetR;
         This->speedR = 1 - dsIdxStep;
         
@@ -115,7 +115,7 @@ void BMStereoLagTime_updateTargetDelaySamples(BMStereoLagTime* This){
     }
 }
 
-void BMStereoLagTime_process(BMStereoLagTime* This,float* inL, float* inR, float* outL, float* outR,size_t numSamples){
+void BMStereoLagTime_process(BMStereoLagTime *This,float* inL, float* inR, float* outL, float* outR,size_t numSamples){
     //Update delay sample target
     BMStereoLagTime_updateTargetDelaySamples(This);
     //Process
@@ -151,7 +151,7 @@ void BMStereoLagTime_process(BMStereoLagTime* This,float* inL, float* inR, float
     }
 }
 
-static inline void BMStereoLagTime_vProcessOneChannel(BMStereoLagTime* This,TPCircularBuffer* circularBuffer,float* delaySamples, size_t desiredDS, float* tempBuffer,float* strideIdx,float* strideBuffer,float speed,size_t* samplesToReachTarget,float* inBuffer, float* outBuffer,size_t numSamples){
+static inline void BMStereoLagTime_vProcessOneChannel(BMStereoLagTime *This,TPCircularBuffer* circularBuffer,float* delaySamples, size_t desiredDS, float* tempBuffer,float* strideIdx,float* strideBuffer,float speed,size_t* samplesToReachTarget,float* inBuffer, float* outBuffer,size_t numSamples){
     size_t samplesProcessing;
     size_t samplesProcessed = 0;
     while (samplesProcessed<numSamples) {
@@ -236,7 +236,7 @@ static inline void BMStereoLagTime_vProcessOneChannel(BMStereoLagTime* This,TPCi
     }
 }
 
-//static inline void BMStereoLagTime_vProcessOneChannel(BMStereoLagTime* This,TPCircularBuffer* circularBuffer,float* delaySamples, size_t desiredDS, float* tempBuffer,float* strideIdx,float* strideBuffer,float speed,size_t* samplesToReachTarget,float* inBuffer, float* outBuffer,size_t numSamples)
+//static inline void BMStereoLagTime_vProcessOneChannel(BMStereoLagTime *This,TPCircularBuffer* circularBuffer,float* delaySamples, size_t desiredDS, float* tempBuffer,float* strideIdx,float* strideBuffer,float speed,size_t* samplesToReachTarget,float* inBuffer, float* outBuffer,size_t numSamples)
 //{
 //    size_t samplesProcessing;
 //    size_t samplesProcessed = 0;

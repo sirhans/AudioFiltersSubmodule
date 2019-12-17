@@ -15,7 +15,7 @@
 #define MIN(X,Y) (X<Y)? X:Y
 #endif
 
-void BMSimpleDelayMono_init(BMSimpleDelayMono* This, size_t delayTimeInSamples){
+void BMSimpleDelayMono_init(BMSimpleDelayMono *This, size_t delayTimeInSamples){
     uint32_t dt = (uint32_t)delayTimeInSamples;
     TPCircularBufferInit(&This->buffer, dt + BM_BUFFER_CHUNK_SIZE);
     TPCircularBufferClear(&This->buffer);
@@ -23,7 +23,7 @@ void BMSimpleDelayMono_init(BMSimpleDelayMono* This, size_t delayTimeInSamples){
 }
 
 
-void BMSimpleDelayStereo_init(BMSimpleDelayStereo* This, size_t delayTimeInSamples){
+void BMSimpleDelayStereo_init(BMSimpleDelayStereo *This, size_t delayTimeInSamples){
     uint32_t dt = (uint32_t)delayTimeInSamples;
     TPCircularBufferInit(&This->bufferL, sizeof(float)*(dt + BM_BUFFER_CHUNK_SIZE));
     TPCircularBufferClear(&This->bufferL);
@@ -34,7 +34,7 @@ void BMSimpleDelayStereo_init(BMSimpleDelayStereo* This, size_t delayTimeInSampl
     TPCircularBufferProduce(&This->bufferR, sizeof(float)*dt);
 }
 
-void BMSimpleDelayMono_process(BMSimpleDelayMono* This,
+void BMSimpleDelayMono_process(BMSimpleDelayMono *This,
                                const float* input,
                                float* output,
                                size_t numSamples){
@@ -71,7 +71,7 @@ void BMSimpleDelayMono_process(BMSimpleDelayMono* This,
     }
 }
 
-void BMSimpleDelayStereo_process(BMSimpleDelayStereo* This,
+void BMSimpleDelayStereo_process(BMSimpleDelayStereo *This,
                                  const float* inputL,
                                  const float* inputR,
                                  float* outputL,
@@ -118,11 +118,11 @@ void BMSimpleDelayStereo_process(BMSimpleDelayStereo* This,
     }
 }
 
-void BMSimpleDelayMono_destroy(BMSimpleDelayMono* This){
+void BMSimpleDelayMono_destroy(BMSimpleDelayMono *This){
     TPCircularBufferCleanup(&This->buffer);
 }
 
-void BMSimpleDelayStereo_destroy(BMSimpleDelayStereo* This){
+void BMSimpleDelayStereo_destroy(BMSimpleDelayStereo *This){
     TPCircularBufferCleanup(&This->bufferL);
     TPCircularBufferCleanup(&This->bufferR);
 }

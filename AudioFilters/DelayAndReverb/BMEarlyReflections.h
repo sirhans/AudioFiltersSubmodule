@@ -60,7 +60,7 @@ extern "C" {
      * @param wetAmount    wet^2 + dry^2 == 1
      * @param numTapsPerChannel  output taps on each channel L and R
      */
-    void BMEarlyReflections_init(BMEarlyReflections* This,
+    void BMEarlyReflections_init(BMEarlyReflections *This,
                                  float startTimeMS,
                                  float endTimeMS,
                                  float sampleRate,
@@ -75,7 +75,7 @@ extern "C" {
      *
      * @param wetAmount  gain of wet signal; must be in [0.0,1.0]
      */
-    void BMEarlyReflections_setWetAmount(BMEarlyReflections* This,
+    void BMEarlyReflections_setWetAmount(BMEarlyReflections *This,
                                          float wetAmount);
     
     
@@ -83,11 +83,11 @@ extern "C" {
     /*
      * free memory used by the struct at *This
      */
-    void BMEarlyReflections_destroy(BMEarlyReflections* This);
+    void BMEarlyReflections_destroy(BMEarlyReflections *This);
 
     
     
-    void BMEarlyReflections_processBuffer(BMEarlyReflections* This,
+    void BMEarlyReflections_processBuffer(BMEarlyReflections *This,
                                           float* inputL, float* inputR,
                                           float* outputL, float* ouputR,
                                           size_t numSamples);
@@ -96,12 +96,12 @@ extern "C" {
     /*
      * new note will change indice & gain
      */
-    void BMEarlyReflection_RegenIndicesAndGain(BMEarlyReflections* This);
+    void BMEarlyReflection_RegenIndicesAndGain(BMEarlyReflections *This);
     
     /*
      * Prints the impulse response to standard output, for testing
      */
-    void BMEarlyReflections_impulseResponse(BMEarlyReflections* This);
+    void BMEarlyReflections_impulseResponse(BMEarlyReflections *This);
     
     
     

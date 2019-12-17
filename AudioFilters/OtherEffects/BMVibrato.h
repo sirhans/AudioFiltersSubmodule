@@ -96,7 +96,7 @@ extern "C" {
     /*
      * @param scale In [0,1]. Adjusts the width (actual witdh = wModDepth_0to1*scale)
      *
-     * This is used for implementation of modulation wheel controllers
+      *This is used for implementation of modulation wheel controllers
      */
     void BMVB_setWidthScale(BMVibrato* v, float scale);
 
