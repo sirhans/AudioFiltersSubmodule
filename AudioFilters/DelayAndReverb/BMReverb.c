@@ -19,6 +19,7 @@
 #include <simd/simd.h>
 #include "BMFastHadamard.h"
 #include <mactypes.h>
+#include "BMSorting.h"
 
 
 #ifdef __cplusplus
@@ -354,26 +355,6 @@ extern "C" {
 	
 	
 	
-	/*!
-	 *BMReverbInsertionSortST
-	 *
-	 * @abstract insertion sort on an array of size_t of length n
-	 */
-	void BMReverbInsertionSortST(size_t *a, size_t n) {
-		for(size_t i = 1; i < n; ++i) {
-			size_t tmp = a[i];
-			size_t j = i;
-			while(j > 0 && tmp < a[j - 1]) {
-				a[j] = a[j - 1];
-				--j;
-			}
-			a[j] = tmp;
-		}
-	}
-	
-	
-	
-	
 		
 	/*!
 	 *BMReverbRandomInRangeUI
@@ -503,7 +484,7 @@ extern "C" {
         BMReverbRandomsInRange(minDelay, maxDelay,This->bufferLengths,This->numDelays);
         
 		// sort so that we can ensure that the left and right channels get approximately equal average delay time
-        BMReverbInsertionSortST(This->bufferLengths, This->numDelays);
+        BMInsertionSort_size_t(This->bufferLengths, This->numDelays);
         
         // randomise the order of the list of delay times
         // left channel
