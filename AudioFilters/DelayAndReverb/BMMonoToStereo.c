@@ -153,3 +153,11 @@ void BMMonoToStereo_free(BMMonoToStereo *This){
 	free(This->lowL);
 	This->lowL = NULL;
 }
+
+
+
+
+
+void BMMonoToStereo_setWetMix(BMMonoToStereo *This, float wetMix01){
+	BMVelvetNoiseDecorrelator_setWetMix(&This->vnd, wetMix01);
+}
