@@ -3,7 +3,7 @@
 //  Saturator
 //
 //  Created by Nguyen Minh Tien on 1/31/18.
-//  Anyone may use this file without restrictions
+//  Copyright © 2018 TienNM. All rights reserved.
 //
 
 #ifndef BMSpectrum_h
@@ -29,11 +29,9 @@ typedef struct BMSpectrum {
     
     float* windowData;
     int dataSize;
-    
-    size_t fftLength;
 } BMSpectrum;
 
-void BMSpectrum_init(BMSpectrum *This, size_t fftLength);
-float* BMSpectrum_processData(BMSpectrum *This,float* inData,int inSize,int* outsize,float* nq);
+void BMSpectrum_init(BMSpectrum* this);
+bool BMSpectrum_processData(BMSpectrum* this,float* inData,float* outData,int inSize,int* outSize,float* nq);
 
 #endif /* BMSpectrum_h */

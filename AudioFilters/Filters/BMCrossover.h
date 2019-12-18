@@ -150,6 +150,12 @@ void BMCrossover_processMono(BMCrossover *This,
 
 
 
+void BMCrossover_recombine(const float* lpL,
+                           const float* lpR,
+                           const float* hpL,
+                           const float* hpR,
+                           float* outL, float* outR,
+                           size_t numSamples);
 
 /*!
  *BMCrossover_tfMagVectors
