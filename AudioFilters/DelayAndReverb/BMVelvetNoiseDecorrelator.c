@@ -137,6 +137,7 @@ void BMVelvetNoiseDecorrelator_genRandTapTimes(BMVelvetNoiseDecorrelator *This){
 	// use the randoms-in-range algorithm to set delay tap times
 	size_t min = ceil(This->maxDelayTimeS / This->numWetTaps);
 	size_t max = ceil(This->maxDelayTimeS * This->sampleRate);
+	BMReverbRandomsInRange(min, max, This->delayLengthsL + shift, This->numWetTaps);
 	BMReverbRandomsInRange(min, max, This->delayLengthsR + shift, This->numWetTaps);
 	
 	BMMultiTapDelay_setDelayTimes(&This->multiTapDelay, This->delayLengthsL, This->delayLengthsR);
@@ -165,7 +166,7 @@ void BMVelvetNoiseDecorrelator_randomiseAll(BMVelvetNoiseDecorrelator *This){
 void BMVelvetNoiseDecorrelator_setWetMix(BMVelvetNoiseDecorrelator *This, float wetMix01){
 	This->wetMix = wetMix01;
 	
-	// we need a dry tap to set the mix; otherwise it's fiixed at 100% wet
+	// we need a dry tap to set the mix; otherwise it's fixed at 100% wet
 	assert(This->hasDryTap);
 	
 	// keep the wet mix in bounds
