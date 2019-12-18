@@ -14,6 +14,7 @@
 #include "BMReverb.h"
 #include "BMVectorOps.h"
 #include "BMReverb.h"
+#include "BMSorting.h"
 
 
 #define BM_VND_WET_MIX 0.40f
@@ -135,10 +136,15 @@ void BMVelvetNoiseDecorrelator_genRandTapTimes(BMVelvetNoiseDecorrelator *This){
 //								This->sampleRate, This->numWetTaps);
 	
 	// use the randoms-in-range algorithm to set delay tap times
-	size_t min = ceil(This->maxDelayTimeS / This->numWetTaps);
+	size_t min = ceil((This->maxDelayTimeS * This->sampleRate) / This->numWetTaps);
 	size_t max = ceil(This->maxDelayTimeS * This->sampleRate);
 	BMReverbRandomsInRange(min, max, This->delayLengthsL + shift, This->numWetTaps);
 	BMReverbRandomsInRange(min, max, This->delayLengthsR + shift, This->numWetTaps);
+	
+	// sort the delay times for easier debugging
+	BMInsertionSort_size_t(This->delayLengthsL + shift, This->numWetTaps);
+	BMInsertionSort_size_t(This->delayLengthsR + shift, This->numWetTaps);
+	
 	
 	BMMultiTapDelay_setDelayTimes(&This->multiTapDelay, This->delayLengthsL, This->delayLengthsR);
 }
