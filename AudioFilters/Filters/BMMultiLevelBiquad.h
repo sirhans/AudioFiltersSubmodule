@@ -68,8 +68,7 @@ void BMMultiLevelBiquad_processBufferMono(BMMultiLevelBiquad* This, const float*
  * @param numLevels the number of biquad filters in the cascade
  * @param sampleRate audio sample rate
  * @param isStereo set true for stereo, false for mono
- * @param monoRealTimeUpdate If you are updating coefficients of a MONO filter in realtime, set this to true. Processing of audio is slightly slower, but updates can happen in realtime. This setting has no effect on stereo filters. This setting has no effect if the OS does not support realtime updates of vDSP_biquadm filter coefficients.
- *
+ * @param monoRealTimeUpdate Require the ability to update filters without re-initialising.
  * @param smoothUpdate :    When BMMultilevelBiquad is init with smooth updates on, the update function will call setTargetsDouble to enable smooth update; and when it's off it will call setCoefficientsDouble.
  *
  */

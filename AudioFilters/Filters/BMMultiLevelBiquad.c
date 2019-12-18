@@ -194,12 +194,8 @@ void BMMultiLevelBiquad_init(BMMultiLevelBiquad *This,
         This->activeLevels[i] = true;
     }
     
-    // Should we use the multichannel biquad?
-    // Even for mono signals, we have to use biquadm if we need realtime
-    // update of filter coefficients.
-    This->useBiquadm = false;
-    if (isStereo || monoRealTimeUpdate) This->useBiquadm = true;
-    
+	// EDITED: the use of vDSP_biquadm was optional in older versions. Now we always use it.
+    This->useBiquadm = true;
     
     // We will update in realtime if the OS supports it and we are using
     // vDSP_biquadm
