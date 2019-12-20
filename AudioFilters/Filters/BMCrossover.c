@@ -669,8 +669,8 @@ extern "C" {
         
         // remove bands 3-4 from band 2
         BMMultiLevelBiquad_processBufferStereo(&This->band2,
-                                               band2L, band2L,
-                                               band2L, band2L,
+                                               band2L, band2R,
+                                               band2L, band2R,
                                                numSamples);
         
         // split band 4 off from band 3
@@ -681,8 +681,8 @@ extern "C" {
         
         // remove band 4 from band 3
         BMMultiLevelBiquad_processBufferStereo(&This->band3,
-                                               band3L, band3L,
-                                               band3L, band3L,
+                                               band3L, band3R,
+                                               band3L, band3R,
                                                numSamples);
     }
 	
