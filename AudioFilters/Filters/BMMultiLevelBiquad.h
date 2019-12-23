@@ -175,6 +175,19 @@ void BMMultiLevelBiquad_setHighShelfFirstOrder(BMMultiLevelBiquad* This, float f
  */
 void BMMultiLevelBiquad_setLowShelfFirstOrder(BMMultiLevelBiquad* This, float fc, float gain_db, size_t level);
 
+/*!
+ *BMMultiLevelBiquad_setLowShelfAdjustableSlope
+ *
+ * @abstract adjustable high shelf filter from Robert Bristow-Johnson cookbook
+ *
+ * @param This pointer to an initialized filter struct
+ * @param fc   filter cutoff frequency
+ * @param gain_db shelf gain in decibels
+ * @param slope in [0.3,1], where 0.5 is equivalent to first order shelf slope and 1 is equivalent to second order shelf slope
+ * @param level the index of the filter in the biquad cascade
+ */
+void BMMultiLevelBiquad_setLowShelfAdjustableSlope(BMMultiLevelBiquad *This, float fc, float gain_db, float slope, size_t level);
+
 // set a low shelf filter at on the specified level in both
 // channels and update filter settings
 void BMMultiLevelBiquad_setLowShelf(BMMultiLevelBiquad* This, float fc, float gain_db, size_t level);

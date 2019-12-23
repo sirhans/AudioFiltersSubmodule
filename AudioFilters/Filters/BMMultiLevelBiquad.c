@@ -769,9 +769,39 @@ void BMMultiLevelBiquad_setLowShelfAdjustableSlope(BMMultiLevelBiquad *This, flo
 
 
 
+/*!
+ *BMMultiLevelBiquad_QToBW
+ *
+ * @abstract This keeps the filter width approximately constant as fc gets near Nyquist. It is not based on any theory; we derived it by observing and guessing.
+ *
+ * @param This pointer to an initialised struct
+ * @param Q the Q factor of the filter
+ * @param fc the cutoff frequency of the filter
+ */
+float BMMultiLevelBiquad_QToBW(BMMultiLevelBiquad *This, float Q, float fc){
+	float nyq = This->sampleRate / 2.0f;
+	float c = fc / nyq;
+	if(Q <= 1.0f)
+		// for fc=0 return fc/Q. For fc=Nyquist return 0.5*fc
+		// note that this means the Q does nothing when fc=Nyquist, but it still
+		// works ok when fc is near Nyquist.
+		return (fc/Q) * powf(0.5f*Q,c);
+	// else Q > 1.0f
+	// for fc=0 return fc/Q. For fc=Nyquist return 0.66*fc/Q
+	return (fc / Q) * powf(0.66f,c);
+}
+
+
+
+
+
 
 void BMMultiLevelBiquad_setBellQ(BMMultiLevelBiquad *This, float fc, float Q, float gain_db, size_t level){
-	BMMultiLevelBiquad_setBell(This, fc, fc/Q, gain_db, level);
+	BMMultiLevelBiquad_setBell(This,
+							   fc,
+							   BMMultiLevelBiquad_QToBW(This,Q,fc),
+							   gain_db,
+							   level);
 }
 
 
@@ -835,12 +865,14 @@ void BMMultiLevelBiquad_setBell(BMMultiLevelBiquad *This, float fc, float bandwi
 }
 
 
+
+
+
+
 /*!
  *BMMultiLevelBiquad_setBellWithSkirt
  *
  * @abstract In addition to the usual controls for a bell filter, this function allows you to set the skirt gain, which is the gain at the DC and Nyquist frequencies.
- *
- * @note based on Effect Design part 1 AES paper by Jon Dattorro
  *
  *  @param This pointer to an initialised struct
  *  @param fc   bell centre frequency
@@ -856,7 +888,7 @@ void BMMultiLevelBiquad_setBellWithSkirt(BMMultiLevelBiquad *This, float fc, flo
 	float skirtGainV = BM_DB_TO_GAIN(skirtGainDb);
 	float bellFilterGainV = bellGainV / skirtGainV;
 	
-	double bandwidth = fc/Q;
+	double bandwidth = BMMultiLevelBiquad_QToBW(This, Q, fc);
 	double alpha =  tan( (M_PI * bandwidth)   / This->sampleRate);
 	double beta  = -cos( (2.0 * M_PI * fc) / This->sampleRate);
 	double oneOverD;
@@ -910,6 +942,7 @@ void BMMultiLevelBiquad_setBellWithSkirt(BMMultiLevelBiquad *This, float fc, flo
     
     BMMultiLevelBiquad_queueUpdate(This);
 }
+
 
 
 
