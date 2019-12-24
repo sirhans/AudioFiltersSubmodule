@@ -20,21 +20,27 @@ extern "C" {
      * Uses a primary LFO to do tremolo and a secondary LFO to modulate the
      * depth and rate of the primary LFO.
      *
-     * rate_hz: primary LFO speed in Hz
-     * width_dB: primary LFO width in decibels
-     * modRate_hz: modulation rate for both rate and depth
-     * fModDepth_0to1: tremolo frequency modulation depth in the range 0 to 1
-     * wModDepth_0to1: tremolo width modulation depth in the range 0 to 1
-     * fadeInTime_seconds: starting from zero tremolo, how long before full width?
-     * sampleRate: audio system sample rate
+     * @param rate_hz_start - primary LFO speed in Hz at start
+     * @param rate_hz_start - primary LFO speed in Hz after fade out
+     * @param width_dB - primary LFO width in decibels
+     * @param modRate_hz - modulation rate for both rate and depth
+     * @param fModDepth_0to1 - tremolo frequency modulation depth in the range 0 to 1
+     * @param wModDepth_0to1 - tremolo width modulation depth in the range 0 to 1
+     * @param fadeInTime_seconds - starting from zero tremolo, how long before full width?
+     * @param fadeOutTime_seconds - like above
+     * @param fadeOutMinDepth - percentage of full width_db after fade out
+     * @param sampleRate - audio system sample rate
      */
-    void BMTremolo_init(BMTremolo *This,
-                        float rate_hz,
+    void BMTremolo_init(BMTremolo* This,
+                        float rate_hz_start,
+                        float rate_hz_end,
                         float width_dB,
                         float modRate_hz,
                         float fModDepth_0to1,
                         float wModDepth_0to1,
                         float fadeInTime_seconds,
+                        float fadeOutTime_seconds,
+                        float fadeOutMinDepth,
                         float sampleRate){
         
         
@@ -79,12 +85,15 @@ extern "C" {
         
         // init the vibrato struct
         BMVB_init(&This->state,
-                  rate_hz,
+                  rate_hz_start,
+                  rate_hz_end,
                   centreWidth_notes,
                   modRate_hz,
                   fModDepth_0to1,
                   wModDepth_0to1,
                   fadeInTime_seconds,
+                  fadeOutTime_seconds,
+                  fadeOutMinDepth,
                   sampleRate);
         
         
@@ -100,7 +109,7 @@ extern "C" {
     /*
      * Call this function before each new note to reset the fade
      */
-    void BMTremolo_newNote(BMTremolo *This){
+    void BMTremolo_newNote(BMTremolo* This){
         BMVB_newNote(&This->state);
         This->previousGain = 1.0;
     }
@@ -115,7 +124,7 @@ extern "C" {
      * @param output  buffer of audio output samples, input == output is OK
      * @param numSamples length of input, output
      */
-    void BMTremolo_processAudioMono(BMTremolo *This,
+    void BMTremolo_processAudioMono(BMTremolo* This,
                                     float* input,
                                     float* output,
                                     size_t numSamples){
@@ -151,7 +160,7 @@ extern "C" {
      * @param outR  right channel of output, input == output is OK
      * @param numSamples   length of inL, inR, outL, and outR
      */
-    void BMTremolo_processAudioStereo(BMTremolo *This,
+    void BMTremolo_processAudioStereo(BMTremolo* This,
                                       float* inL, float* inR,
                                       float* outL, float* outR,
                                       size_t numSamples){
@@ -181,9 +190,9 @@ extern "C" {
     /*
      * @param scale In [0,1]. Adjusts the width (actual witdh = wModDepth_0to1*scale)
      *
-      *This is used for implementation of modulation wheel controllers
+     * This is used for implementation of modulation wheel controllers
      */
-    void BMTremolo_setWidthScale(BMTremolo *This, float scale){
+    void BMTremolo_setWidthScale(BMTremolo* This, float scale){
         BMVB_setWidthScale(&This->state, scale);
     }
     
