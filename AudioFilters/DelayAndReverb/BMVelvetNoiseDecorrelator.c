@@ -14,6 +14,7 @@
 #include "BMReverb.h"
 #include "BMVectorOps.h"
 #include "BMReverb.h"
+#include "BMSorting.h"
 
 
 #define BM_VND_WET_MIX 0.40f
@@ -26,7 +27,7 @@
  */
 void BMVelvetNoiseDecorrelator_init(BMVelvetNoiseDecorrelator *This,
                                     float maxDelaySeconds,
-                                    size_t numWetTaps,
+                                    size_t numTaps,
                                     float rt60DecayTimeSeconds,
 									bool hasDryTap,
 									float sampleRate){
@@ -35,23 +36,21 @@ void BMVelvetNoiseDecorrelator_init(BMVelvetNoiseDecorrelator *This,
 	This->wetMix = BM_VND_WET_MIX;
 	This->rt60 = rt60DecayTimeSeconds;
 	This->maxDelayTimeS = maxDelaySeconds;
-	This->numWetTaps = numWetTaps;
-	
-	size_t tapsPerChannel = numWetTaps;
-	if (hasDryTap) tapsPerChannel++;
+	This->numWetTaps = numTaps;
+	if (hasDryTap) This->numWetTaps--;
 	
 	// allocate memory for calculating delay setups
-	This->delayLengthsL = calloc(tapsPerChannel, sizeof(size_t));
-	This->delayLengthsR = calloc(tapsPerChannel, sizeof(size_t));
-	This->gainsL = calloc(tapsPerChannel, sizeof(float));
-	This->gainsR = calloc(tapsPerChannel, sizeof(float));
+	This->delayLengthsL = calloc(numTaps, sizeof(size_t));
+	This->delayLengthsR = calloc(numTaps, sizeof(size_t));
+	This->gainsL = calloc(numTaps, sizeof(float));
+	This->gainsR = calloc(numTaps, sizeof(float));
 	
 	// init the multi-tap delay in bypass mode
 	size_t maxDelayLenth = ceil(maxDelaySeconds*sampleRate);
 	BMMultiTapDelay_initBypass(&This->multiTapDelay,
 							   true,
 							   maxDelayLenth,
-							   tapsPerChannel);
+							   numTaps);
 	
 	// setup the delay for processing
 	BMVelvetNoiseDecorrelator_randomiseAll(This);
@@ -121,23 +120,16 @@ void BMVelvetNoiseDecorrelator_genRandTapTimes(BMVelvetNoiseDecorrelator *This){
 		This->delayLengthsR[0] = 0;
 	}
 	
-//	// find out how many milliseconds in one sample
-//	float oneSampleMs = 1000.0f / This->sampleRate;
-//
-//	// use the velvet noise algorithm to set the delay tap times
-//	BMVelvetNoise_setTapIndices(oneSampleMs,
-//								This->maxDelayTimeS * 1000.0f,
-//								This->delayLengthsL + shift,
-//								This->sampleRate, This->numWetTaps);
-//	BMVelvetNoise_setTapIndices(oneSampleMs,
-//								This->maxDelayTimeS * 1000.0f,
-//								This->delayLengthsR + shift,
-//								This->sampleRate, This->numWetTaps);
-	
 	// use the randoms-in-range algorithm to set delay tap times
-	size_t min = ceil(This->maxDelayTimeS / This->numWetTaps);
+	size_t min = ceil((This->maxDelayTimeS * This->sampleRate) / This->numWetTaps);
 	size_t max = ceil(This->maxDelayTimeS * This->sampleRate);
+	BMReverbRandomsInRange(min, max, This->delayLengthsL + shift, This->numWetTaps);
 	BMReverbRandomsInRange(min, max, This->delayLengthsR + shift, This->numWetTaps);
+	
+	// sort the delay times for easier debugging
+	BMInsertionSort_size_t(This->delayLengthsL + shift, This->numWetTaps);
+	BMInsertionSort_size_t(This->delayLengthsR + shift, This->numWetTaps);
+	
 	
 	BMMultiTapDelay_setDelayTimes(&This->multiTapDelay, This->delayLengthsL, This->delayLengthsR);
 }
@@ -163,26 +155,38 @@ void BMVelvetNoiseDecorrelator_randomiseAll(BMVelvetNoiseDecorrelator *This){
  * @abstract sets the wet/dry mix and issues the command to update the multitap delay
  */
 void BMVelvetNoiseDecorrelator_setWetMix(BMVelvetNoiseDecorrelator *This, float wetMix01){
-	This->wetMix = wetMix01;
-	
-	// we need a dry tap to set the mix; otherwise it's fiixed at 100% wet
+	// we need a dry tap to set the mix; otherwise it's fixed at 100% wet
+	// beacuse the wet/dry mix setting is meaningless
 	assert(This->hasDryTap);
 	
 	// keep the wet mix in bounds
 	assert(0.0f <= wetMix01 & wetMix01 <= 1.0f);
 	
+	This->wetMix = wetMix01;
+
+	// what is the minimum gain we can set for the dry tap? It would not make
+	// sense for the dry tap to have less gain than the wet taps, so the minimum
+	// is not simply zero.
+	float minDryGain = sqrtf(1.0f / (This->numWetTaps + 1.0f));
+	
+	// find the corrected dry mix, which is in [minDryGain,1] instead of [0,1]
+	float dryGainUncorrected = sqrt(1.0f - wetMix01*wetMix01);
+	float dryGainCorrected = minDryGain + dryGainUncorrected * (1.0f - minDryGain);
+	
+	// find the corrected wet gain
+	float wetGainCorrected = sqrt(1.0f - dryGainCorrected*dryGainCorrected);
+	
 	// set the dry bypass tap gains
-	float dryGain = sqrt(1.0f - wetMix01*wetMix01);
-	This->gainsL[0] = dryGain;
-	This->gainsR[0] = dryGain;
+	This->gainsL[0] = dryGainCorrected;
+	This->gainsR[0] = dryGainCorrected;
 	
 	// normalize so the norm of the vector of all wet taps is 1.0
 	BMVectorNormalise(This->gainsL+1, This->numWetTaps);
 	BMVectorNormalise(This->gainsR+1, This->numWetTaps);
 	
 	// scale the wet taps to get the wet gain as desired
-	vDSP_vsmul(This->gainsL+1, 1, &wetMix01, This->gainsL+1, 1, This->numWetTaps);
-	vDSP_vsmul(This->gainsR+1, 1, &wetMix01, This->gainsR+1, 1, This->numWetTaps);
+	vDSP_vsmul(This->gainsL+1, 1, &wetGainCorrected, This->gainsL+1, 1, This->numWetTaps);
+	vDSP_vsmul(This->gainsR+1, 1, &wetGainCorrected, This->gainsR+1, 1, This->numWetTaps);
 
 	// set the gains to the multitap delay
 	BMMultiTapDelay_setGains(&This->multiTapDelay, This->gainsL, This->gainsR);

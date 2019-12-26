@@ -22,6 +22,7 @@ typedef struct BMPeakLimiter {
 	float bufferL [BM_BUFFER_CHUNK_SIZE];
 	float bufferR [BM_BUFFER_CHUNK_SIZE];
 	float controlSignal [BM_BUFFER_CHUNK_SIZE];
+	bool isLimiting;
 } BMPeakLimiter;
 
 
@@ -72,5 +73,17 @@ void BMPeakLimiter_processMono(BMPeakLimiter *This,
 								 const float *input,
 								 float *output,
 								 size_t numSamples);
+
+
+
+/*!
+ *BMPeakLimiter_isLimiting
+ *
+ * @returns true if the limiter is currently limiting
+ */
+bool BMPeakLimiter_isLimiting(BMPeakLimiter *This);
+
+
+
 
 #endif /* BMPeakLimiter_h */

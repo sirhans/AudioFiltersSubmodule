@@ -9,7 +9,8 @@
 #include "BMSpectrum.h"
 #include <assert.h>
 #include "Constants.h"
-#include "MyConstants.h"
+
+#define BM_SPECTRUM_DEFAULT_BUFFER_LENGTH 1024
 
 void BMSpectrum_setupFFT(BMSpectrum* this,size_t n);
 
@@ -26,7 +27,7 @@ size_t logToI(size_t index){
 
 void BMSpectrum_init(BMSpectrum* this){
     this->fft_initialized = false;
-    BMSpectrum_setupFFT(this,DesiredBufferLength);
+    BMSpectrum_setupFFT(this,BM_SPECTRUM_DEFAULT_BUFFER_LENGTH);
 }
 
 void BMSpectrum_setupFFT(BMSpectrum* this,size_t n){

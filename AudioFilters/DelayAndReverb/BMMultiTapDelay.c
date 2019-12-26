@@ -184,7 +184,7 @@ void BMMultiTapDelay_ProcessBufferMono(BMMultiTapDelay* delay,
 void BMMultiTapDelay_processBufferStereo(BMMultiTapDelay* delay,
                                          float* inputL, float* inputR,
                                          float* outputL, float* outputR,
-                                         size_t frames){
+                                         size_t numSamples){
     assert(delay->numberChannel == 2);
     
     if(delay->_needUpdateIndices)
@@ -203,8 +203,8 @@ void BMMultiTapDelay_processBufferStereo(BMMultiTapDelay* delay,
     size_t frameThisTime;
     
     size_t framesProcessed = 0;
-    while(framesProcessed < frames){
-        size_t framesProcessing = frames - framesProcessed;
+    while(framesProcessed < numSamples){
+        size_t framesProcessing = numSamples - framesProcessed;
         framesProcessing = (framesProcessing < BM_BUFFER_CHUNK_SIZE)? framesProcessing:BM_BUFFER_CHUNK_SIZE;
         
         frameThisTime = framesProcessing;

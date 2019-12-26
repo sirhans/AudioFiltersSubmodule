@@ -134,8 +134,10 @@ static float BMVectorNorm(const float* v, size_t length){
  */
 static void BMVectorNormalise(float* v, size_t length){
 	float norm = BMVectorNorm(v, length);
-	float scale = 1.0 / norm;
-	vDSP_vsmul(v,1,&scale,v,1,length);
+	if(norm > 0){
+		float scale = 1.0 / norm;
+		vDSP_vsmul(v,1,&scale,v,1,length);
+	}
 }
 
 

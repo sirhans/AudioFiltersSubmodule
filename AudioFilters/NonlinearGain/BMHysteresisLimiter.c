@@ -48,59 +48,38 @@ void BMHysteresisLimiter_processMonoRectified(BMHysteresisLimiter *This,
 		// consume charge in order to avoid biasing the signal by always consuming
 		// from one side before the other
 		
-		// Positive, then negative
-		
-//		// positive output
-//		float oPos = limitedPos[i] * This->c;
-//		// update charge
-//		This->c -= oPos * This->s;
-//		This->c += This->halfSR*(1.0f - This->c);
-//		// negative output
-//        float oNeg = limitedNeg[i] * This->c;
-//        // update charge
-//		This->c += oNeg * This->s;
-//		This->c += This->halfSR*(1.0f - This->c);
+		// positive, then negative
+		//
 		// positive output
 		float charge = This->halfSR * (1.0f - This->c);
 		float oPos = limitedPos[i] * (This->c + charge);
 		// update charge
-		This->c -= oPos * This->s;
-		This->c += charge;
+		This->c = This->c - (oPos * This->s) + charge;
+		//
 		// negative output
 		charge = This->halfSR * (1.0f - This->c);
         float oNeg = limitedNeg[i] * (This->c + charge);
         // update charge
-		This->c += oNeg * This->s;
-		This->c += charge;
+		This->c = This->c + (oNeg * This->s) + charge;
 		// output
         outputPos[i] = oPos;
         outputNeg[i] = oNeg;
 		
 		
-		// Negative, then positive
 		i++;
-//		// negative output
-//        oNeg = limitedNeg[i] * This->c;
-//        // update charge
-//		This->c += oNeg * This->s;
-//		This->c += This->halfSR*(1.0f - This->c);
-//		// positive output
-//		oPos = limitedPos[i] * This->c;
-//		// update charge
-//		This->c -= oPos * This->s;
-//		This->c += This->halfSR*(1.0f - This->c);
+		// Negative, then positive
+		//
 		// negative output
 		charge = This->halfSR * (1.0f - This->c);
         oNeg = limitedNeg[i] * (This->c + charge);
         // update charge
-		This->c += oNeg * This->s;
-		This->c += charge;
+		This->c = This->c + (oNeg * This->s) + charge;
+		//
 		// positive output
 		charge = This->halfSR * (1.0f - This->c);
 		oPos = limitedPos[i] * (This->c + charge);
 		// update charge
-		This->c -= oPos * This->s;
-		This->c += charge;
+		This->c = This->c - (oPos * This->s) + charge;
 		// output
         outputPos[i] = oPos;
         outputNeg[i] = oNeg;
@@ -152,12 +131,6 @@ void BMHysteresisLimiter_processStereoRectified(BMHysteresisLimiter *This,
 										   limitedPosR, limitedNegR,
 										   numSamples);
 	
-//	// bypass the transformer sag model
-//	memcpy(outputPosL, limitedPosL, numSamples*sizeof(float));
-//	memcpy(outputPosR, limitedPosR, numSamples*sizeof(float));
-//	memcpy(outputNegL, limitedNegL, numSamples*sizeof(float));
-//	memcpy(outputNegR, limitedNegR, numSamples*sizeof(float));
-	
 	
     for(size_t i=0; i<numSamples; i++){
 		// we alternate the order in which the positive and negative signals
@@ -171,15 +144,14 @@ void BMHysteresisLimiter_processStereoRectified(BMHysteresisLimiter *This,
 		simd_float2 iPos = simd_make_float2(limitedPosL[i], limitedPosR[i]);
 		simd_float2 oPos = iPos * (This->cs + charge);
 		// update charge
-		This->cs -= This->s * oPos;
-		This->cs += charge;
+		This->cs = This->cs - (This->s * oPos) + charge;
+		//
 		// negative output
 		charge = This->halfSR * (1.0f - This->cs);
 		simd_float2 iNeg = simd_make_float2(limitedNegL[i], limitedNegR[i]);
 		simd_float2 oNeg = iNeg * (This->cs + charge);
         // update charge
-		This->cs += This->s * oNeg;
-		This->cs += charge;
+		This->cs = This->cs + (This->s * oNeg) + charge;
 		// output
         outputPosL[i] = oPos.x;
 		outputPosR[i] = oPos.y;
@@ -194,15 +166,14 @@ void BMHysteresisLimiter_processStereoRectified(BMHysteresisLimiter *This,
 		iNeg = simd_make_float2(limitedNegL[i], limitedNegR[i]);
 		oNeg = iNeg * (This->cs + charge);
         // update charge
-		This->cs += This->s * oNeg;
-		This->cs += charge;
+		This->cs = This->cs + (This->s * oNeg) + charge;
+		//
 		// positive output
 		charge = This->halfSR * (1.0f - This->cs);
 		iPos = simd_make_float2(limitedPosL[i], limitedPosR[i]);
 		oPos = iPos * (This->cs + charge);
 		// update charge
-		This->cs -= This->s * oPos;
-		This->cs += charge;
+		This->cs = This->cs - (This->s * oPos) + charge;
 		// output
         outputPosL[i] = oPos.x;
 		outputPosR[i] = oPos.y;

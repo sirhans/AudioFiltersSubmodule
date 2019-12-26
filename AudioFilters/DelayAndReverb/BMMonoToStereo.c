@@ -13,8 +13,8 @@
 #define BM_MTS_LOW_CROSSOVER_FC 350.0f
 #define BM_MTS_HIGH_CROSSOVER_FC 1200.0f
 #define BM_MTS_TAPS_PER_CHANNEL 24
-#define BM_MTS_WET_MIX 0.95f
-#define BM_MTS_DECORRELATOR_FREQUENCY_BAND_WIDTH 20.0f
+#define BM_MTS_WET_MIX 0.92f
+#define BM_MTS_DECORRELATOR_FREQUENCY_BAND_WIDTH 50.0f
 #define BM_MTS_DIFFUSION_TIME 1.0f / BM_MTS_DECORRELATOR_FREQUENCY_BAND_WIDTH
 
 
@@ -86,13 +86,12 @@ void BMMonoToStereo_processBuffer(BMMonoToStereo *This,
 														  This->midL, This->midR,
 														  samplesProcessing);
 			
-			// combine the low and mid back together
-			vDSP_vadd(This->lowL, 1, This->midL, 1, This->midL, 1, samplesProcessing);
-			vDSP_vadd(This->lowR, 1, This->midR, 1, This->midR, 1, samplesProcessing);
-			
-			// combine the mid and high back together
-			vDSP_vadd(This->midL, 1, This->highL, 1, outputL, 1, samplesProcessing);
-			vDSP_vadd(This->midR, 1, This->highR, 1, outputR, 1, samplesProcessing);
+			// combine the low, mid, and high back together
+			BMCrossover3way_recombine(This->lowL, This->lowR,
+									  This->midL, This->midR,
+									  This->highL, This->highR,
+									  outputL, outputR,
+									  samplesProcessing);
 			
 			// advance pointers
 			numSamples -= samplesProcessing;
@@ -119,13 +118,12 @@ void BMMonoToStereo_processBuffer(BMMonoToStereo *This,
 																This->midL, This->midR,
 																samplesProcessing);
 			
-			// combine the low and mid back together
-			vDSP_vadd(This->lowL, 1, This->midL, 1, This->midL, 1, samplesProcessing);
-			vDSP_vadd(This->lowL, 1, This->midR, 1, This->midR, 1, samplesProcessing);
-			
-			// combine the mid and high back together
-			vDSP_vadd(This->midL, 1, This->highL, 1, outputL, 1, samplesProcessing);
-			vDSP_vadd(This->midR, 1, This->highL, 1, outputR, 1, samplesProcessing);
+			// combine the low, mid, and high back together
+			BMCrossover3way_recombine(This->lowL, This->lowL,
+									  This->midL, This->midR,
+									  This->highL, This->highL,
+									  outputL, outputR,
+									  samplesProcessing);
 			
 			// advance pointers
 			numSamples -= samplesProcessing;
@@ -152,4 +150,12 @@ void BMMonoToStereo_free(BMMonoToStereo *This){
 	// call to malloc
 	free(This->lowL);
 	This->lowL = NULL;
+}
+
+
+
+
+
+void BMMonoToStereo_setWetMix(BMMonoToStereo *This, float wetMix01){
+	BMVelvetNoiseDecorrelator_setWetMix(&This->vnd, wetMix01);
 }

@@ -68,8 +68,7 @@ void BMMultiLevelBiquad_processBufferMono(BMMultiLevelBiquad* This, const float*
  * @param numLevels the number of biquad filters in the cascade
  * @param sampleRate audio sample rate
  * @param isStereo set true for stereo, false for mono
- * @param monoRealTimeUpdate If you are updating coefficients of a MONO filter in realtime, set this to true. Processing of audio is slightly slower, but updates can happen in realtime. This setting has no effect on stereo filters. This setting has no effect if the OS does not support realtime updates of vDSP_biquadm filter coefficients.
- *
+ * @param monoRealTimeUpdate Require the ability to update filters without re-initialising.
  * @param smoothUpdate :    When BMMultilevelBiquad is init with smooth updates on, the update function will call setTargetsDouble to enable smooth update; and when it's off it will call setCoefficientsDouble.
  *
  */
@@ -175,6 +174,19 @@ void BMMultiLevelBiquad_setHighShelfFirstOrder(BMMultiLevelBiquad* This, float f
  *BMMultiLevelBiquad_setLowShelfFirstOrder
  */
 void BMMultiLevelBiquad_setLowShelfFirstOrder(BMMultiLevelBiquad* This, float fc, float gain_db, size_t level);
+
+/*!
+ *BMMultiLevelBiquad_setLowShelfAdjustableSlope
+ *
+ * @abstract adjustable high shelf filter from Robert Bristow-Johnson cookbook
+ *
+ * @param This pointer to an initialized filter struct
+ * @param fc   filter cutoff frequency
+ * @param gain_db shelf gain in decibels
+ * @param slope in [0.3,1], where 0.5 is equivalent to first order shelf slope and 1 is equivalent to second order shelf slope
+ * @param level the index of the filter in the biquad cascade
+ */
+void BMMultiLevelBiquad_setLowShelfAdjustableSlope(BMMultiLevelBiquad *This, float fc, float gain_db, float slope, size_t level);
 
 // set a low shelf filter at on the specified level in both
 // channels and update filter settings

@@ -43,4 +43,14 @@ void BMMonoToStereo_processBuffer(BMMonoToStereo *This,
 void BMMonoToStereo_free(BMMonoToStereo *This);
 
 
+
+/*!
+ *BMMonoToStereo_setWetMix
+ *
+ * @param This pointer to an initialised struct
+ * @param wetMix01 linear scale mix in [0,1]
+ */
+void BMMonoToStereo_setWetMix(BMMonoToStereo *This, float wetMix01);
+
+
 #endif /* BMMonoToStereo_h */
