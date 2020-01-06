@@ -70,9 +70,9 @@ void BMTransientEnveloper_init(BMTransientEnveloper *This, float sampleRate){
 void BMTransientEnveloper_setAttackOnsetTime(BMTransientEnveloper *This, float seconds){
     if(seconds > 0){
         float attackOnsetFc = ARTimeToCutoffFrequency(seconds, BMENV_NUM_STAGES);
-    
+        
         for(size_t i=0; i<BMENV_NUM_STAGES; i++)
-        BMAttackFilter_setCutoff(&This->attackAF2[i],attackOnsetFc);
+            BMAttackFilter_setCutoff(&This->attackAF2[i],attackOnsetFc);
     }
     
     else This->filterAttackOnset = false;
@@ -229,4 +229,37 @@ void BMTransientEnveloper_processBuffer(BMTransientEnveloper *This,
     // after-attack = slowAttack - fastAttack
     vDSP_vsub(fastAttack, 1, slowAttack, 1, afterAttackEnvelope, 1, numSamples);
     
+}
+
+
+
+
+
+
+void BMTransientShaper_processBufferStereo(BMTransientShaper *This,
+                                           const float *inL, const float *inR,
+                                           float *outL, float *outR,
+                                           size_t numSamples){
+    // make an alias for improved code readability
+    float *inputBuffer = This->afterAttackBuffer;
+    
+    while(numSamples > 0){
+        size_t samplesProcessing = BM_MIN(BM_BUFFER_CHUNK_SIZE, numSamples);
+        
+        BMTransientEnveloper_processBuffer(&This->enveloper,
+                                           inputBuffer,
+                                           This->attackBuffer,
+                                           This->afterAttackBuffer,
+                                           This->releaseBuffer,
+                                           samplesProcessing);
+        
+        vDSP_vsmsa(This->attackBuffer, <#vDSP_Stride __IA#>, <#const float * _Nonnull __B#>, <#const float * _Nonnull __C#>, <#float * _Nonnull __D#>, <#vDSP_Stride __ID#>, <#vDSP_Length __N#>);
+        
+        // advance pointers
+        numSamples -= samplesProcessing;
+        inL += samplesProcessing;
+        inR += samplesProcessing;
+        outL += samplesProcessing;
+        outR += samplesProcessing;
+    }
 }

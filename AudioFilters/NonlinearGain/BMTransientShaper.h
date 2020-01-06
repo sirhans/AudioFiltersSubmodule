@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include "BMEnvelopeFollower.h"
+#include "Constants.h"
 
 
 typedef struct BMTransientEnveloper {
@@ -37,6 +38,9 @@ typedef struct BMTransientEnveloper {
 
 typedef struct BMTransientShaper {
     BMTransientEnveloper enveloper;
+    float attackBuffer [BM_BUFFER_CHUNK_SIZE];
+    float afterAttackBuffer [BM_BUFFER_CHUNK_SIZE];
+    float releaseBuffer [BM_BUFFER_CHUNK_SIZE];
 } BMTransientShaper;
 
 
