@@ -10,9 +10,10 @@
 #define BMHugeReverb_h
 
 #include <stdio.h>
+#include "BMEarlyReflections.h"
+#include "BMSimpleDelay.h"
 
 typedef struct BMHugeReverb {
-//	BMFDN16 
 } BMHugeReverb;
 
 #endif /* BMHugeReverb_h */

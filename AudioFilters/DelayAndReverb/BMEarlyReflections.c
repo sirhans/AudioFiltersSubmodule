@@ -147,7 +147,6 @@ extern "C" {
                                                 inputL, inputR,
                                                 outputL, outputR,
                                                 numSamples);
-            
     }
     
     
