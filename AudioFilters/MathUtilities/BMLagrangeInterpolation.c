@@ -14,14 +14,14 @@
 float calculateH(float fractionalDelay, float n,float order);
 static inline int BMLI_getStartIdx(float orderF,float strideIdx);
 
-void BMLagrangeInterpolation_init(BMLagrangeInterpolation *This, int order){
+void BMLagrangeInterpolation_init(BMLagrangeInterpolation* This, int order){
     assert(order%2==0);
     
     This->order = order;
     This->totalStepPerSample = order*20;
     This->startIdxFactor = (order* 0.5f - 1.0f);
     This->deltaStep = 1.0/This->totalStepPerSample;
-    This->deltaRange = This->totalStepPerSample  *This->order * 0.5;
+    This->deltaRange = This->totalStepPerSample * This->order * 0.5;
     
     This->sampleRange = order+1;
     This->startIdxBuffer = malloc(sizeof(int)*BM_BUFFER_CHUNK_SIZE);
@@ -35,19 +35,19 @@ void BMLagrangeInterpolation_init(BMLagrangeInterpolation *This, int order){
     for(int i=0;i<This->sampleRange;i++){
         This->table[i] = malloc(sizeof(float)*This->deltaRange);
     }
-    This->temp = malloc(sizeof(float) *This->sampleRange);
+    This->temp = malloc(sizeof(float)* This->sampleRange);
     
     //
     for(int i=0;i<This->deltaRange;i++){
         for(int j=0;j<This->sampleRange;j++){
-            This->table[j][i] = calculateH(i  *This->deltaStep, j,This->order);
+            This->table[j][i] = calculateH(i * This->deltaStep, j,This->order);
 //            printf("%f\n",This->table[i][j]);
         }
     }
     
 }
 
-void BMLagrangeInterpolation_destroy(BMLagrangeInterpolation *This){
+void BMLagrangeInterpolation_destroy(BMLagrangeInterpolation* This){
     free(This->startIdxBuffer);
     free(This->deltaX);
     free(This->floatBuffer1);
@@ -82,7 +82,7 @@ void vectorConvertIntToSize_t(const int* input, size_t* output, size_t length){
 }
 
 
-void BMLagrangeInterpolation_processUpSample(BMLagrangeInterpolation *This, const float* input, const float* strideInput, float* output, int outputStride,size_t inputLength,size_t outputLength){
+void BMLagrangeInterpolation_processUpSample(BMLagrangeInterpolation* This, const float* input, const float* strideInput, float* output, int outputStride,size_t inputLength,size_t outputLength){
     
     // get the start index for the input data used to calculate each sample of output
     float negStartIdxFactor = - This->startIdxFactor;
@@ -124,7 +124,7 @@ void BMLagrangeInterpolation_processUpSample(BMLagrangeInterpolation *This, cons
     }
 }
 
-//float BMLagrangeInterpolation_processOneSample(BMLagrangeInterpolation *This, const float* input, const float strideInput,size_t inputLength){
+//float BMLagrangeInterpolation_processOneSample(BMLagrangeInterpolation* This, const float* input, const float strideInput,size_t inputLength){
 //    float output;
 //    int startIdx = 0;
 //    //Get start index
@@ -150,7 +150,7 @@ void BMLagrangeInterpolation_processUpSample(BMLagrangeInterpolation *This, cons
 //    
 //}
 
-void BMLagrangeInterpolation_processDownSample(BMLagrangeInterpolation *This, const float* input,int inputStride, float* output, int outputStride,size_t inputLength,size_t outputLength){
+void BMLagrangeInterpolation_processDownSample(BMLagrangeInterpolation* This, const float* input,int inputStride, float* output, int outputStride,size_t inputLength,size_t outputLength){
     //Skip sample = This->order
     for(int i=0;i<outputLength&&i*This->order<inputLength;i++){
         output[i] = input[i*This->order];

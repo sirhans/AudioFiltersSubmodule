@@ -31,14 +31,14 @@ typedef struct BMVelvetNoiseDecorrelator {
  *
  * @param This  pointer to an unitialised struct
  * @param maxDelaySeconds maximum delay time in seconds
- * @param numWetTaps number of delay taps on each channel, not including one used to pass the dry signal through
+ * @param numTaps number of delay taps on each channel including the one used to pass the dry signal through
  * @param rt60DecayTimeSeconds controls the decay envelope used to slope the volume of the taps
  * @param hasDryTap set true if you want to mix wet and dry signal; false for 100% wet
  * @param sampleRate sample rate in Hz
  */
 void BMVelvetNoiseDecorrelator_init(BMVelvetNoiseDecorrelator *This,
 									float maxDelaySeconds,
-									size_t numWetTaps,
+									size_t numTaps,
 									float rt60DecayTimeSeconds,
 									bool hasDryTap,
 									float sampleRate);

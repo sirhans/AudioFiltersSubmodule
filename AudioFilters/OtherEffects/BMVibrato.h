@@ -24,6 +24,8 @@ extern "C" {
         float LFO1Phase,
         LFO2Phase,
         centerRate,
+        centerRateStart,
+        centerRateEnd,
         modRate,
         fModDepth,
         wModDepth,
@@ -31,6 +33,11 @@ extern "C" {
         desiredWidthScale,
         fadeInRate,
         fadeInDepth,
+        fadeInTime,
+        fadeOutRate,
+        fadeOutDepth,
+        fadeOutRange,
+        fadeOutMinDepth,
         sampleRate,
         centreWidth_notes,
         timeSinceStart_seconds,
@@ -50,17 +57,21 @@ extern "C" {
      * fModDepth_0to1: vibrato frequency modulation depth in the range 0 to 1
      * wModDepth_0to1: vibrato width modulation depth in the range 0 to 1
      * fadeInTime_seconds: starting from zero vibrato, how long before full width?
+     * fadeOutTime_seconds: after the vibrato reaches full strength, how quickly does it fade?
      * sampleRate: audio system sample rate
      */
     void BMVB_init(BMVibrato* v,
-                    float centreRate_hz,
-                    float centreWidth_notes,
-                    float modRate_hz,
-                    float fModDepth_0to1,
-                    float wModDepth_0to1,
-                    float fadeInTime_seconds,
-                    float sampleRate);
-
+                   float centreRate_hz_start,
+                   float centreRate_hz_end,
+                   float centreWidth_notes,
+                   float modRate_hz,
+                   float fModDepth_0to1,
+                   float wModDepth_0to1,
+                   float fadeInTime_seconds,
+                   float fadeOutTine_seconds,
+                   float fadeOutMinDepth,
+                   float sampleRate);
+    
     
     
     /*
@@ -68,6 +79,12 @@ extern "C" {
      */
     void BMVB_initDefaultSax(BMVibrato* v, float sampleRate);
     
+    
+    
+    /*
+     * init with good default settings for bass
+     */
+    void BMVB_initDefaultBass(BMVibrato* v, float sampleRate);
     
     
     
@@ -89,17 +106,17 @@ extern "C" {
      * Monitors the size of the buffer to count time.
      */
     float BMVB_getStrideMultiplier(BMVibrato* v, size_t bufferSize_samples);
-
+    
     
     
     
     /*
      * @param scale In [0,1]. Adjusts the width (actual witdh = wModDepth_0to1*scale)
      *
-      *This is used for implementation of modulation wheel controllers
+     * This is used for implementation of modulation wheel controllers
      */
     void BMVB_setWidthScale(BMVibrato* v, float scale);
-
+    
     
     
     

@@ -88,7 +88,7 @@ extern "C" {
                                                           cutoff,
                                                           0);
             // highpass fourth order
-            BMMultiLevelBiquad_setLinkwitzRileyHP4thOrder(&This->lp,
+            BMMultiLevelBiquad_setLinkwitzRileyHP4thOrder(&This->hp,
                                                           cutoff,
                                                           0);
         } else {
@@ -179,7 +179,13 @@ extern "C" {
         }
     }
     
-    
+    void BMCrossover_recombine(const float* lpL, const float* lpR,
+                                   const float* hpL, const float* hpR,
+                                   float* outL, float* outR,
+                                   size_t numSamples){
+        vDSP_vadd(lpL, 1, hpL, 1, outL, 1, numSamples);
+        vDSP_vadd(lpR, 1, hpR, 1, outR, 1, numSamples);
+    }
     
     
     
@@ -663,8 +669,8 @@ extern "C" {
         
         // remove bands 3-4 from band 2
         BMMultiLevelBiquad_processBufferStereo(&This->band2,
-                                               band2L, band2L,
-                                               band2L, band2L,
+                                               band2L, band2R,
+                                               band2L, band2R,
                                                numSamples);
         
         // split band 4 off from band 3
@@ -675,8 +681,8 @@ extern "C" {
         
         // remove band 4 from band 3
         BMMultiLevelBiquad_processBufferStereo(&This->band3,
-                                               band3L, band3L,
-                                               band3L, band3L,
+                                               band3L, band3R,
+                                               band3L, band3R,
                                                numSamples);
     }
 	
@@ -716,6 +722,9 @@ extern "C" {
 		vDSP_vadd(band1L,1,band2L,1,outL,1,numSamples);
 		vDSP_vadd(band3L,1,outL,1,outL,1,numSamples);
 		vDSP_vadd(band4L,1,outL,1,outL,1,numSamples);
+        vDSP_vadd(band1R,1,band2R,1,outR,1,numSamples);
+        vDSP_vadd(band3R,1,outR,1,outR,1,numSamples);
+        vDSP_vadd(band4R,1,outR,1,outR,1,numSamples);
 
 	}
     
