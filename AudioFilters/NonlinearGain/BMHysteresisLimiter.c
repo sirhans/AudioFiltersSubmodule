@@ -13,7 +13,7 @@
 #include "Constants.h"
 
 #define BM_HYSTERESISLIMITER_DEFAULT_POWER_LIMIT -45.0f
-#define BM_HYSTERESISLIMITER_AA_FILTER_FC 12000.0f
+#define BM_HYSTERESISLIMITER_AA_FILTER_FC 20000.0f
 #define BM_HYSTERESISLIMITER_DEFAULT_SAG 1.0f / (4000.0f)
 
 
@@ -276,6 +276,7 @@ void BMHysteresisLimiter_init(BMHysteresisLimiter *This, float sampleRate, size_
     This->sampleRate = sampleRate;
 	
 	// init the AA filter
+    assert(BM_HYSTERESISLIMITER_AA_FILTER_FC < sampleRate * 0.5f);
 	size_t numLevels = 1;
 	if(numChannels == 1)
 		BMMultiLevelBiquad_init(&This->AAFilter, numLevels, sampleRate, false, false, false);

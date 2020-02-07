@@ -44,7 +44,7 @@ static inline void BMAsymptoticLimit(const float *input,
 /*!
  *BMAsymptoticLimitRectified
  *
- * @notes we can omit the absolute value from out = in / (1+abs(in)) if we have rectified inputs. Using this function will therefore be faster than its non-rectified counterpart.
+ * we can omit the absolute value from out = in / (1+abs(in)) if we have rectified inputs. Using this function will therefore be faster than its non-rectified counterpart.
  *
  * @param inputPos positive rectified input array
  * @param inputNeg negative rectified input array
