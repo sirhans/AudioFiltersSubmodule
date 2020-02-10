@@ -85,4 +85,41 @@ static inline void BMAsymptoticLimitRectified(const float *inputPos,
 }
 
 
+
+/*!
+ *BMAsymptoticLimitPositive
+ *
+ * we can omit the absolute value from out = in / (1+abs(in)) if we have rectified inputs. Using this function will therefore be faster than its non-rectified counterpart.
+ *
+ * @param inputPos positive rectified input array
+ * @param outputPos positive side output array
+ * @param numSamples length of input and output arrays
+ * @param sampleRate audio buffer sample rate
+ * @param sag larger values correspond to slower power supply charge recovery
+ */
+static inline void BMAsymptoticLimitPositive(const float *inputPos,
+											 float *outputPos,
+											 float sampleRate,
+											 float sag,
+											 size_t numSamples){
+    simd_float1 s = 1.0f / (sampleRate * sag);
+    
+    simd_float4 *in4Pos = (simd_float4*)inputPos;
+    simd_float4 *out4Pos = (simd_float4*)outputPos;
+    size_t numSamples4 = numSamples/4;
+    
+    // main processing loop
+	for(size_t i=0; i<numSamples4; i++){
+        out4Pos[i] = in4Pos[i] / (1.0f + s * in4Pos[i]);
+	}
+    
+    // if numSamples isn't divisible by 4, clean up the last few
+	size_t unprocessedSamples = numSamples % 4;
+    size_t cleanupStartIndex = numSamples - unprocessedSamples;
+	for(size_t i=cleanupStartIndex; i<numSamples; i++){
+        outputPos[i] = inputPos[i] / (1.0f + s * inputPos[i]);
+	}
+}
+
+
 #endif /* BMAsymptoticLimiter_h */

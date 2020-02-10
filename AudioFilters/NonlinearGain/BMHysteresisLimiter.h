@@ -110,6 +110,21 @@ void BMHysteresisLimiter_processMonoRectified(BMHysteresisLimiter *This,
 
 
 /*!
+*BMHysteresisLimiter_processMonoClassA
+*
+* @param This pointer to an initialised struct
+* @param inputPos positive side rectified input. MUST BE IN [0,FLT_MAX]
+* @param outputPos output array with length numSamples
+* @param numSamples length of inputs and outputs
+*/
+void BMHysteresisLimiter_processMonoClassA(BMHysteresisLimiter *This,
+										   const float *inputPos,
+										   float* outputPos,
+										   size_t numSamples);
+
+
+
+/*!
  *BMHysteresisLimiter_processStereoSimple
  *
  * @notes this is a simpler hysteresis model in the sense that it does not do zero-delay-feedback modeling of charge consumption. Rather the charge consumed at the current sample index removes charge from the capacitor for the next sample index.
@@ -148,5 +163,26 @@ void BMHysteresisLimiter_processStereoRectified(BMHysteresisLimiter *This,
 													  float *outputPosL, float *outputPosR,
 													  float *outputNegL, float *outputNegR,
 													  size_t numSamples);
+
+
+
+
+
+/*!
+*BMHysteresisLimiter_processStereoClassA
+*
+* @param This pointer to an initialised struct
+* @param inputPosL positive side rectified input. MUST BE IN [0,FLT_MAX]
+* @param inputPosR positive side rectified input. MUST BE IN [0,FLT_MAX]
+* @param outputPosL output array with length numSamples
+* @param outputPosR output array with length numSamples
+* @param numSamples length of inputs and outputs
+*/
+void BMHysteresisLimiter_processStereoClassA(BMHysteresisLimiter *This,
+											 const float *inputPosL,
+											 const float *inputPosR,
+											 float *outputPosL,
+											 float *outputPosR,
+											 size_t numSamples);
 
 #endif /* BMHysteresisLimiter_h */

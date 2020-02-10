@@ -94,6 +94,46 @@ void BMHysteresisLimiter_processMonoRectified(BMHysteresisLimiter *This,
 
 
 
+void BMHysteresisLimiter_processMonoClassA(BMHysteresisLimiter *This,
+                                      const float *inputPos,
+                                      float* outputPos,
+                                      size_t numSamples){
+	assert(This->AAFilter.numChannels == 2 &&
+		   numSamples % 2 == 0);
+	
+	// create an alias pointer for code readability
+	float* limitedPos = outputPos;
+	
+	// apply asymptotic limit
+	BMAsymptoticLimitPositive(inputPos,
+							   limitedPos,
+                               This->sampleRate,
+                               This->sag,
+							   numSamples);
+	
+	// antialiasing filter
+	BMMultiLevelBiquad_processBufferMono(&This->AAFilter,
+										   limitedPos,
+										   limitedPos,
+										   numSamples);
+	
+    for(size_t i=0; i<numSamples; i++){
+		// find output value
+		float charge = This->halfSR * (1.0f - This->c);
+		float oPos = limitedPos[i] * (This->c + charge);
+		// update charge
+		This->c = This->c - (oPos * This->s) + charge;
+		// output
+        outputPos[i] = oPos;
+    }
+	
+	// scale to compensate for gain loss
+	vDSP_vsmul(outputPos,1,&This->oneOverR,outputPos,1,numSamples);
+}
+
+
+
+
 
 void BMHysteresisLimiter_processStereoRectified(BMHysteresisLimiter *This,
 													  const float *inputPosL,
@@ -187,6 +227,58 @@ void BMHysteresisLimiter_processStereoRectified(BMHysteresisLimiter *This,
 	vDSP_vsmul(outputPosR,1,&This->oneOverR,outputPosR,1,numSamples);
 	vDSP_vsmul(outputNegL,1,&This->oneOverR,outputNegL,1,numSamples);
 	vDSP_vsmul(outputNegR,1,&This->oneOverR,outputNegR,1,numSamples);
+}
+
+
+
+
+
+void BMHysteresisLimiter_processStereoClassA(BMHysteresisLimiter *This,
+											 const float *inputPosL,
+											 const float *inputPosR,
+											 float *outputPosL,
+											 float *outputPosR,
+											 size_t numSamples){
+	assert(This->AAFilter.numChannels == 4 &&
+		   numSamples % 2 == 0);
+	
+	// create some alias pointers for code readability
+	float* limitedPosL = outputPosL;
+	float* limitedPosR = outputPosR;
+	
+	// apply asymptotic limit
+	BMAsymptoticLimitPositive(inputPosL,
+							  limitedPosL,
+							  This->sampleRate,
+							  This->sag,
+							  numSamples);
+	BMAsymptoticLimitPositive(inputPosR,
+							  limitedPosR,
+							  This->sampleRate,
+							  This->sag,
+							  numSamples);
+	
+	// Antialiasing filter
+	BMMultiLevelBiquad_processBufferStereo(&This->AAFilter,
+										   limitedPosL, limitedPosR,
+										   limitedPosL, limitedPosR,
+										   numSamples);
+	
+	
+    for(size_t i=0; i<numSamples; i++){
+		// find output value
+		simd_float2 charge = This->halfSR * (1.0f - This->cs);
+		simd_float2 iPos = simd_make_float2(limitedPosL[i], limitedPosR[i]);
+		simd_float2 oPos = iPos * (This->cs + charge);
+		// update charge
+		This->cs = This->cs - (This->s * oPos) + charge;
+        outputPosL[i] = oPos.x;
+		outputPosR[i] = oPos.y;
+    }
+	
+	// scale to compensate for gain loss
+	vDSP_vsmul(outputPosL,1,&This->oneOverR,outputPosL,1,numSamples);
+	vDSP_vsmul(outputPosR,1,&This->oneOverR,outputPosR,1,numSamples);
 }
 
 
