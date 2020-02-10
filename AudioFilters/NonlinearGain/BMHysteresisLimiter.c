@@ -14,6 +14,7 @@
 
 #define BM_HYSTERESISLIMITER_DEFAULT_POWER_LIMIT -45.0f
 #define BM_HYSTERESISLIMITER_AA_FILTER_FC 20000.0f
+#define BM_HYSTERESISLIMITER_AA_FILTER_NUMLEVELS 2
 #define BM_HYSTERESISLIMITER_DEFAULT_SAG 1.0f / (4000.0f)
 
 
@@ -263,8 +264,10 @@ void BMHysteresisLimiter_setAAFilterFC(BMHysteresisLimiter *This, float fc){
     fc = BM_MIN(This->sampleRate * 0.5f * 0.9f, fc);
     // set the AA filters
 	for(size_t i=0; i<This->AAFilter.numLevels; i++){
-		BMMultiLevelBiquad_setLowPass6db(&This->AAFilter, fc, i);
+		// BMMultiLevelBiquad_setLowPass6db(&This->AAFilter, fc, i);
+		BMMultiLevelBiquad_setLowPassQ12db(&This->AAFilter, fc, 0.5f, i);
 	}
+	// BMMultiLevelBiquad_setLegendreLP(&This->AAFilter, fc, 0, BM_HYSTERESISLIMITER_AA_FILTER_NUMLEVELS);
 }
 
 
@@ -277,13 +280,12 @@ void BMHysteresisLimiter_init(BMHysteresisLimiter *This, float sampleRate, size_
 	
 	// init the AA filter
     assert(BM_HYSTERESISLIMITER_AA_FILTER_FC < sampleRate * 0.5f);
-	size_t numLevels = 1;
 	if(numChannels == 1)
-		BMMultiLevelBiquad_init(&This->AAFilter, numLevels, sampleRate, false, false, false);
+		BMMultiLevelBiquad_init(&This->AAFilter, BM_HYSTERESISLIMITER_AA_FILTER_NUMLEVELS, sampleRate, false, false, false);
 	if(numChannels == 2)
-		BMMultiLevelBiquad_init(&This->AAFilter, numLevels, sampleRate, true, false, false);
+		BMMultiLevelBiquad_init(&This->AAFilter, BM_HYSTERESISLIMITER_AA_FILTER_NUMLEVELS, sampleRate, true, false, false);
 	if(numChannels == 4)
-		BMMultiLevelBiquad_init4(&This->AAFilter, numLevels, sampleRate, false);
+		BMMultiLevelBiquad_init4(&This->AAFilter, BM_HYSTERESISLIMITER_AA_FILTER_NUMLEVELS, sampleRate, false);
 	BMHysteresisLimiter_setAAFilterFC(This,BM_HYSTERESISLIMITER_AA_FILTER_FC);
 
 	BMHysteresisLimiter_setPowerLimit(This, BM_HYSTERESISLIMITER_DEFAULT_POWER_LIMIT);
