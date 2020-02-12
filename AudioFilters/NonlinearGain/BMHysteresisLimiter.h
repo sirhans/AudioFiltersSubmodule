@@ -54,7 +54,7 @@ void BMHysteresisLimiter_init(BMHysteresisLimiter *This,
 							  float sampleRate,
 							  size_t aaFilterNumLevels,
 							  size_t aaFilterFc,
-							  size_t numChannels)
+							  size_t numChannels);
 
 
 
