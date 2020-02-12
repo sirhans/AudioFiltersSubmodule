@@ -13,8 +13,6 @@
 #include "Constants.h"
 
 #define BM_HYSTERESISLIMITER_DEFAULT_POWER_LIMIT -45.0f
-#define BM_HYSTERESISLIMITER_AA_FILTER_FC 20000.0f
-#define BM_HYSTERESISLIMITER_AA_FILTER_NUMLEVELS 2
 #define BM_HYSTERESISLIMITER_DEFAULT_SAG 1.0f / (4000.0f)
 
 
@@ -365,20 +363,24 @@ void BMHysteresisLimiter_setAAFilterFC(BMHysteresisLimiter *This, float fc){
 
 
 
-void BMHysteresisLimiter_init(BMHysteresisLimiter *This, float sampleRate, size_t numChannels){
+void BMHysteresisLimiter_init(BMHysteresisLimiter *This,
+							  float sampleRate,
+							  size_t aaFilterNumLevels,
+							  size_t aaFilterFc,
+							  size_t numChannels){
 	assert(numChannels == 1 || numChannels == 2 || numChannels == 4);
     
     This->sampleRate = sampleRate;
 	
 	// init the AA filter
-    assert(BM_HYSTERESISLIMITER_AA_FILTER_FC < sampleRate * 0.5f);
+    assert(aaFilterFc < sampleRate * 0.5f);
 	if(numChannels == 1)
-		BMMultiLevelBiquad_init(&This->AAFilter, BM_HYSTERESISLIMITER_AA_FILTER_NUMLEVELS, sampleRate, false, false, false);
+		BMMultiLevelBiquad_init(&This->AAFilter, aaFilterNumLevels, sampleRate, false, false, false);
 	if(numChannels == 2)
-		BMMultiLevelBiquad_init(&This->AAFilter, BM_HYSTERESISLIMITER_AA_FILTER_NUMLEVELS, sampleRate, true, false, false);
+		BMMultiLevelBiquad_init(&This->AAFilter, aaFilterNumLevels, sampleRate, true, false, false);
 	if(numChannels == 4)
-		BMMultiLevelBiquad_init4(&This->AAFilter, BM_HYSTERESISLIMITER_AA_FILTER_NUMLEVELS, sampleRate, false);
-	BMHysteresisLimiter_setAAFilterFC(This,BM_HYSTERESISLIMITER_AA_FILTER_FC);
+		BMMultiLevelBiquad_init4(&This->AAFilter, aaFilterNumLevels, sampleRate, false);
+	BMHysteresisLimiter_setAAFilterFC(This,aaFilterFc);
 
 	BMHysteresisLimiter_setPowerLimit(This, BM_HYSTERESISLIMITER_DEFAULT_POWER_LIMIT);
     BMHysteresisLimiter_setSag(This, BM_HYSTERESISLIMITER_DEFAULT_SAG);

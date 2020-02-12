@@ -46,9 +46,15 @@ typedef struct BMHysteresisLimiter {
  *
  * @param This pointer to an uninitialised struct
  * @param sampleRate audio system sample rate
+ * @param aaFilterNumLevels number of biquad sections in the antialiasing filter
+ * @param aaFilterFc cutoff frequency of antialiasing filter
  * @param numChannels for non-rectified signal, mono=1 and stereo = 2. For rectified signal, stereo=2 and mono=4.
  */
-void BMHysteresisLimiter_init(BMHysteresisLimiter *This, float sampleRate, size_t numChannels);
+void BMHysteresisLimiter_init(BMHysteresisLimiter *This,
+							  float sampleRate,
+							  size_t aaFilterNumLevels,
+							  size_t aaFilterFc,
+							  size_t numChannels)
 
 
 
