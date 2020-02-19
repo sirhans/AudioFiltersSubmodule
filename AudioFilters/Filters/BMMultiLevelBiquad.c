@@ -350,6 +350,16 @@ inline void BMMultiLevelBiquad_recreate(BMMultiLevelBiquad *This){
 
 
 
+
+// we are doing this to change the name of the function from destroy to free
+// without breaking old code that calls destroy
+void BMMultiLevelBiquad_free(BMMultiLevelBiquad* This){
+	BMMultiLevelBiquad_destroy(This);
+}
+
+
+
+
 void BMMultiLevelBiquad_destroy(BMMultiLevelBiquad *This){
     if(This->coefficients_d) free(This->coefficients_d);
     if(This->coefficients_f) free(This->coefficients_f);

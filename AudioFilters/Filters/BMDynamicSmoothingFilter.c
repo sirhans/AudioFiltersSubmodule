@@ -48,6 +48,8 @@ void BMDynamicSmoothingFilter_init(BMDynamicSmoothingFilter *This,
                                     float sampleRate){
     This->sensitivity = sensitivity;
     This->g0 = tanf(M_PI * minFc / sampleRate);
+	This->low1z = 0.0f;
+	This->low2z = 0.0f;
 }
 
 

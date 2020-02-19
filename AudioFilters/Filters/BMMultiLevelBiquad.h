@@ -96,7 +96,18 @@ void BMMultiLevelBiquad_init4(BMMultiLevelBiquad* This,
                               bool smoothUpdate);
 
 
-// free up memory objects
+/*!
+ *BMMultiLevelBiquad_free
+ *
+ * free memory objects
+ */
+void BMMultiLevelBiquad_free(BMMultiLevelBiquad* This);
+
+
+/*!
+ *BMMultiLevelBiquad_destroy
+ */
+__attribute__((deprecated("please call BMMultiLevelBiquad_free instead")))
 void BMMultiLevelBiquad_destroy(BMMultiLevelBiquad* This);
 
 
