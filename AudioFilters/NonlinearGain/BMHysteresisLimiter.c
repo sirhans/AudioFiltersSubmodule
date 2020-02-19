@@ -13,7 +13,6 @@
 #include "Constants.h"
 
 #define BM_HYSTERESISLIMITER_DEFAULT_POWER_LIMIT -45.0f
-#define BM_HYSTERESISLIMITER_AA_FILTER_FC 12000.0f
 #define BM_HYSTERESISLIMITER_DEFAULT_SAG 1.0f / (4000.0f)
 
 
@@ -88,6 +87,46 @@ void BMHysteresisLimiter_processMonoRectified(BMHysteresisLimiter *This,
 	// scale to compensate for gain loss
 	vDSP_vsmul(outputPos,1,&This->oneOverR,outputPos,1,numSamples);
 	vDSP_vsmul(outputNeg,1,&This->oneOverR,outputNeg,1,numSamples);
+}
+
+
+
+
+void BMHysteresisLimiter_processMonoClassA(BMHysteresisLimiter *This,
+                                      const float *inputPos,
+                                      float* outputPos,
+                                      size_t numSamples){
+	assert(This->AAFilter.numChannels == 1 &&
+		   numSamples % 2 == 0);
+	
+	// create an alias pointer for code readability
+	float* buffer = outputPos;
+	
+	// apply asymptotic limit
+	BMAsymptoticLimitPositive(inputPos,
+							  buffer,
+							  This->sampleRate,
+							  This->sag,
+							  numSamples);
+	
+	// antialiasing filter
+	BMMultiLevelBiquad_processBufferMono(&This->AAFilter,
+										   buffer,
+										   buffer,
+										   numSamples);
+	
+    for(size_t i=0; i<numSamples; i++){
+		// find output value
+		float charge = This->halfSR * (1.0f - This->c);
+		float oPos = buffer[i] * (This->c + charge);
+		// update charge
+		This->c = This->c - (oPos * This->s) + charge;
+		// output
+        buffer[i] = oPos;
+    }
+	
+	// scale to compensate for gain loss
+	vDSP_vsmul(buffer,1,&This->oneOverR,outputPos,1,numSamples);
 }
 
 
@@ -192,6 +231,58 @@ void BMHysteresisLimiter_processStereoRectified(BMHysteresisLimiter *This,
 
 
 
+void BMHysteresisLimiter_processStereoClassA(BMHysteresisLimiter *This,
+											 const float *inputPosL,
+											 const float *inputPosR,
+											 float *outputPosL,
+											 float *outputPosR,
+											 size_t numSamples){
+	assert(This->AAFilter.numChannels == 2 &&
+		   numSamples % 2 == 0);
+	
+	// create some alias pointers for code readability
+	float* limitedPosL = outputPosL;
+	float* limitedPosR = outputPosR;
+	
+	// apply asymptotic limit
+	BMAsymptoticLimitPositive(inputPosL,
+							  limitedPosL,
+							  This->sampleRate,
+							  This->sag,
+							  numSamples);
+	BMAsymptoticLimitPositive(inputPosR,
+							  limitedPosR,
+							  This->sampleRate,
+							  This->sag,
+							  numSamples);
+	
+	// Antialiasing filter
+	BMMultiLevelBiquad_processBufferStereo(&This->AAFilter,
+										   limitedPosL, limitedPosR,
+										   limitedPosL, limitedPosR,
+										   numSamples);
+	
+	
+    for(size_t i=0; i<numSamples; i++){
+		// find output value
+		simd_float2 charge = This->halfSR * (1.0f - This->cs);
+		simd_float2 iPos = simd_make_float2(limitedPosL[i], limitedPosR[i]);
+		simd_float2 oPos = iPos * (This->cs + charge);
+		// update charge
+		This->cs = This->cs - (This->s * oPos) + charge;
+        outputPosL[i] = oPos.x;
+		outputPosR[i] = oPos.y;
+    }
+	
+	// scale to compensate for gain loss
+	vDSP_vsmul(outputPosL,1,&This->oneOverR,outputPosL,1,numSamples);
+	vDSP_vsmul(outputPosR,1,&This->oneOverR,outputPosR,1,numSamples);
+}
+
+
+
+
+
 void BMHysteresisLimiter_processStereoSimple(BMHysteresisLimiter *This,
 											 const float *inputL, const float *inputR,
 											 float *outputL, float *outputR,
@@ -263,27 +354,33 @@ void BMHysteresisLimiter_setAAFilterFC(BMHysteresisLimiter *This, float fc){
     fc = BM_MIN(This->sampleRate * 0.5f * 0.9f, fc);
     // set the AA filters
 	for(size_t i=0; i<This->AAFilter.numLevels; i++){
-		BMMultiLevelBiquad_setLowPass6db(&This->AAFilter, fc, i);
+		// BMMultiLevelBiquad_setLowPass6db(&This->AAFilter, fc, i);
+		BMMultiLevelBiquad_setLowPassQ12db(&This->AAFilter, fc, 0.5f, i);
 	}
+	// BMMultiLevelBiquad_setLegendreLP(&This->AAFilter, fc, 0, BM_HYSTERESISLIMITER_AA_FILTER_NUMLEVELS);
 }
 
 
 
 
-void BMHysteresisLimiter_init(BMHysteresisLimiter *This, float sampleRate, size_t numChannels){
+void BMHysteresisLimiter_init(BMHysteresisLimiter *This,
+							  float sampleRate,
+							  size_t aaFilterNumLevels,
+							  size_t aaFilterFc,
+							  size_t numChannels){
 	assert(numChannels == 1 || numChannels == 2 || numChannels == 4);
     
     This->sampleRate = sampleRate;
 	
 	// init the AA filter
-	size_t numLevels = 1;
+    assert(aaFilterFc < sampleRate * 0.5f);
 	if(numChannels == 1)
-		BMMultiLevelBiquad_init(&This->AAFilter, numLevels, sampleRate, false, false, false);
+		BMMultiLevelBiquad_init(&This->AAFilter, aaFilterNumLevels, sampleRate, false, false, false);
 	if(numChannels == 2)
-		BMMultiLevelBiquad_init(&This->AAFilter, numLevels, sampleRate, true, false, false);
+		BMMultiLevelBiquad_init(&This->AAFilter, aaFilterNumLevels, sampleRate, true, false, false);
 	if(numChannels == 4)
-		BMMultiLevelBiquad_init4(&This->AAFilter, numLevels, sampleRate, false);
-	BMHysteresisLimiter_setAAFilterFC(This,BM_HYSTERESISLIMITER_AA_FILTER_FC);
+		BMMultiLevelBiquad_init4(&This->AAFilter, aaFilterNumLevels, sampleRate, false);
+	BMHysteresisLimiter_setAAFilterFC(This,aaFilterFc);
 
 	BMHysteresisLimiter_setPowerLimit(This, BM_HYSTERESISLIMITER_DEFAULT_POWER_LIMIT);
     BMHysteresisLimiter_setSag(This, BM_HYSTERESISLIMITER_DEFAULT_SAG);

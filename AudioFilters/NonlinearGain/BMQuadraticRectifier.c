@@ -254,3 +254,4 @@ void BMQuadraticRectifier_processBufferStereoVDSP(BMQuadraticRectifier *This,
     vDSP_vmax(inputL,1,curvedLPos,1,outputPosL,1,numSamples);
     vDSP_vmax(inputR,1,curvedRPos,1,outputPosR,1,numSamples);
 }
+
