@@ -85,7 +85,7 @@ void BMMultiTapDelay_initBypass(BMMultiTapDelay *This,
  * @notes works in place
  */
 void BMMultiTapDelay_processBufferStereo(BMMultiTapDelay* delay,
-                                         float* inputL, float* inputR,
+                                         const float* inputL, const float* inputR,
                                          float* outputL, float* outputR,
                                          size_t frames);
 

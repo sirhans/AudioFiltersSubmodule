@@ -26,14 +26,27 @@ typedef struct BMSimpleDelayStereo {
     TPCircularBuffer bufferL, bufferR;
 } BMSimpleDelayStereo;
 
+/*!
+*BMSimpleDelayMono_init
+*/
 void BMSimpleDelayMono_init(BMSimpleDelayMono *This, size_t delayTimeInSamples);
+
+/*!
+ *BMSimpleDelayStereo_init
+ */
 void BMSimpleDelayStereo_init(BMSimpleDelayStereo *This, size_t delayTimeInSamples);
 
+/*!
+*BMSimpleDelayMono_process
+*/
 void BMSimpleDelayMono_process(BMSimpleDelayMono *This,
                                const float* input,
                                float* output,
                                size_t numSamples);
 
+/*!
+*BMSimpleDelayStereo_process
+*/
 void BMSimpleDelayStereo_process(BMSimpleDelayStereo *This,
                                  const float* inputL,
                                  const float* inputR,

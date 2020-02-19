@@ -42,8 +42,10 @@ extern "C" {
     } BMEarlyReflections;
     
     
-    /*
-     * Initialises a stereo early reflections simulation with the first
+    /*!
+	 *BMEarlyReflections_init
+     *
+	 * Initialises a stereo early reflections simulation with the first
      * reflection starting after startTimeMS and last reflection ending 
      * before endTimeMS.  Between startTimeMS and endTimeMS, each channel
      * has numTapsPerChannel output taps.
@@ -88,7 +90,7 @@ extern "C" {
     
     
     void BMEarlyReflections_processBuffer(BMEarlyReflections *This,
-                                          float* inputL, float* inputR,
+                                          const float* inputL, const float* inputR,
                                           float* outputL, float* ouputR,
                                           size_t numSamples);
     

@@ -182,7 +182,7 @@ void BMMultiTapDelay_ProcessBufferMono(BMMultiTapDelay* delay,
  * works in place
  */
 void BMMultiTapDelay_processBufferStereo(BMMultiTapDelay* delay,
-                                         float* inputL, float* inputR,
+                                         const float* inputL, const float* inputR,
                                          float* outputL, float* outputR,
                                          size_t numSamples){
     assert(delay->numberChannel == 2);
@@ -195,8 +195,8 @@ void BMMultiTapDelay_processBufferStereo(BMMultiTapDelay* delay,
     
     BMMultiTapDelaySetting* setting = &delay->setting;
     //this will bridge my code with Sir Hans's style ^_^
-    delay->input[0] = inputL;
-    delay->input[1] = inputR;
+    delay->input[0] = (float*)inputL;
+    delay->input[1] = (float*)inputR;
     delay->output[0] = outputL;
     delay->output[1] = outputR;
     
