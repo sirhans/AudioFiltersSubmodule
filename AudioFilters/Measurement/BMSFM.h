@@ -15,7 +15,7 @@
 
 typedef struct BMSFM {
     BMFFT fft;
-    float* buffer;
+    float *b1, *b2;
 } BMSFM;
 
 

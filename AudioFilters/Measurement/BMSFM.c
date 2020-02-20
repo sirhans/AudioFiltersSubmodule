@@ -9,19 +9,24 @@
 //
 
 #include "BMSFM.h"
+#include <Accelerate/Accelerate.h>
 
 void BMSFM_init(BMSFM *This, size_t inputLength){
     BMFFT_init(&This->fft, inputLength);
     
-    This->buffer = malloc(sizeof(float)*inputLength);
+    size_t bufferLength = sizeof(float)*(size_t)ceilf((float)inputLength / 2.0f);
+    This->b1 = malloc(bufferLength);
+    This->b2 = malloc(bufferLength);
 }
 
 
 void BMSFM_free(BMSFM *This){
     BMFFT_free(&This->fft);
     
-    free(This->buffer);
-    This->buffer = NULL;
+    free(This->b1);
+    This->b1 = NULL;
+    free(This->b2);
+    This->b2 = NULL;
 }
 
 
@@ -56,17 +61,23 @@ float BMGeometricMean2(float a, float b){
 float BMSFM_process(BMSFM *This, float* input, size_t inputLength){
     
     // take the abs fft, with nyquist and DC combined into a single term
-    BMFFT_absFFTCombinedDCNQ(&This->fft, input, This->buffer, inputLength);
+    BMFFT_absFFTCombinedDCNQ(&This->fft, input, This->b1, inputLength);
     
-    size_t outputLength = inputLength / 2;
+    size_t spectrumLength = inputLength / 2;
     
     // square the result
-    vDSP_vsq(This->buffer, 1, This->buffer, 1, outputLength);
+    vDSP_vsq(This->b1, 1, This->b1, 1, spectrumLength);
     
-    float geometricMean = BMGeometricMean(This->buffer, outputLength);
+    // get the geometric mean using logarithmic transformation
+    int spectrumLength_i = (int)spectrumLength;
+    vvlog2f(This->b1, This->b2, &spectrumLength_i);
+    float meanExp;
+    vDSP_meanv(This->b2,1,&meanExp,spectrumLength);
+    float geometricMean = powf(2.0f, meanExp);
     
+    // find the arithmetic mean
     float arithmeticMean;
-    vDSP_meanv(This->buffer, 1, &arithmeticMean, outputLength);
+    vDSP_meanv(This->b1, 1, &arithmeticMean, spectrumLength);
     
     return geometricMean / arithmeticMean;
 }
