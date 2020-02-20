@@ -233,7 +233,7 @@ extern "C" {
         for(size_t i=0; i<This->numStages; i++)
             BMIIRDownsampler2x_free(&This->downsamplers2x[i]);
         
-        BMMultiLevelBiquad_destroy(&This->antiRingingFilter);
+        BMMultiLevelBiquad_free(&This->antiRingingFilter);
         
         // free the stages array
         free(This->downsamplers2x);

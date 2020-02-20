@@ -189,7 +189,7 @@ extern "C" {
         for(size_t i=0; i<This->numStages; i++)
             BMIIRUpsampler2x_free(&This->upsamplers2x[i]);
         
-        BMMultiLevelBiquad_destroy(&This->secondStageAAFilter);
+        BMMultiLevelBiquad_free(&This->secondStageAAFilter);
         
         // free the stages array
         free(This->upsamplers2x);

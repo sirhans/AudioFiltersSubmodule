@@ -89,7 +89,7 @@ extern "C" {
     }
     
     void BMVelocityFilter_destroy(BMVelocityFilter* f){
-        BMMultiLevelBiquad_destroy(&f->This);
+        BMMultiLevelBiquad_free(&f->This);
     }
     
 #ifdef __cplusplus

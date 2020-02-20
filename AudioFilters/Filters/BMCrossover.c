@@ -65,8 +65,8 @@ extern "C" {
      * Free memory used by the filters
      */
     void BMCrossover_free(BMCrossover *This){
-        BMMultiLevelBiquad_destroy(&This->lp);
-        BMMultiLevelBiquad_destroy(&This->hp);
+        BMMultiLevelBiquad_free(&This->lp);
+        BMMultiLevelBiquad_free(&This->hp);
     }
     
     
@@ -287,14 +287,14 @@ extern "C" {
      */
     void BMCrossover3way_free(BMCrossover3way *This){
         // audio filters
-        BMMultiLevelBiquad_destroy(&This->low);
-        BMMultiLevelBiquad_destroy(&This->midAndHigh);
-        BMMultiLevelBiquad_destroy(&This->mid);
-        BMMultiLevelBiquad_destroy(&This->high);
+        BMMultiLevelBiquad_free(&This->low);
+        BMMultiLevelBiquad_free(&This->midAndHigh);
+        BMMultiLevelBiquad_free(&This->mid);
+        BMMultiLevelBiquad_free(&This->high);
         
         // plot filters
         for(size_t i=0; i<3; i++)
-            BMMultiLevelBiquad_destroy(&This->plotFilters[i]);
+            BMMultiLevelBiquad_free(&This->plotFilters[i]);
     }
     
     
@@ -542,15 +542,15 @@ extern "C" {
      *BMCrossover4way_free
      */
     void BMCrossover4way_free(BMCrossover4way *This){
-        BMMultiLevelBiquad_destroy(&This->band1);
-        BMMultiLevelBiquad_destroy(&This->band2);
-        BMMultiLevelBiquad_destroy(&This->band3);
-        BMMultiLevelBiquad_destroy(&This->band4);
-        BMMultiLevelBiquad_destroy(&This->bands2to4);
-        BMMultiLevelBiquad_destroy(&This->bands3to4);
+        BMMultiLevelBiquad_free(&This->band1);
+        BMMultiLevelBiquad_free(&This->band2);
+        BMMultiLevelBiquad_free(&This->band3);
+        BMMultiLevelBiquad_free(&This->band4);
+        BMMultiLevelBiquad_free(&This->bands2to4);
+        BMMultiLevelBiquad_free(&This->bands3to4);
         
         for(size_t i=0; i<4; i++)
-            BMMultiLevelBiquad_destroy(&This->plotFilters[i]);
+            BMMultiLevelBiquad_free(&This->plotFilters[i]);
     }
     
     

@@ -286,7 +286,7 @@ void BMStaticDelay_destroy(BMStaticDelay *This){
     }
     
     // free the filter resources
-    BMMultiLevelBiquad_destroy(&This->filter);
+    BMMultiLevelBiquad_free(&This->filter);
 }
 
 

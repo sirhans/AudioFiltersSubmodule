@@ -114,7 +114,7 @@ extern "C" {
     }
     
     void BMRoundRobinFilter_destroy(BMRoundRobinFilter* f){
-        BMMultiLevelBiquad_destroy(&f->This);
+        BMMultiLevelBiquad_free(&f->This);
         free(f->activeBands);
         f->activeBands = NULL;
     }
