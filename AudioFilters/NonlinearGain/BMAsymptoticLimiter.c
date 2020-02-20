@@ -7,6 +7,7 @@
 //
 
 #include "BMAsymptoticLimiter.h"
+#include <simd/simd.h>
 
 
 /*!
