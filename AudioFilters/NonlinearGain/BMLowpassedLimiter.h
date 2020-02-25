@@ -24,10 +24,12 @@
 #include <stdio.h>
 #include "BMAsymptoticLimiter.h"
 #include "BMMultiLevelBiquad.h"
+#include "BMEnvelopeFollower.h"
 #include "Constants.h"
 
 typedef struct BMLowpassedLimiter {
 	BMMultiLevelBiquad lpf;
+	BMReleaseFilter rf;
 	float b1 [BM_BUFFER_CHUNK_SIZE];
 	float b2 [BM_BUFFER_CHUNK_SIZE];
 } BMLowpassedLimiter;

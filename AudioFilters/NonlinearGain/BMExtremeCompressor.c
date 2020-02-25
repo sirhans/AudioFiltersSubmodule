@@ -8,6 +8,7 @@
 
 #include "BMExtremeCompressor.h"
 
+#define BMEC_GAIN_REDUCTION_BEFORE_SATURATOR -16.0f
 
 
 
@@ -15,13 +16,15 @@ void BMExtremeCompressor_init(BMExtremeCompressor *This, float sampleRate, bool 
 	This->osFactor = oversampleFactor;
 	This->isStereo = isStereo;
 	
+	size_t sampleRateOS = oversampleFactor * sampleRate;
+	
 	// init attack shaper
-	BMAttackShaper_init(&This->asL, sampleRate);
-	if (isStereo) BMAttackShaper_init(&This->asR, sampleRate);
+	BMAttackShaper_init(&This->asL, sampleRateOS);
+	if (isStereo) BMAttackShaper_init(&This->asR, sampleRateOS);
 	
 	// init lowpass limiter
-	BMLowpassedLimiter_init(&This->llL, sampleRate);
-	if (isStereo) BMLowpassedLimiter_init(&This->llR, sampleRate);
+	BMLowpassedLimiter_init(&This->llL, sampleRateOS);
+	if (isStereo) BMLowpassedLimiter_init(&This->llR, sampleRateOS);
 	
 	// init sample rate converters
 	enum resamplerType rsType = sampleRate > 50000.0f ? BMRESAMPLER_INPUT_96KHZ : BMRESAMPLER_FULL_SPECTRUM;
@@ -80,18 +83,23 @@ void BMExtremeCompressor_procesMono(BMExtremeCompressor *This,
 		// upsample
 		BMUpsampler_processBufferMono(&This->upsampler, in, This->b1L, samplesProcessing);
 		
-		// what is the chunk length now that we have upsampled
+		// find the upsampled chunk length
 		size_t lengthOS = This->osFactor * samplesProcessing;
 	
 		// apply attack transient shaper to smooth the attack transients
 		BMAttackShaper_process(&This->asL, This->b1L, This->b1L, lengthOS);
-	
+
 		// apply lowpassed limiter to get compression without saturation
-		BMLowpassedLimiter_process(&This->llL, This->b1L, This->b1L, lengthOS);
-	
+//		BMLowpassedLimiter_process(&This->llL, This->b1L, This->b1L, lengthOS);
+
+		// apply a gain reduction
+		float gainReduction = BM_DB_TO_GAIN(BMEC_GAIN_REDUCTION_BEFORE_SATURATOR);
+//		vDSP_vsmul(This->b1L, 1, &gainReduction, This->b1L, 1, lengthOS);
+
 		// apply a soft clipping limiter to tame the clipping level of the attack transients
-		BMAsymptoticLimitNoSag(This->b1L, This->b2L, lengthOS);
-	
+//		BMAsymptoticLimitNoSag(This->b1L, This->b2L, lengthOS);
+		memcpy(This->b2L, This->b1L, sizeof(float)*lengthOS);
+		
 		// downsample
 		BMDownsampler_processBufferMono(&This->downsampler, This->b2L, out, lengthOS);
 		
@@ -132,6 +140,11 @@ void BMExtremeCompressor_procesStereo(BMExtremeCompressor *This,
 		// apply lowpassed limiter to get compression without saturation
 		BMLowpassedLimiter_process(&This->llL, This->b1L, This->b1L, lengthOS);
 		BMLowpassedLimiter_process(&This->llR, This->b1R, This->b1R, lengthOS);
+		
+		// apply a gain reduction
+		float gainReduction = BM_DB_TO_GAIN(BMEC_GAIN_REDUCTION_BEFORE_SATURATOR);
+		vDSP_vsmul(This->b1L, 1, &gainReduction, This->b1L, 1, lengthOS);
+		vDSP_vsmul(This->b1R, 1, &gainReduction, This->b1R, 1, lengthOS);
 	
 		// apply a soft clipping limiter to tame the clipping level of the attack transients
 		BMAsymptoticLimitNoSag(This->b1L, This->b2L, lengthOS);

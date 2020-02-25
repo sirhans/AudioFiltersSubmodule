@@ -8,9 +8,14 @@
 
 #include "BMLowpassedLimiter.h"
 
+#define BMLPL_LPF_FC 10.0f
+#define BMLPL_RELEASE_FC 4.0f
+#define BMLPL_LOWPASS_NUMLEVELS 1
 
 void BMLowpassedLimiter_init(BMLowpassedLimiter *This, float sampleRate){
-	BMMultiLevelBiquad_init(&This->lpf, 1, sampleRate, false, true, false);
+	BMMultiLevelBiquad_init(&This->lpf, BMLPL_LOWPASS_NUMLEVELS, sampleRate, false, true, false);
+	BMLopassedLimiter_setLowpassFc(This, BMLPL_LPF_FC);
+	BMReleaseFilter_init(&This->rf, BMLPL_RELEASE_FC, sampleRate);
 }
 
 
@@ -20,7 +25,9 @@ void BMLowpassedLimiter_free(BMLowpassedLimiter *This){
 
 
 void BMLopassedLimiter_setLowpassFc(BMLowpassedLimiter *This, float fc){
-	BMMultiLevelBiquad_setLowPassQ12db(&This->lpf, fc, 0.5f, 0);
+	for(size_t i=0; i<BMLPL_LOWPASS_NUMLEVELS; i++)
+		BMMultiLevelBiquad_setLowPassQ12db(&This->lpf, fc, 0.5f, i);
+	
 }
 
 
@@ -34,11 +41,16 @@ void BMLowpassedLimiter_process(BMLowpassedLimiter *This,
 		// rectify the input
 		vDSP_vabs(in, 1, This->b1, 1, samplesProcessing);
 		
-		// lowpass to get the volume envelope
+		// release filter, then lowpass to get the volume envelope
 		BMMultiLevelBiquad_processBufferMono(&This->lpf, This->b1, This->b1, samplesProcessing);
+		//BMReleaseFilter_processBuffer(&This->rf, This->b1, This->b1, samplesProcessing);
 		
 		// apply soft clipping to the volume envelope
 		BMAsymptoticLimitPositiveNoSag(This->b1, This->b2, samplesProcessing);
+		
+		// add a small number to the volume envelope to prevent divide by zero
+		float smallNumber = BM_DB_TO_GAIN(-60.0f);
+		vDSP_vsadd(This->b1, 1, &smallNumber, This->b1, 1, samplesProcessing);
 		
 		// find a control signal that would get us from the volume envelope
 		// to the clipped volume envelope
