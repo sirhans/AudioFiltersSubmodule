@@ -58,10 +58,11 @@ void BMDynamicSmoothingFilter_processBuffer(BMDynamicSmoothingFilter *This,
                                            float* output,
                                            size_t numSamples){
     for(size_t i=0; i<numSamples; i++){
-        float bandz = This->low2z - This->low1z;
+        float bandz = This->low1z - This->low2z;
         float g = This->g0 + This->sensitivity * fabs(bandz);
         g = MIN(DSControlCurve(g), 1.0f);
-        This->low2z += g * (This->low1z - This->low2z);
+        This->low2z += g * (bandz);
         This->low1z += g * (input[i] - This->low1z);
+        output[i] = This->low2z;
     }
 }
