@@ -219,6 +219,14 @@ static double BMReverbDelayGainFromRT60(double rt60, double delayTime){
 }
 
 
+/*!
+*BMReverbDelayGainFromRT30
+*
+* calculates the gain coefficient for a feedback delay
+*
+* @param rt30 time in seconds for the signal to decay from 0 dB to -30 dB
+* @param delayTime length in seconds of the delay
+*/
 static double BMReverbDelayGainFromRT30(double rt30, double delayTime){
 	return pow(10.0, (-2.0 * delayTime) / rt30 );
 }
