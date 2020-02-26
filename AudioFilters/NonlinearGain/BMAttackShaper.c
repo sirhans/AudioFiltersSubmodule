@@ -16,11 +16,9 @@ void BMAttackShaper_init(BMAttackShaper *This, float sampleRate){
 	This->sampleRate = sampleRate;
 	
 	// initialise filters
-	for(size_t i=0; i<BMAS_RF1_NUMLEVELS; i++)
-		BMReleaseFilter_init(&This->rf1[i], BMAS_RF_FC, sampleRate);
-	for(size_t i=0; i<BMAS_RF2_NUMLEVELS; i++)
-		BMReleaseFilter_init(&This->rf2[i], BMAS_RF_FC, sampleRate);
-	BMMultiLevelBiquad_init(&This->lpf, BMAS_LPF_NUMLEVELS, sampleRate, false, true, false);
+	for(size_t i=0; i<BMAS_RF_NUMLEVELS; i++)
+		BMReleaseFilter_init(&This->rf[i], BMAS_RF_FC, sampleRate);
+	BMAttackFilter_init(&This->af, BMAS_RF_FC, sampleRate);
 	BMMultiLevelBiquad_init(&This->hpf, 1, sampleRate, false, true, false);
 	BMMultiLevelBiquad_setHighPass6db(&This->hpf, 300.0f, 0);
 	
@@ -41,15 +39,11 @@ void BMAttackShaper_init(BMAttackShaper *This, float sampleRate){
 
 void BMAttackShaper_setAttackTime(BMAttackShaper *This, float attackTime){
 	// find the lpf cutoff frequency that corresponds to the specified attack time
-	float fc = ARTimeToCutoffFrequency(attackTime, BMAS_LPF_NUMLEVELS + BMAS_RF2_NUMLEVELS);
+	size_t attackFilterNumLevels = 1;
+	float fc = ARTimeToCutoffFrequency(attackTime, attackFilterNumLevels);
 	
-	// set all levels of the filter
-	for(size_t i=0; i<BMAS_LPF_NUMLEVELS; i++)
-		BMMultiLevelBiquad_setLowPassQ12db(&This->lpf, fc, 0.5f, i);
-	
-	// set the inverted release filter to the same cutoff as the lowpass filter.
-	for(size_t i=0; i<BMAS_RF2_NUMLEVELS; i++)
-		BMReleaseFilter_setCutoff(&This->rf2[i], fc);
+	// set the attack filter
+	BMAttackFilter_setCutoff(&This->af, fc);
 	
 	for(size_t i=0; i<BMAS_DSF_NUMLEVELS; i++)
 		BMDynamicSmoothingFilter_init(&This->dsf[i], BMAS_DSF_SENSITIVITY, fc / 2.0f, This->sampleRate);
@@ -67,30 +61,29 @@ void BMAttackShaper_process(BMAttackShaper *This,
         size_t samplesProcessing = BM_MIN(BM_BUFFER_CHUNK_SIZE,numSamples);
 
 		// highpass because we are mainly interested in HF attack sounds
-		BMMultiLevelBiquad_processBufferMono(&This->hpf, input, This->b0, samplesProcessing);
+		BMMultiLevelBiquad_processBufferMono(&This->hpf, input, This->b1, samplesProcessing);
 		
         /*******************
          * volume envelope *
          *******************/
         // absolute value
-        vDSP_vabs(This->b0, 1, This->b1, 1, samplesProcessing);
+        vDSP_vabs(This->b1, 1, This->b1, 1, samplesProcessing);
         //
         // release filter
-		for(size_t i=0; i<BMAS_RF1_NUMLEVELS; i++)
-			BMReleaseFilter_processBuffer(&This->rf1[i], This->b1, This->b1, samplesProcessing);
+		for(size_t i=0; i<BMAS_RF_NUMLEVELS; i++)
+			BMReleaseFilter_processBuffer(&This->rf[i], This->b1, This->b1, samplesProcessing);
         //
-        // lowpass filter
-        BMMultiLevelBiquad_processBufferMono(&This->lpf, This->b1, This->b1, samplesProcessing);
+        // attack filter, buffer to b2
+		BMAttackFilter_processBuffer(&This->af, This->b1, This->b2, samplesProcessing);
         
         
         /*************************************************************
          * control signal to force the input down below the envelope *
          *************************************************************/
-        // b1 / (abs(b0) + 0.0001)
+        // b1 = b2 / (b1 + 0.0001)
         float smallNumber = 0.0001;
-        vDSP_vabs(This->b0,1,This->b2,1,samplesProcessing);
-        vDSP_vsadd(This->b2, 1, &smallNumber, This->b2, 1, samplesProcessing);
-        vDSP_vdiv(This->b2, 1, This->b1, 1, This->b1, 1, samplesProcessing);
+        vDSP_vsadd(This->b1, 1, &smallNumber, This->b1, 1, samplesProcessing);
+        vDSP_vdiv(This->b1, 1, This->b2, 1, This->b1, 1, samplesProcessing);
         //
         // limit the control signal value below 1 so that it can reduce but not increase volume
         vDSP_vneg(This->b1, 1, This->b1, 1, samplesProcessing);
@@ -103,11 +96,6 @@ void BMAttackShaper_process(BMAttackShaper *This,
         /************************************************
          * filter the control signal to reduce aliasing *
          ************************************************/
-        // inverted release filter
-		vDSP_vneg(This->b1, 1, This->b1, 1, samplesProcessing);
-		for(size_t i=0; i< BMAS_RF2_NUMLEVELS; i++)
-			BMReleaseFilter_processBuffer(&This->rf2[i], This->b1, This->b1, samplesProcessing);
-		vDSP_vneg(This->b1, 1, This->b1, 1, samplesProcessing);
         //
         // dynamic smoothing
 		for(size_t i=0; i< BMAS_DSF_NUMLEVELS; i++)
@@ -142,6 +130,5 @@ void BMAttackShaper_process(BMAttackShaper *This,
 
 
 void BMAttackShaper_free(BMAttackShaper *This){
-	BMMultiLevelBiquad_free(&This->lpf);
 	BMShortSimpleDelay_free(&This->dly);
 }
