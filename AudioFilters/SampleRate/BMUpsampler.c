@@ -81,7 +81,7 @@ extern "C" {
      * @param numSamplesIn  number of input samples to process
      */
     void BMUpsampler_processBufferMono(BMUpsampler *This, const float* input, float* output, size_t numSamplesIn){
-        if(This->upsampleFactor > 0){
+        if(This->upsampleFactor > 1){
             while(numSamplesIn > 0){
                 size_t samplesProcessing = BM_MIN(numSamplesIn, BM_BUFFER_CHUNK_SIZE);
                 size_t inputSize = samplesProcessing;

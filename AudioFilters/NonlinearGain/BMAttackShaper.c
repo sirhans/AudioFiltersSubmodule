@@ -9,7 +9,12 @@
 #include <Accelerate/Accelerate.h>
 #include "BMAttackShaper.h"
 #include "Constants.h"
+#include "fastpow.h"
 
+void BMAttackShaper_setAttackFrequency(BMAttackShaper *This, float attackFc){
+	// set the attack filter
+	BMAttackFilter_setCutoff(&This->af, attackFc);
+}
 
 
 void BMAttackShaper_init(BMAttackShaper *This, float sampleRate){
@@ -20,10 +25,10 @@ void BMAttackShaper_init(BMAttackShaper *This, float sampleRate){
 		BMReleaseFilter_init(&This->rf[i], BMAS_RF_FC, sampleRate);
 	BMAttackFilter_init(&This->af, BMAS_RF_FC, sampleRate);
 	BMMultiLevelBiquad_init(&This->hpf, 1, sampleRate, false, true, false);
-	BMMultiLevelBiquad_setHighPass6db(&This->hpf, 300.0f, 0);
+	BMMultiLevelBiquad_setHighPass6db(&This->hpf, 3000.0f, 0);
 	
-	// set default attack time
-	BMAttackShaper_setAttackTime(This, BMAS_ATTACK_TIME_DEFAULT);
+	// set default attack frequency
+	BMAttackShaper_setAttackFrequency(This, BMAS_ATTACK_FC);
     
     // set the delay to 12 samples at 48 KHz sampleRate or
     // stretch appropriately for other sample rates
@@ -32,6 +37,9 @@ void BMAttackShaper_init(BMAttackShaper *This, float sampleRate){
     BMShortSimpleDelay_init(&This->dly, numChannels, This->delaySamples);
 	
 	BMQuadraticLimiter_init(&This->ql, 1.0f, 0.5f);
+	
+	for(size_t i=0; i<BMAS_DSF_NUMLEVELS; i++)
+		BMDynamicSmoothingFilter_init(&This->dsf[i], BMAS_DSF_SENSITIVITY, BMAS_DSF_FC, This->sampleRate);
 }
 
 
@@ -43,11 +51,9 @@ void BMAttackShaper_setAttackTime(BMAttackShaper *This, float attackTime){
 	float fc = ARTimeToCutoffFrequency(attackTime, attackFilterNumLevels);
 	
 	// set the attack filter
-	BMAttackFilter_setCutoff(&This->af, fc);
-	
-	for(size_t i=0; i<BMAS_DSF_NUMLEVELS; i++)
-		BMDynamicSmoothingFilter_init(&This->dsf[i], BMAS_DSF_SENSITIVITY, fc / 2.0f, This->sampleRate);
+	BMAttackShaper_setAttackFrequency(This, fc);
 }
+
 
 
 
@@ -81,27 +87,41 @@ void BMAttackShaper_process(BMAttackShaper *This,
          * control signal to force the input down below the envelope *
          *************************************************************/
         // b1 = b2 / (b1 + 0.0001)
-        float smallNumber = 0.0001;
+        float smallNumber = BM_DB_TO_GAIN(-60.0f);
         vDSP_vsadd(This->b1, 1, &smallNumber, This->b1, 1, samplesProcessing);
         vDSP_vdiv(This->b1, 1, This->b2, 1, This->b1, 1, samplesProcessing);
         //
-        // limit the control signal value below 1 so that it can reduce but not increase volume
+        // limit the control signal value so that it can reduce but not increase volume
         vDSP_vneg(This->b1, 1, This->b1, 1, samplesProcessing);
-        float negOne = -1.0f;
-        vDSP_vthr(This->b1, 1, &negOne, This->b1, 1, samplesProcessing);
+        float limit = -BM_DB_TO_GAIN(-0.1); // this value is set to eliminate clicks in low-frequency signals
+        vDSP_vthr(This->b1, 1, &limit, This->b1, 1, samplesProcessing);
         vDSP_vneg(This->b1, 1, This->b1, 1, samplesProcessing);
-//		BMQuadraticLimiter_processBufferMono(&This->ql, This->b1, This->b2, This->b1, samplesProcessing);
         
         
+		
         /************************************************
          * filter the control signal to reduce aliasing *
          ************************************************/
         //
+		// convert to decibel scale. this conversion ensures that the
+		// dymanic smoothing filter treats transients the same way regardless
+		// of the volume of the surrounding audio.
+		smallNumber = BM_DB_TO_GAIN(-60.0f);
+		vDSP_vsadd(This->b1, 1, &smallNumber, This->b1, 1, samplesProcessing);
+		float one = 1.0f;
+        vDSP_vdbcon(This->b1,1,&one,This->b1,1,samplesProcessing,0);
+		//
         // dynamic smoothing
 		for(size_t i=0; i< BMAS_DSF_NUMLEVELS; i++)
-        BMDynamicSmoothingFilter_processBuffer(&This->dsf[i], This->b1, This->b1, samplesProcessing);
+			BMDynamicSmoothingFilter_processBufferWithFastDescent(&This->dsf[i],
+																  This->b1,
+																  This->b1,
+																  samplesProcessing);
+		//
+		// convert back to linear scale
+		vector_fastDbToGain(This->b1,This->b1,samplesProcessing);
         
-        
+		
         /************************************************************************
          * delay the input signal to enable faster response time without clicks *
          ************************************************************************/

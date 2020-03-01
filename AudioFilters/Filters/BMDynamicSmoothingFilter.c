@@ -60,8 +60,32 @@ void BMDynamicSmoothingFilter_processBuffer(BMDynamicSmoothingFilter *This,
     for(size_t i=0; i<numSamples; i++){
         float bandz = This->low1z - This->low2z;
         float g = This->g0 + This->sensitivity * fabs(bandz);
-        g = MIN(DSControlCurve(g), 1.0f);
+        g = MIN(g, 1.0f);
         This->low2z += g * (bandz);
+        This->low1z += g * (input[i] - This->low1z);
+        output[i] = This->low2z;
+    }
+}
+
+
+float BMDSF_positiveOnly(float x){
+	return 0.5 * (x + fabsf(x));
+}
+
+float BMDSF_negativeOnly(float x){
+	return 0.5 * (x - fabsf(x));
+}
+
+
+void BMDynamicSmoothingFilter_processBufferWithFastDescent(BMDynamicSmoothingFilter *This,
+                                           const float* input,
+                                           float* output,
+                                           size_t numSamples){
+    for(size_t i=0; i<numSamples; i++){
+        float bandz = This->low2z - This->low1z;
+        float g = This->g0 + This->sensitivity * BMDSF_positiveOnly(bandz) - 0.001 * This->low2z;
+        g = MIN(g, 1.0f);
+        This->low2z += g * (-bandz);
         This->low1z += g * (input[i] - This->low1z);
         output[i] = This->low2z;
     }
