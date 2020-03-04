@@ -1,5 +1,4 @@
-# AudioFiltersSubmodule
-Blue Mangoo signal processing components toolbox
+# Blue Mangoo signal processing components toolbox submodule
 
 The code in this repository should be included into an XCode project either by downloading and copying the files or by linking to the repo as a git submodule.
 
