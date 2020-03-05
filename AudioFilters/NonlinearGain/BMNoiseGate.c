@@ -66,7 +66,7 @@ extern "C" {
 	
 	
 	void BMNoiseGate_free(BMNoiseGate *This){
-		BMMultiLevelBiquad_destroy(&This->sidechainFilter);
+		BMMultiLevelBiquad_free(&This->sidechainFilter);
 		BMShortSimpleDelay_free(&This->delay);
 	}
 	

@@ -115,8 +115,8 @@ double* BMIIRDownsampler2x_genCoefficients(BMIIRDownsampler2x *This, float minSt
 
 void BMIIRDownsampler2x_free (BMIIRDownsampler2x *This){
     
-    BMMultiLevelBiquad_destroy(&This->even);
-    BMMultiLevelBiquad_destroy(&This->odd);
+    BMMultiLevelBiquad_free(&This->even);
+    BMMultiLevelBiquad_free(&This->odd);
     
     free(This->b1L);
     free(This->b2L);

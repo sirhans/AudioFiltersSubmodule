@@ -660,7 +660,7 @@ extern "C" {
         free(This->leftOutputTemp);
         free(This->dryL);
         free(This->dryR);
-        BMMultiLevelBiquad_destroy(&This->mainFilter);
+        BMMultiLevelBiquad_free(&This->mainFilter);
         
         BMReverbPointersToNull(This);
     }

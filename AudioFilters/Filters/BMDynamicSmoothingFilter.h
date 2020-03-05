@@ -35,13 +35,30 @@ extern "C" {
                                                const float* input,
                                                float* output,
                                                size_t numSamples);
+
+
+	void BMDynamicSmoothingFilter_processBufferWithFastDescent(BMDynamicSmoothingFilter *This,
+															   const float* input,
+															   float* output,
+															   size_t numSamples);
     
-    /*
+    /*!
+	 *BMDynamicSmoothingFilter_initDefault
+	 *
      * Use this if you don't know what settings are approrpriate
      */
     void BMDynamicSmoothingFilter_initDefault(BMDynamicSmoothingFilter *This,
                                               float sampleRate);
     
+
+	/*!
+	 *BMDynamicSmoothingFilter_init
+	 *
+	 * @param This pointer
+	 * @param sensitivity default: 1
+	 * @param minFc the cutoff frequency of the filter when the input is constant
+	 * @param sampleRate audio buffer sample rate
+	 */
     void BMDynamicSmoothingFilter_init(BMDynamicSmoothingFilter *This,
                                         float sensitivity,
                                         float minFc,

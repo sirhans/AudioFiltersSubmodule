@@ -206,20 +206,27 @@ void BMReverbSetHighPassFC(struct BMReverb *This, float fc);
 // not affect the dry signal at all.
 void BMReverbSetLowPassFC(struct BMReverb *This, float fc);
 
-
-// computes the appropriate feedback gain attenuation
-// to get an exponential decay envelope with the specified RT60 time
-// (in seconds) from a delay line of the specified length.
-//
-// This formula comes from solving EQ 11.33 in DESIGNING AUDIO EFFECT PLUG-INS IN C++ by Will Pirkle
-// which is attributed to Jot, originally.
-//
-// we checked this in mathematica and it seems to be correct
+/*!
+ *BMReverbDelayGainFromRT60
+ *
+ * calculates the gain coefficient for a feedback delay
+ *
+ * @param rt60 time in seconds for the signal to decay from 0 dB to -60 dB
+ * @param delayTime length in seconds of the delay
+ */
 static double BMReverbDelayGainFromRT60(double rt60, double delayTime){
 	return pow(10.0, (-3.0 * delayTime) / rt60 );
 }
 
 
+/*!
+*BMReverbDelayGainFromRT30
+*
+* calculates the gain coefficient for a feedback delay
+*
+* @param rt30 time in seconds for the signal to decay from 0 dB to -30 dB
+* @param delayTime length in seconds of the delay
+*/
 static double BMReverbDelayGainFromRT30(double rt30, double delayTime){
 	return pow(10.0, (-2.0 * delayTime) / rt30 );
 }

@@ -394,5 +394,5 @@ void BMHysteresisLimiter_init(BMHysteresisLimiter *This,
 
 
 void BMHysteresisLimiter_free(BMHysteresisLimiter *This){
-	BMMultiLevelBiquad_destroy(&This->AAFilter);
+	BMMultiLevelBiquad_free(&This->AAFilter);
 }

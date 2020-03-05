@@ -114,8 +114,8 @@ double* BMIIRUpsampler2x_genCoefficients(BMIIRUpsampler2x *This, float minStopba
 
 void BMIIRUpsampler2x_free (BMIIRUpsampler2x *This){
     
-    BMMultiLevelBiquad_destroy(&This->even);
-    BMMultiLevelBiquad_destroy(&This->odd);
+    BMMultiLevelBiquad_free(&This->even);
+    BMMultiLevelBiquad_free(&This->odd);
     
     free(This->b1L);
     free(This->b2L);

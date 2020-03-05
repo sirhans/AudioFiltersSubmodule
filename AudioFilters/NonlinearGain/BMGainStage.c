@@ -174,7 +174,7 @@ extern "C" {
     
     void BMGainStage_setSampleRate(BMGainStage *This, float sampleRate){
         // destroy the old aa filter
-        BMMultiLevelBiquad_destroy(&This->aaFilter);
+        BMMultiLevelBiquad_free(&This->aaFilter);
         
         // init a new filter with new sample rate
         BMMultiLevelBiquad_init(&This->aaFilter, 1, sampleRate, false, false,false);
@@ -592,8 +592,8 @@ extern "C" {
     
     
     void BMGainStage_destroy(BMGainStage *This){
-        BMMultiLevelBiquad_destroy(&This->aaFilter);
-        BMMultiLevelBiquad_destroy(&This->clipLP);
+        BMMultiLevelBiquad_free(&This->aaFilter);
+        BMMultiLevelBiquad_free(&This->clipLP);
         free(This->tempBuffer);
         This->tempBuffer = NULL;
     }

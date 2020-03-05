@@ -14,23 +14,27 @@
 #include "BMMultiLevelBiquad.h"
 #include "BMDynamicSmoothingFilter.h"
 #include "BMShortSimpleDelay.h"
+#include "BMQuadraticLimiter.h"
 #include "Constants.h"
 
-#define BMAS_DELAY_AT_48KHZ_SAMPLES 12.0f
-#define BMAS_ATTACK_TIME_DEFAULT 0.050f
-#define BMAS_LPF_NUMLEVELS 1
-#define BMAS_RF2_NUMLEVELS 2
-#define BMAS_DSF_SENSITIVITY 4.0f
-#define BMAS_RF_FC 20.0f
+#define BMAS_DELAY_AT_48KHZ_SAMPLES 20.0f
+#define BMAS_ATTACK_FC 10.0f
+// #define BMAS_LPF_NUMLEVELS 1
+#define BMAS_RF_NUMLEVELS 3
+#define BMAS_DSF_NUMLEVELS 2
+#define BMAS_DSF_SENSITIVITY 2.0f
+#define BMAS_DSF_FC 10.0f
+#define BMAS_RF_FC 10.0f
 
 typedef struct BMAttackShaper {
-    float b1 [BM_BUFFER_CHUNK_SIZE];
+	float b1 [BM_BUFFER_CHUNK_SIZE];
     float b2 [BM_BUFFER_CHUNK_SIZE];
-	BMReleaseFilter rf1;
-	BMReleaseFilter rf2 [BMAS_RF2_NUMLEVELS];
-	BMMultiLevelBiquad lpf;
-    BMDynamicSmoothingFilter dsf;
+	BMReleaseFilter rf [BMAS_RF_NUMLEVELS];
+	BMAttackFilter af;
+	BMMultiLevelBiquad hpf;
+    BMDynamicSmoothingFilter dsf[BMAS_DSF_NUMLEVELS];
     BMShortSimpleDelay dly;
+	BMQuadraticLimiter ql;
 	size_t delaySamples;
 	float sampleRate;
 } BMAttackShaper;

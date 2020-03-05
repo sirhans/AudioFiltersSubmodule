@@ -18,7 +18,7 @@ void BMLagrangeInterpolation_init(BMLagrangeInterpolation* This, int order){
     assert(order%2==0);
     
     This->order = order;
-    This->totalStepPerSample = order*20;
+    This->totalStepPerSample = 20000;//order*20;
     This->startIdxFactor = (order* 0.5f - 1.0f);
     This->deltaStep = 1.0/This->totalStepPerSample;
     This->deltaRange = This->totalStepPerSample * This->order * 0.5;

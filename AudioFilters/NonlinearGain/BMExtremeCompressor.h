@@ -26,4 +26,32 @@ typedef struct BMExtremeCompressor {
 	bool isStereo;
 } BMExtremeCompressor;
 
+
+
+void BMExtremeCompressor_init(BMExtremeCompressor *This, float sampleRate, bool isStereo, size_t oversampleFactor);
+
+
+
+void BMExtremeCompressor_free(BMExtremeCompressor *This);
+
+
+
+
+void BMExtremeCompressor_procesMono(BMExtremeCompressor *This,
+                                    const float *in,
+                                    float *out,
+                                    size_t numSamples);
+
+
+
+
+
+
+void BMExtremeCompressor_procesStereo(BMExtremeCompressor *This,
+                                    const float *inL, const float *inR,
+                                    float *outL, float *outR,
+                                      size_t numSamples);
+
+
+
 #endif /* BMExtremeCompressor_h */
