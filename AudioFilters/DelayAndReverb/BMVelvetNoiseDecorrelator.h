@@ -21,6 +21,7 @@ typedef struct BMVelvetNoiseDecorrelator {
 	float *gainsL, *gainsR;
 	bool hasDryTap, evenTapDensity;
 	size_t numWetTaps;
+    bool resetNumTaps;
 } BMVelvetNoiseDecorrelator;
 
 
@@ -102,5 +103,7 @@ void BMVelvetNoiseDecorrelator_processBufferMonoToStereo(BMVelvetNoiseDecorrelat
                                                    float* outputL, float* outputR,
                                                    size_t length);
 
+
+void BMVelvetNoiseDecorrelator_setNumTaps(BMVelvetNoiseDecorrelator *This, size_t numTaps);
 
 #endif /* BMVelvetNoiseDecorrelator_h */

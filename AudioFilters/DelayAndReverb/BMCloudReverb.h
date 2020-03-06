@@ -33,6 +33,10 @@ typedef struct BMCloudReverb {
     BMSimpleDelayStereo simpleDelay2;
     BMSimpleDelayStereo simpleDelay3;
     BMSimpleDelayStereo simpleDelay4;
+    float dl1TimeS;
+    float dl2TimeS;
+    float dl3TimeS;
+    float dl4TimeS;
     BMSmoothGain simpleDelayGain;
     
     BMWetDryMixer reverbMixer;
@@ -41,16 +45,18 @@ typedef struct BMCloudReverb {
     BMStereoBuffer loopInput;
     BMStereoBuffer lastLoopBuffer;
     BMStereoBuffer wetBuffer;
-    
-    BMSmoothGain loopGain;
+
     float sampleRate;
+    float maxTapsEachVND;
+    float diffusion;
+    float decayTime;
 } BMCloudReverb;
 
 void BMCloudReverb_init(BMCloudReverb* This,float sr);
 void BMCloudReverb_destroy(BMCloudReverb* This);
 void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t numSamples);
 //Set
-void BMCloudReverb_setLoopGain(BMCloudReverb* This,float gainDb);
+void BMCloudReverb_setLoopDecayTime(BMCloudReverb* This,float decayTime);
 void BMCloudReverb_setDelayPitchMixer(BMCloudReverb* This,float wetMix);
 void BMCloudReverb_setOutputMixer(BMCloudReverb* This,float wetMix);
 //Test

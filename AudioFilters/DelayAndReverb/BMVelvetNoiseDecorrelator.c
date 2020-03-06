@@ -75,6 +75,7 @@ void BMVelvetNoiseDecorrelator_initFullSettings(BMVelvetNoiseDecorrelator *This,
 	This->maxDelayTimeS = maxDelaySeconds;
 	This->numWetTaps = numTaps;
 	This->evenTapDensity = evenTapDensity;
+    This->resetNumTaps = false;
 	if (hasDryTap) This->numWetTaps--;
 	
 	// allocate memory for calculating delay setups
@@ -254,7 +255,26 @@ void BMVelvetNoiseDecorrelator_setWetMix(BMVelvetNoiseDecorrelator *This, float 
 }
 
 
+void BMVelvetNoiseDecorrelator_setNumTaps(BMVelvetNoiseDecorrelator *This, size_t numTaps){
+    This->numWetTaps = numTaps;
+    This->resetNumTaps = true;
+}
 
+void BMVelvetNoiseDecorrelator_resetNumTaps(BMVelvetNoiseDecorrelator *This){
+    if(This->resetNumTaps){
+        This->resetNumTaps = false;
+        
+        // init the multi-tap delay in bypass mode
+        size_t maxDelayLenth = ceil(This->maxDelayTimeS*This->sampleRate);
+        BMMultiTapDelay_initBypass(&This->multiTapDelay,
+                                   true,
+                                   maxDelayLenth,
+                                   This->numWetTaps);
+        
+        // setup the delay for processing
+        BMVelvetNoiseDecorrelator_randomiseAll(This);
+    }
+}
 
 /*!
  *BMVelvetNoiseDecorrelator_free
@@ -284,6 +304,8 @@ void BMVelvetNoiseDecorrelator_processBufferStereo(BMVelvetNoiseDecorrelator *Th
                                                    float* outputL,
                                                    float* outputR,
                                                    size_t length){
+    //Reset numtap if needed
+    BMVelvetNoiseDecorrelator_resetNumTaps(This);
 	// all processing is done by the multi-tap delay class
     BMMultiTapDelay_processBufferStereo(&This->multiTapDelay,
 										inputL, inputR,
@@ -299,6 +321,8 @@ void BMVelvetNoiseDecorrelator_processBufferMonoToStereo(BMVelvetNoiseDecorrelat
 														 float* inputL,
 														 float* outputL, float* outputR,
 														 size_t length){
+    //Reset numtap if needed
+    BMVelvetNoiseDecorrelator_resetNumTaps(This);
 	// all processing is done by the multi-tap delay class
 	BMMultiTapDelay_processBufferStereo(&This->multiTapDelay,
 										inputL, inputL,
