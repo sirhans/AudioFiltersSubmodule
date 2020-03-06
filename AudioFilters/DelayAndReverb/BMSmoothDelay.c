@@ -40,7 +40,7 @@ void BMSmoothDelay_init(BMSmoothDelay* This,size_t defaultDS,float speed,size_t 
     This->strideBuffer = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     
     BMSmoothDelay_prepareLGIBuffer(This, AudioBufferLength);
-    BMSmoothDelay_updateDelaySpeed(This, speed);
+//    BMSmoothDelay_updateDelaySpeed(This, speed);
 
 }
 

@@ -14,6 +14,10 @@
 #define Filter_Level_Highpass 2
 #define Filter_Level_Lowshelf 3
 
+float getVNDLength(float numTaps,float length){
+    float vndLength = ((numTaps*numTaps)*length)/(1 + numTaps + numTaps*numTaps);
+    return vndLength;
+}
 
 void BMCloudReverb_init(BMCloudReverb* This,float sr){
     This->sampleRate = sr;
@@ -29,10 +33,13 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     BMMultiLevelBiquad_setLowShelf(&This->biquadFilter, 120, 2, Filter_Level_Lowshelf);
     
     //VND
-    BMVelvetNoiseDecorrelator_init(&This->vnd1, 1.0/3.0f, 16, 100, true, sr);
-    BMVelvetNoiseDecorrelator_init(&This->vnd2, 1.0/3.0f, 16, 100, true, sr);
+    float totalS = 1.0f;
+    float numTaps = 16.0f *2;
+    float vnd1Length = totalS/3.0f;//getVNDLength(numTaps, totalS);
+    BMVelvetNoiseDecorrelator_init(&This->vnd1, vnd1Length, numTaps, 100, true, sr);
+    BMVelvetNoiseDecorrelator_init(&This->vnd2, vnd1Length, numTaps, 100, true, sr);
     //Last vnd dont have dry tap -> always wet 100%
-    BMVelvetNoiseDecorrelator_init(&This->vnd3, 1.0/3.0f, 16, 100, true, sr);
+    BMVelvetNoiseDecorrelator_init(&This->vnd3,vnd1Length , numTaps, 100, true, sr);
     
     BMVelvetNoiseDecorrelator_setWetMix(&This->vnd1, 1.0);
     BMVelvetNoiseDecorrelator_setWetMix(&This->vnd2, 1.0);
@@ -69,6 +76,8 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     BMWetDryMixer_init(&This->reverbMixer, sr);
     BMCloudReverb_setOutputMixer(This, 0.5f);
 }
+
+
 
 void BMCloudReverb_destroy(BMCloudReverb* This){
     BMMultiLevelBiquad_free(&This->biquadFilter);
@@ -111,9 +120,9 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
     BMVelvetNoiseDecorrelator_processBufferStereo(&This->vnd2, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
     BMVelvetNoiseDecorrelator_processBufferStereo(&This->vnd3, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
     
-    memcpy(outputL, This->buffer.bufferL, sizeof(float)*numSamples);
-    memcpy(outputR, This->buffer.bufferR, sizeof(float)*numSamples);
-    return;
+//    memcpy(outputL, This->buffer.bufferL, sizeof(float)*numSamples);
+//    memcpy(outputR, This->buffer.bufferR, sizeof(float)*numSamples);
+//    return;
     
     //PitchShifting delay into wetbuffer
     BMPitchShiftDelay_processStereoBuffer(&This->pitchDelay, This->buffer.bufferL, This->buffer.bufferR, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
