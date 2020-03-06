@@ -33,16 +33,16 @@ void BMMultiTapDelay_Init(BMMultiTapDelay *This,
     This->numTaps = numTaps;
     This->maxDelayTime = maxDelayTime;
     
-    This->buffer = malloc(sizeof(TPCircularBuffer)  *This->numberChannel);
-    This->tempBuffer = malloc(sizeof(float*)  *This->numberChannel);
+    This->buffer = malloc(sizeof(TPCircularBuffer) * This->numberChannel);
+    This->tempBuffer = malloc(sizeof(float*) * This->numberChannel);
     
-    This->input = malloc(sizeof(float*)  *This->numberChannel);
-    This->output = malloc(sizeof(float*)  *This->numberChannel);
-    setting->gains = malloc(sizeof(float*)  *This->numberChannel);
-    setting->indices = malloc(sizeof(size_t*)  *This->numberChannel);
-    setting->delayTimes = malloc(sizeof(size_t*)  *This->numberChannel);
-    This->tempGains = malloc(sizeof(float*)  *This->numberChannel);
-    This->tempIndices = malloc(sizeof(size_t*)  *This->numberChannel);
+    This->input = malloc(sizeof(float*) * This->numberChannel);
+    This->output = malloc(sizeof(float*) * This->numberChannel);
+    setting->gains = malloc(sizeof(float*) * This->numberChannel);
+    setting->indices = malloc(sizeof(size_t*) * This->numberChannel);
+    setting->delayTimes = malloc(sizeof(size_t*) * This->numberChannel);
+    This->tempGains = malloc(sizeof(float*) * This->numberChannel);
+    This->tempIndices = malloc(sizeof(size_t*) * This->numberChannel);
     
     // alias the input arrays that have l and r channels into
     // multi-dimensional arrays so we can iterate the channels with a for
