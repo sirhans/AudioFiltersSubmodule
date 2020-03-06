@@ -32,7 +32,7 @@ void BMVelvetNoiseDecorrelator_init(BMVelvetNoiseDecorrelator *This,
 									bool hasDryTap,
 									float sampleRate){
 	This->sampleRate = sampleRate;
-	This->hasDryTap	= true;
+	This->hasDryTap	= hasDryTap;
 	This->wetMix = BM_VND_WET_MIX;
 	This->rt60 = rt60DecayTimeSeconds;
 	This->maxDelayTimeS = maxDelaySeconds;
