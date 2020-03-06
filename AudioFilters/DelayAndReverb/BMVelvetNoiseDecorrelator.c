@@ -126,11 +126,6 @@ void BMVelvetNoiseDecorrelator_genRandTapTimes(BMVelvetNoiseDecorrelator *This){
 	BMReverbRandomsInRange(min, max, This->delayLengthsL + shift, This->numWetTaps);
 	BMReverbRandomsInRange(min, max, This->delayLengthsR + shift, This->numWetTaps);
 	
-	// sort the delay times for easier debugging
-	BMInsertionSort_size_t(This->delayLengthsL + shift, This->numWetTaps);
-	BMInsertionSort_size_t(This->delayLengthsR + shift, This->numWetTaps);
-	
-	
 	BMMultiTapDelay_setDelayTimes(&This->multiTapDelay, This->delayLengthsL, This->delayLengthsR);
 }
 

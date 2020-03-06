@@ -86,8 +86,8 @@ void BMAsymptoticLimitPositive(const float *inputPos,
  * @param numSamples length of input and output arrays
  */
 void BMAsymptoticLimitPositiveNoSag(const float *inputPos,
-												  float *outputPos,
-												  size_t numSamples);
+                                    float *outputPos,
+                                    size_t numSamples);
 
 
 
