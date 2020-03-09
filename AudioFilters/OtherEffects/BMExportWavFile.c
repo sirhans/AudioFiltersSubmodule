@@ -261,11 +261,10 @@ int BMExportWavFile_exportAudioInt(BMExportWavFile* This,char* filePath,float* d
         return ret;
 }
 
-#define FloatToIntFactor 32767.0f
-int BMExportWavFile_exportAudioFloat(BMExportWavFile* This,char* filePath,float* dataL,float* dataR,uint32_t length){
+int BMExportWavFile_exportAudioFloatToInt16(BMExportWavFile* This,char* filePath,float* dataL,float* dataR,uint32_t length){
     for(int i=0;i<length;i++){
-        dataL[i] = dataL[i]*FloatToIntFactor * 2.0f;
-        dataR[i] = dataR[i]*FloatToIntFactor * 2.0f;
+        dataL[i] = dataL[i]*INT16_MAX;
+        dataR[i] = dataR[i]*INT16_MAX;
     }
     return BMExportWavFile_exportAudioInt(This, filePath, dataL, dataR, length);
 }

@@ -62,7 +62,10 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     BMSimpleDelayStereo_init(&This->simpleDelay2, This->dl2TimeS*sr);
     BMSimpleDelayStereo_init(&This->simpleDelay3, This->dl3TimeS*sr);
     BMSimpleDelayStereo_init(&This->simpleDelay4, This->dl4TimeS*sr);
-    BMSmoothGain_init(&This->simpleDelayGain, sr);
+    BMSmoothGain_init(&This->simpleDelay1Gain, sr);
+    BMSmoothGain_init(&This->simpleDelay2Gain, sr);
+    BMSmoothGain_init(&This->simpleDelay3Gain, sr);
+    BMSmoothGain_init(&This->simpleDelay4Gain, sr);
     
     This->buffer.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->buffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
@@ -70,6 +73,9 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     This->loopInput.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->lastLoopBuffer.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->lastLoopBuffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+    memset(This->lastLoopBuffer.bufferL, 0, sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+    memset(This->lastLoopBuffer.bufferR, 0, sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+    
     This->wetBuffer.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->wetBuffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     
@@ -137,8 +143,8 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
     BMSimpleDelayStereo_process(&This->simpleDelay1, This->loopInput.bufferL, This->loopInput.bufferR, This->loopInput.bufferL, This->loopInput.bufferR, numSamples);
     //Apply gain
     float loopGain = BMReverbDelayGainFromRT60(This->decayTime, This->dl1TimeS);
-    BMSmoothGain_setGainDb(&This->simpleDelayGain, BM_GAIN_TO_DB(loopGain));
-    BMSmoothGain_processBuffer(&This->simpleDelayGain, This->loopInput.bufferL, This->loopInput.bufferR, This->loopInput.bufferL, This->loopInput.bufferR, numSamples);
+    BMSmoothGain_setGainDb(&This->simpleDelay1Gain, BM_GAIN_TO_DB(loopGain));
+    BMSmoothGain_processBuffer(&This->simpleDelay1Gain, This->loopInput.bufferL, This->loopInput.bufferR, This->loopInput.bufferL, This->loopInput.bufferR, numSamples);
     //Add it to wetbuffer
     vDSP_vadd(This->wetBuffer.bufferL, 1, This->loopInput.bufferL, 1, This->wetBuffer.bufferL, 1, numSamples);
     vDSP_vadd(This->wetBuffer.bufferR, 1, This->loopInput.bufferR, 1, This->wetBuffer.bufferR, 1, numSamples);
@@ -146,8 +152,8 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
     BMSimpleDelayStereo_process(&This->simpleDelay2, This->loopInput.bufferL, This->loopInput.bufferR, This->loopInput.bufferL, This->loopInput.bufferR, numSamples);
     //Apply gain
     loopGain = BMReverbDelayGainFromRT60(This->decayTime, This->dl2TimeS);
-    BMSmoothGain_setGainDb(&This->simpleDelayGain, BM_GAIN_TO_DB(loopGain));
-    BMSmoothGain_processBuffer(&This->simpleDelayGain, This->loopInput.bufferL, This->loopInput.bufferR, This->loopInput.bufferL, This->loopInput.bufferR, numSamples);
+    BMSmoothGain_setGainDb(&This->simpleDelay2Gain, BM_GAIN_TO_DB(loopGain));
+    BMSmoothGain_processBuffer(&This->simpleDelay2Gain, This->loopInput.bufferL, This->loopInput.bufferR, This->loopInput.bufferL, This->loopInput.bufferR, numSamples);
     //Add it to wetbuffer
     vDSP_vadd(This->wetBuffer.bufferL, 1, This->loopInput.bufferL, 1, This->wetBuffer.bufferL, 1, numSamples);
     vDSP_vadd(This->wetBuffer.bufferR, 1, This->loopInput.bufferR, 1, This->wetBuffer.bufferR, 1, numSamples);
@@ -155,8 +161,8 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
     BMSimpleDelayStereo_process(&This->simpleDelay3, This->loopInput.bufferL, This->loopInput.bufferR, This->loopInput.bufferL, This->loopInput.bufferR, numSamples);
     //Apply gain
     loopGain = BMReverbDelayGainFromRT60(This->decayTime, This->dl3TimeS);
-    BMSmoothGain_setGainDb(&This->simpleDelayGain, BM_GAIN_TO_DB(loopGain));
-    BMSmoothGain_processBuffer(&This->simpleDelayGain, This->loopInput.bufferL, This->loopInput.bufferR, This->loopInput.bufferL, This->loopInput.bufferR, numSamples);
+    BMSmoothGain_setGainDb(&This->simpleDelay3Gain, BM_GAIN_TO_DB(loopGain));
+    BMSmoothGain_processBuffer(&This->simpleDelay3Gain, This->loopInput.bufferL, This->loopInput.bufferR, This->loopInput.bufferL, This->loopInput.bufferR, numSamples);
     //Add it to wetbuffer
     vDSP_vadd(This->wetBuffer.bufferL, 1, This->loopInput.bufferL, 1, This->wetBuffer.bufferL, 1, numSamples);
     vDSP_vadd(This->wetBuffer.bufferR, 1, This->loopInput.bufferR, 1, This->wetBuffer.bufferR, 1, numSamples);
@@ -164,11 +170,8 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
     BMSimpleDelayStereo_process(&This->simpleDelay4, This->loopInput.bufferL, This->loopInput.bufferR, This->loopInput.bufferL, This->loopInput.bufferR, numSamples);
     //Apply gain
     loopGain = BMReverbDelayGainFromRT60(This->decayTime, This->dl4TimeS);
-    BMSmoothGain_setGainDb(&This->simpleDelayGain, BM_GAIN_TO_DB(loopGain));
-    BMSmoothGain_processBuffer(&This->simpleDelayGain, This->loopInput.bufferL, This->loopInput.bufferR, This->loopInput.bufferL, This->loopInput.bufferR, numSamples);
-    
-    //Reset delayGain to 1
-    BMSmoothGain_setGainDbInstant(&This->simpleDelayGain, 0);
+    BMSmoothGain_setGainDb(&This->simpleDelay4Gain, BM_GAIN_TO_DB(loopGain));
+    BMSmoothGain_processBuffer(&This->simpleDelay4Gain, This->loopInput.bufferL, This->loopInput.bufferR, This->loopInput.bufferL, This->loopInput.bufferR, numSamples);
     
     //Add it to wetbuffer
     vDSP_vadd(This->wetBuffer.bufferL, 1, This->loopInput.bufferL, 1, This->wetBuffer.bufferL, 1, numSamples);

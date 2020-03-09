@@ -18,5 +18,5 @@ typedef struct BMExportWavFile{
 
 void BMExportWavFile_init(BMExportWavFile* This,int32_t sr);
 int BMExportWavFile_exportAudioInt(BMExportWavFile* This,char* filePath,float* dataL,float* dataR,uint32_t length);
-int BMExportWavFile_exportAudioFloat(BMExportWavFile* This,char* filePath,float* dataL,float* dataR,uint32_t length);
+int BMExportWavFile_exportAudioFloatToInt16(BMExportWavFile* This,char* filePath,float* dataL,float* dataR,uint32_t length);
 #endif /* BMExportWavFile_h */

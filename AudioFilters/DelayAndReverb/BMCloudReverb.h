@@ -37,7 +37,10 @@ typedef struct BMCloudReverb {
     float dl2TimeS;
     float dl3TimeS;
     float dl4TimeS;
-    BMSmoothGain simpleDelayGain;
+    BMSmoothGain simpleDelay1Gain;
+    BMSmoothGain simpleDelay2Gain;
+    BMSmoothGain simpleDelay3Gain;
+    BMSmoothGain simpleDelay4Gain;
     
     BMWetDryMixer reverbMixer;
     
