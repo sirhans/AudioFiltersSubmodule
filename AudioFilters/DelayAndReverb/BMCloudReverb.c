@@ -182,11 +182,9 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
     //Process reverb dry/wet mixer
     BMWetDryMixer_processBufferInPhase(&This->reverbMixer, This->wetBuffer.bufferL, This->wetBuffer.bufferR, inputL, inputR, outputL, outputR, numSamples);
     
-    //Apply loop gain & store into lastLoopBuffer to use in next frame
-//    BMSmoothGain_processBuffer(&This->loopGain, This->loopInput.bufferL, This->loopInput.bufferR, This->lastLoopBuffer.bufferR, This->lastLoopBuffer.bufferL, numSamples);
-    
-    vDSP_vsmul(This->loopInput.bufferL, 1, &loopGain, This->lastLoopBuffer.bufferL, 1, numSamples);
-    vDSP_vsmul(This->loopInput.bufferR, 1, &loopGain, This->lastLoopBuffer.bufferR, 1, numSamples);
+    //Store buffer
+    memcpy(This->lastLoopBuffer.bufferL, This->loopInput.bufferL, sizeof(float)*numSamples);
+    memcpy(This->lastLoopBuffer.bufferR, This->loopInput.bufferR, sizeof(float)*numSamples);
 }
 
 #pragma mark - Set
