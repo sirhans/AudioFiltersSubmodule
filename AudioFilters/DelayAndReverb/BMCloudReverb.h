@@ -29,18 +29,10 @@ typedef struct BMCloudReverb {
     BMVelvetNoiseDecorrelator vnd3;
     
     BMPitchShiftDelay pitchDelay;
-    BMSimpleDelayStereo simpleDelay1;
-    BMSimpleDelayStereo simpleDelay2;
-    BMSimpleDelayStereo simpleDelay3;
-    BMSimpleDelayStereo simpleDelay4;
-    float dl1TimeS;
-    float dl2TimeS;
-    float dl3TimeS;
-    float dl4TimeS;
-    BMSmoothGain simpleDelay1Gain;
-    BMSmoothGain simpleDelay2Gain;
-    BMSmoothGain simpleDelay3Gain;
-    BMSmoothGain simpleDelay4Gain;
+    
+    //Loopdelay
+    
+    BMMultiTapDelay loopDelay;
     
     BMWetDryMixer reverbMixer;
     

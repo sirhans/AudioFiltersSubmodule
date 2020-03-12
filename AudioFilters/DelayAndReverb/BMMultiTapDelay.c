@@ -38,6 +38,7 @@ void BMMultiTapDelay_Init(BMMultiTapDelay *This,
     
     This->input = malloc(sizeof(float*) * This->numberChannel);
     This->output = malloc(sizeof(float*) * This->numberChannel);
+    This->lastTapOutput = malloc(sizeof(float*) * This->numberChannel);
     setting->gains = malloc(sizeof(float*) * This->numberChannel);
     setting->indices = malloc(sizeof(size_t*) * This->numberChannel);
     setting->delayTimes = malloc(sizeof(size_t*) * This->numberChannel);
@@ -239,6 +240,73 @@ void BMMultiTapDelay_processBufferStereo(BMMultiTapDelay* delay,
     }
 }
 
+void BMMultiTapDelay_processStereoWithFinalOutput(BMMultiTapDelay* delay,
+                                         const float* inputL, const float* inputR,
+                                         float* outputL, float* outputR,
+                                         float* lastTapL, float* lastTapR,
+                                         size_t numSamples){
+    assert(delay->numberChannel == 2);
+    
+    if(delay->_needUpdateIndices)
+        BMMultiTapDelay_PerformUpdateIndices(delay);
+    if(delay->_needUpdateGain)
+        BMMultiTapDelay_PerformUpdateGains(delay);
+    
+    
+    BMMultiTapDelaySetting* setting = &delay->setting;
+    //this will bridge my code with Sir Hans's style ^_^
+    delay->input[0] = (float*)inputL;
+    delay->input[1] = (float*)inputR;
+    delay->output[0] = outputL;
+    delay->output[1] = outputR;
+    delay->lastTapOutput[0] = lastTapL;
+    delay->lastTapOutput[1] = lastTapR;
+    
+    size_t frameThisTime;
+    
+    size_t framesProcessed = 0;
+    while(framesProcessed < numSamples){
+        size_t framesProcessing = numSamples - framesProcessed;
+        framesProcessing = (framesProcessing < BM_BUFFER_CHUNK_SIZE)? framesProcessing:BM_BUFFER_CHUNK_SIZE;
+        
+        frameThisTime = framesProcessing;
+        
+        //
+        uint32_t availableBytes;
+        uint32_t bytesThisTime;
+        
+        bytesThisTime = (int32_t)frameThisTime * sizeof(float);
+        
+        for(size_t i=0; i<delay->numberChannel; i++){
+            //set 0 to the tempbuffer
+            memset(delay->tempBuffer[i], 0, BM_BUFFER_CHUNK_SIZE * sizeof(float));
+            TPCircularBufferProduceBytes(&delay->buffer[i], delay->input[i]+framesProcessed, bytesThisTime);
+            
+            //from each read point, we read FrameThisTime frames to process
+            //our aim is to get the buffer with FrameThisTime length
+            //this buffer will add directly to the output
+            float* buffer = TPCircularBufferTail(&delay->buffer[i], &availableBytes);
+            
+            for (int j=0; j<delay->numTaps; j++) {
+                if(j==delay->numTaps-1){
+                    //last tap -> store to lasttap output
+                    vDSP_vsmul(buffer + setting->indices[i][j], 1, &setting->gains[i][j], delay->lastTapOutput[i]+framesProcessed, 1, frameThisTime);
+                }
+                vDSP_vsma(buffer + setting->indices[i][j], 1, &setting->gains[i][j], delay->tempBuffer[i], 1, delay->tempBuffer[i], 1, frameThisTime);
+//                printf("indices %zu\n",setting->indices[i][j]);
+            }
+            TPCircularBufferConsume(&delay->buffer[i], bytesThisTime);
+            
+            //we overwrite data to the output
+            memcpy(delay->output[i]+framesProcessed, delay->tempBuffer[i], bytesThisTime);
+        }
+        
+        //
+        framesProcessed += framesProcessing;
+    }
+}
+
+
 
 void BMMultiTapDelay_ProcessOneSampleStereo(BMMultiTapDelay* delay,
                                             float* inputL, float* inputR,
@@ -395,8 +463,6 @@ void BMMultiTapDelay_setDelayTimes(BMMultiTapDelay *This,
     }
     This->_needUpdateIndices = true;
 }
-
-
 
 void BMMultiTapDelay_setDelayTimeNumTap(BMMultiTapDelay *This,
                                         size_t* delayTimesL, size_t* delayTimesR,

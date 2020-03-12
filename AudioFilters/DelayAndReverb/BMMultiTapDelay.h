@@ -33,6 +33,7 @@ typedef struct{
     float** tempBuffer;
     float** input;
     float** output;
+    float** lastTapOutput;
     float* zeroArray;
     
     size_t numberChannel;
@@ -89,7 +90,11 @@ void BMMultiTapDelay_processBufferStereo(BMMultiTapDelay* delay,
                                          float* outputL, float* outputR,
                                          size_t frames);
 
-
+void BMMultiTapDelay_processStereoWithFinalOutput(BMMultiTapDelay* delay,
+                                                  const float* inputL, const float* inputR,
+                                                  float* outputL, float* outputR,
+                                                  float* lastTapL, float* lastTapR,
+                                                  size_t numSamples);
 
 
 /*
