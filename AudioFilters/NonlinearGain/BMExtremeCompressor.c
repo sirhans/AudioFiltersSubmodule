@@ -19,8 +19,7 @@ void BMExtremeCompressor_init(BMExtremeCompressor *This, float sampleRate, bool 
 	size_t sampleRateOS = oversampleFactor * sampleRate;
 	
 	// init attack shaper
-	BMAttackShaper_init(&This->asL, sampleRateOS);
-	if (isStereo) BMAttackShaper_init(&This->asR, sampleRateOS);
+	BMMultibandAttackShaper_init(&This->as, isStereo, sampleRateOS);
 	
 	// init lowpass limiter
 	BMLowpassedLimiter_init(&This->llL, sampleRateOS);
@@ -44,8 +43,7 @@ void BMExtremeCompressor_init(BMExtremeCompressor *This, float sampleRate, bool 
 
 
 void BMExtremeCompressor_free(BMExtremeCompressor *This){
-	BMAttackShaper_free(&This->asL);
-	if(This->isStereo) BMAttackShaper_free(&This->asR);
+	BMMultibandAttackShaper_free(&This->as);
 	
 	BMLowpassedLimiter_free(&This->llL);
 	if(This->isStereo) BMLowpassedLimiter_free(&This->llR);
@@ -87,13 +85,13 @@ void BMExtremeCompressor_procesMono(BMExtremeCompressor *This,
 		size_t lengthOS = This->osFactor * samplesProcessing;
 	
 		// apply attack transient shaper to smooth the attack transients
-		BMAttackShaper_process(&This->asL, This->b1L, This->b1L, lengthOS);
+		BMMultibandAttackShaper_processMono(&This->as, This->b1L, This->b1L, samplesProcessing);
 
 		// apply lowpassed limiter to get compression without saturation
 //		BMLowpassedLimiter_process(&This->llL, This->b1L, This->b1L, lengthOS);
 
 		// apply a gain reduction
-		float gainReduction = BM_DB_TO_GAIN(BMEC_GAIN_REDUCTION_BEFORE_SATURATOR);
+//		float gainReduction = BM_DB_TO_GAIN(BMEC_GAIN_REDUCTION_BEFORE_SATURATOR);
 //		vDSP_vsmul(This->b1L, 1, &gainReduction, This->b1L, 1, lengthOS);
 
 		// apply a soft clipping limiter to tame the clipping level of the attack transients
@@ -134,8 +132,10 @@ void BMExtremeCompressor_procesStereo(BMExtremeCompressor *This,
 		size_t lengthOS = This->osFactor * samplesProcessing;
 	
 		// apply attack transient shaper to smooth the attack transients
-		BMAttackShaper_process(&This->asL, This->b1L, This->b1L, lengthOS);
-		BMAttackShaper_process(&This->asR, This->b1R, This->b1R, lengthOS);
+		BMMultibandAttackShaper_processStereo(&This->as,
+											  This->b1L, This->b1R,
+											  This->b1L, This->b1R,
+											  lengthOS);
 	
 		// apply lowpassed limiter to get compression without saturation
 		BMLowpassedLimiter_process(&This->llL, This->b1L, This->b1L, lengthOS);

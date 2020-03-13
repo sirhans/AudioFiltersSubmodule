@@ -33,44 +33,44 @@ extern "C" {
 
 
 typedef struct BMCrossover {
-    BMMultiLevelBiquad lp;
-    BMMultiLevelBiquad hp;
-    bool stereo;
-    bool fourthOrder;
+	BMMultiLevelBiquad lp;
+	BMMultiLevelBiquad hp;
+	bool stereo;
+	bool fourthOrder;
 } BMCrossover;
 
 
 
 typedef struct BMCrossover3way {
-    // filters for audio processing
-    BMMultiLevelBiquad low;
-    BMMultiLevelBiquad midAndHigh;
-    BMMultiLevelBiquad mid;
-    BMMultiLevelBiquad high;
-    
-    // filters for graph plotting
-    BMMultiLevelBiquad plotFilters [3];
-    
-    bool stereo;
-    bool fourthOrder;
+	// filters for audio processing
+	BMMultiLevelBiquad low;
+	BMMultiLevelBiquad midAndHigh;
+	BMMultiLevelBiquad mid;
+	BMMultiLevelBiquad high;
+	
+	// filters for graph plotting
+	BMMultiLevelBiquad plotFilters [3];
+	
+	bool stereo;
+	bool fourthOrder;
 } BMCrossover3way;
 
 
 
 typedef struct BMCrossover4way {
-    // filters for audio processing
-    BMMultiLevelBiquad band1;
-    BMMultiLevelBiquad bands2to4;
-    BMMultiLevelBiquad band2;
-    BMMultiLevelBiquad bands3to4;
-    BMMultiLevelBiquad band3;
-    BMMultiLevelBiquad band4;
-    
-    // filters for graph plotting
-    BMMultiLevelBiquad plotFilters [4];
-    
-    bool stereo;
-    bool fourthOrder;
+	// filters for audio processing
+	BMMultiLevelBiquad band1;
+	BMMultiLevelBiquad bands2to4;
+	BMMultiLevelBiquad band2;
+	BMMultiLevelBiquad bands3to4;
+	BMMultiLevelBiquad band3;
+	BMMultiLevelBiquad band4;
+	
+	// filters for graph plotting
+	BMMultiLevelBiquad plotFilters [4];
+	
+	bool stereo;
+	bool fourthOrder;
 } BMCrossover4way;
 
 
@@ -79,7 +79,7 @@ typedef struct BMCrossover4way {
 
 
 /*
-  *This function must be called prior to use
+ *This function must be called prior to use
  *
  * @param cutoff      - cutoff frequency in hz
  * @param sampleRate  - sample rate in hz
@@ -87,10 +87,10 @@ typedef struct BMCrossover4way {
  * @param stereo      - true: stereo, false: mono
  */
 void BMCrossover_init(BMCrossover *This,
-                      float cutoff,
-                      float sampleRate,
-                      bool fourthOrder,
-                      bool stereo);
+					  float cutoff,
+					  float sampleRate,
+					  bool fourthOrder,
+					  bool stereo);
 
 
 
@@ -143,19 +143,19 @@ void BMCrossover_processStereo(BMCrossover *This,
  * @param numSamples - number of samples to process. all arrays must have at least this length
  */
 void BMCrossover_processMono(BMCrossover *This,
-                             float* input,
-                             float* lowpass,
-                             float* highpass,
-                             size_t numSamples);
+							 const float* input,
+							 float* lowpass,
+							 float* highpass,
+							 size_t numSamples);
 
 
 
 void BMCrossover_recombine(const float* lpL,
-                           const float* lpR,
-                           const float* hpL,
-                           const float* hpR,
-                           float* outL, float* outR,
-                           size_t numSamples);
+						   const float* lpR,
+						   const float* hpL,
+						   const float* hpR,
+						   float* outL, float* outR,
+						   size_t numSamples);
 
 /*!
  *BMCrossover_tfMagVectors
@@ -169,10 +169,10 @@ void BMCrossover_recombine(const float* lpL,
  * @param length      length of the input and output vectors
  */
 void BMCrossover_tfMagVectors(BMCrossover *This,
-                                  const float* frequencies,
-                                  float* magLow,
-                                  float* magHigh,
-                                  size_t length);
+							  const float* frequencies,
+							  float* magLow,
+							  float* magHigh,
+							  size_t length);
 
 
 
@@ -188,11 +188,11 @@ void BMCrossover_tfMagVectors(BMCrossover *This,
  * @param stereo      - true: stereo, false: mono
  */
 void BMCrossover3way_init(BMCrossover3way *This,
-                          float cutoff1,
-                          float cutoff2,
-                          float sampleRate,
-                          bool fourthOrder,
-                          bool stereo);
+						  float cutoff1,
+						  float cutoff2,
+						  float sampleRate,
+						  bool fourthOrder,
+						  bool stereo);
 
 
 /*!
@@ -220,11 +220,11 @@ void BMCrossover3way_setCutoff2(BMCrossover3way *This, float fc);
  *BMCrossover3way_processStereo
  */
 void BMCrossover3way_processStereo(BMCrossover3way *This,
-                                   const float* inL, const float* inR,
-                                   float* lowL, float* lowR,
-                                   float* midL, float* midR,
-                                   float* highL, float* highR,
-                                   size_t numSamples);
+								   const float* inL, const float* inR,
+								   float* lowL, float* lowR,
+								   float* midL, float* midR,
+								   float* highL, float* highR,
+								   size_t numSamples);
 
 
 
@@ -241,11 +241,11 @@ void BMCrossover3way_processStereo(BMCrossover3way *This,
  * @param length      length of the input and output vectors
  */
 void BMCrossover3way_tfMagVectors(BMCrossover3way *This,
-                                  const float* frequencies,
-                                  float* magLow,
-                                  float* magMid,
-                                  float* magHigh,
-                                  size_t length);
+								  const float* frequencies,
+								  float* magLow,
+								  float* magMid,
+								  float* magHigh,
+								  size_t length);
 
 
 
@@ -262,12 +262,12 @@ void BMCrossover3way_tfMagVectors(BMCrossover3way *This,
  * @param stereo      - true: stereo, false: mono
  */
 void BMCrossover4way_init(BMCrossover4way *This,
-                          float cutoff1,
-                          float cutoff2,
-                          float cutoff3,
-                          float sampleRate,
-                          bool fourthOrder,
-                          bool stereo);
+						  float cutoff1,
+						  float cutoff2,
+						  float cutoff3,
+						  float sampleRate,
+						  bool fourthOrder,
+						  bool stereo);
 
 
 
@@ -282,12 +282,25 @@ void BMCrossover4way_free(BMCrossover4way *This);
  *BMCrossover4way_processStereo
  */
 void BMCrossover4way_processStereo(BMCrossover4way *This,
-                                   const float* inL, const float* inR,
-                                   float* band1L, float* band1R,
-                                   float* band2L, float* band2R,
-                                   float* band3L, float* band3R,
-                                   float* band4L, float* band4R,
-                                   size_t numSamples);
+								   const float* inL, const float* inR,
+								   float* band1L, float* band1R,
+								   float* band2L, float* band2R,
+								   float* band3L, float* band3R,
+								   float* band4L, float* band4R,
+								   size_t numSamples);
+
+
+
+/*!
+ *BMCrossover4way_processMono
+ */
+void BMCrossover4way_processMono(BMCrossover4way *This,
+								 const float* in,
+								 float* band1,
+								 float* band2,
+								 float* band3,
+								 float* band4,
+								 size_t numSamples);
 
 
 
@@ -295,10 +308,10 @@ void BMCrossover4way_processStereo(BMCrossover4way *This,
  *BMCrossover3way_processMono
  */
 void BMCrossover3way_processMono(BMCrossover3way *This,
-								   const float* inL,
-								   float* lowL,
-								   float* midL,
-								   float* highL,
+								 const float* inL,
+								 float* lowL,
+								 float* midL,
+								 float* highL,
 								 size_t numSamples);
 
 
@@ -334,12 +347,12 @@ void BMCrossover4way_setCutoff2(BMCrossover4way *This, float fc);
  * @param length      length of the input and output vectors
  */
 void BMCrossover4way_tfMagVectors(BMCrossover4way *This,
-                                  const float* frequencies,
-                                  float* magBand1,
-                                  float* magBand2,
-                                  float* magBand3,
-                                  float* magBand4,
-                                  size_t length);
+								  const float* frequencies,
+								  float* magBand1,
+								  float* magBand2,
+								  float* magBand3,
+								  float* magBand4,
+								  size_t length);
 
 
 
@@ -372,6 +385,20 @@ void BMCrossover4way_recombine(const float* band1L, const float* band1R,
 							   const float* band4L, const float* band4R,
 							   float* outL, 		float* outR,
 							   size_t numSamples);
+
+
+
+
+/*!
+ *BMCrossover4way_recombineMono
+ */
+void BMCrossover4way_recombineMono(const float* band1,
+								   const float* band2,
+								   const float* band3,
+								   const float* band4,
+								   float* out,
+								   size_t numSamples);
+
 
 
 
