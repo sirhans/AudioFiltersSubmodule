@@ -42,13 +42,14 @@ typedef struct BMAttackShaperSection {
     BMDynamicSmoothingFilter dsf[BMAS_DSF_NUMLEVELS];
     BMShortSimpleDelay dly;
 	size_t delaySamples;
+	float exaggeration;
 	float sampleRate;
 	bool isStereo;
 } BMAttackShaperSection;
 
 
 typedef struct BMMultibandAttackShaper {
-	BMAttackShaperSection asSections [4];
+	BMAttackShaperSection asSections [2];
 	BMCrossover4way crossover4;
 	BMCrossover crossover2;
 	float b1L [BM_BUFFER_CHUNK_SIZE];
@@ -92,51 +93,6 @@ void BMMultibandAttackShaper_processMono(BMMultibandAttackShaper *This,
 										 size_t numSamples);
 
 
-/*!
- *BMAttackShaperSection_init
- */
-void BMAttackShaperSection_init(BMAttackShaperSection *This,
-								float releaseFilterFc,
-								float attackFc,
-								float dsfSensitivity,
-								float dsfFcMin, float dsfFcMax,
-								float sampleRate,
-								bool isStereo);
-
-
-
-/*!
-*BMAttackShaperSection_setAttackTime
-*
-* @param attackTime in seconds
-*/
-void BMAttackShaperSection_setAttackTime(BMAttackShaperSection *This, float attackTime);
-
-
-
-
-/*!
-*BMAttackShaperSection_process
-*/
-void BMAttackShaperSection_processMono(BMAttackShaperSection *This,
-							const float* input,
-							float* output,
-							size_t numSamples);
-
-
-/*!
-*BMAttackShaperSection_processStereo
-*/
-void BMAttackShaperSection_processStereo(BMAttackShaperSection *This,
-										 const float* inputL, const float* inputR,
-										 float* outputL, float* outputR,
-										 size_t numSamples);
-
-
-/*!
- *BMAttackShaperSection_free
- */
-void BMAttackShaperSection_free(BMAttackShaperSection *This);
 
 
 #endif /* BMAttackShaper_h */
