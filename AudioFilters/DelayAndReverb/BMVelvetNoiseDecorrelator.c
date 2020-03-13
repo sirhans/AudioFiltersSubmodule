@@ -19,7 +19,13 @@
 
 #define BM_VND_WET_MIX 0.40f
 
-
+void BMVelvetNoiseDecorrelator_initFullSettings(BMVelvetNoiseDecorrelator *This,
+												float maxDelaySeconds,
+												size_t numTaps,
+												float rt60DecayTimeSeconds,
+												bool hasDryTap,
+												float sampleRate,
+												bool evenTapDensity);
 
 
 /*!
@@ -31,12 +37,45 @@ void BMVelvetNoiseDecorrelator_init(BMVelvetNoiseDecorrelator *This,
                                     float rt60DecayTimeSeconds,
 									bool hasDryTap,
 									float sampleRate){
+	BMVelvetNoiseDecorrelator_initFullSettings(This, maxDelaySeconds, numTaps, rt60DecayTimeSeconds, hasDryTap, sampleRate, false);
+}
+
+
+
+
+/*!
+ *BMVelvetNoiseDecorrelator_initWithEvenTapDensity
+ */
+void BMVelvetNoiseDecorrelator_initWithEvenTapDensity(BMVelvetNoiseDecorrelator *This,
+                                    float maxDelaySeconds,
+                                    size_t numTaps,
+                                    float rt60DecayTimeSeconds,
+									bool hasDryTap,
+									float sampleRate){
+	BMVelvetNoiseDecorrelator_initFullSettings(This, maxDelaySeconds, numTaps, rt60DecayTimeSeconds, hasDryTap, sampleRate, true);
+}
+
+
+
+
+/*!
+ *BMVelvetNoiseDecorrelator_initFullSettings
+ */
+void BMVelvetNoiseDecorrelator_initFullSettings(BMVelvetNoiseDecorrelator *This,
+												float maxDelaySeconds,
+												size_t numTaps,
+												float rt60DecayTimeSeconds,
+												bool hasDryTap,
+												float sampleRate,
+												bool evenTapDensity){
 	This->sampleRate = sampleRate;
-	This->hasDryTap	= true;
+	This->hasDryTap	= hasDryTap;
 	This->wetMix = BM_VND_WET_MIX;
 	This->rt60 = rt60DecayTimeSeconds;
 	This->maxDelayTimeS = maxDelaySeconds;
 	This->numWetTaps = numTaps;
+	This->evenTapDensity = evenTapDensity;
+    This->resetNumTaps = false;
 	if (hasDryTap) This->numWetTaps--;
 	
 	// allocate memory for calculating delay setups
@@ -120,16 +159,39 @@ void BMVelvetNoiseDecorrelator_genRandTapTimes(BMVelvetNoiseDecorrelator *This){
 		This->delayLengthsR[0] = 0;
 	}
 	
-	// use the randoms-in-range algorithm to set delay tap times
-	size_t min = ceil((This->maxDelayTimeS * This->sampleRate) / This->numWetTaps);
-	size_t max = ceil(This->maxDelayTimeS * This->sampleRate);
-	BMReverbRandomsInRange(min, max, This->delayLengthsL + shift, This->numWetTaps);
-	BMReverbRandomsInRange(min, max, This->delayLengthsR + shift, This->numWetTaps);
-	
-	// sort the delay times for easier debugging
-	BMInsertionSort_size_t(This->delayLengthsL + shift, This->numWetTaps);
-	BMInsertionSort_size_t(This->delayLengthsR + shift, This->numWetTaps);
-	
+	// even tap density uses the velvet noise algorithm. The frequency response may be less even but it won't leave large gaps in the time domain
+	if(This->evenTapDensity){
+		// set the min delay time, depending on whether there is a dry tap
+		float minDelayTimeS;
+		if(This->hasDryTap) minDelayTimeS = This->maxDelayTimeS / (float)This->numWetTaps;
+		else minDelayTimeS = 0.0f;
+		
+		// set the randomised tap indices
+		BMVelvetNoise_setTapIndices(minDelayTimeS * 1000.0f,
+									This->maxDelayTimeS * 1000.0f,
+									This->delayLengthsL + shift,
+									This->sampleRate, This->numWetTaps);
+		BMVelvetNoise_setTapIndices(minDelayTimeS * 1000.0f,
+									This->maxDelayTimeS * 1000.0f,
+									This->delayLengthsR + shift,
+									This->sampleRate, This->numWetTaps);
+	}
+	// uneven tap density may have more natural frequency response
+	else {
+		// set the min delay index depending on whether there is a dry tap
+		size_t min;
+		if(This->hasDryTap)
+			min = ceil((This->maxDelayTimeS * This->sampleRate) / (float)This->numWetTaps);
+		else
+			min = 0;
+		
+		// set max delay index
+		size_t max = ceil(This->maxDelayTimeS * This->sampleRate);
+		
+		// set the random delay times
+		BMReverbRandomsInRange(min, max, This->delayLengthsL + shift, This->numWetTaps);
+		BMReverbRandomsInRange(min, max, This->delayLengthsR + shift, This->numWetTaps);
+	}
 	
 	BMMultiTapDelay_setDelayTimes(&This->multiTapDelay, This->delayLengthsL, This->delayLengthsR);
 }
@@ -193,7 +255,26 @@ void BMVelvetNoiseDecorrelator_setWetMix(BMVelvetNoiseDecorrelator *This, float 
 }
 
 
+void BMVelvetNoiseDecorrelator_setNumTaps(BMVelvetNoiseDecorrelator *This, size_t numTaps){
+    This->numWetTaps = numTaps;
+    This->resetNumTaps = true;
+}
 
+void BMVelvetNoiseDecorrelator_resetNumTaps(BMVelvetNoiseDecorrelator *This){
+    if(This->resetNumTaps){
+        This->resetNumTaps = false;
+        
+        // init the multi-tap delay in bypass mode
+        size_t maxDelayLenth = ceil(This->maxDelayTimeS*This->sampleRate);
+        BMMultiTapDelay_initBypass(&This->multiTapDelay,
+                                   true,
+                                   maxDelayLenth,
+                                   This->numWetTaps);
+        
+        // setup the delay for processing
+        BMVelvetNoiseDecorrelator_randomiseAll(This);
+    }
+}
 
 /*!
  *BMVelvetNoiseDecorrelator_free
@@ -223,6 +304,8 @@ void BMVelvetNoiseDecorrelator_processBufferStereo(BMVelvetNoiseDecorrelator *Th
                                                    float* outputL,
                                                    float* outputR,
                                                    size_t length){
+    //Reset numtap if needed
+    BMVelvetNoiseDecorrelator_resetNumTaps(This);
 	// all processing is done by the multi-tap delay class
     BMMultiTapDelay_processBufferStereo(&This->multiTapDelay,
 										inputL, inputR,
@@ -238,6 +321,8 @@ void BMVelvetNoiseDecorrelator_processBufferMonoToStereo(BMVelvetNoiseDecorrelat
 														 float* inputL,
 														 float* outputL, float* outputR,
 														 size_t length){
+    //Reset numtap if needed
+    BMVelvetNoiseDecorrelator_resetNumTaps(This);
 	// all processing is done by the multi-tap delay class
 	BMMultiTapDelay_processBufferStereo(&This->multiTapDelay,
 										inputL, inputL,

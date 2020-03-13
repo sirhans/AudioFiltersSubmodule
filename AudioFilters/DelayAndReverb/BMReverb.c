@@ -466,6 +466,9 @@ extern "C" {
 				}
 			}
 		}
+        
+        // sort the output
+        BMInsertionSort_size_t(randomOutput, length);
 	}
     
 	
