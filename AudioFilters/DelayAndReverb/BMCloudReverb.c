@@ -96,7 +96,7 @@ void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
     gainL[0] = 1.0f;
     gainR[0] = 1.0f;
     
-    int percent = 10;
+    int percent = 30;
     float baseS = 0.5f;
     size_t maxDTL = 0;
     size_t maxDTR = 0;
@@ -165,7 +165,7 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
     vDSP_vadd(This->wetBuffer.bufferL, 1, This->lastLoopBuffer.bufferL, 1, This->loopInput.bufferL, 1, numSamples);
     vDSP_vadd(This->wetBuffer.bufferR, 1, This->lastLoopBuffer.bufferR, 1, This->loopInput.bufferR, 1, numSamples);
     
-    BMMultiTapDelay_processStereoWithFinalOutput(&This->loopDelay, This->loopInput.bufferL, This->loopInput.bufferR, This->wetBuffer.bufferL, This->wetBuffer.bufferR, This->loopInput.bufferR, This->loopInput.bufferL, numSamples);
+    BMMultiTapDelay_processStereoWithFinalOutput(&This->loopDelay, This->loopInput.bufferL, This->loopInput.bufferR, This->wetBuffer.bufferL, This->wetBuffer.bufferR, This->lastLoopBuffer.bufferR, This->lastLoopBuffer.bufferL, numSamples);
     
     
     //Process reverb dry/wet mixer
