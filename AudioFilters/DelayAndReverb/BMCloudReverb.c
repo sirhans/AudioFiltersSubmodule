@@ -16,6 +16,7 @@
 
 #define Filter_LS_FC 400
 
+void BMCloudReverb_updateDiffusion(BMCloudReverb* This);
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This);
 
 float getVNDLength(float numTaps,float length){
@@ -143,6 +144,7 @@ void BMCloudReverb_destroy(BMCloudReverb* This){
 }
 
 void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t numSamples){
+    BMCloudReverb_updateDiffusion(This);
     //Filters
     BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, inputL, inputR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
     
@@ -185,18 +187,25 @@ void BMCloudReverb_setOutputMixer(BMCloudReverb* This,float wetMix){
 
 void BMCloudReverb_setDiffusion(BMCloudReverb* This,float diffusion){
     This->diffusion = diffusion;
-    float numTaps = roundf(This->maxTapsEachVND * diffusion);
-    BMVelvetNoiseDecorrelator_setNumTaps(&This->vnd1, numTaps);
-    BMVelvetNoiseDecorrelator_setNumTaps(&This->vnd2, numTaps);
-    BMVelvetNoiseDecorrelator_setNumTaps(&This->vnd3, numTaps);
+    This->updateDiffusion = true;
 }
 
-//Filter
-void BMCloudReverb_setFilterLSGain(BMCloudReverb* This,float gainDb){
+void BMCloudReverb_updateDiffusion(BMCloudReverb* This){
+    if(This->updateDiffusion){
+        This->updateDiffusion = false;
+        float numTaps = roundf(This->maxTapsEachVND * This->diffusion);
+        BMVelvetNoiseDecorrelator_setNumTaps(&This->vnd1, numTaps);
+        BMVelvetNoiseDecorrelator_setNumTaps(&This->vnd2, numTaps);
+        BMVelvetNoiseDecorrelator_setNumTaps(&This->vnd3, numTaps);
+    }
+}
+
+void BMCloudReverb_setLSGain(BMCloudReverb* This,float gainDb){
     BMMultiLevelBiquad_setLowShelf(&This->biquadFilter, Filter_LS_FC, gainDb, Filter_Level_Lowshelf);
 }
-void BMCloudReverb_setFilterLPFreq(BMCloudReverb* This,float fc){
-    BMMultiLevelBiquad_setLowPass12db(&This->biquadFilter, fc, Filter_Level_Lowpass);
+
+void BMCloudReverb_setHighCutFreq(BMCloudReverb* This,float freq){
+    BMMultiLevelBiquad_setLowPass12db(&This->biquadFilter, freq, Filter_Level_Lowpass);
 }
 
 #pragma mark - Test

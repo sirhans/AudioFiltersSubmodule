@@ -44,6 +44,7 @@ typedef struct BMCloudReverb {
     float sampleRate;
     float maxTapsEachVND;
     float diffusion;
+    bool updateDiffusion;
     float decayTime;
 } BMCloudReverb;
 
@@ -54,6 +55,9 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
 void BMCloudReverb_setLoopDecayTime(BMCloudReverb* This,float decayTime);
 void BMCloudReverb_setDelayPitchMixer(BMCloudReverb* This,float wetMix);
 void BMCloudReverb_setOutputMixer(BMCloudReverb* This,float wetMix);
+void BMCloudReverb_setDiffusion(BMCloudReverb* This,float diffusion);
+void BMCloudReverb_setLSGain(BMCloudReverb* This,float gainDb);
+void BMCloudReverb_setHighCutFreq(BMCloudReverb* This,float freq);
 //Test
 void BMCloudReverb_impulseResponse(BMCloudReverb* This,float* outputL,float* outputR,size_t length);
 #endif /* BMCloudReverb_h */
