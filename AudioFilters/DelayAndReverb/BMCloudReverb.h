@@ -18,8 +18,8 @@
 #include "BMSmoothGain.h"
 
 typedef struct BMStereoBuffer{
-    float* bufferL;
-    float* bufferR;
+    void* bufferL;
+    void* bufferR;
 } BMStereoBuffer;
 
 typedef struct BMCloudReverb {
@@ -46,6 +46,10 @@ typedef struct BMCloudReverb {
     float diffusion;
     bool updateDiffusion;
     float decayTime;
+    
+    BMStereoBuffer loopDT;
+    BMStereoBuffer loopGain;
+    size_t loopNumTaps;
 } BMCloudReverb;
 
 void BMCloudReverb_init(BMCloudReverb* This,float sr);

@@ -18,6 +18,9 @@
 
 void BMCloudReverb_updateDiffusion(BMCloudReverb* This);
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This);
+void BMCloudReverb_updateLoopDelayTime(BMCloudReverb* This,size_t* delayTimeL,size_t* delayTimeR,float* gainL,float* gainR);
+void BMCloudReverb_updateLoopGain(BMCloudReverb* This,size_t* delayTimeL,size_t* delayTimeR,float* gainL,float* gainR);
+
 
 float getVNDLength(float numTaps,float length){
     float vndLength = ((numTaps*numTaps)*length)/(1 + numTaps + numTaps*numTaps);
@@ -84,12 +87,19 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
 }
 
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
+    This->loopNumTaps = 5;
     //Loop delay
-    size_t numTaps = 5;//first is dry tap
-    size_t* delayTimeL = malloc(sizeof(size_t)*numTaps);
-    size_t* delayTimeR = malloc(sizeof(size_t)*numTaps);
-    float* gainL = malloc(sizeof(float)*numTaps);
-    float* gainR = malloc(sizeof(float)*numTaps);
+    This->loopDT.bufferL = malloc(sizeof(size_t)*This->loopNumTaps);
+    This->loopDT.bufferR = malloc(sizeof(size_t)*This->loopNumTaps);
+    This->loopGain.bufferL = malloc(sizeof(float)*This->loopNumTaps);
+    This->loopGain.bufferR = malloc(sizeof(float)*This->loopNumTaps);
+    
+    BMCloudReverb_updateLoopDelayTime(This, This->loopDT.bufferL, This->loopDT.bufferR, This->loopGain.bufferL, This->loopGain.bufferR);
+    
+}
+
+void BMCloudReverb_updateLoopDelayTime(BMCloudReverb* This,size_t* delayTimeL,size_t* delayTimeR,float* gainL,float* gainR){
+    //first is dry tap
     //First tap is dry tap
     delayTimeL[0] = 0;
     delayTimeR[0] = 0;
@@ -100,7 +110,7 @@ void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
     float baseS = 0.5f;
     size_t maxDTL = 0;
     size_t maxDTR = 0;
-    for(int i=1;i<numTaps;i++){
+    for(int i=1;i<This->loopNumTaps;i++){
         delayTimeL[i] = maxDTL + (randomAround1(percent)*baseS * This->sampleRate);
         maxDTL = delayTimeL[i];
         delayTimeR[i] = maxDTR + (randomAround1(percent)*baseS * This->sampleRate);
@@ -109,9 +119,18 @@ void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
         gainL[i] = BMReverbDelayGainFromRT60(This->decayTime, delayTimeL[i]/This->sampleRate);
         gainR[i] = BMReverbDelayGainFromRT60(This->decayTime, delayTimeR[i]/This->sampleRate);
     }
-    delayTimeL[numTaps-1] = delayTimeR[numTaps-1];
-    size_t maxDT = delayTimeL[numTaps-1];
-    BMMultiTapDelay_Init(&This->loopDelay, true, delayTimeL, delayTimeR, maxDT, gainL, gainR, numTaps, numTaps);
+    delayTimeL[This->loopNumTaps-1] = delayTimeR[This->loopNumTaps-1];
+    size_t maxDT = delayTimeL[This->loopNumTaps-1];
+    BMMultiTapDelay_Init(&This->loopDelay, true, delayTimeL, delayTimeR, maxDT, gainL, gainR, This->loopNumTaps, This->loopNumTaps);
+}
+
+void BMCloudReverb_updateLoopGain(BMCloudReverb* This,size_t* delayTimeL,size_t* delayTimeR,float* gainL,float* gainR){
+    for(int i=1;i<This->loopNumTaps;i++){
+        gainL[i] = BMReverbDelayGainFromRT60(This->decayTime, delayTimeL[i]/This->sampleRate);
+        gainR[i] = BMReverbDelayGainFromRT60(This->decayTime, delayTimeR[i]/This->sampleRate);
+    }
+    //Update gain
+    BMMultiTapDelay_setGains(&This->loopDelay, gainL, gainR);
 }
 
 void BMCloudReverb_destroy(BMCloudReverb* This){
@@ -175,6 +194,7 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
 #pragma mark - Set
 void BMCloudReverb_setLoopDecayTime(BMCloudReverb* This,float decayTime){
     This->decayTime = decayTime;
+    BMCloudReverb_updateLoopGain(This, This->loopDT.bufferL, This->loopDT.bufferR, This->loopGain.bufferL, This->loopGain.bufferR);
 }
 
 void BMCloudReverb_setDelayPitchMixer(BMCloudReverb* This,float wetMix){
