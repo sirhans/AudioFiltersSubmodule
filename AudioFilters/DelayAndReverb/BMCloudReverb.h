@@ -31,8 +31,8 @@ typedef struct BMCloudReverb {
     BMPitchShiftDelay pitchDelay;
     
     //Loopdelay
-    
-    BMMultiTapDelay loopDelay;
+    BMVelvetNoiseDecorrelator loopVND;
+//    BMMultiTapDelay loopDelay;
     
     BMWetDryMixer reverbMixer;
     
@@ -47,9 +47,9 @@ typedef struct BMCloudReverb {
     bool updateDiffusion;
     float decayTime;
     
-    BMStereoBuffer loopDT;
-    BMStereoBuffer loopGain;
-    size_t loopNumTaps;
+//    BMStereoBuffer loopDT;
+//    BMStereoBuffer loopGain;
+//    size_t loopNumTaps;
 } BMCloudReverb;
 
 void BMCloudReverb_init(BMCloudReverb* This,float sr);
