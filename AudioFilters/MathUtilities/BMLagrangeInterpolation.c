@@ -3,7 +3,7 @@
 //  BMAudioFilters
 //
 //  Created by Nguyen Minh Tien on 12/26/18.
-//  Copyright © 2018 Hans. All rights reserved.
+//  This file is public domain with no restrictions
 //
 
 #include "BMLagrangeInterpolation.h"
@@ -12,7 +12,7 @@
 #include "Constants.h"
 
 float calculateH(float fractionalDelay, float n,float order);
-static inline int BMLI_getStartIdx(float orderF,float strideIdx);
+int BMLI_getStartIdx(float orderF,float strideIdx);
 
 void BMLagrangeInterpolation_init(BMLagrangeInterpolation* This, int order){
     assert(order%2==0);

@@ -19,8 +19,10 @@ typedef struct BMVelvetNoiseDecorrelator {
     float sampleRate, wetMix, rt60, maxDelayTimeS;
 	size_t *delayLengthsL, *delayLengthsR;
 	float *gainsL, *gainsR;
-	bool hasDryTap;
+	bool hasDryTap, evenTapDensity;
 	size_t numWetTaps;
+    bool resetNumTaps;
+    bool resetRT60DecayTime;
 } BMVelvetNoiseDecorrelator;
 
 
@@ -43,6 +45,23 @@ void BMVelvetNoiseDecorrelator_init(BMVelvetNoiseDecorrelator *This,
 									bool hasDryTap,
 									float sampleRate);
 
+/*!
+*BMVelvetNoiseDecorrelator_initWithEvenTapDensity
+*
+* @param This  pointer to an unitialised struct
+* @param maxDelaySeconds maximum delay time in seconds
+* @param numTaps number of delay taps on each channel including the one used to pass the dry signal through
+* @param rt60DecayTimeSeconds controls the decay envelope used to slope the volume of the taps
+* @param hasDryTap set true if you want to mix wet and dry signal; false for 100% wet
+* @param sampleRate sample rate in Hz
+*/
+void BMVelvetNoiseDecorrelator_initWithEvenTapDensity(BMVelvetNoiseDecorrelator *This,
+													  float maxDelaySeconds,
+													  size_t numTaps,
+													  float rt60DecayTimeSeconds,
+													  bool hasDryTap,
+													  float sampleRate);
+
 
 /*!
  *BMVelvetNoiseDecorrelator_setWetMix
@@ -50,6 +69,7 @@ void BMVelvetNoiseDecorrelator_init(BMVelvetNoiseDecorrelator *This,
 void BMVelvetNoiseDecorrelator_setWetMix(BMVelvetNoiseDecorrelator *This, float wetMix01);
 
 
+void BMVelvetNoiseDecorrelator_setRT60DecayTime(BMVelvetNoiseDecorrelator *This, float rt60DT);
 
 /*!
  *BMVelvetNoiseDecorrelator_randomiseAll
@@ -76,7 +96,14 @@ void BMVelvetNoiseDecorrelator_processBufferStereo(BMVelvetNoiseDecorrelator *Th
                                                    float* outputR,
                                                    size_t length);
 
-
+void BMVelvetNoiseDecorrelator_processBufferStereoWithFinalOutput(BMVelvetNoiseDecorrelator *This,
+                                                    float* inputL,
+                                                    float* inputR,
+                                                    float* outputL,
+                                                    float* outputR,
+                                                    float* finalOutputL,
+                                                    float* finalOutputR,
+                                                    size_t length);
 /*!
  *BMVelvetNoiseDecorrelator_processBufferMonoToStereo
  */
@@ -85,5 +112,7 @@ void BMVelvetNoiseDecorrelator_processBufferMonoToStereo(BMVelvetNoiseDecorrelat
                                                    float* outputL, float* outputR,
                                                    size_t length);
 
+
+void BMVelvetNoiseDecorrelator_setNumTaps(BMVelvetNoiseDecorrelator *This, size_t numTaps);
 
 #endif /* BMVelvetNoiseDecorrelator_h */

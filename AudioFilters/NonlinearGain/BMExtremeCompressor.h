@@ -15,9 +15,10 @@
 #include "BMLowpassedLimiter.h"
 #include "BMUpsampler.h"
 #include "BMDownsampler.h"
+#include "BMAttackShaper.h"
 
 typedef struct BMExtremeCompressor {
-	BMAttackShaper asL, asR;
+	BMMultibandAttackShaper as;
 	BMLowpassedLimiter llL, llR;
 	BMUpsampler	 upsampler;
 	BMDownsampler downsampler;

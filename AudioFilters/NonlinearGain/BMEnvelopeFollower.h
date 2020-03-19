@@ -18,8 +18,7 @@
 
 
 /*
- * These smoothing filters are based on the design by Andrew Simper:
- * https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf
+ * These smoothing filters are based on the dBMAttackFilter_setCutoffs://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf
  *
  * We have modified his design so that the attack and release portions of
  * the smoothing operation are done with separate filters that can be configured

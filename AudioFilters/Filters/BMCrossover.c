@@ -152,7 +152,7 @@ extern "C" {
      * @param numSamples - number of samples to process. all arrays must have at least this length
      */
     void BMCrossover_processMono(BMCrossover *This,
-                                 float* input,
+                                 const float* input,
                                  float* lowpass,
                                  float* highpass,
                                  size_t numSamples){
@@ -690,6 +690,39 @@ extern "C" {
 	
 	
 	
+	void BMCrossover4way_processMono(BMCrossover4way *This,
+                                       const float* in,
+                                       float* band1,
+                                       float* band2,
+                                       float* band3,
+                                       float* band4,
+                                       size_t numSamples){
+        assert(!This->stereo);
+        
+        // split the low part of the signal off, processing it through
+        // all three crossovers to preserve phase
+		BMMultiLevelBiquad_processBufferMono(&This->band1, in, band1, numSamples);
+        
+        // split bands 2-4, buffering into 2
+		BMMultiLevelBiquad_processBufferMono(&This->bands2to4, in, band2, numSamples);
+        
+        // split bands 3-4 off from band 2
+		BMMultiLevelBiquad_processBufferMono(&This->bands3to4, band2, band3, numSamples);
+        
+        // remove bands 3-4 from band 2
+		BMMultiLevelBiquad_processBufferMono(&This->band2, band2, band2, numSamples);
+        
+        // split band 4 off from band 3
+		BMMultiLevelBiquad_processBufferMono(&This->band4, band3, band4, numSamples);
+        
+        // remove band 4 from band 3
+		BMMultiLevelBiquad_processBufferMono(&This->band3, band3, band3, numSamples);
+    }
+	
+	
+	
+	
+	
 
 	/*!
 	 *BMCrossover3way_recombine
@@ -725,6 +758,25 @@ extern "C" {
         vDSP_vadd(band1R,1,band2R,1,outR,1,numSamples);
         vDSP_vadd(band3R,1,outR,1,outR,1,numSamples);
         vDSP_vadd(band4R,1,outR,1,outR,1,numSamples);
+
+	}
+	
+	
+	
+	
+	/*!
+	 *BMCrossover4way_recombineMono
+	 */
+	void BMCrossover4way_recombineMono(const float* band1,
+									   const float* band2,
+									   const float* band3,
+									   const float* band4,
+									   float* out,
+									   size_t numSamples){
+		
+		vDSP_vadd(band1,1,band2,1,out,1,numSamples);
+		vDSP_vadd(band3,1,out,1,out,1,numSamples);
+		vDSP_vadd(band4,1,out,1,out,1,numSamples);
 
 	}
     

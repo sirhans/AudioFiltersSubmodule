@@ -45,6 +45,7 @@ void BMTransientEnveloper_init(BMTransientEnveloper *This, float sampleRate){
     BMDynamicSmoothingFilter_init(&This->attackDSF,
                                   BMTRANS_DYNAMIC_SMOOTHING_SENSITIVITY,
                                   BMTRANS_DYNAMIC_SMOOTHING_MIN_FC,
+								  BMTRANS_DYNAMIC_SMOOTHING_MIN_FC*20.0f,
                                   sampleRate);
     
     /*
@@ -59,6 +60,7 @@ void BMTransientEnveloper_init(BMTransientEnveloper *This, float sampleRate){
     BMDynamicSmoothingFilter_init(&This->attackDSF,
                                   BMTRANS_DYNAMIC_SMOOTHING_SENSITIVITY,
                                   BMTRANS_DYNAMIC_SMOOTHING_MIN_FC,
+								  BMTRANS_DYNAMIC_SMOOTHING_MIN_FC*20.0f,
                                   sampleRate);
 }
 

@@ -3,7 +3,7 @@
 //  BMAudioFilters
 //
 //  Created by Nguyen Minh Tien on 12/26/18.
-//  Copyright © 2018 Hans. All rights reserved.
+//  This file is public domain with no restrictions
 //
 
 #ifndef BMLagrangeInterpolation_h

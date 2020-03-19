@@ -279,13 +279,24 @@ void BMMultiLevelBiquad_setCriticallyDampedLP(BMMultiLevelBiquad* This, double f
  */
 void BMMultiLevelBiquad_setBesselLP(BMMultiLevelBiquad* This, double fc, size_t firstLevel, size_t numLevels);
 
+/*!
+ *BMMultiLevelBiquad_setLowPass6db
+ */
 void BMMultiLevelBiquad_setLowPass6db(BMMultiLevelBiquad* This, double fc, size_t level);
 
+/*!
+*BMMultiLevelBiquad_setHighPass6db
+*/
 void BMMultiLevelBiquad_setHighPass6db(BMMultiLevelBiquad* This, double fc, size_t level);
 
-
+/*!
+*BMMultiLevelBiquad_setLinkwitzRileyLP
+*/
 void BMMultiLevelBiquad_setLinkwitzRileyLP(BMMultiLevelBiquad* This, double fc, size_t level);
 
+/*!
+*BMMultiLevelBiquad_setLinkwitzRileyHP
+*/
 void BMMultiLevelBiquad_setLinkwitzRileyHP(BMMultiLevelBiquad* This, double fc, size_t level);
 
 /*!
