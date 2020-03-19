@@ -15,7 +15,7 @@
 
 
 typedef struct BMFFT {
-    size_t inputLength, outputLength;
+    size_t maxInputLength;
     
     FFTSetup setup;
     DSPSplitComplex fft_input;
@@ -32,14 +32,35 @@ typedef struct BMFFT {
     size_t recursionLevels;
     
     float* hammingWindow;
+    size_t hammingWindowCurrentLength;
 } BMFFT;
 
 
+/*!
+ *BMFFT_init
+ */
+void BMFFT_init(BMFFT *This, size_t maxInputLength);
 
-void BMFFT_init(BMFFT *This, size_t inputLength);
-
+/*!
+ *BMFFT_free
+ */
 void BMFFT_free(BMFFT *This);
 
+
+/*!
+ *BMFFT_complexFFT
+ *
+ * calculates complex output from real-valued input. Only the positive frequency side of the output is returned (from DC to nyquist). Because the DC and Nyquist terms are both real-valued, the Nyquist term is stored in output[0].imag so that the output length can be inputLength/2 rather than inputLength/2 + 1.
+ *
+ * @param This pointer to an uninitialised struct
+ * @param input real valued input array of length inputLength
+ * @param output a complex-valued array of length inputLength / 2
+ * @param inputLength a power of 2 such that 0 < inputLength <= This->maxInputLength
+ */
+void BMFFT_complexFFT(BMFFT *This,
+                      const float* input,
+                      DSPSplitComplex *output,
+                      size_t inputLength);
 
 
 
@@ -51,9 +72,12 @@ void BMFFT_free(BMFFT *This);
  * @param This    pointer to an initialized BMFFT struct
  * @param input   an array of real valued inputs with length = inputLength
  * @param output  an array of real valued output with length = inputLength/2
- * @param inputLength MUST BE EQUAL TO THE LENGTH USED WHEN *This was initialised
+ * @param inputLength MUST BE <= THE maxInputLength GIVEN WHEN *This was initialised
  */
-void BMFFT_absFFTCombinedDCNQ(BMFFT *This, float* input, float* output, size_t inputLength);
+void BMFFT_absFFTCombinedDCNQ(BMFFT *This,
+                              const float* input,
+                              float* output,
+                              size_t inputLength);
 
 
 
@@ -68,7 +92,29 @@ void BMFFT_absFFTCombinedDCNQ(BMFFT *This, float* input, float* output, size_t i
  * @param output  an array of real valued output with length = 1 + inputLength/2
  * @param inputLength MUST BE EQUAL TO THE LENGTH USED WHEN *This was initialised
  */
-void BMFFT_absFFT(BMFFT *This, float* input, float* output, size_t inputLength);
+void BMFFT_absFFT(BMFFT *This,
+                  const float* input,
+                  float* output,
+                  size_t inputLength);
+
+
+
+/*!
+ *BMFFT_absFFTReturnNyquist
+ *
+ * @abstract This function computes the absolute value of the FFT
+ *
+ * @param This    pointer to an initialized BMFFT struct
+ * @param input   an array of real valued inputs with length >= inputLength
+ * @param output  an array of real valued output with length >= inputLength/2
+ * @param inputLength MUST BE EQUAL TO THE LENGTH USED WHEN *This was initialised
+ *
+ * @returns the absolute value of the nyquist term
+ */
+float BMFFT_absFFTReturnNyquist(BMFFT *This,
+                                const float* input,
+                                float* output,
+                                size_t inputLength);
 
 
 
@@ -78,14 +124,17 @@ void BMFFT_absFFT(BMFFT *This, float* input, float* output, size_t inputLength);
 /*!
  *BMFFT_hammingWindow
  *
- * @abstract This function computes the absolute value of the FFT
+ * applies a hamming window to the input and stores the result in output
  *
  * @param This    pointer to an initialized BMFFT struct
  * @param input   an array of real valued inputs with length = numSamples
  * @param output  an array of real valued output with length = numSamples
- * @param numSamples MUST BE EQUAL TO THE LENGTH USED WHEN *This was initialised
+ * @param numSamples must be <= This->maxLength
  */
-void BMFFT_hammingWindow(BMFFT *This, float* input, float* output, size_t numSamples);
+void BMFFT_hammingWindow(BMFFT *This,
+                         const float* input,
+                         float* output,
+                         size_t numSamples);
 
 
 
