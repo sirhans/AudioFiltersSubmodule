@@ -126,6 +126,10 @@ void BMVelvetNoiseDecorrelator_genRandGains(BMVelvetNoiseDecorrelator *This){
 		rt60Gain = BMReverbDelayGainFromRT60(This->rt60, delayTimeInSeconds);
 		This->gainsR[i] *= rt60Gain;
 	}
+    
+    //Last tap gain
+    This->lastTapGainL = This->gainsL[This->numWetTaps+shift-1];
+    This->lastTapGainR = This->gainsR[This->numWetTaps+shift-1];
 	
 	// if there is is a dry tap,
 	// set the balance between all of the wet taps against the single dry tap.
@@ -342,6 +346,9 @@ void BMVelvetNoiseDecorrelator_processBufferStereoWithFinalOutput(BMVelvetNoiseD
     BMMultiTapDelay_processStereoWithFinalOutput(&This->multiTapDelay,
                                                  inputL, inputR,
                                                  outputL, outputR, finalOutputL, finalOutputR, length);
+    //Apply lasttap gain
+    vDSP_vsmul(finalOutputL, 1, &This->lastTapGainL, finalOutputL, 1, length);
+    vDSP_vsmul(finalOutputR, 1, &This->lastTapGainR, finalOutputR, 1, length);
 }
 
 
