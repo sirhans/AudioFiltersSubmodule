@@ -26,13 +26,13 @@ extern "C" {
  * and https://support.apple.com/en-sg/HT201260 (OS X)
  *
  */
-int BM_getOSMajorBuildNumber();
+int BM_getOSMajorBuildNumber(void);
 
 // returns true if running on OS X Mac
-bool BM_isMacOS();
+bool BM_isMacOS(void);
 
 // returns true if running on iOS
-bool BM_isiOS();
+bool BM_isiOS(void);
 
 #ifdef __cplusplus
 }
