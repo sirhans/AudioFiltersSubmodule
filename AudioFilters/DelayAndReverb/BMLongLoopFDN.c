@@ -23,8 +23,19 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySec
 	size_t maxDelaySamples = maxDelaySeconds * sampleRate;
 	
 	// generate random delay times
-	size_t *delayLengths = malloc(sizeof(float)*numDelays);
+	size_t *delayLengths = malloc(sizeof(size_t)*numDelays);
 	BMReverbRandomsInRange(minDelaySamples, maxDelaySamples, delayLengths, numDelays);
+	
+	// allocate the delay times evenly between L and R channels so that each
+	// channel gets some short ones and some long ones
+	size_t *temp = malloc(sizeof(size_t)*numDelays);
+	memcpy(temp,delayLengths,sizeof(size_t)*numDelays);
+	size_t j=0;
+	for(size_t i=0; i<numDelays; i+= 2){
+		delayLengths[j] = temp[i];
+		delayLengths[j+numDelays/2] = temp[i + 1];
+		j++;
+	}
 	
 	// record delay times
 	This->delayTimes = malloc(sizeof(float)*numDelays);
@@ -74,6 +85,9 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySec
 	// randomise the order of the output tap signs in each channel
 	BMLongLoopFDN_randomShuffle(This->tapSigns, numDelays/2);
 	BMLongLoopFDN_randomShuffle(This->tapSigns + numDelays/2, numDelays/2);
+	
+	free(delayLengths);
+	delayLengths = NULL;
 }
 
 
