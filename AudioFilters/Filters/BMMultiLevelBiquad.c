@@ -50,7 +50,7 @@ void BMMultiLevelBiquad_updateNow(BMMultiLevelBiquad *This);
 extern inline void BMMultiLevelBiquad_updateLevels(BMMultiLevelBiquad *This);
 
 // returns true if the operating system supports vDSP_biquadm_SetCoefficentsSingle()
-bool BMMultiLevelBiquad_OSSupportsRealtimeUpdate();
+bool BMMultiLevelBiquad_OSSupportsRealtimeUpdate(void);
 
 /* end internal function declarations */
 

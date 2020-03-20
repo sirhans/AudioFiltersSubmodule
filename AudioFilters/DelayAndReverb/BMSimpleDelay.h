@@ -54,7 +54,12 @@ void BMSimpleDelayStereo_process(BMSimpleDelayStereo *This,
                                  float* outputR,
                                  size_t numSamples);
 
+void BMSimpleDelayMono_free(BMSimpleDelayMono *This);
+void BMSimpleDelayStereo_free(BMSimpleDelayStereo *This);
+
+__attribute__((deprecated("please call BMSimpleDelayMono_free instead")))
 void BMSimpleDelayMono_destroy(BMSimpleDelayMono *This);
+__attribute__((deprecated("please call BMSimpleDelayStereo_free instead")))
 void BMSimpleDelayStereo_destroy(BMSimpleDelayStereo *This);
 
 #endif /* BMSimpleDelay_h */

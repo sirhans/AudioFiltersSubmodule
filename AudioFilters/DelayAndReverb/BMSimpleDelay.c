@@ -118,11 +118,20 @@ void BMSimpleDelayStereo_process(BMSimpleDelayStereo *This,
     }
 }
 
-void BMSimpleDelayMono_destroy(BMSimpleDelayMono *This){
+void BMSimpleDelayMono_free(BMSimpleDelayMono *This){
     TPCircularBufferCleanup(&This->buffer);
 }
 
-void BMSimpleDelayStereo_destroy(BMSimpleDelayStereo *This){
+void BMSimpleDelayStereo_free(BMSimpleDelayStereo *This){
     TPCircularBufferCleanup(&This->bufferL);
     TPCircularBufferCleanup(&This->bufferR);
+}
+
+
+void BMSimpleDelayMono_destroy(BMSimpleDelayMono *This){
+	BMSimpleDelayMono_free(This);
+}
+
+void BMSimpleDelayStereo_destroy(BMSimpleDelayStereo *This){
+	BMSimpleDelayStereo_free(This);
 }
