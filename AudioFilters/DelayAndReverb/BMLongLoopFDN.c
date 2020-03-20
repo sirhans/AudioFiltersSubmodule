@@ -27,7 +27,7 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySec
 	size_t *delayLengths = malloc(sizeof(size_t)*numDelays);
 	BMReverbRandomsInRange(minDelaySamples, maxDelaySamples, delayLengths, numDelays);
 	
-	// allocate the delay times evenly between L and R channels so that each
+	// assign the delay times evenly between L and R channels so that each
 	// channel gets some short ones and some long ones
 	size_t *temp = malloc(sizeof(size_t)*numDelays);
 	memcpy(temp,delayLengths,sizeof(size_t)*numDelays);
@@ -50,7 +50,7 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySec
 	// init the delay buffers
 	This->delays = malloc(numDelays * sizeof(TPCircularBuffer));
 	for(size_t i=1; i<numDelays; i++)
-		TPCircularBufferInit(&This->delays[i], (uint32_t)delayLengths[i]*sizeof(float));
+		TPCircularBufferInit(&This->delays[i], (uint32_t)delayLengths[i] * sizeof(float));
 	
 	// write zeros into the head of each delay buffer to advance it to the proper delay time
 	float *writePointer;
@@ -68,6 +68,10 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySec
 	// how much does the input have to be attenuated to keep unity gain at the output?
 	size_t numDelaysPerChannelWithZeroTap = (numDelays/2) + (hasZeroTaps ? 1 : 0);
 	This->inputAttenuation = sqrt(1.0f / (float)numDelaysPerChannelWithZeroTap);
+	
+	// set matrix attenuation and its inverse
+	This->matrixAttenuation = sqrt(0.5f);
+	This->inverseMatrixAttenuation = 1.0f / This->matrixAttenuation;
 	
 	// init the feedback coefficients
 	float defaultDecayTime = 3.5f;
@@ -138,7 +142,7 @@ void BMLongLoopFDN_free(BMLongLoopFDN *This){
 
 void BMLongLoopFDN_setRT60Decay(BMLongLoopFDN *This, float timeSeconds){
 	for(size_t i=0; i<This->numDelays; i++){
-		This->feedbackCoefficients[i] = BMReverbDelayGainFromRT60(1.0f, This->delayTimes[i]);
+		This->feedbackCoefficients[i] = This->matrixAttenuation * BMReverbDelayGainFromRT60(1.0f, This->delayTimes[i]);
 	}
 }
 
@@ -155,22 +159,32 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 	while(numSamples > 0){
 		size_t samplesProcessing = BM_MIN(numSamples, This->minDelaySamples);
 		
-		// get read pointers for each delay and attenuate the output signal according to the RT60 decay time
+		
+		// attenuate the input to keep the volume unitary between input and output and cache to buffers
+		vDSP_vsmul(inputL, 2, &This->inputAttenuation, This->inputBufferL, 1, samplesProcessing);
+		vDSP_vsmul(inputR, 2, &This->inputAttenuation, This->inputBufferR, 1, samplesProcessing);
+		
+		
+		// set the outputs to zero
+		vDSP_vclr(outputL, 1, samplesProcessing);
+		vDSP_vclr(outputR, 1, samplesProcessing);
+		
+		
+		
+		// get read pointers for each delay and attenuate the output signal
+		// according to the RT60 decay time and the mixing matrix attenuation
 		for(size_t i=0; i<This->numDelays; i++){
-			// get pointers to the output of each delay
+			// get pointers to read and write each delay
 			uint32_t bytesAvailable;
 			This->readPointers[i] = TPCircularBufferTail(&This->delays[i], &bytesAvailable);
+			This->writePointers[i] = TPCircularBufferHead(&This->delays[i], &bytesAvailable);
 			
-			// attenuate to get desired decay time
+			// attenuate the data at the read pointers to get desired decay time
 			vDSP_vsmul(This->readPointers[i], 1, &This->feedbackCoefficients[i], This->readPointers[i], 1, samplesProcessing);
-		}
 		
-		// mix delay outputs into L and R output buffers
-		vDSP_vclr(outputL, 1, samplesProcessing);
-		for(size_t i=0; i<This->numDelays; i++){
-			// we write half the delays to the left output and the other half to the right
+			// we will write the first half the delays to the left output and the second half to the right output
 			float *outputPointer = (i < This->numDelays/2) ? outputL : outputR;
-			// add the ith delay to the output if its tap sign is positive
+			// output mix: add the ith delay to the output if its tap sign is positive
 			if(This->tapSigns[i])
 				vDSP_vadd(outputL, 1, This->readPointers[i], 1, outputPointer, 1, samplesProcessing);
 			// or subtract it if negative
@@ -178,21 +192,18 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 				vDSP_vsub(outputL, 1, This->readPointers[i], 1, outputPointer, 1, samplesProcessing);
 		}
 		
+	
 		// remove the matrix attenuation from the outputs by dividing it out
-		float matrixAttenuation = sqrt(0.5f);
-		float inverseMatrixAttenuation = 1.0 / matrixAttenuation;
-		vDSP_vsmul(outputL, 1, &inverseMatrixAttenuation, outputL, 1, samplesProcessing);
-		vDSP_vsmul(outputR, 1, &inverseMatrixAttenuation, outputR, 1, samplesProcessing);
+		vDSP_vsmul(outputL, 1, &This->inverseMatrixAttenuation, outputL, 1, samplesProcessing);
+		vDSP_vsmul(outputR, 1, &This->inverseMatrixAttenuation, outputR, 1, samplesProcessing);
 		
-		// attenuate the input to keep the volume unitary between input and output and cache to buffers
-		vDSP_vsmul(inputL, 2, &This->inputAttenuation, This->inputBufferL, 1, samplesProcessing);
-		vDSP_vsmul(inputR, 2, &This->inputAttenuation, This->inputBufferR, 1, samplesProcessing);
 		
 		// mix the zero taps to the output if we have them
 		if(This->hasZeroTaps){
 			vDSP_vadd(This->inputBufferL, 1, outputL, 1, outputL, 1, samplesProcessing);
 			vDSP_vadd(This->inputBufferR, 1, outputR, 1, outputR, 1, samplesProcessing);
 		}
+		
 		
 		// apply the mixing matrix and cache to mixing buffers
 		// This is a block circulant matrix of size numDelays consisting of two blocks of size numDelays/2
@@ -212,9 +223,6 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		for(size_t i=0; i<This->numDelays; i++){
 			// mark the delays read
 			TPCircularBufferConsume(&This->delays[i], bytesProcessing);
-			
-			uint32_t bytesAvailable;
-			This->writePointers[i] = TPCircularBufferHead(&This->delays[i], &bytesAvailable);
 		
 			// mix the inputL and inputR into the delay inputs
 			if(i<This->numDelays/2)
@@ -225,6 +233,7 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 			// mark the delays written
 			TPCircularBufferProduce(&This->delays[i], bytesProcessing);
 		}
+		
 		
 		// advance pointers
 		numSamples -= samplesProcessing;
