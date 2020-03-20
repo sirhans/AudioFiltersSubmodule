@@ -346,7 +346,7 @@ void BMMultiLevelBiquad_setBypass(BMMultiLevelBiquad* This, size_t level);
 // set gain in db
 void BMMultiLevelBiquad_setGain(BMMultiLevelBiquad* This, float gain_db);
 
-
+void BMMultiLevelBiquad_setGainInstant(BMMultiLevelBiquad *This, float gain_db);
 /*!
  * BMMultiLevelBiquad_tfMagVector
  *

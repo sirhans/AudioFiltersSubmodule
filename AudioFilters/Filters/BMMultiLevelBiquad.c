@@ -280,6 +280,10 @@ void BMMultiLevelBiquad_setGain(BMMultiLevelBiquad *This, float gain_db){
     BMSmoothGain_setGainDb(&This->gain2, gain_db);
 }
 
+void BMMultiLevelBiquad_setGainInstant(BMMultiLevelBiquad *This, float gain_db){
+    BMSmoothGain_setGainDbInstant(&This->gain, gain_db);
+    BMSmoothGain_setGainDbInstant(&This->gain2, gain_db);
+}
 
 
 

@@ -17,7 +17,7 @@
 
 void BMSimpleDelayMono_init(BMSimpleDelayMono *This, size_t delayTimeInSamples){
     uint32_t dt = (uint32_t)delayTimeInSamples;
-    TPCircularBufferInit(&This->buffer, dt + BM_BUFFER_CHUNK_SIZE);
+    TPCircularBufferInit(&This->buffer, sizeof(float)*(dt + BM_BUFFER_CHUNK_SIZE));
     TPCircularBufferClear(&This->buffer);
     TPCircularBufferProduce(&This->buffer, sizeof(float)*dt);
 }
