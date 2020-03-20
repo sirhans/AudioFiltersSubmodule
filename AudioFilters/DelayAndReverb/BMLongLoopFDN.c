@@ -3,7 +3,7 @@
 //  AUCloudReverb
 //
 //  Created by hans anderson on 3/20/20.
-//  Copyright © 2020 BlueMangoo. All rights reserved.
+//  This file is in the public domain.
 //
 
 #include "BMLongLoopFDN.h"

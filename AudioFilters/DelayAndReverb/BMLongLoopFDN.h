@@ -3,7 +3,7 @@
 //  AUCloudReverb
 //
 //  Created by hans anderson on 3/20/20.
-//  Copyright © 2020 BlueMangoo. All rights reserved.
+//  This file is in the public domain.
 //
 
 #ifndef BMLongLoopFDN_h
@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include "BMSimpleDelay.h"
 #include "TPCircularBuffer.h"
+
 
 typedef struct BMLongLoopFDN{
 	BMSimpleDelayMono *delays;
@@ -23,6 +24,8 @@ typedef struct BMLongLoopFDN{
 	bool hasZeroTaps;
 	bool *tapSigns;
 } BMLongLoopFDN;
+
+
 
 /*!
  *BMLongLoopFDN_init
@@ -36,15 +39,18 @@ typedef struct BMLongLoopFDN{
  */
 void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySeconds, float maxDelaySeconds, bool hasZeroTaps, float sampleRate);
 
+
 /*!
  *BMLongLoopFDN_free
  */
 void BMLongLoopFDN_free(BMLongLoopFDN *This);
 
+
 /*!
  *BMLongLoopFDN_setRT60Decay
  */
 void BMLongLoopFDN_setRT60Decay(BMLongLoopFDN *This, float timeSeconds);
+
 
 /*!
  *BMLongLoopFDN_process
