@@ -400,6 +400,8 @@ void BMAttackShaperSection_processStereo(BMAttackShaperSection *This,
 		
 		// advance pointers
 		inputL += samplesProcessing;
+		outputL += samplesProcessing;
+		inputR += samplesProcessing;
 		outputR += samplesProcessing;
 		numSamples -= samplesProcessing;
 	}
