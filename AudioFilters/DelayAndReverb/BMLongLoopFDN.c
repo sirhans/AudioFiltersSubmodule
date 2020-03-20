@@ -170,6 +170,7 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		 * mix feedback from the previous chunk with input  *
 		 * and process input / output from delays           *
 		 ****************************************************/
+		//
 		uint32_t bytesAvailable;
 		for(size_t i=0; i < This->numDelays; i++){
 			// get the read pointer for feedback buffer # i
@@ -198,6 +199,7 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		/**************************
 		 * mix to L and R outputs *
 		 **************************/
+		//
 		// Note that the output buffers already contain the data for the zero
 		// taps so if we have zero taps in the output then we want to leave
 		// that data there when we mix the feedback in.
@@ -242,9 +244,14 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		}
 		
 		
-		/**************************************************
-		 * apply mixing and write to the feedback buffers  *
-		 ***************************************************/
+		/**********************************************************
+		 * apply mixing matrix and write to the feedback buffers. *
+		 * This is a block-circulant mixing matrix with two       *
+		 * n/2 x n/2 blocks. We implement it efficiently by       *
+		 * applying the first stage of a fast hadamard transform  *
+		 * and rotating the output index by one positin.          *
+		 **********************************************************/
+		//
 		for(size_t i=0; i<This->numDelays; i++){
 			// get the write pointer for feedback buffer # (i+1) % numDelays.
 			// adding +1 to the index rotates the output so that we never write
