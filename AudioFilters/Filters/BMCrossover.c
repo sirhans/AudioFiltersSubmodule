@@ -45,12 +45,12 @@ extern "C" {
                                 numLevels,
                                 sampleRate,
                                 stereo,
-                                false,false);
+                                true,false);
         BMMultiLevelBiquad_init(&This->hp,
                                 numLevels,
                                 sampleRate,
                                 stereo,
-                                false,false);
+                                true,false);
         
         
         BMCrossover_setCutoff(This, cutoff);

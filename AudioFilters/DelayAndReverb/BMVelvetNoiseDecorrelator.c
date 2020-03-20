@@ -84,6 +84,7 @@ void BMVelvetNoiseDecorrelator_initFullSettings(BMVelvetNoiseDecorrelator *This,
 	This->delayLengthsR = calloc(numTaps, sizeof(size_t));
 	This->gainsL = calloc(numTaps, sizeof(float));
 	This->gainsR = calloc(numTaps, sizeof(float));
+    This->tempBuffer = calloc(BM_BUFFER_CHUNK_SIZE, sizeof(float));
 	
 	// init the multi-tap delay in bypass mode
 	size_t maxDelayLenth = ceil(maxDelaySeconds*sampleRate);
@@ -307,6 +308,8 @@ void BMVelvetNoiseDecorrelator_free(BMVelvetNoiseDecorrelator *This){
 	This->gainsL = NULL;
 	free(This->gainsR);
 	This->gainsR = NULL;
+    free(This->tempBuffer);
+    This->tempBuffer = NULL;
 }
 
 

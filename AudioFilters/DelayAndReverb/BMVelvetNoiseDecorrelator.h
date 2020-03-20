@@ -25,6 +25,7 @@ typedef struct BMVelvetNoiseDecorrelator {
     float lastTapGainR;
     bool resetNumTaps;
     bool resetRT60DecayTime;
+    float* tempBuffer;
 } BMVelvetNoiseDecorrelator;
 
 
