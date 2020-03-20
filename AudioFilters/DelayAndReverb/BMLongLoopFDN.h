@@ -34,7 +34,7 @@ typedef struct BMLongLoopFDN{
  * @param numDelays number of delays in the FDN. Must be an even number
  * @param minDelaySeconds the shortest delay time
  * @param maxDelaySeconds longest delay time
- * @param hasZeroTaps set this true to get an output with zero delay and gain adjusted to balance with the other taps
+ * @param hasZeroTaps set this true to get an output tap with zero delay in both channels
  * @param sampleRate audio sample rate
  */
 void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySeconds, float maxDelaySeconds, bool hasZeroTaps, float sampleRate);

@@ -141,8 +141,8 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 						   float *outputL, float *outputR,
 						   size_t numSamples){
 	
-	// we can only process a buffer that's no longer than the shortest delay
 	while(numSamples > 0){
+		// we can only process in chunks that are no longer than the shortest delay
 		size_t samplesProcessing = BM_MIN(numSamples,This->samplesInFeedbackBuffer);
 		
 		// attenuate the left input into the output
@@ -247,6 +247,8 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 			// mark the data written
 			TPCircularBufferProduce(&This->feedbackBuffers[i], (uint32_t)samplesProcessing * sizeof(float));
 		}
+		
+		This->samplesInFeedbackBuffer = samplesProcessing;
 		
 		numSamples -= samplesProcessing;
 		inputL  += samplesProcessing;
