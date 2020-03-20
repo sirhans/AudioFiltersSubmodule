@@ -88,6 +88,8 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySec
 	
 	free(delayLengths);
 	delayLengths = NULL;
+	free(temp);
+	temp = NULL;
 }
 
 
