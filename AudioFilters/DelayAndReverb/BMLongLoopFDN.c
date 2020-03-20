@@ -195,9 +195,9 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		}
 		
 		
-		/***********************
-		 * mix to final output *
-		 ***********************/
+		/**************************
+		 * mix to L and R outputs *
+		 **************************/
 		// Note that the output buffers already contain the data for the zero
 		// taps so if we have zero taps in the output then we want to leave
 		// that data there when we mix the feedback in.
