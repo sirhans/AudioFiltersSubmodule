@@ -18,7 +18,6 @@
 
 void BMCloudReverb_updateDiffusion(BMCloudReverb* This);
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This);
-void BMCloudReverb_updateLoopDelayTime(BMCloudReverb* This,size_t* delayTimeL,size_t* delayTimeR,float* gainL,float* gainR,float baseS);
 void BMCloudReverb_updateLoopGain(BMCloudReverb* This,size_t* delayTimeL,size_t* delayTimeR,float* gainL,float* gainR);
 
 
@@ -87,9 +86,6 @@ void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
     float totalTime = 2.0f;
     BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->loopVND, totalTime, 16, This->decayTime, true, This->sampleRate);
     BMVelvetNoiseDecorrelator_setWetMix(&This->loopVND, 1.0f);
-    
-//    BMCloudReverb_updateLoopDelayTime(This, This->loopDT.bufferL, This->loopDT.bufferR, This->loopGain.bufferL, This->loopGain.bufferR,baseS);
-    
 }
 
 void BMCloudReverb_destroy(BMCloudReverb* This){

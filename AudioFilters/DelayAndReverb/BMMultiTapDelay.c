@@ -290,7 +290,8 @@ void BMMultiTapDelay_processStereoWithFinalOutput(BMMultiTapDelay* delay,
             for (int j=0; j<delay->numTaps; j++) {
                 if(j==delay->numTaps-1){
                     //last tap -> store to lasttap output
-                    vDSP_vsmul(buffer + setting->indices[i][j], 1, &setting->gains[i][j], delay->lastTapOutput[i]+framesProcessed, 1, frameThisTime);
+                    float gain = 1;
+                    vDSP_vsmul(buffer + setting->indices[i][j], 1, &gain, delay->lastTapOutput[i]+framesProcessed, 1, frameThisTime);
                 }
                 vDSP_vsma(buffer + setting->indices[i][j], 1, &setting->gains[i][j], delay->tempBuffer[i], 1, delay->tempBuffer[i], 1, frameThisTime);
 //                printf("indices %zu\n",setting->indices[i][j]);
