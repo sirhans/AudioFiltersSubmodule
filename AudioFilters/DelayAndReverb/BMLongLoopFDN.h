@@ -16,15 +16,25 @@
 typedef struct BMLongLoopFDN{
 	BMSimpleDelayMono *delays;
 	TPCircularBuffer *feedbackBuffers;
-	float *inputBuffer;
+	float **mixingBuffers;
+	float *feedbackCoefficients, *delayTimes;
 	float inputAttenuation;
 	size_t numDelays, samplesInFeedbackBuffer;
+	bool hasZeroTaps;
+	bool *tapSigns;
 } BMLongLoopFDN;
 
 /*!
  *BMLongLoopFDN_init
+ *
+ * @param This pointer to an initialised struct
+ * @param numDelays number of delays in the FDN. Must be an even number
+ * @param minDelaySeconds the shortest delay time
+ * @param maxDelaySeconds longest delay time
+ * @param hasZeroTaps set this true to get an output with zero delay and gain adjusted to balance with the other taps
+ * @param sampleRate audio sample rate
  */
-void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySeconds, float maxDelaySeconds, float sampleRate);
+void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySeconds, float maxDelaySeconds, bool hasZeroTaps, float sampleRate);
 
 /*!
  *BMLongLoopFDN_free
