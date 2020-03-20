@@ -54,6 +54,9 @@ void BMLongLoopFDN_setRT60Decay(BMLongLoopFDN *This, float timeSeconds);
 
 /*!
  *BMLongLoopFDN_process
+ *
+ * That this process function is 100% wet. You must handle wet/dry mix
+ * outside.
  */
 void BMLongLoopFDN_process(BMLongLoopFDN *This,
 						   const float* inputL, const float* inputR,
