@@ -15,12 +15,11 @@
 
 
 typedef struct BMLongLoopFDN{
-	BMSimpleDelayMono *delays;
-	TPCircularBuffer *feedbackBuffers;
-	float **mixingBuffers;
-	float *feedbackCoefficients, *delayTimes;
+	TPCircularBuffer *delays;
+	float **readPointers, **writePointers;
+	float *feedbackCoefficients, *delayTimes, *inputBufferL, *inputBufferR;
 	float inputAttenuation;
-	size_t numDelays, samplesInFeedbackBuffer;
+	size_t numDelays, minDelaySamples;
 	bool hasZeroTaps;
 	bool *tapSigns;
 } BMLongLoopFDN;
