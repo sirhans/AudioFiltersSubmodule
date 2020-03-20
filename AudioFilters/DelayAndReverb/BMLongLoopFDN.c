@@ -179,7 +179,7 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		}
 		
 		
-		/**********************
+		/***********************
 		 * mix to final output *
 		 ***********************/
 		// Note that the output buffers already contain the data for the zero
@@ -230,10 +230,15 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		 * apply mixing and write to the feedback buffers  *
 		 ***************************************************/
 		for(size_t i=0; i<This->numDelays; i++){
-			// get the write pointer for feedback buffer # i
-			float *bufferWritePointer = TPCircularBufferHead(&This->feedbackBuffers[i], &bytesAvailable);
+			// get the write pointer for feedback buffer # (i+1) % numDelays.
+			// adding +1 to the index rotates the output so that we never write
+			// into the same delay the signal came out of. This increases the
+			// time before a signal passes from a given delay back to itself.
+			size_t fbBufferIndex = (int)(i+1) % (int)This->numDelays;
+			float *bufferWritePointer = TPCircularBufferHead(&This->feedbackBuffers[fbBufferIndex], &bytesAvailable);
 			
-			// for the first buffer only, confirm that there is sufficient space to write to the buffer
+			// for the first buffer only, confirm that there is sufficient space
+			// to write to the buffer
 			if(i==0) assert(bytesAvailable >= samplesProcessing * sizeof(float));
 			
 			// for the first numDelays/2 we add the buffer i to buffer i+numDelays/2
