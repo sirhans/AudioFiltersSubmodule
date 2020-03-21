@@ -251,6 +251,10 @@ int BMExportWavFile_exportAudioInt(BMExportWavFile* This,char* filePath,float* d
         ret = -1;
         goto error2;
     }
+	
+	system("pwd");
+	printf(filePath);
+	printf("\n");
 
     /*Free and close everything*/
     error2:

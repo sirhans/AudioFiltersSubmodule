@@ -74,14 +74,14 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySec
 	This->inverseMatrixAttenuation = 1.0f / This->matrixAttenuation;
 	
 	// init the feedback coefficients
-	float defaultDecayTime = 3.5f;
+	float defaultDecayTime = 50.0f;
 	This->feedbackCoefficients = malloc(sizeof(float)*numDelays);
 	BMLongLoopFDN_setRT60Decay(This, defaultDecayTime);
 	
 	// set output tap signs
 	This->tapSigns = malloc(numDelays * sizeof(bool));
 	for(size_t i=0; i<numDelays; i++)
-		This->tapSigns[i] = i % 2 == 2 ? false : true;
+		This->tapSigns[i] = i % 2 == 0 ? false : true;
 	
 	// randomise the order of the output tap signs in each channel
 	BMLongLoopFDN_randomShuffle(This->tapSigns, numDelays/2);
@@ -170,7 +170,6 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		vDSP_vclr(outputR, 1, samplesProcessing);
 		
 		
-		
 		// get read pointers for each delay and attenuate the output signal
 		// according to the RT60 decay time and the mixing matrix attenuation
 		for(size_t i=0; i<This->numDelays; i++){
@@ -186,10 +185,10 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 			float *outputPointer = (i < This->numDelays/2) ? outputL : outputR;
 			// output mix: add the ith delay to the output if its tap sign is positive
 			if(This->tapSigns[i])
-				vDSP_vadd(outputL, 1, This->readPointers[i], 1, outputPointer, 1, samplesProcessing);
+				vDSP_vadd(outputPointer, 1, This->readPointers[i], 1, outputPointer, 1, samplesProcessing);
 			// or subtract it if negative
 			else
-				vDSP_vsub(outputL, 1, This->readPointers[i], 1, outputPointer, 1, samplesProcessing);
+				vDSP_vsub(outputPointer, 1, This->readPointers[i], 1, outputPointer, 1, samplesProcessing);
 		}
 		
 	
