@@ -210,9 +210,9 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 			// shifting the index of the output buffer gives us the block circulant matrix as opposed to block-diagonal
 			size_t shiftedIndex = (i + 1) % This->numDelays;
 			if(i<This->numDelays/2)
-				vDSP_vadd(This->readPointers[i], 1, This->readPointers[i+This->numDelays/2], 1, This->writePointers[shiftedIndex], 1, samplesProcessing);
+				vDSP_vadd(This->readPointers[i], 1, This->readPointers[i+(This->numDelays/2)], 1, This->writePointers[shiftedIndex], 1, samplesProcessing);
 			else
-				vDSP_vsub(This->readPointers[i], 1, This->readPointers[i-(This->numDelays/2)], 1,
+				vDSP_vsub(This->readPointers[i-(This->numDelays/2)], 1, This->readPointers[i], 1,
 						This->writePointers[shiftedIndex], 1, samplesProcessing);
 		}
 		
