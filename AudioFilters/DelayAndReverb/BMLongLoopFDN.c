@@ -49,13 +49,13 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySec
 	
 	// init the delay buffers
 	This->delays = malloc(numDelays * sizeof(TPCircularBuffer));
-	for(size_t i=1; i<numDelays; i++)
+	for(size_t i=0; i<numDelays; i++)
 		TPCircularBufferInit(&This->delays[i], (uint32_t)delayLengths[i] * sizeof(float));
 	
 	// write zeros into the head of each delay buffer to advance it to the proper delay time
 	float *writePointer;
 	uint32_t bytesAvailable;
-	for(size_t i=1; i<numDelays; i++){
+	for(size_t i=0; i<numDelays; i++){
 		writePointer = TPCircularBufferHead(&This->delays[i], &bytesAvailable);
 		vDSP_vclr(writePointer, 1, delayLengths[i]);
 		TPCircularBufferProduce(&This->delays[i], (uint32_t)delayLengths[i] * sizeof(float));
@@ -161,8 +161,8 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		
 		
 		// attenuate the input to keep the volume unitary between input and output and cache to buffers
-		vDSP_vsmul(inputL, 2, &This->inputAttenuation, This->inputBufferL, 1, samplesProcessing);
-		vDSP_vsmul(inputR, 2, &This->inputAttenuation, This->inputBufferR, 1, samplesProcessing);
+		vDSP_vsmul(inputL, 1, &This->inputAttenuation, This->inputBufferL, 1, samplesProcessing);
+		vDSP_vsmul(inputR, 1, &This->inputAttenuation, This->inputBufferR, 1, samplesProcessing);
 		
 		
 		// set the outputs to zero
