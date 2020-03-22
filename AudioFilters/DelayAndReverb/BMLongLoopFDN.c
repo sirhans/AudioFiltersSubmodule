@@ -27,6 +27,12 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySec
 	size_t *delayLengths = malloc(sizeof(size_t)*numDelays);
 	BMReverbRandomsInRange(minDelaySamples, maxDelaySamples, delayLengths, numDelays);
 	
+	// confirm that the delay times are sorted
+	bool sorted = true;
+	for(size_t i=1; i<numDelays; i++)
+		if(delayLengths[i]<delayLengths[i-1]) sorted = false;
+	assert(sorted);
+	
 	// assign the delay times evenly between L and R channels so that each
 	// channel gets some short ones and some long ones
 	size_t *temp = malloc(sizeof(size_t)*numDelays);
@@ -49,8 +55,9 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySec
 	
 	// init the delay buffers
 	This->delays = malloc(numDelays * sizeof(TPCircularBuffer));
-	for(size_t i=0; i<numDelays; i++)
+	for(size_t i=0; i<numDelays; i++){
 		TPCircularBufferInit(&This->delays[i], (uint32_t)delayLengths[i] * sizeof(float));
+	}
 	
 	// write zeros into the head of each delay buffer to advance it to the proper delay time
 	float *writePointer;
@@ -74,7 +81,7 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySec
 	This->inverseMatrixAttenuation = 1.0f / This->matrixAttenuation;
 	
 	// init the feedback coefficients
-	float defaultDecayTime = 50.0f;
+	float defaultDecayTime = 100.0f;
 	This->feedbackCoefficients = malloc(sizeof(float)*numDelays);
 	BMLongLoopFDN_setRT60Decay(This, defaultDecayTime);
 	
@@ -142,7 +149,12 @@ void BMLongLoopFDN_free(BMLongLoopFDN *This){
 
 void BMLongLoopFDN_setRT60Decay(BMLongLoopFDN *This, float timeSeconds){
 	for(size_t i=0; i<This->numDelays; i++){
-		This->feedbackCoefficients[i] = This->matrixAttenuation * BMReverbDelayGainFromRT60(1.0f, This->delayTimes[i]);
+		This->feedbackCoefficients[i] = This->matrixAttenuation * BMReverbDelayGainFromRT60(timeSeconds, This->delayTimes[i]);
+	}
+	
+	// lossless prototype
+	for(size_t i=0; i<This->numDelays; i++){
+		This->feedbackCoefficients[i] = BMReverbDelayGainFromRT60(timeSeconds, This->delayTimes[i]);//sqrt(1.0 / 9.0);
 	}
 }
 
@@ -206,28 +218,32 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		
 		// apply the mixing matrix and cache to mixing buffers
 		// This is a block circulant matrix of size numDelays consisting of two blocks of size numDelays/2
+//		for(size_t i=0; i<This->numDelays; i++){
+//			// shifting the index of the output buffer gives us the block circulant matrix
+//			size_t shiftedIndex = (i + 1) % This->numDelays;
+//			if(i<This->numDelays/2)
+//				vDSP_vadd(This->readPointers[i], 1, This->readPointers[i+(This->numDelays/2)], 1, This->writePointers[shiftedIndex], 1, samplesProcessing);
+//			else
+//				vDSP_vsub(This->readPointers[i], 1, This->readPointers[i-(This->numDelays/2)], 1,
+//						This->writePointers[shiftedIndex], 1, samplesProcessing);
+//		}
 		for(size_t i=0; i<This->numDelays; i++){
-			// shifting the index of the output buffer gives us the block circulant matrix as opposed to block-diagonal
-			size_t shiftedIndex = (i + 1) % This->numDelays;
-			if(i<This->numDelays/2)
-				vDSP_vadd(This->readPointers[i], 1, This->readPointers[i+(This->numDelays/2)], 1, This->writePointers[shiftedIndex], 1, samplesProcessing);
-			else
-				vDSP_vsub(This->readPointers[i-(This->numDelays/2)], 1, This->readPointers[i], 1,
-						This->writePointers[shiftedIndex], 1, samplesProcessing);
+			size_t shiftedIndex = (i)%This->numDelays;
+			memcpy(This->writePointers[shiftedIndex], This->readPointers[i], sizeof(float)*samplesProcessing);
 		}
 		
 
-		// mix inputs with feedback signals and write into the delays
+		// mix inputs with feedback signals and write back into the delays
 		uint32_t bytesProcessing = (uint32_t)samplesProcessing * sizeof(float);
 		for(size_t i=0; i<This->numDelays; i++){
-			// mark the delays read
-			TPCircularBufferConsume(&This->delays[i], bytesProcessing);
-		
 			// mix the inputL and inputR into the delay inputs
 			if(i<This->numDelays/2)
 				vDSP_vadd(This->writePointers[i], 1, This->inputBufferL, 1, This->writePointers[i], 1, samplesProcessing);
 			else
 				vDSP_vadd(This->writePointers[i], 1, This->inputBufferR, 1, This->writePointers[i], 1, samplesProcessing);
+			
+			// mark the delays read
+			TPCircularBufferConsume(&This->delays[i], bytesProcessing);
 		
 			// mark the delays written
 			TPCircularBufferProduce(&This->delays[i], bytesProcessing);

@@ -375,9 +375,9 @@ extern "C" {
 	 *
 	 * @returns true if x is in the first length elements of A
 	 */
-	bool BMReverbContains(size_t *A, size_t x, size_t length){
+	bool BMReverbContains(size_t *A, int64_t x, size_t length){
 		for(size_t i=0; i<length; i++)
-			if(A[i]==x) return true;
+			if((int64_t)A[i]==x) return true;
 		return false;
 	}
     
@@ -402,15 +402,15 @@ extern "C" {
 		// assert that it is possible to generate length unique values
 		assert(max - min >= length);
 		
-		// assign the first value to min and decrement length to reflect the
+		// assign the first value to min and asssign innerLength to reflect the
 		// number of values still left to generate
 		randomOutput[0] = min;
-		length--;
+		size_t innerLength = length - 1;
 		
-		// if length is more than one, assign the last value to max and decrement length
+		// if length is more than one, assign the last value to max and decrement innerLength
 		if(length > 1){
-			randomOutput[length] = max;
-			length--;
+			randomOutput[length-1] = max;
+			innerLength--;
 		}
 		
 		// we will not touch the first and last values from now on so we compute
@@ -421,7 +421,7 @@ extern "C" {
 		
 		// set the remaining values equal to the midpoint
 		size_t midPoint = (innerMax + innerMin) / 2;
-		for(size_t i=0; i<length; i++)
+		for(size_t i=0; i<innerLength; i++)
 			innerOutput[i] = midPoint;
 		
 		// Randomise the positions of the remaining values. The method below
@@ -433,21 +433,21 @@ extern "C" {
 		// possible without affecting the mean, since we have already fixed the
 		// min and max values.
 		size_t spread = innerMax - innerMin;
-		for(size_t i=1; i<length; i++){
+		for(size_t i=1; i<innerLength; i++){
 			// continue attempting random shifts until we find a shift that
 			// stays in bounds and doesn't duplicate any delay lengths
 			bool didShift = false;
 			while(!didShift){
 				// select an element at random
-				size_t randomIndex = arc4random_uniform((uint32_t)length);
+				int64_t randomIndex = arc4random_uniform((uint32_t)innerLength);
 				// generate a random shift in [-spread, spread]
 				int randomShift = (int)arc4random_uniform((uint32_t)spread*2) - (int)spread;
 				
 				// check the validity of the proposed shift on the pair {i,randomIndex}
 				//
 				// can we shift the ith element like this?
-				size_t newLengthForI = innerOutput[i] + randomShift;
-				size_t newLengthForRandomIndex = innerOutput[randomIndex] - randomShift;
+				int64_t newLengthForI = innerOutput[i] + randomShift;
+				int64_t newLengthForRandomIndex = innerOutput[randomIndex] - randomShift;
 				bool canShift = true;
 				// can't shift if randomIndex == i or randomShift == 0
 				if(randomIndex == i || randomShift == 0)
@@ -478,6 +478,13 @@ extern "C" {
         
         // sort the output
         BMInsertionSort_size_t(randomOutput, length);
+		
+//		bool sorted = true;
+//		for(size_t i=1; i<length; i++)
+//			if(randomOutput[i]<randomOutput[i-1]) sorted = false;
+//		if(!sorted)
+//			printf("not sorted\n");
+//		assert(sorted)
 	}
     
 	

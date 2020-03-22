@@ -7,6 +7,7 @@
 //
 
 #include "BMSorting.h"
+#include <stdbool.h>
 
 
 /*!
