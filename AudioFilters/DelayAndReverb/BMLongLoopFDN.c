@@ -56,7 +56,7 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySec
 	// init the delay buffers
 	This->delays = malloc(numDelays * sizeof(TPCircularBuffer));
 	for(size_t i=0; i<numDelays; i++){
-		TPCircularBufferInit(&This->delays[i], (uint32_t)delayLengths[i] * sizeof(float));
+		TPCircularBufferInit(&This->delays[i], 2 * (uint32_t)delayLengths[i] * sizeof(float));
 	}
 	
 	// write zeros into the head of each delay buffer to advance it to the proper delay time
@@ -154,7 +154,7 @@ void BMLongLoopFDN_setRT60Decay(BMLongLoopFDN *This, float timeSeconds){
 	
 	// prototype
 	for(size_t i=0; i<This->numDelays; i++){
-		This->feedbackCoefficients[i] = BMReverbDelayGainFromRT60(timeSeconds, This->delayTimes[i]);//sqrt(1.0 / 9.0);
+		This->feedbackCoefficients[i] =  BMReverbDelayGainFromRT60(timeSeconds, This->delayTimes[i]);
 	}
 }
 
@@ -182,14 +182,29 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		vDSP_vclr(outputR, 1, samplesProcessing);
 		
 		
-		// get read pointers for each delay and attenuate the output signal
-		// according to the RT60 decay time and the mixing matrix attenuation
+		// get read pointers for each delay and limit the number of samples processing
+		// according to what's available in the delays
 		for(size_t i=0; i<This->numDelays; i++){
-			// get pointers to read and write each delay
 			uint32_t bytesAvailable;
+			uint32_t bytesProcessing = (uint32_t)sizeof(float)*(uint32_t)samplesProcessing;
+			// get a read pointer
 			This->readPointers[i] = TPCircularBufferTail(&This->delays[i], &bytesAvailable);
+			// reduce bytesProcessing to not exceed bytesAvailable
+			bytesProcessing = MIN(bytesProcessing,bytesAvailable);
+			// get a write pointer
 			This->writePointers[i] = TPCircularBufferHead(&This->delays[i], &bytesAvailable);
+			// reduce bytesProcessing to not exceed bytesAvailable
+			bytesProcessing = MIN(bytesProcessing,bytesAvailable);
 			
+			// reduce samples processing if the requested number of samples in unavailable
+			samplesProcessing = bytesProcessing / sizeof(float);
+			// printf("samplesProcessing: %zu\n", samplesProcessing);
+		}
+		
+		
+		// attenuate the output signal according to the RT60 decay time and the
+		// mixing matrix attenuation
+		for(size_t i=0; i<This->numDelays; i++){
 			// attenuate the data at the read pointers to get desired decay time
 			vDSP_vsmul(This->readPointers[i], 1, &This->feedbackCoefficients[i], This->readPointers[i], 1, samplesProcessing);
 		
@@ -228,10 +243,14 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 //						This->writePointers[shiftedIndex], 1, samplesProcessing);
 //		}
 		for(size_t i=0; i<This->numDelays; i++){
-			size_t shiftedIndex = (i)%This->numDelays;
+			size_t shiftedIndex = (i+0)%This->numDelays;
 			memcpy(This->writePointers[shiftedIndex], This->readPointers[i], sizeof(float)*samplesProcessing);
-			//memset(This->writePointers[shiftedIndex], 0, sizeof(float)*samplesProcessing);
 		}
+//		for(size_t i=0; i<This->numDelays; i+=2){
+//			size_t shiftedIndex = (i+2) % This->numDelays;
+//			vDSP_vadd(This->readPointers[i], 1, This->readPointers[i+1], 1, This->writePointers[shiftedIndex], 1, samplesProcessing);
+//			vDSP_vsub(This->readPointers[i+1], 1, This->readPointers[i], 1, This->writePointers[shiftedIndex+1], 1, samplesProcessing);
+//		}
 		
 
 		// mix inputs with feedback signals and write back into the delays
