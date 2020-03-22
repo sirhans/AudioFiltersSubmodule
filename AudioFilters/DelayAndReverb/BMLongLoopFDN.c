@@ -182,8 +182,11 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		
 		
 		// attenuate the input to keep the volume unitary between input and output and cache to buffers
-		vDSP_vsmul(inputL, 1, &This->inputAttenuation, This->inputBufferL, 1, samplesProcessing);
-		vDSP_vsmul(inputR, 1, &This->inputAttenuation, This->inputBufferR, 1, samplesProcessing);
+		float inputBalance = 0.75;
+		float leftAttenuation = This->inputAttenuation * sqrt(inputBalance * 2.0);
+		vDSP_vsmul(inputL, 1, &leftAttenuation, This->inputBufferL, 1, samplesProcessing);
+		float rightAttenuation = This->inputAttenuation * sqrt((1.0-inputBalance) * 2.0);
+		vDSP_vsmul(inputR, 1, &rightAttenuation, This->inputBufferR, 1, samplesProcessing);
 		
 		
 		// set the outputs to zero
