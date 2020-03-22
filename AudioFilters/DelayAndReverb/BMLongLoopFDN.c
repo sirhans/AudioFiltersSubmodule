@@ -152,7 +152,7 @@ void BMLongLoopFDN_setRT60Decay(BMLongLoopFDN *This, float timeSeconds){
 		This->feedbackCoefficients[i] = This->matrixAttenuation * BMReverbDelayGainFromRT60(timeSeconds, This->delayTimes[i]);
 	}
 	
-	// lossless prototype
+	// prototype
 	for(size_t i=0; i<This->numDelays; i++){
 		This->feedbackCoefficients[i] = BMReverbDelayGainFromRT60(timeSeconds, This->delayTimes[i]);//sqrt(1.0 / 9.0);
 	}
@@ -230,6 +230,7 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		for(size_t i=0; i<This->numDelays; i++){
 			size_t shiftedIndex = (i)%This->numDelays;
 			memcpy(This->writePointers[shiftedIndex], This->readPointers[i], sizeof(float)*samplesProcessing);
+			//memset(This->writePointers[shiftedIndex], 0, sizeof(float)*samplesProcessing);
 		}
 		
 
