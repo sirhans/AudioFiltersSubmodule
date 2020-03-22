@@ -18,7 +18,7 @@ typedef struct BMLongLoopFDN{
 	TPCircularBuffer *delays;
 	float **readPointers, **writePointers, **mixBuffers;
 	float *feedbackCoefficients, *delayTimes, *inputBufferL, *inputBufferR;
-	float inputAttenuation, matrixAttenuation, inverseMatrixAttenuation;
+	float inputAttenuation, matrixAttenuation, inverseMatrixAttenuation, inputPan;
 	size_t numDelays, minDelaySamples;
 	bool hasZeroTaps;
 	bool *tapSigns;
@@ -49,6 +49,18 @@ void BMLongLoopFDN_free(BMLongLoopFDN *This);
  *BMLongLoopFDN_setRT60Decay
  */
 void BMLongLoopFDN_setRT60Decay(BMLongLoopFDN *This, float timeSeconds);
+
+
+/*!
+ *BMLongLoopFDN_setInputBalance
+ *
+ * panning the input creates a side-to-side rocking in the impulse response
+ *
+ * @param This pointer to an initialised struct
+ * @param pan01 0 is hard left pan and 1 is hard right. 0.5 is centre
+ */
+void BMLongLoopFDN_setInputPan(BMLongLoopFDN *This, float pan01);
+
 
 
 /*!

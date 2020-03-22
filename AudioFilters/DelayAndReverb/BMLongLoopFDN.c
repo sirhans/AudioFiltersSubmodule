@@ -99,6 +99,8 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySec
 	BMLongLoopFDN_randomShuffle(This->tapSigns, numDelays/2);
 	BMLongLoopFDN_randomShuffle(This->tapSigns + numDelays/2, numDelays/2);
 	
+	This->inputPan = 0.2;
+	
 	free(delayLengths);
 	delayLengths = NULL;
 	free(temp);
@@ -170,6 +172,13 @@ void BMLongLoopFDN_setRT60Decay(BMLongLoopFDN *This, float timeSeconds){
 
 
 
+void BMLongLoopFDN_setInputPan(BMLongLoopFDN *This, float pan01){
+	assert(0.0f <= pan01 && pan01 <= 1.0f);
+	This->inputPan = pan01;
+}
+
+
+
 
 void BMLongLoopFDN_process(BMLongLoopFDN *This,
 						   const float* inputL, const float* inputR,
@@ -182,10 +191,9 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		
 		
 		// attenuate the input to keep the volume unitary between input and output and cache to buffers
-		float inputBalance = 0.75;
-		float leftAttenuation = This->inputAttenuation * sqrt(inputBalance * 2.0);
+		float leftAttenuation = This->inputAttenuation * sqrt((1.0 - This->inputPan) * 2.0);
 		vDSP_vsmul(inputL, 1, &leftAttenuation, This->inputBufferL, 1, samplesProcessing);
-		float rightAttenuation = This->inputAttenuation * sqrt((1.0-inputBalance) * 2.0);
+		float rightAttenuation = This->inputAttenuation * sqrt(This->inputPan * 2.0);
 		vDSP_vsmul(inputR, 1, &rightAttenuation, This->inputBufferR, 1, samplesProcessing);
 		
 		
