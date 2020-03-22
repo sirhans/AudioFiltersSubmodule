@@ -44,6 +44,11 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySec
 		j++;
 	}
 	
+	This->mixBuffers = malloc(sizeof(float*) * This->numDelays);
+	This->mixBuffers[0] = malloc(sizeof(float) * This->numDelays * minDelaySamples);
+	for(size_t i=1; i<numDelays; i++)
+		This->mixBuffers[i] = This->mixBuffers[0] + i * minDelaySamples;
+	
 	// record delay times
 	This->delayTimes = malloc(sizeof(float)*numDelays);
 	for(size_t i=0; i<numDelays; i++)
@@ -77,7 +82,7 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySec
 	This->inputAttenuation = sqrt(1.0f / (float)numDelaysPerChannelWithZeroTap);
 	
 	// set matrix attenuation and its inverse
-	This->matrixAttenuation = sqrt(0.5f);
+	This->matrixAttenuation = sqrt(1.0/4.0);
 	This->inverseMatrixAttenuation = 1.0f / This->matrixAttenuation;
 	
 	// init the feedback coefficients
@@ -141,6 +146,10 @@ void BMLongLoopFDN_free(BMLongLoopFDN *This){
 	
 	free(This->inputBufferL);
 	This->inputBufferL = NULL;
+	
+	free(This->mixBuffers[0]);
+	free(This->mixBuffers);
+	This->mixBuffers = NULL;
 }
 
 
@@ -152,10 +161,10 @@ void BMLongLoopFDN_setRT60Decay(BMLongLoopFDN *This, float timeSeconds){
 		This->feedbackCoefficients[i] = This->matrixAttenuation * BMReverbDelayGainFromRT60(timeSeconds, This->delayTimes[i]);
 	}
 	
-	// prototype
-	for(size_t i=0; i<This->numDelays; i++){
-		This->feedbackCoefficients[i] =  BMReverbDelayGainFromRT60(timeSeconds, This->delayTimes[i]);
-	}
+//	// prototype
+//	for(size_t i=0; i<This->numDelays; i++){
+//		This->feedbackCoefficients[i] =  BMReverbDelayGainFromRT60(timeSeconds, This->delayTimes[i]);
+//	}
 }
 
 
@@ -242,15 +251,29 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 //				vDSP_vsub(This->readPointers[i], 1, This->readPointers[i-(This->numDelays/2)], 1,
 //						This->writePointers[shiftedIndex], 1, samplesProcessing);
 //		}
-		for(size_t i=0; i<This->numDelays; i++){
-			size_t shiftedIndex = (i+0)%This->numDelays;
-			memcpy(This->writePointers[shiftedIndex], This->readPointers[i], sizeof(float)*samplesProcessing);
-		}
+//		for(size_t i=0; i<This->numDelays; i++){
+//			size_t shiftedIndex = (i+0)%This->numDelays;
+//			memcpy(This->writePointers[shiftedIndex], This->readPointers[i], sizeof(float)*samplesProcessing);
+//		}
 //		for(size_t i=0; i<This->numDelays; i+=2){
 //			size_t shiftedIndex = (i+2) % This->numDelays;
 //			vDSP_vadd(This->readPointers[i], 1, This->readPointers[i+1], 1, This->writePointers[shiftedIndex], 1, samplesProcessing);
 //			vDSP_vsub(This->readPointers[i+1], 1, This->readPointers[i], 1, This->writePointers[shiftedIndex+1], 1, samplesProcessing);
 //		}
+		for(size_t i=0; i<This->numDelays; i+=4){
+			// fast hadamard transform stage 1
+			vDSP_vadd(This->readPointers[i], 1, This->readPointers[i+2], 1, This->mixBuffers[i], 1, samplesProcessing);
+			vDSP_vadd(This->readPointers[i+1], 1, This->readPointers[i+3], 1, This->mixBuffers[i+1], 1, samplesProcessing);
+			vDSP_vsub(This->readPointers[i+2], 1, This->readPointers[i], 1, This->mixBuffers[i+2], 1, samplesProcessing);
+			vDSP_vsub(This->readPointers[i+3], 1, This->readPointers[i+1], 1, This->mixBuffers[i+3], 1, samplesProcessing);
+			
+			// FHT stage 2 with rotation
+			size_t shiftedIndex = (i+4) % This->numDelays;
+			vDSP_vadd(This->mixBuffers[i], 1, This->mixBuffers[i+1], 1, This->writePointers[shiftedIndex], 1, samplesProcessing);
+			vDSP_vsub(This->mixBuffers[i+1], 1, This->mixBuffers[i], 1, This->writePointers[shiftedIndex+1], 1, samplesProcessing);
+			vDSP_vadd(This->mixBuffers[i+2], 1, This->mixBuffers[i+3], 1, This->writePointers[shiftedIndex+2], 1, samplesProcessing);
+			vDSP_vsub(This->mixBuffers[i+3], 1, This->mixBuffers[i+2], 1, This->writePointers[shiftedIndex+3], 1, samplesProcessing);
+		}
 		
 
 		// mix inputs with feedback signals and write back into the delays

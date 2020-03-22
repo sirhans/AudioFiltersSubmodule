@@ -16,7 +16,7 @@
 
 typedef struct BMLongLoopFDN{
 	TPCircularBuffer *delays;
-	float **readPointers, **writePointers;
+	float **readPointers, **writePointers, **mixBuffers;
 	float *feedbackCoefficients, *delayTimes, *inputBufferL, *inputBufferR;
 	float inputAttenuation, matrixAttenuation, inverseMatrixAttenuation;
 	size_t numDelays, minDelaySamples;
