@@ -12,8 +12,8 @@
 void BMLongLoopFDN_randomShuffle(bool* A, size_t length);
 
 void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySeconds, float maxDelaySeconds, bool hasZeroTaps, float sampleRate){
-	// require an even number of delays
-	assert(numDelays % 2 == 0);
+	// require the number of delays to be divisible by 4
+	assert(numDelays % 4 == 0);
 	
 	This->numDelays = numDelays;
 	This->hasZeroTaps = hasZeroTaps;
