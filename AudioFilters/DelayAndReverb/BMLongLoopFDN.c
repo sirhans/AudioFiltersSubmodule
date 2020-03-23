@@ -23,6 +23,10 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	assert(numDelays % 2 == 0);
 	// feedback must be done in whole blocks in the mixing matrix
 	assert(feedbackShift % blockSize == 0);
+	// block size can not exceed network size
+	assert(blockSize <= numDelays);
+	// numDelays must be divisible by blockSize
+	assert(numDelays % blockSize == 0);
 	
 	This->blockSize = blockSize;
 	This->feedbackShift = feedbackShift;
