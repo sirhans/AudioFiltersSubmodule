@@ -8,6 +8,9 @@
 
 #include "BMLongLoopFDN.h"
 #include "BMReverb.h"
+#include "BMIntegerMath.h"
+
+#define BMLLFDN_MAX_BLOCK_SIZE 8
 
 void BMLongLoopFDN_randomShuffle(bool* A, size_t length);
 
@@ -19,10 +22,14 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 						size_t blockSize,
 						size_t feedbackShiftByBlock,
 						float sampleRate){
-	// require an even number of delays
-	assert(numDelays % 2 == 0);
+	// require block size to be a power of two
+	assert(isPowerOfTwo(blockSize));
+	// requre block size to be within the max size limit
+	assert(1 <= blockSize && blockSize <= BMLLFDN_MAX_BLOCK_SIZE);
 	// block size can not exceed network size
 	assert(blockSize <= numDelays);
+	// require an even number of delays
+	assert(numDelays % 2 == 0);
 	// numDelays must be divisible by blockSize
 	assert(numDelays % blockSize == 0);
 	
