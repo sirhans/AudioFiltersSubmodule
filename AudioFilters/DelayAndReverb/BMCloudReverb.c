@@ -58,7 +58,7 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     This->lsGain = 0;
     BMMultiLevelBiquad_setLowShelf(&This->biquadFilter, Filter_LS_FC, This->lsGain, Filter_Level_Lowshelf);
     
-    BMMultiLevelBiquad_setGainInstant(&This->biquadFilter,38);
+    BMMultiLevelBiquad_setGainInstant(&This->biquadFilter,40);
     
     //VND
     float totalS = 0.8f;
