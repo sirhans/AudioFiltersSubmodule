@@ -17,19 +17,17 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 						float maxDelaySeconds,
 						bool hasZeroTaps,
 						size_t blockSize,
-						size_t feedbackShift,
+						size_t feedbackShiftByBlock,
 						float sampleRate){
 	// require an even number of delays
 	assert(numDelays % 2 == 0);
-	// feedback must be done in whole blocks in the mixing matrix
-	assert(feedbackShift % blockSize == 0);
 	// block size can not exceed network size
 	assert(blockSize <= numDelays);
 	// numDelays must be divisible by blockSize
 	assert(numDelays % blockSize == 0);
 	
 	This->blockSize = blockSize;
-	This->feedbackShift = feedbackShift;
+	This->feedbackShiftByDelay = feedbackShiftByBlock * blockSize;
 	
 	// set the matrix attenuation and inverse attenuation
 	This->matrixAttenuation = sqrt(1.0/(float)blockSize);
@@ -277,17 +275,17 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		// apply the mixing matrix and write to write pointers
 		if(This->blockSize == 1){
 			for(size_t i=0; i<This->numDelays; i++){
-				size_t shift = (i+This->feedbackShift) % This->numDelays;
+				size_t shift = (i+This->feedbackShiftByDelay) % This->numDelays;
 				memcpy(wp[shift],rp[i],sizeof(float)*samplesProcessing);
 			}
 		}
 		if(This->blockSize == 2){
-			for(size_t i=0; i<This->numDelays; i++){
-				size_t shift = (i+This->feedbackShift) % This->numDelays;
+			for(size_t i=0; i<This->numDelays; i+=2){
+				size_t shift = (i+This->feedbackShiftByDelay) % This->numDelays;
 				
 				// fast hadamard transform stage 1
 				vDSP_vadd(rp[i+0],1,rp[i+1],1,wp[shift+0],1,samplesProcessing);
-				vDSP_vsub(rp[i+1],1,rp[i+0],1,wp[shift+0],1,samplesProcessing);
+				vDSP_vsub(rp[i+1],1,rp[i+0],1,wp[shift+1],1,samplesProcessing);
 			}
 		}
 		if(This->blockSize == 4){
@@ -299,7 +297,7 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 				vDSP_vsub(rp[i+3], 1, rp[i+1], 1, mb[i+3], 1, samplesProcessing);
 				
 				// fast hadamard transform stage 2 with rotation
-				size_t shift = (i+This->feedbackShift) % This->numDelays;
+				size_t shift = (i+This->feedbackShiftByDelay) % This->numDelays;
 				vDSP_vadd(mb[i+0], 1, mb[i+1], 1, wp[shift+0], 1, samplesProcessing);
 				vDSP_vsub(mb[i+1], 1, mb[i+0], 1, wp[shift+1], 1, samplesProcessing);
 				vDSP_vadd(mb[i+2], 1, mb[i+3], 1, wp[shift+2], 1, samplesProcessing);
@@ -329,7 +327,7 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 				vDSP_vsub(wp[i+7], 1, wp[i+5], 1, mb[i+7], 1, samplesProcessing);
 				
 				// fast hadamard transform stage 3 with rotation
-				size_t shift = (i+This->feedbackShift) % This->numDelays;
+				size_t shift = (i + This->feedbackShiftByDelay) % This->numDelays;
 				vDSP_vadd(mb[i+0], 1, mb[i+1], 1, wp[shift+0], 1, samplesProcessing);
 				vDSP_vsub(mb[i+1], 1, mb[i+0], 1, wp[shift+1], 1, samplesProcessing);
 				vDSP_vadd(mb[i+2], 1, mb[i+3], 1, wp[shift+2], 1, samplesProcessing);

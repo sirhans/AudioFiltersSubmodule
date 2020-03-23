@@ -20,7 +20,7 @@ typedef struct BMLongLoopFDN{
 	float *feedbackCoefficients, *delayTimes, *inputBufferL, *inputBufferR;
 	float inputAttenuation, matrixAttenuation, inverseMatrixAttenuation, inputPan;
 	bool *tapSigns;
-	size_t numDelays, minDelaySamples, blockSize, feedbackShift;
+	size_t numDelays, minDelaySamples, blockSize, feedbackShiftByDelay;
 	bool hasZeroTaps;
 } BMLongLoopFDN;
 
@@ -35,7 +35,7 @@ typedef struct BMLongLoopFDN{
  * @param maxDelaySeconds longest delay time
  * @param hasZeroTaps set this true to get an output tap with zero delay in both channels
  * @param blockSize set n={1,2,4,8} for nxn sized blocks in the mixing matrix
- * @param feedbackShift the nth delay feeds back to the n+feedbackShift delay. feedbackShift must be a multiple of blockSize
+ * @param feedbackShiftByBlock the nth block feeds back to the n+feedbackShift block.
  * @param sampleRate audio sample rate
  */
 void BMLongLoopFDN_init(BMLongLoopFDN *This,
@@ -44,7 +44,7 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 						float maxDelaySeconds,
 						bool hasZeroTaps,
 						size_t blockSize,
-						size_t feedbackShift,
+						size_t feedbackShiftByBlock,
 						float sampleRate);
 
 
