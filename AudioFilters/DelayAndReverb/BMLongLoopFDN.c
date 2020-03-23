@@ -37,7 +37,7 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	This->feedbackShiftByDelay = feedbackShiftByBlock * blockSize;
 	
 	// set the matrix attenuation and inverse attenuation
-	This->matrixAttenuation = sqrt(1.0/(float)blockSize);
+	This->matrixAttenuation = sqrt(1.0f / (float)blockSize);
 	This->inverseMatrixAttenuation = 1.0f / This->matrixAttenuation;
 	
 	This->numDelays = numDelays;
@@ -103,8 +103,12 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	This->writePointers = malloc(sizeof(float*) * numDelays);
 	
 	// how much does the input have to be attenuated to keep unity gain at the output?
-	size_t numDelaysPerChannelWithZeroTap = (numDelays/2) + (hasZeroTaps ? 1 : 0);
-	This->inputAttenuation = sqrt(1.0f / (float)numDelaysPerChannelWithZeroTap);
+	size_t numInputsPerChannelWithZeroTap;
+	if(This->feedbackShiftByDelay > 0)
+		numInputsPerChannelWithZeroTap = This->blockSize + (hasZeroTaps ? 1 : 0);
+	else
+		numInputsPerChannelWithZeroTap = This->numDelays/2 + (hasZeroTaps ? 1 : 0);
+	This->inputAttenuation = sqrt(1.0f / (float)numInputsPerChannelWithZeroTap);
 	
 	// init the feedback coefficients
 	float defaultDecayTime = 100.0f;
@@ -240,13 +244,14 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 			// reduce samples processing if the requested number of samples in unavailable
 			samplesProcessing = bytesProcessing / sizeof(float);
 			
-			if(samplesProcessing < This->minDelaySamples)
-				printf("processing short\n");
+			if(samplesProcessing < This->minDelaySamples && numSamples > samplesProcessing)
+				printf("processing short: %zu\n", samplesProcessing);
 		}
 		
 		
-		// attenuate the output signal according to the RT60 decay time and the
+		// 1. attenuate the output signal according to the RT60 decay time and the
 		// mixing matrix attenuation
+		// 2. mix output to outputL and outputR
 		for(size_t i=0; i<This->numDelays; i++){
 			// attenuate the data at the read pointers to get desired decay time
 			vDSP_vsmul(This->readPointers[i], 1, &This->feedbackCoefficients[i], This->readPointers[i], 1, samplesProcessing);
@@ -273,11 +278,13 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 			vDSP_vadd(This->inputBufferR, 1, outputR, 1, outputR, 1, samplesProcessing);
 		}
 		
+		
 		// rename some buffers to shorten the code in the following sections:
 		float **wp, **rp, **mb;
 		wp = This->writePointers;
 		rp = This->readPointers;
 		mb = This->mixBuffers;
+		
 		
 		// apply the mixing matrix and write to write pointers
 		if(This->blockSize == 1){
@@ -350,11 +357,22 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		// mix inputs with feedback signals and write back into the delays
 		uint32_t bytesProcessing = (uint32_t)samplesProcessing * sizeof(float);
 		for(size_t i=0; i<This->numDelays; i++){
-			// mix the inputL and inputR into the delay inputs
-			if(i<This->numDelays/2)
-				vDSP_vadd(This->writePointers[i], 1, This->inputBufferL, 1, This->writePointers[i], 1, samplesProcessing);
-			else
-				vDSP_vadd(This->writePointers[i], 1, This->inputBufferR, 1, This->writePointers[i], 1, samplesProcessing);
+			// if we are circulating by block, input only to the first block
+			if(This->feedbackShiftByDelay > 0){
+				// mix the inputL and inputR into the delay inputs
+				if(i<This->blockSize)
+					vDSP_vadd(This->writePointers[i], 1, This->inputBufferL, 1, This->writePointers[i], 1, samplesProcessing);
+				else if(This->numDelays/2 <= i && i < This->numDelays/2 + This->blockSize)
+					vDSP_vadd(This->writePointers[i], 1, This->inputBufferR, 1, This->writePointers[i], 1, samplesProcessing);
+			}
+			// if each block feeds back to itself, input to all blocks
+			else {
+				// mix the inputL and inputR into the delay inputs
+				if(i<This->numDelays/2)
+					vDSP_vadd(This->writePointers[i], 1, This->inputBufferL, 1, This->writePointers[i], 1, samplesProcessing);
+				else
+					vDSP_vadd(This->writePointers[i], 1, This->inputBufferR, 1, This->writePointers[i], 1, samplesProcessing);
+			}
 			
 			// mark the delays read
 			TPCircularBufferConsume(&This->delays[i], bytesProcessing);
