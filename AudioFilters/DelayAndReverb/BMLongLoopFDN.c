@@ -81,7 +81,7 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	// init the delay buffers
 	This->delays = malloc(numDelays * sizeof(TPCircularBuffer));
 	for(size_t i=0; i<numDelays; i++){
-		TPCircularBufferInit(&This->delays[i], 2 * (uint32_t)delayLengths[i] * sizeof(float));
+		TPCircularBufferInit(&This->delays[i], ((uint32_t)delayLengths[i] + (uint32_t)minDelaySamples) * sizeof(float));
 	}
 	
 	// write zeros into the head of each delay buffer to advance it to the proper delay time
@@ -234,7 +234,9 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 			
 			// reduce samples processing if the requested number of samples in unavailable
 			samplesProcessing = bytesProcessing / sizeof(float);
-			// printf("samplesProcessing: %zu\n", samplesProcessing);
+			
+			if(samplesProcessing < This->minDelaySamples)
+				printf("processing short\n");
 		}
 		
 		
