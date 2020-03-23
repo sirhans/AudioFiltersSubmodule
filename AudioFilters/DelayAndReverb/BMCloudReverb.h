@@ -16,6 +16,7 @@
 #include "BMSimpleDelay.h"
 #include "BMWetDryMixer.h"
 #include "BMSmoothGain.h"
+#include "BMLongLoopFDN.h"
 
 typedef struct BMStereoBuffer{
     void* bufferL;
@@ -31,7 +32,8 @@ typedef struct BMCloudReverb {
     BMPitchShiftDelay pitchDelay;
     
     //Loopdelay
-    BMVelvetNoiseDecorrelator loopVND;
+//    BMVelvetNoiseDecorrelator loopVND;
+    BMLongLoopFDN loopFND;
     
     BMWetDryMixer reverbMixer;
     
