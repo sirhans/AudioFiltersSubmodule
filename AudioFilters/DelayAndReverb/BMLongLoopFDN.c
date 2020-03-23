@@ -11,9 +11,32 @@
 
 void BMLongLoopFDN_randomShuffle(bool* A, size_t length);
 
-void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySeconds, float maxDelaySeconds, bool hasZeroTaps, float sampleRate){
+void BMLongLoopFDN_init(BMLongLoopFDN *This,
+						size_t numDelays,
+						float minDelaySeconds,
+						float maxDelaySeconds,
+						bool hasZeroTaps,
+						enum BMLLFDNMixingMatrixBlockSize blockSize,
+						enum BMLLFDNMixingMatrixBlockArrangement blockArrangement,
+						float sampleRate){
 	// require an even number of delays
 	assert(numDelays % 2 == 0);
+	
+	This->blockSize = blockSize;
+	This->blockArrangement = blockArrangement;
+	
+	// set the matrix attenuation
+	if(blockSize == BMMM_1x1){
+		This->matrixAttenuation = 1.0;
+	}
+	if(blockSize == BMMM_2x2){
+		This->matrixAttenuation = sqrt(1.0/2.0);
+	}
+	if(blockSize == BMMM_4x4){
+		This->matrixAttenuation = sqrt(1.0/4.0);
+	}
+	
+	This->inverseMatrixAttenuation = 1.0f / This->matrixAttenuation;
 	
 	This->numDelays = numDelays;
 	This->hasZeroTaps = hasZeroTaps;
@@ -68,10 +91,6 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This, size_t numDelays, float minDelaySec
 	// how much does the input have to be attenuated to keep unity gain at the output?
 	size_t numDelaysPerChannelWithZeroTap = (numDelays/2) + (hasZeroTaps ? 1 : 0);
 	This->inputAttenuation = sqrt(1.0f / (float)numDelaysPerChannelWithZeroTap);
-	
-	// set matrix attenuation and its inverse
-	This->matrixAttenuation = sqrt(0.5f);
-	This->inverseMatrixAttenuation = 1.0f / This->matrixAttenuation;
 	
 	// init the feedback coefficients
 	float defaultDecayTime = 3.5f;
