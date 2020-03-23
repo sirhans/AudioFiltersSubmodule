@@ -16,26 +16,19 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 						float minDelaySeconds,
 						float maxDelaySeconds,
 						bool hasZeroTaps,
-						enum BMLLFDNMixingMatrixBlockSize blockSize,
-						enum BMLLFDNMixingMatrixBlockArrangement blockArrangement,
+						size_t blockSize,
+						size_t feedbackShift,
 						float sampleRate){
 	// require an even number of delays
 	assert(numDelays % 2 == 0);
+	// feedback must be done in whole blocks in the mixing matrix
+	assert(feedbackShift % blockSize == 0);
 	
 	This->blockSize = blockSize;
-	This->blockArrangement = blockArrangement;
+	This->feedbackShift = feedbackShift;
 	
-	// set the matrix attenuation
-	if(blockSize == BMMM_1x1){
-		This->matrixAttenuation = 1.0;
-	}
-	if(blockSize == BMMM_2x2){
-		This->matrixAttenuation = sqrt(1.0/2.0);
-	}
-	if(blockSize == BMMM_4x4){
-		This->matrixAttenuation = sqrt(1.0/4.0);
-	}
-	
+	// set the matrix attenuation and inverse attenuation
+	This->matrixAttenuation = sqrt(1.0/(float)blockSize);
 	This->inverseMatrixAttenuation = 1.0f / This->matrixAttenuation;
 	
 	This->numDelays = numDelays;
@@ -269,40 +262,77 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 			vDSP_vadd(This->inputBufferR, 1, outputR, 1, outputR, 1, samplesProcessing);
 		}
 		
+		// rename some buffers to shorten the code in the following sections:
+		float **wp, **rp, **mb;
+		wp = This->writePointers;
+		rp = This->readPointers;
+		mb = This->mixBuffers;
 		
-		// apply the mixing matrix and cache to mixing buffers
-		// This is a block circulant matrix of size numDelays consisting of two blocks of size numDelays/2
-//		for(size_t i=0; i<This->numDelays; i++){
-//			// shifting the index of the output buffer gives us the block circulant matrix
-//			size_t shiftedIndex = (i + 1) % This->numDelays;
-//			if(i<This->numDelays/2)
-//				vDSP_vadd(This->readPointers[i], 1, This->readPointers[i+(This->numDelays/2)], 1, This->writePointers[shiftedIndex], 1, samplesProcessing);
-//			else
-//				vDSP_vsub(This->readPointers[i], 1, This->readPointers[i-(This->numDelays/2)], 1,
-//						This->writePointers[shiftedIndex], 1, samplesProcessing);
-//		}
-//		for(size_t i=0; i<This->numDelays; i++){
-//			size_t shiftedIndex = (i+0)%This->numDelays;
-//			memcpy(This->writePointers[shiftedIndex], This->readPointers[i], sizeof(float)*samplesProcessing);
-//		}
-//		for(size_t i=0; i<This->numDelays; i+=2){
-//			size_t shiftedIndex = (i+2) % This->numDelays;
-//			vDSP_vadd(This->readPointers[i], 1, This->readPointers[i+1], 1, This->writePointers[shiftedIndex], 1, samplesProcessing);
-//			vDSP_vsub(This->readPointers[i+1], 1, This->readPointers[i], 1, This->writePointers[shiftedIndex+1], 1, samplesProcessing);
-//		}
-		for(size_t i=0; i<This->numDelays; i+=4){
-			// fast hadamard transform stage 1
-			vDSP_vadd(This->readPointers[i], 1, This->readPointers[i+2], 1, This->mixBuffers[i], 1, samplesProcessing);
-			vDSP_vadd(This->readPointers[i+1], 1, This->readPointers[i+3], 1, This->mixBuffers[i+1], 1, samplesProcessing);
-			vDSP_vsub(This->readPointers[i+2], 1, This->readPointers[i], 1, This->mixBuffers[i+2], 1, samplesProcessing);
-			vDSP_vsub(This->readPointers[i+3], 1, This->readPointers[i+1], 1, This->mixBuffers[i+3], 1, samplesProcessing);
-			
-			// FHT stage 2 with rotation
-			size_t shiftedIndex = (i+4) % This->numDelays;
-			vDSP_vadd(This->mixBuffers[i], 1, This->mixBuffers[i+1], 1, This->writePointers[shiftedIndex], 1, samplesProcessing);
-			vDSP_vsub(This->mixBuffers[i+1], 1, This->mixBuffers[i], 1, This->writePointers[shiftedIndex+1], 1, samplesProcessing);
-			vDSP_vadd(This->mixBuffers[i+2], 1, This->mixBuffers[i+3], 1, This->writePointers[shiftedIndex+2], 1, samplesProcessing);
-			vDSP_vsub(This->mixBuffers[i+3], 1, This->mixBuffers[i+2], 1, This->writePointers[shiftedIndex+3], 1, samplesProcessing);
+		// apply the mixing matrix and write to write pointers
+		if(This->blockSize == 1){
+			for(size_t i=0; i<This->numDelays; i++){
+				size_t shift = (i+This->feedbackShift) % This->numDelays;
+				memcpy(wp[shift],rp[i],sizeof(float)*samplesProcessing);
+			}
+		}
+		if(This->blockSize == 2){
+			for(size_t i=0; i<This->numDelays; i++){
+				size_t shift = (i+This->feedbackShift) % This->numDelays;
+				
+				// fast hadamard transform stage 1
+				vDSP_vadd(rp[i+0],1,rp[i+1],1,wp[shift+0],1,samplesProcessing);
+				vDSP_vsub(rp[i+1],1,rp[i+0],1,wp[shift+0],1,samplesProcessing);
+			}
+		}
+		if(This->blockSize == 4){
+			for(size_t i=0; i<This->numDelays; i+=4){
+				// fast hadamard transform stage 1
+				vDSP_vadd(rp[i+0], 1, rp[i+2], 1, mb[i+0], 1, samplesProcessing);
+				vDSP_vadd(rp[i+1], 1, rp[i+3], 1, mb[i+1], 1, samplesProcessing);
+				vDSP_vsub(rp[i+2], 1, rp[i+0], 1, mb[i+2], 1, samplesProcessing);
+				vDSP_vsub(rp[i+3], 1, rp[i+1], 1, mb[i+3], 1, samplesProcessing);
+				
+				// fast hadamard transform stage 2 with rotation
+				size_t shift = (i+This->feedbackShift) % This->numDelays;
+				vDSP_vadd(mb[i+0], 1, mb[i+1], 1, wp[shift+0], 1, samplesProcessing);
+				vDSP_vsub(mb[i+1], 1, mb[i+0], 1, wp[shift+1], 1, samplesProcessing);
+				vDSP_vadd(mb[i+2], 1, mb[i+3], 1, wp[shift+2], 1, samplesProcessing);
+				vDSP_vsub(mb[i+3], 1, mb[i+2], 1, wp[shift+3], 1, samplesProcessing);
+			}
+		}
+		if(This->blockSize == 8){
+			for(size_t i=0; i<This->numDelays; i+=8){
+				// fast hadamard transform stage 1
+				vDSP_vadd(rp[i+0], 1, rp[i+4], 1, wp[i+0], 1, samplesProcessing);
+				vDSP_vadd(rp[i+1], 1, rp[i+5], 1, wp[i+1], 1, samplesProcessing);
+				vDSP_vadd(rp[i+2], 1, rp[i+6], 1, wp[i+2], 1, samplesProcessing);
+				vDSP_vadd(rp[i+3], 1, rp[i+7], 1, wp[i+3], 1, samplesProcessing);
+				vDSP_vsub(rp[i+4], 1, rp[i+0], 1, wp[i+4], 1, samplesProcessing);
+				vDSP_vsub(rp[i+5], 1, rp[i+1], 1, wp[i+5], 1, samplesProcessing);
+				vDSP_vsub(rp[i+6], 1, rp[i+2], 1, wp[i+6], 1, samplesProcessing);
+				vDSP_vsub(rp[i+7], 1, rp[i+3], 1, wp[i+7], 1, samplesProcessing);
+				
+				// fast hadamard transform stage 2
+				vDSP_vadd(wp[i+0], 1, wp[i+2], 1, mb[i+0], 1, samplesProcessing);
+				vDSP_vadd(wp[i+1], 1, wp[i+3], 1, mb[i+1], 1, samplesProcessing);
+				vDSP_vsub(wp[i+2], 1, wp[i+0], 1, mb[i+2], 1, samplesProcessing);
+				vDSP_vsub(wp[i+3], 1, wp[i+1], 1, mb[i+3], 1, samplesProcessing);
+				vDSP_vadd(wp[i+4], 1, wp[i+6], 1, mb[i+4], 1, samplesProcessing);
+				vDSP_vadd(wp[i+5], 1, wp[i+7], 1, mb[i+5], 1, samplesProcessing);
+				vDSP_vsub(wp[i+6], 1, wp[i+4], 1, mb[i+6], 1, samplesProcessing);
+				vDSP_vsub(wp[i+7], 1, wp[i+5], 1, mb[i+7], 1, samplesProcessing);
+				
+				// fast hadamard transform stage 3 with rotation
+				size_t shift = (i+This->feedbackShift) % This->numDelays;
+				vDSP_vadd(mb[i+0], 1, mb[i+1], 1, wp[shift+0], 1, samplesProcessing);
+				vDSP_vsub(mb[i+1], 1, mb[i+0], 1, wp[shift+1], 1, samplesProcessing);
+				vDSP_vadd(mb[i+2], 1, mb[i+3], 1, wp[shift+2], 1, samplesProcessing);
+				vDSP_vsub(mb[i+3], 1, mb[i+2], 1, wp[shift+3], 1, samplesProcessing);
+				vDSP_vadd(mb[i+4], 1, mb[i+5], 1, wp[shift+4], 1, samplesProcessing);
+				vDSP_vsub(mb[i+5], 1, mb[i+4], 1, wp[shift+5], 1, samplesProcessing);
+				vDSP_vadd(mb[i+6], 1, mb[i+7], 1, wp[shift+6], 1, samplesProcessing);
+				vDSP_vsub(mb[i+7], 1, mb[i+6], 1, wp[shift+7], 1, samplesProcessing);
+			}
 		}
 		
 
