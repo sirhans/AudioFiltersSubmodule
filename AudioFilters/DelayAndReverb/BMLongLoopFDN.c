@@ -194,6 +194,9 @@ void BMLongLoopFDN_setInputPan(BMLongLoopFDN *This, float pan01){
 	This->inputPan = pan01;
 }
 
+
+
+// This is used by all stages of the fast hadamard transform
 inline void BMLongLoopFDN_FHTHelper(float **in, float **out, size_t length, size_t samplesProcessing){
 	for(size_t i=0; i<length; i++){
 		if(i<length/2)
@@ -202,6 +205,7 @@ inline void BMLongLoopFDN_FHTHelper(float **in, float **out, size_t length, size
 			vDSP_vsub(in[i],1,in[(i+(length/2))%length],1,out[i],1,samplesProcessing);
 	}
 }
+
 
 
 
