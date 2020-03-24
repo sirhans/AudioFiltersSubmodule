@@ -12,12 +12,14 @@
 #include <stdio.h>
 #include "BMSimpleDelay.h"
 #include "TPCircularBuffer.h"
+#include "BMShortSimpleDelay.h"
 
 
 typedef struct BMLongLoopFDN{
 	TPCircularBuffer *delays;
+//	BMShortSimpleDelay *offsetDelays;
 	float **readPointers, **writePointers, **mixBuffers;
-	float *feedbackCoefficients, *delayTimes, *inputBufferL, *inputBufferR;
+	float *feedbackCoefficients, *delayTimes, *inputBufferL, *inputBufferR;//, *delayBufferL, *delayBufferR;
 	float inputAttenuation, matrixAttenuation, inverseMatrixAttenuation, inputPan;
 	bool *tapSigns;
 	size_t numDelays, minDelaySamples, blockSize, feedbackShiftByDelay;

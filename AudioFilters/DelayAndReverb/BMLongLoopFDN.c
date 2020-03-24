@@ -62,12 +62,14 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	// channel gets some short ones and some long ones
 	size_t *temp = malloc(sizeof(size_t)*numDelays);
 	memcpy(temp,delayLengths,sizeof(size_t)*numDelays);
-	size_t j=0;
-	for(size_t i=0; i<numDelays; i+= 2){
-		delayLengths[j] = temp[i];
-		delayLengths[j+numDelays/2] = temp[i + 1];
-		j++;
-	}
+//	size_t j=0;
+//	for(size_t i=0; i<numDelays; i+= 2){
+//		delayLengths[j] = temp[i];
+//		delayLengths[j+numDelays/2] = temp[i + 1];
+//		j++;
+//	}
+	for(size_t i=0; i<numDelays; i++)
+		delayLengths[i] = temp[(i*39)%This->numDelays];
 	
 	This->mixBuffers = malloc(sizeof(float*) * This->numDelays);
 	This->mixBuffers[0] = malloc(sizeof(float) * This->numDelays * minDelaySamples);
@@ -80,8 +82,10 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 		This->delayTimes[i] = (float)delayLengths[i] / sampleRate;
 	
 	// init the input buffers
-	This->inputBufferL = malloc(sizeof(float) * minDelaySamples * 2);
+	This->inputBufferL = malloc(sizeof(float) * minDelaySamples * 2); //* 4);
 	This->inputBufferR = This->inputBufferL + minDelaySamples;
+//	This->delayBufferL = This->inputBufferR + minDelaySamples;
+//	This->delayBufferR = This->delayBufferL + minDelaySamples;
 	
 	// init the delay buffers
 	This->delays = malloc(numDelays * sizeof(TPCircularBuffer));
@@ -97,6 +101,11 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 		vDSP_vclr(writePointer, 1, delayLengths[i]);
 		TPCircularBufferProduce(&This->delays[i], (uint32_t)delayLengths[i] * sizeof(float));
 	}
+	
+//	// init the offset delays
+//	This->offsetDelays = malloc(sizeof(BMShortSimpleDelay)*This->numDelays);
+//	for(size_t i=0; i<numDelays; i++)
+//		BMShortSimpleDelay_init(&This->offsetDelays[i], 1, i*5);
 	
 	// init the arrays of read and write pointers
 	This->readPointers = malloc(sizeof(float*) * numDelays);
@@ -203,6 +212,28 @@ void BMLongLoopFDN_setInputPan(BMLongLoopFDN *This, float pan01){
 }
 
 
+void BMLongLoopFDN_FHTStage1(float **in, float **out, size_t samplesProcessing){
+		vDSP_vadd(in[0],1,in[1],1,out[0],1,samplesProcessing);
+		vDSP_vsub(in[1],1,in[0],1,out[1],1,samplesProcessing);
+}
+
+void BMLongLoopFDN_FHTStage2(float **in, float **out, size_t samplesProcessing){
+		vDSP_vadd(in[0],1,in[2],1,out[0],1,samplesProcessing);
+		vDSP_vadd(in[1],1,in[3],1,out[1],1,samplesProcessing);
+		vDSP_vsub(in[2],1,in[0],1,out[2],1,samplesProcessing);
+		vDSP_vsub(in[3],1,in[1],1,out[3],1,samplesProcessing);
+}
+
+void BMLongLoopFDN_FHTStage3(float **in, float **out, size_t samplesProcessing){
+		vDSP_vadd(in[0],1,in[4],1,out[0],1,samplesProcessing);
+		vDSP_vadd(in[1],1,in[5],1,out[1],1,samplesProcessing);
+		vDSP_vadd(in[2],1,in[6],1,out[2],1,samplesProcessing);
+		vDSP_vadd(in[3],1,in[7],1,out[3],1,samplesProcessing);
+		vDSP_vsub(in[4],1,in[0],1,out[4],1,samplesProcessing);
+		vDSP_vsub(in[5],1,in[1],1,out[5],1,samplesProcessing);
+		vDSP_vsub(in[6],1,in[2],1,out[6],1,samplesProcessing);
+		vDSP_vsub(in[7],1,in[3],1,out[7],1,samplesProcessing);
+}
 
 
 void BMLongLoopFDN_process(BMLongLoopFDN *This,
@@ -296,60 +327,34 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		if(This->blockSize == 2){
 			for(size_t i=0; i<This->numDelays; i+=2){
 				size_t shift = (i+This->feedbackShiftByDelay) % This->numDelays;
-				
 				// fast hadamard transform stage 1
-				vDSP_vadd(rp[i+0],1,rp[i+1],1,wp[shift+0],1,samplesProcessing);
-				vDSP_vsub(rp[i+1],1,rp[i+0],1,wp[shift+1],1,samplesProcessing);
+				BMLongLoopFDN_FHTStage1(rp+i,wp+shift, samplesProcessing);
 			}
 		}
 		if(This->blockSize == 4){
 			for(size_t i=0; i<This->numDelays; i+=4){
 				// fast hadamard transform stage 1
-				vDSP_vadd(rp[i+0], 1, rp[i+2], 1, mb[i+0], 1, samplesProcessing);
-				vDSP_vadd(rp[i+1], 1, rp[i+3], 1, mb[i+1], 1, samplesProcessing);
-				vDSP_vsub(rp[i+2], 1, rp[i+0], 1, mb[i+2], 1, samplesProcessing);
-				vDSP_vsub(rp[i+3], 1, rp[i+1], 1, mb[i+3], 1, samplesProcessing);
+				for(size_t j=0; j<4; j+=2)
+					BMLongLoopFDN_FHTStage1(rp+i+j, mb+i+j, samplesProcessing);
 				
 				// fast hadamard transform stage 2 with rotation
 				size_t shift = (i+This->feedbackShiftByDelay) % This->numDelays;
-				vDSP_vadd(mb[i+0], 1, mb[i+1], 1, wp[shift+0], 1, samplesProcessing);
-				vDSP_vsub(mb[i+1], 1, mb[i+0], 1, wp[shift+1], 1, samplesProcessing);
-				vDSP_vadd(mb[i+2], 1, mb[i+3], 1, wp[shift+2], 1, samplesProcessing);
-				vDSP_vsub(mb[i+3], 1, mb[i+2], 1, wp[shift+3], 1, samplesProcessing);
+				BMLongLoopFDN_FHTStage2(mb+i, wp+shift, samplesProcessing);
 			}
 		}
 		if(This->blockSize == 8){
 			for(size_t i=0; i<This->numDelays; i+=8){
 				// fast hadamard transform stage 1
-				vDSP_vadd(rp[i+0], 1, rp[i+4], 1, wp[i+0], 1, samplesProcessing);
-				vDSP_vadd(rp[i+1], 1, rp[i+5], 1, wp[i+1], 1, samplesProcessing);
-				vDSP_vadd(rp[i+2], 1, rp[i+6], 1, wp[i+2], 1, samplesProcessing);
-				vDSP_vadd(rp[i+3], 1, rp[i+7], 1, wp[i+3], 1, samplesProcessing);
-				vDSP_vsub(rp[i+4], 1, rp[i+0], 1, wp[i+4], 1, samplesProcessing);
-				vDSP_vsub(rp[i+5], 1, rp[i+1], 1, wp[i+5], 1, samplesProcessing);
-				vDSP_vsub(rp[i+6], 1, rp[i+2], 1, wp[i+6], 1, samplesProcessing);
-				vDSP_vsub(rp[i+7], 1, rp[i+3], 1, wp[i+7], 1, samplesProcessing);
+				for(size_t j=0; j<8; j+=2)
+					BMLongLoopFDN_FHTStage1(rp+i+j, wp+i+j, samplesProcessing);
 				
 				// fast hadamard transform stage 2
-				vDSP_vadd(wp[i+0], 1, wp[i+2], 1, mb[i+0], 1, samplesProcessing);
-				vDSP_vadd(wp[i+1], 1, wp[i+3], 1, mb[i+1], 1, samplesProcessing);
-				vDSP_vsub(wp[i+2], 1, wp[i+0], 1, mb[i+2], 1, samplesProcessing);
-				vDSP_vsub(wp[i+3], 1, wp[i+1], 1, mb[i+3], 1, samplesProcessing);
-				vDSP_vadd(wp[i+4], 1, wp[i+6], 1, mb[i+4], 1, samplesProcessing);
-				vDSP_vadd(wp[i+5], 1, wp[i+7], 1, mb[i+5], 1, samplesProcessing);
-				vDSP_vsub(wp[i+6], 1, wp[i+4], 1, mb[i+6], 1, samplesProcessing);
-				vDSP_vsub(wp[i+7], 1, wp[i+5], 1, mb[i+7], 1, samplesProcessing);
+				for(size_t j=0; j<8; j+=4)
+					BMLongLoopFDN_FHTStage2(wp+i+j, mb+i+j, samplesProcessing);
 				
 				// fast hadamard transform stage 3 with rotation
 				size_t shift = (i + This->feedbackShiftByDelay) % This->numDelays;
-				vDSP_vadd(mb[i+0], 1, mb[i+1], 1, wp[shift+0], 1, samplesProcessing);
-				vDSP_vsub(mb[i+1], 1, mb[i+0], 1, wp[shift+1], 1, samplesProcessing);
-				vDSP_vadd(mb[i+2], 1, mb[i+3], 1, wp[shift+2], 1, samplesProcessing);
-				vDSP_vsub(mb[i+3], 1, mb[i+2], 1, wp[shift+3], 1, samplesProcessing);
-				vDSP_vadd(mb[i+4], 1, mb[i+5], 1, wp[shift+4], 1, samplesProcessing);
-				vDSP_vsub(mb[i+5], 1, mb[i+4], 1, wp[shift+5], 1, samplesProcessing);
-				vDSP_vadd(mb[i+6], 1, mb[i+7], 1, wp[shift+6], 1, samplesProcessing);
-				vDSP_vsub(mb[i+7], 1, mb[i+6], 1, wp[shift+7], 1, samplesProcessing);
+				BMLongLoopFDN_FHTStage3(mb+i, wp+shift, samplesProcessing); 	 		
 			}
 		}
 		
@@ -360,18 +365,34 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 			// if we are circulating by block, input only to the first block
 			if(This->feedbackShiftByDelay > 0){
 				// mix the inputL and inputR into the delay inputs
-				if(i<This->blockSize)
+				if(i<This->blockSize){
+//					// apply a micro-delay to prevent outputs from coinciding
+//					const float *inputs [1] = {This->inputBufferL};
+//					float *outputs [1] = {This->delayBufferL};
+//					BMShortSimpleDelay_process(&This->offsetDelays[i], inputs, outputs, 1, samplesProcessing);
+					// mix the input
 					vDSP_vadd(This->writePointers[i], 1, This->inputBufferL, 1, This->writePointers[i], 1, samplesProcessing);
-				else if(This->numDelays/2 <= i && i < This->numDelays/2 + This->blockSize)
+				}
+				else if(This->numDelays/2 <= i && i < This->numDelays/2 + This->blockSize){
+//					// apply a micro-delay to prevent outputs from coinciding
+//					const float *inputs [1] = {This->inputBufferR};
+//					float *outputs [1] = {This->delayBufferR};
+//					BMShortSimpleDelay_process(&This->offsetDelays[i], inputs, outputs, 1, samplesProcessing);
+					// mix the input
 					vDSP_vadd(This->writePointers[i], 1, This->inputBufferR, 1, This->writePointers[i], 1, samplesProcessing);
+				}
 			}
 			// if each block feeds back to itself, input to all blocks
 			else {
 				// mix the inputL and inputR into the delay inputs
-				if(i<This->numDelays/2)
+				if(i<This->numDelays/2){
+					// mix the input
 					vDSP_vadd(This->writePointers[i], 1, This->inputBufferL, 1, This->writePointers[i], 1, samplesProcessing);
-				else
+				}
+				else {
+					// mix the input
 					vDSP_vadd(This->writePointers[i], 1, This->inputBufferR, 1, This->writePointers[i], 1, samplesProcessing);
+				}
 			}
 			
 			// mark the delays read
