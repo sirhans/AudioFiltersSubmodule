@@ -185,7 +185,6 @@ void BMLongLoopFDN_free(BMLongLoopFDN *This){
 void BMLongLoopFDN_setRT60Decay(BMLongLoopFDN *This, float timeSeconds){
 	for(size_t i=0; i<This->numDelays; i++){
 		This->feedbackCoefficients[i] = This->matrixAttenuation * BMReverbDelayGainFromRT60(timeSeconds, This->delayTimes[i]);
-        printf("%f %f %f\n",This->feedbackCoefficients[i],This->delayTimes[i],This->inputAttenuation);
 	}
 }
 
@@ -330,8 +329,6 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 					BMLongLoopFDN_FHTHelper(wp+shift+j, mb+i+j, 4, samplesProcessing);
 				
 				// fast hadamard transform stage 3 with rotation
-				
-                assert(shift<=This->numDelays-8);
 				BMLongLoopFDN_FHTHelper(mb+i, wp+shift, 8, samplesProcessing);
 			}
 		}
