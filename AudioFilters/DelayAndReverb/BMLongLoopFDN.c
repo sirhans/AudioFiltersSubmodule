@@ -333,27 +333,21 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		for(size_t i=0; i<This->numDelays; i++){
 			// if we are circulating by block, input only to the first block
 			if(This->feedbackShiftByDelay > 0){
-				// mix the inputL and inputR into the delay inputs
-				if(i<This->blockSize){
-					// mix the input to the left channel delays
-					vDSP_vadd(This->writePointers[i], 1, This->inputBufferL, 1, This->writePointers[i], 1, samplesProcessing);
-				}
-				else if(This->numDelays/2 <= i && i < This->numDelays/2 + This->blockSize){
-					// mix the input to the right channel delays
-					vDSP_vadd(This->writePointers[i], 1, This->inputBufferR, 1, This->writePointers[i], 1, samplesProcessing);
-				}
+				// mix the input to the left channel delays
+				if(i<This->blockSize)
+					vDSP_vadd(This->inputBufferL, 1, This->writePointers[i], 1, This->writePointers[i], 1, samplesProcessing);
+				// mix the input to the right channel delays
+				else if(This->numDelays/2 <= i && i < This->numDelays/2 + This->blockSize)
+					vDSP_vadd(This->inputBufferR, 1, This->writePointers[i], 1, This->writePointers[i], 1, samplesProcessing);
 			}
 			// if each block feeds back to itself, input to all blocks
 			else {
-				// mix the inputL and inputR into the delay inputs
-				if(i<This->numDelays/2){
-					// mix the input to the left channel delays
+				// mix the input to the left channel delays
+				if(i<This->numDelays/2)
 					vDSP_vadd(This->writePointers[i], 1, This->inputBufferL, 1, This->writePointers[i], 1, samplesProcessing);
-				}
-				else {
-					// mix the input to the right channel delays
+				// mix the input to the right channel delays
+				else
 					vDSP_vadd(This->writePointers[i], 1, This->inputBufferR, 1, This->writePointers[i], 1, samplesProcessing);
-				}
 			}
 			
 			// mark the delays read
