@@ -13,6 +13,7 @@
 #define BMLLFDN_MAX_BLOCK_SIZE 8
 
 void BMLongLoopFDN_randomShuffle(bool* A, size_t length);
+void BMLongLoopFDN_FHTHelper(float **in, float **out, size_t length, size_t samplesProcessing);
 
 void BMLongLoopFDN_init(BMLongLoopFDN *This,
 						size_t numDelays,
@@ -52,22 +53,16 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	size_t *delayLengths = malloc(sizeof(size_t)*numDelays);
 	BMReverbRandomsInRange(minDelaySamples, maxDelaySamples, delayLengths, numDelays);
 	
-	// confirm that the delay times are sorted
-	bool sorted = true;
-	for(size_t i=1; i<numDelays; i++)
-		if(delayLengths[i]<delayLengths[i-1]) sorted = false;
-	assert(sorted);
-	
 	// assign the delay times evenly between L and R channels so that each
 	// channel gets some short ones and some long ones
 	size_t *temp = malloc(sizeof(size_t)*numDelays);
 	memcpy(temp,delayLengths,sizeof(size_t)*numDelays);
-//	size_t j=0;
-//	for(size_t i=0; i<numDelays; i+= 2){
-//		delayLengths[j] = temp[i];
-//		delayLengths[j+numDelays/2] = temp[i + 1];
-//		j++;
-//	}
+	//	size_t j=0;
+	//	for(size_t i=0; i<numDelays; i+= 2){
+	//		delayLengths[j] = temp[i];
+	//		delayLengths[j+numDelays/2] = temp[i + 1];
+	//		j++;
+	//	}
 	for(size_t i=0; i<numDelays; i++)
 		delayLengths[i] = temp[(i*39)%This->numDelays];
 	
@@ -82,10 +77,8 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 		This->delayTimes[i] = (float)delayLengths[i] / sampleRate;
 	
 	// init the input buffers
-	This->inputBufferL = malloc(sizeof(float) * minDelaySamples * 2); //* 4);
+	This->inputBufferL = malloc(sizeof(float) * minDelaySamples * 2);
 	This->inputBufferR = This->inputBufferL + minDelaySamples;
-//	This->delayBufferL = This->inputBufferR + minDelaySamples;
-//	This->delayBufferR = This->delayBufferL + minDelaySamples;
 	
 	// init the delay buffers
 	This->delays = malloc(numDelays * sizeof(TPCircularBuffer));
@@ -101,11 +94,6 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 		vDSP_vclr(writePointer, 1, delayLengths[i]);
 		TPCircularBufferProduce(&This->delays[i], (uint32_t)delayLengths[i] * sizeof(float));
 	}
-	
-//	// init the offset delays
-//	This->offsetDelays = malloc(sizeof(BMShortSimpleDelay)*This->numDelays);
-//	for(size_t i=0; i<numDelays; i++)
-//		BMShortSimpleDelay_init(&This->offsetDelays[i], 1, i*5);
 	
 	// init the arrays of read and write pointers
 	This->readPointers = malloc(sizeof(float*) * numDelays);
@@ -196,11 +184,6 @@ void BMLongLoopFDN_setRT60Decay(BMLongLoopFDN *This, float timeSeconds){
 	for(size_t i=0; i<This->numDelays; i++){
 		This->feedbackCoefficients[i] = This->matrixAttenuation * BMReverbDelayGainFromRT60(timeSeconds, This->delayTimes[i]);
 	}
-	
-//	// prototype
-//	for(size_t i=0; i<This->numDelays; i++){
-//		This->feedbackCoefficients[i] =  BMReverbDelayGainFromRT60(timeSeconds, This->delayTimes[i]);
-//	}
 }
 
 
@@ -211,29 +194,15 @@ void BMLongLoopFDN_setInputPan(BMLongLoopFDN *This, float pan01){
 	This->inputPan = pan01;
 }
 
-
-void BMLongLoopFDN_FHTStage1(float **in, float **out, size_t samplesProcessing){
-		vDSP_vadd(in[0],1,in[1],1,out[0],1,samplesProcessing);
-		vDSP_vsub(in[1],1,in[0],1,out[1],1,samplesProcessing);
+inline void BMLongLoopFDN_FHTHelper(float **in, float **out, size_t length, size_t samplesProcessing){
+	for(size_t i=0; i<length; i++){
+		if(i<length/2)
+			vDSP_vadd(in[i],1,in[(i+(length/2))%length],1,out[i],1,samplesProcessing);
+		else
+			vDSP_vsub(in[i],1,in[(i+(length/2))%length],1,out[i],1,samplesProcessing);
+	}
 }
 
-void BMLongLoopFDN_FHTStage2(float **in, float **out, size_t samplesProcessing){
-		vDSP_vadd(in[0],1,in[2],1,out[0],1,samplesProcessing);
-		vDSP_vadd(in[1],1,in[3],1,out[1],1,samplesProcessing);
-		vDSP_vsub(in[2],1,in[0],1,out[2],1,samplesProcessing);
-		vDSP_vsub(in[3],1,in[1],1,out[3],1,samplesProcessing);
-}
-
-void BMLongLoopFDN_FHTStage3(float **in, float **out, size_t samplesProcessing){
-		vDSP_vadd(in[0],1,in[4],1,out[0],1,samplesProcessing);
-		vDSP_vadd(in[1],1,in[5],1,out[1],1,samplesProcessing);
-		vDSP_vadd(in[2],1,in[6],1,out[2],1,samplesProcessing);
-		vDSP_vadd(in[3],1,in[7],1,out[3],1,samplesProcessing);
-		vDSP_vsub(in[4],1,in[0],1,out[4],1,samplesProcessing);
-		vDSP_vsub(in[5],1,in[1],1,out[5],1,samplesProcessing);
-		vDSP_vsub(in[6],1,in[2],1,out[6],1,samplesProcessing);
-		vDSP_vsub(in[7],1,in[3],1,out[7],1,samplesProcessing);
-}
 
 
 void BMLongLoopFDN_process(BMLongLoopFDN *This,
@@ -286,7 +255,7 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		for(size_t i=0; i<This->numDelays; i++){
 			// attenuate the data at the read pointers to get desired decay time
 			vDSP_vsmul(This->readPointers[i], 1, &This->feedbackCoefficients[i], This->readPointers[i], 1, samplesProcessing);
-		
+			
 			// we will write the first half the delays to the left output and the second half to the right output
 			float *outputPointer = (i < This->numDelays/2) ? outputL : outputR;
 			// output mix: add the ith delay to the output if its tap sign is positive
@@ -297,7 +266,7 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 				vDSP_vsub(outputPointer, 1, This->readPointers[i], 1, outputPointer, 1, samplesProcessing);
 		}
 		
-	
+		
 		// remove the matrix attenuation from the outputs by dividing it out
 		vDSP_vsmul(outputL, 1, &This->inverseMatrixAttenuation, outputL, 1, samplesProcessing);
 		vDSP_vsmul(outputR, 1, &This->inverseMatrixAttenuation, outputR, 1, samplesProcessing);
@@ -328,37 +297,37 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 			for(size_t i=0; i<This->numDelays; i+=2){
 				size_t shift = (i+This->feedbackShiftByDelay) % This->numDelays;
 				// fast hadamard transform stage 1
-				BMLongLoopFDN_FHTStage1(rp+i,wp+shift, samplesProcessing);
+				BMLongLoopFDN_FHTHelper(rp+i, wp+shift, 2, samplesProcessing);
 			}
 		}
 		if(This->blockSize == 4){
 			for(size_t i=0; i<This->numDelays; i+=4){
 				// fast hadamard transform stage 1
 				for(size_t j=0; j<4; j+=2)
-					BMLongLoopFDN_FHTStage1(rp+i+j, mb+i+j, samplesProcessing);
+					BMLongLoopFDN_FHTHelper(rp+i+j, mb+i+j, 2, samplesProcessing);
 				
 				// fast hadamard transform stage 2 with rotation
 				size_t shift = (i+This->feedbackShiftByDelay) % This->numDelays;
-				BMLongLoopFDN_FHTStage2(mb+i, wp+shift, samplesProcessing);
+				BMLongLoopFDN_FHTHelper(mb+i, wp+shift, 4, samplesProcessing);
 			}
 		}
 		if(This->blockSize == 8){
 			for(size_t i=0; i<This->numDelays; i+=8){
 				// fast hadamard transform stage 1
 				for(size_t j=0; j<8; j+=2)
-					BMLongLoopFDN_FHTStage1(rp+i+j, wp+i+j, samplesProcessing);
+					BMLongLoopFDN_FHTHelper(rp+i+j, wp+i+j, 2, samplesProcessing);
 				
 				// fast hadamard transform stage 2
 				for(size_t j=0; j<8; j+=4)
-					BMLongLoopFDN_FHTStage2(wp+i+j, mb+i+j, samplesProcessing);
+					BMLongLoopFDN_FHTHelper(wp+i+j, mb+i+j, 4, samplesProcessing);
 				
 				// fast hadamard transform stage 3 with rotation
 				size_t shift = (i + This->feedbackShiftByDelay) % This->numDelays;
-				BMLongLoopFDN_FHTStage3(mb+i, wp+shift, samplesProcessing); 	 		
+				BMLongLoopFDN_FHTHelper(mb+i, wp+shift, 8, samplesProcessing);
 			}
 		}
 		
-
+		
 		// mix inputs with feedback signals and write back into the delays
 		uint32_t bytesProcessing = (uint32_t)samplesProcessing * sizeof(float);
 		for(size_t i=0; i<This->numDelays; i++){
@@ -366,19 +335,11 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 			if(This->feedbackShiftByDelay > 0){
 				// mix the inputL and inputR into the delay inputs
 				if(i<This->blockSize){
-//					// apply a micro-delay to prevent outputs from coinciding
-//					const float *inputs [1] = {This->inputBufferL};
-//					float *outputs [1] = {This->delayBufferL};
-//					BMShortSimpleDelay_process(&This->offsetDelays[i], inputs, outputs, 1, samplesProcessing);
-					// mix the input
+					// mix the input to the left channel delays
 					vDSP_vadd(This->writePointers[i], 1, This->inputBufferL, 1, This->writePointers[i], 1, samplesProcessing);
 				}
 				else if(This->numDelays/2 <= i && i < This->numDelays/2 + This->blockSize){
-//					// apply a micro-delay to prevent outputs from coinciding
-//					const float *inputs [1] = {This->inputBufferR};
-//					float *outputs [1] = {This->delayBufferR};
-//					BMShortSimpleDelay_process(&This->offsetDelays[i], inputs, outputs, 1, samplesProcessing);
-					// mix the input
+					// mix the input to the right channel delays
 					vDSP_vadd(This->writePointers[i], 1, This->inputBufferR, 1, This->writePointers[i], 1, samplesProcessing);
 				}
 			}
@@ -386,18 +347,18 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 			else {
 				// mix the inputL and inputR into the delay inputs
 				if(i<This->numDelays/2){
-					// mix the input
+					// mix the input to the left channel delays
 					vDSP_vadd(This->writePointers[i], 1, This->inputBufferL, 1, This->writePointers[i], 1, samplesProcessing);
 				}
 				else {
-					// mix the input
+					// mix the input to the right channel delays
 					vDSP_vadd(This->writePointers[i], 1, This->inputBufferR, 1, This->writePointers[i], 1, samplesProcessing);
 				}
 			}
 			
 			// mark the delays read
 			TPCircularBufferConsume(&This->delays[i], bytesProcessing);
-		
+			
 			// mark the delays written
 			TPCircularBufferProduce(&This->delays[i], bytesProcessing);
 		}
