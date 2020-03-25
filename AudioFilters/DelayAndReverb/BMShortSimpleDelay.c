@@ -21,7 +21,7 @@ void BMShortSimpleDelay_process(BMShortSimpleDelay *This,
                                 float **outputs,
                                 size_t numChannels,
                                 size_t numSamples){
-    assert(This->numChannels >= numChannels);
+    assert(This->numChannels == numChannels);
     
     // does not work in place
     assert(inputs[0] != outputs[0]);
