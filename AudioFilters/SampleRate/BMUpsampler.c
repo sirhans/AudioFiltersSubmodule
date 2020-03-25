@@ -27,7 +27,7 @@ extern "C" {
 		if(type == BMRESAMPLER_FULL_SPECTRUM_NO_STAGE2_FILTER)
 			This->useSecondStageFilter = false;
         
-        if(upsampleFactor > 0){
+        if(upsampleFactor > 1){
             
             // the number of 2x upsampling stages is log2(upsampleFactor)
             This->numStages = log2i((uint32_t)upsampleFactor);
