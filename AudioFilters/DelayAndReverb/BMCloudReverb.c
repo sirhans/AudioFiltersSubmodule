@@ -58,17 +58,16 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     This->lsGain = 0;
     BMMultiLevelBiquad_setLowShelf(&This->biquadFilter, Filter_LS_FC, This->lsGain, Filter_Level_Lowshelf);
     
-    BMMultiLevelBiquad_setGainInstant(&This->biquadFilter,40);
+//    BMMultiLevelBiquad_setGainInstant(&This->biquadFilter,40);
     
     //VND
-    float totalS = 0.8f;
+    float totalS = 0.5f;
     This->maxTapsEachVND = 24.0f;
     This->diffusion = 1.0f;
-    float vnd1Length = totalS/3.0f;//getVNDLength(numTaps, totalS);
+    float vnd1Length = totalS/2.0f;//getVNDLength(numTaps, totalS);
     BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vnd1, vnd1Length, This->maxTapsEachVND, 100, false, sr);
     BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vnd2, vnd1Length, This->maxTapsEachVND, 100, false, sr);
-    //Last vnd dont have dry tap -> always wet 100%
-    BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vnd3,vnd1Length , This->maxTapsEachVND, 100, false, sr);
+//    BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vnd3,vnd1Length , This->maxTapsEachVND, 100, false, sr);
 
     //Pitch shifting
     float delaySampleRange = 0.02f*sr;
@@ -140,12 +139,14 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
     //Filters
     BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, inputL, inputR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
     
+//    memcpy(This->buffer.bufferL, inputL, sizeof(float)*numSamples);
+//    memcpy(This->buffer.bufferR, inputR, sizeof(float)*numSamples);
     
     //VND
     BMVelvetNoiseDecorrelator_processBufferStereo(&This->vnd1, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
     BMVelvetNoiseDecorrelator_processBufferStereo(&This->vnd2, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
-    BMVelvetNoiseDecorrelator_processBufferStereo(&This->vnd3, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
-//
+//    BMVelvetNoiseDecorrelator_processBufferStereo(&This->vnd3, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
+
 //    memcpy(outputL, This->buffer.bufferL, sizeof(float)*numSamples);
 //    memcpy(outputR, This->buffer.bufferR, sizeof(float)*numSamples);
 //    return;
