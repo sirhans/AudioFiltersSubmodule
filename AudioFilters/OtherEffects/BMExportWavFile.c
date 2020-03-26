@@ -252,7 +252,7 @@ int BMExportWavFile_exportAudioInt(BMExportWavFile* This,char* filePath,float* d
         goto error2;
     }
 	
-	system("pwd");
+	//system("pwd");
 	printf(filePath);
 	printf("\n");
 

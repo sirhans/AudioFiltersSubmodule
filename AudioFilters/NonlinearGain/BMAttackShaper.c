@@ -76,7 +76,7 @@ void BMMultibandAttackShaper_init(BMMultibandAttackShaper *This, bool isStereo, 
 	float dsfSensitivity = 1000.0f;
 	float dsfFcMin = releaseFC;
 	float dsfFcMax = 1000.0f;
-	float exaggeration = 1.5f;
+	float exaggeration = 2.1f;
 	BMAttackShaperSection_init(&This->asSections[0],
 							   releaseFC,
 							   attackFC,
@@ -99,9 +99,9 @@ void BMMultibandAttackShaper_init(BMMultibandAttackShaper *This, bool isStereo, 
 	size_t bufferSize = sizeof(float) * BM_BUFFER_CHUNK_SIZE;
 	if(isStereo){
 		This->b1L = malloc(4 * bufferSize);
-		This->b2L = This->b1L + bufferSize;
-		This->b1R = This->b2L + bufferSize;
-		This->b2R = This->b1R + bufferSize;
+        This->b2L = This->b1L + BM_BUFFER_CHUNK_SIZE;
+        This->b1R = This->b2L + BM_BUFFER_CHUNK_SIZE;
+        This->b2R = This->b1R + BM_BUFFER_CHUNK_SIZE;
 	} else {
 		This->b1L = malloc(2 * bufferSize);
 		This->b2L = This->b1L + bufferSize;
@@ -146,6 +146,7 @@ void BMMultibandAttackShaper_processStereo(BMMultibandAttackShaper *This,
 		// recombine the signal
 		vDSP_vadd(This->b1L, 1, This->b2L, 1, outputL, 1, samplesProcessing);
 		vDSP_vadd(This->b1R, 1, This->b2R, 1, outputR, 1, samplesProcessing);
+
 		
 		// advance pointers
 		numSamples -= samplesProcessing;
