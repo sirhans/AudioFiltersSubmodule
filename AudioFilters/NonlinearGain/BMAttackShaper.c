@@ -76,7 +76,7 @@ void BMMultibandAttackShaper_init(BMMultibandAttackShaper *This, bool isStereo, 
 	float dsfSensitivity = 1000.0f;
 	float dsfFcMin = releaseFC;
 	float dsfFcMax = 1000.0f;
-	float exaggeration = 1.5f;
+	float exaggeration = 2.1f;
 	BMAttackShaperSection_init(&This->asSections[0],
 							   releaseFC,
 							   attackFC,
