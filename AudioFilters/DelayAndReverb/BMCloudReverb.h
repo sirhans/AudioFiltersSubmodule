@@ -49,7 +49,6 @@ typedef struct BMCloudReverb {
     float decayTime;
     
     float bellQ;
-    float lpQ;
     float lsGain;
 } BMCloudReverb;
 
@@ -64,5 +63,5 @@ void BMCloudReverb_setDiffusion(BMCloudReverb* This,float diffusion);
 void BMCloudReverb_setLSGain(BMCloudReverb* This,float gainDb);
 void BMCloudReverb_setHighCutFreq(BMCloudReverb* This,float freq);
 //Test
-void BMCloudReverb_impulseResponse(BMCloudReverb* This,float* outputL,float* outputR,size_t length);
+void BMCloudReverb_impulseResponse(BMCloudReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t length);
 #endif /* BMCloudReverb_h */

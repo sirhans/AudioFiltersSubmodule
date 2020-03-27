@@ -13,11 +13,11 @@
 #define Filter_Level_Bell 0
 #define Filter_Level_Highpass 1
 #define Filter_Level_Lowshelf 2
-#define Filter_Level_BellHighFreq 3
-#define Filter_Level_Lowpass 4
+#define Filter_Level_Tone 3
+#define Filter_Level_Lowpass10k 4
 #define Filter_Level_TotalLP 3
 
-#define Filter_TotalLevel Filter_Level_Lowpass + Filter_Level_TotalLP
+#define Filter_TotalLevel Filter_Level_Lowpass10k + Filter_Level_TotalLP
 
 #define Filter_LS_FC 400
 
@@ -41,19 +41,16 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     This->sampleRate = sr;
     //BIQUAD FILTER
     BMMultiLevelBiquad_init(&This->biquadFilter, Filter_TotalLevel, sr, true, false, true);
-    //Tone control - use 12db
-//    This->lpQ = 2.f;
-//    BMMultiLevelBiquad_setLowPassQ12db(&This->biquadFilter, 4000,This->lpQ, Filter_Level_Lowpass);
+    //Tone control - use 6db
+    BMMultiLevelBiquad_setLowPass6db(&This->biquadFilter, 1300, Filter_Level_Tone);
 //    //lowpass 36db
-    BMMultiLevelBiquad_setHighOrderBWLP(&This->biquadFilter, 3500, Filter_Level_Lowpass, Filter_Level_TotalLP);
-    //Bell high freq
-    BMMultiLevelBiquad_setBellQ(&This->biquadFilter, 9500, 8, 16, Filter_Level_BellHighFreq);
+    BMMultiLevelBiquad_setHighOrderBWLP(&This->biquadFilter, 9300, Filter_Level_Lowpass10k, Filter_Level_TotalLP);
     
     //Bell
     This->bellQ = 2.0f;
-    BMMultiLevelBiquad_setBellQ(&This->biquadFilter, 1300, This->bellQ, -8, Filter_Level_Bell);
+    BMMultiLevelBiquad_setBellQ(&This->biquadFilter, 150, This->bellQ, 5, Filter_Level_Bell);
     //High passs
-    BMMultiLevelBiquad_setHighPass12db(&This->biquadFilter, 120, Filter_Level_Highpass);
+    BMMultiLevelBiquad_setHighPass12db(&This->biquadFilter, 60, Filter_Level_Highpass);
     //Low shelf
     This->lsGain = 0;
     BMMultiLevelBiquad_setLowShelf(&This->biquadFilter, Filter_LS_FC, This->lsGain, Filter_Level_Lowshelf);
@@ -196,23 +193,20 @@ void BMCloudReverb_setLSGain(BMCloudReverb* This,float gainDb){
 }
 
 void BMCloudReverb_setHighCutFreq(BMCloudReverb* This,float freq){
-//    BMMultiLevelBiquad_setLowPassQ12db(&This->biquadFilter, freq,This->lpQ, Filter_Level_Lowpass);
-    BMMultiLevelBiquad_setHighOrderBWLP(&This->biquadFilter, freq, Filter_Level_Lowpass, 2);
+    BMMultiLevelBiquad_setLowPass6db(&This->biquadFilter, freq, Filter_Level_Tone);
 }
 
 #pragma mark - Test
-void BMCloudReverb_impulseResponse(BMCloudReverb* This,float* outputL,float* outputR,size_t length){
-    float* data = malloc(sizeof(float)*length);
-    memset(data, 0, sizeof(float)*length);
-    data[0] = 1.0f;
+void BMCloudReverb_impulseResponse(BMCloudReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t length){
     size_t sampleProcessed = 0;
     size_t sampleProcessing = 0;
     This->biquadFilter.useSmoothUpdate = false;
     while(sampleProcessed<length){
         sampleProcessing = BM_MIN(BM_BUFFER_CHUNK_SIZE, length - sampleProcessed);
         
-        BMCloudReverb_processStereo(This, data+sampleProcessed, data+sampleProcessed, outputL+sampleProcessed, outputR+sampleProcessed, sampleProcessing);
-        
+        BMCloudReverb_processStereo(This, inputL+sampleProcessed, inputR+sampleProcessed, outputL+sampleProcessed, outputR+sampleProcessed, sampleProcessing);
+        if(outputL[sampleProcessed]>1.0f)
+            printf("error\n");
         sampleProcessed += sampleProcessing;
     }
     This->biquadFilter.useSmoothUpdate = true;
