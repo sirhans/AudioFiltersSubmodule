@@ -46,16 +46,13 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
 //    //lowpass 36db
     BMMultiLevelBiquad_setHighOrderBWLP(&This->biquadFilter, 9300, Filter_Level_Lowpass10k, Filter_Level_TotalLP);
     
-    //Bell
-    This->bellQ = 2.0f;
-    BMMultiLevelBiquad_setBellQ(&This->biquadFilter, 150, This->bellQ, 5, Filter_Level_Bell);
     //High passs
-    BMMultiLevelBiquad_setHighPass12db(&This->biquadFilter, 60, Filter_Level_Highpass);
+    BMMultiLevelBiquad_setHighPass12db(&This->biquadFilter, 300, Filter_Level_Highpass);
     //Low shelf
     This->lsGain = 0;
     BMMultiLevelBiquad_setLowShelf(&This->biquadFilter, Filter_LS_FC, This->lsGain, Filter_Level_Lowshelf);
     
-//    BMMultiLevelBiquad_setGainInstant(&This->biquadFilter,40);
+//    BMMultiLevelBiquad_setGainInstant(&This->biquadFilter,0);
     
     //VND
     float totalS = 0.5f;
@@ -156,6 +153,10 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
 
     //Process reverb dry/wet mixer
     BMWetDryMixer_processBufferInPhase(&This->reverbMixer, This->wetBuffer.bufferL, This->wetBuffer.bufferR, inputL, inputR, outputL, outputR, numSamples);
+    
+    float scaleVol = BM_DB_TO_GAIN(-10);
+    vDSP_vsmul(outputL, 1, &scaleVol, outputL, 1, numSamples);
+    vDSP_vsmul(outputR, 1, &scaleVol, outputR, 1, numSamples);
 }
 
 #pragma mark - Set
