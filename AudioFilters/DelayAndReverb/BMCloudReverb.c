@@ -81,13 +81,21 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     This->wetBuffer.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->wetBuffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     
+    //Loop delay
+    BMCloudReverb_prepareLoopDelay(This);
+    
     BMCloudReverb_setLoopDecayTime(This, 10);
     BMCloudReverb_setDelayPitchMixer(This, 0.5f);
     BMWetDryMixer_init(&This->reverbMixer, sr);
     BMCloudReverb_setOutputMixer(This, 0.5f);
     
-    //Loop delay
-    BMCloudReverb_prepareLoopDelay(This);
+    //pan
+    BMSmoothGain_init(&This->leftGain, sr);
+    BMSmoothGain_init(&This->rightGain, sr);
+    float panL = 0.2f;
+    float panR = sqrtf(1.0f - powf(panL, 2));
+    BMSmoothGain_setGainDbInstant(&This->leftGain, BM_GAIN_TO_DB(panL));
+    BMSmoothGain_setGainDbInstant(&This->rightGain, BM_GAIN_TO_DB(panR));
 }
 
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
@@ -96,7 +104,7 @@ void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
     float minDT = 0.10f;
 	bool zeroTaps = true;
     BMLongLoopFDN_init(&This->loopFND, numDelays, minDT, maxDT, zeroTaps, 8, 1, This->sampleRate);
-    BMLongLoopFDN_setInputPan(&This->loopFND, 0.2f);
+    BMLongLoopFDN_setInputPan(&This->loopFND, 0.5f);
 }
 
 void BMCloudReverb_destroy(BMCloudReverb* This){
@@ -130,8 +138,13 @@ void BMCloudReverb_destroy(BMCloudReverb* This){
 
 void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t numSamples){
     BMCloudReverb_updateDiffusion(This);
+    
+    //Pan
+    BMSmoothGain_processBufferMono(&This->leftGain, inputL, This->buffer.bufferL, numSamples);
+    BMSmoothGain_processBufferMono(&This->rightGain, inputR, This->buffer.bufferR, numSamples);
+    
     //Filters
-    BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, inputL, inputR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
+    BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
     
 //    memcpy(This->buffer.bufferL, inputL, sizeof(float)*numSamples);
 //    memcpy(This->buffer.bufferR, inputR, sizeof(float)*numSamples);

@@ -48,6 +48,9 @@ typedef struct BMCloudReverb {
     bool updateDiffusion;
     float decayTime;
     
+    BMSmoothGain leftGain;
+    BMSmoothGain rightGain;
+    
     float bellQ;
     float lsGain;
 } BMCloudReverb;
