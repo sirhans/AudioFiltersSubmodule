@@ -132,7 +132,7 @@ extern "C" {
     
     void BMUpsampler_processBufferStereo(BMUpsampler *This, const float* inputL, const float* inputR, float* outputL, float* outputR, size_t numSamplesIn){
         
-        if(This->upsampleFactor > 0){
+        if(This->upsampleFactor > 1){
             while(numSamplesIn > 0){
                 size_t samplesProcessing = BM_MIN(numSamplesIn, BM_BUFFER_CHUNK_SIZE);
                 size_t inputSize = samplesProcessing;

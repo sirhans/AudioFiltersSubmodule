@@ -136,7 +136,7 @@ void BMExtremeCompressor_procesStereo(BMExtremeCompressor *This,
 											  This->b1L, This->b1R,
 											  This->b1L, This->b1R,
 											  lengthOS);
-	
+
 		// apply lowpassed limiter to get compression without saturation
 		BMLowpassedLimiter_process(&This->llL, This->b1L, This->b1L, lengthOS);
 		BMLowpassedLimiter_process(&This->llR, This->b1R, This->b1R, lengthOS);

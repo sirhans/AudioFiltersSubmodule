@@ -13,11 +13,11 @@
 #define Filter_Level_Bell 0
 #define Filter_Level_Highpass 1
 #define Filter_Level_Lowshelf 2
-#define Filter_Level_BellHighFreq 3
-#define Filter_Level_Lowpass 4
+#define Filter_Level_Tone 3
+#define Filter_Level_Lowpass10k 4
 #define Filter_Level_TotalLP 3
 
-#define Filter_TotalLevel Filter_Level_Lowpass + Filter_Level_TotalLP
+#define Filter_TotalLevel Filter_Level_Lowpass10k + Filter_Level_TotalLP
 
 #define Filter_LS_FC 400
 
@@ -41,34 +41,27 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     This->sampleRate = sr;
     //BIQUAD FILTER
     BMMultiLevelBiquad_init(&This->biquadFilter, Filter_TotalLevel, sr, true, false, true);
-    //Tone control - use 12db
-//    This->lpQ = 2.f;
-//    BMMultiLevelBiquad_setLowPassQ12db(&This->biquadFilter, 4000,This->lpQ, Filter_Level_Lowpass);
+    //Tone control - use 6db
+    BMMultiLevelBiquad_setLowPass6db(&This->biquadFilter, 1300, Filter_Level_Tone);
 //    //lowpass 36db
-    BMMultiLevelBiquad_setHighOrderBWLP(&This->biquadFilter, 3500, Filter_Level_Lowpass, Filter_Level_TotalLP);
-    //Bell high freq
-    BMMultiLevelBiquad_setBellQ(&This->biquadFilter, 9500, 8, 16, Filter_Level_BellHighFreq);
+    BMMultiLevelBiquad_setHighOrderBWLP(&This->biquadFilter, 9300, Filter_Level_Lowpass10k, Filter_Level_TotalLP);
     
-    //Bell
-    This->bellQ = 2.0f;
-    BMMultiLevelBiquad_setBellQ(&This->biquadFilter, 1300, This->bellQ, -8, Filter_Level_Bell);
     //High passs
-    BMMultiLevelBiquad_setHighPass12db(&This->biquadFilter, 120, Filter_Level_Highpass);
+    BMMultiLevelBiquad_setHighPass12db(&This->biquadFilter, 300, Filter_Level_Highpass);
     //Low shelf
     This->lsGain = 0;
     BMMultiLevelBiquad_setLowShelf(&This->biquadFilter, Filter_LS_FC, This->lsGain, Filter_Level_Lowshelf);
     
-    BMMultiLevelBiquad_setGainInstant(&This->biquadFilter,40);
+//    BMMultiLevelBiquad_setGainInstant(&This->biquadFilter,0);
     
     //VND
-    float totalS = 0.8f;
+    float totalS = 0.5f;
     This->maxTapsEachVND = 24.0f;
     This->diffusion = 1.0f;
-    float vnd1Length = totalS/3.0f;//getVNDLength(numTaps, totalS);
+    float vnd1Length = totalS/2.0f;//getVNDLength(numTaps, totalS);
     BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vnd1, vnd1Length, This->maxTapsEachVND, 100, false, sr);
     BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vnd2, vnd1Length, This->maxTapsEachVND, 100, false, sr);
-    //Last vnd dont have dry tap -> always wet 100%
-    BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vnd3,vnd1Length , This->maxTapsEachVND, 100, false, sr);
+//    BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vnd3,vnd1Length , This->maxTapsEachVND, 100, false, sr);
 
     //Pitch shifting
     float delaySampleRange = 0.02f*sr;
@@ -88,21 +81,29 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     This->wetBuffer.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->wetBuffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     
+    //Loop delay
+    BMCloudReverb_prepareLoopDelay(This);
+    
     BMCloudReverb_setLoopDecayTime(This, 10);
     BMCloudReverb_setDelayPitchMixer(This, 0.5f);
     BMWetDryMixer_init(&This->reverbMixer, sr);
     BMCloudReverb_setOutputMixer(This, 0.5f);
     
-    //Loop delay
-    BMCloudReverb_prepareLoopDelay(This);
+    //pan
+    BMSmoothGain_init(&This->leftGain, sr);
+    BMSmoothGain_init(&This->rightGain, sr);
+    float panL = 0.2f;
+    float panR = sqrtf(1.0f - powf(panL, 2));
+    BMSmoothGain_setGainDbInstant(&This->leftGain, BM_GAIN_TO_DB(panL));
+    BMSmoothGain_setGainDbInstant(&This->rightGain, BM_GAIN_TO_DB(panR));
 }
 
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
-    size_t numDelays = 8;
-    float maxDT = 0.8f;
-    float minDT = maxDT/numDelays;
-    
-    BMLongLoopFDN_init(&This->loopFND, numDelays, minDT, maxDT, true, 4, 1, This->sampleRate);
+    size_t numDelays = 32;
+    float maxDT = 0.50f;
+    float minDT = 0.10f;
+	bool zeroTaps = true;
+    BMLongLoopFDN_init(&This->loopFND, numDelays, minDT, maxDT, zeroTaps, 8, 1, This->sampleRate);
     BMLongLoopFDN_setInputPan(&This->loopFND, 0.5f);
 }
 
@@ -137,15 +138,22 @@ void BMCloudReverb_destroy(BMCloudReverb* This){
 
 void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t numSamples){
     BMCloudReverb_updateDiffusion(This);
-    //Filters
-    BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, inputL, inputR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
     
+    //Pan
+    BMSmoothGain_processBufferMono(&This->leftGain, inputL, This->buffer.bufferL, numSamples);
+    BMSmoothGain_processBufferMono(&This->rightGain, inputR, This->buffer.bufferR, numSamples);
+    
+    //Filters
+    BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
+    
+//    memcpy(This->buffer.bufferL, inputL, sizeof(float)*numSamples);
+//    memcpy(This->buffer.bufferR, inputR, sizeof(float)*numSamples);
     
     //VND
     BMVelvetNoiseDecorrelator_processBufferStereo(&This->vnd1, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
     BMVelvetNoiseDecorrelator_processBufferStereo(&This->vnd2, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
-    BMVelvetNoiseDecorrelator_processBufferStereo(&This->vnd3, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
-//
+//    BMVelvetNoiseDecorrelator_processBufferStereo(&This->vnd3, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
+
 //    memcpy(outputL, This->buffer.bufferL, sizeof(float)*numSamples);
 //    memcpy(outputR, This->buffer.bufferR, sizeof(float)*numSamples);
 //    return;
@@ -158,6 +166,10 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
 
     //Process reverb dry/wet mixer
     BMWetDryMixer_processBufferInPhase(&This->reverbMixer, This->wetBuffer.bufferL, This->wetBuffer.bufferR, inputL, inputR, outputL, outputR, numSamples);
+    
+    float scaleVol = BM_DB_TO_GAIN(-10);
+    vDSP_vsmul(outputL, 1, &scaleVol, outputL, 1, numSamples);
+    vDSP_vsmul(outputR, 1, &scaleVol, outputR, 1, numSamples);
 }
 
 #pragma mark - Set
@@ -195,23 +207,20 @@ void BMCloudReverb_setLSGain(BMCloudReverb* This,float gainDb){
 }
 
 void BMCloudReverb_setHighCutFreq(BMCloudReverb* This,float freq){
-//    BMMultiLevelBiquad_setLowPassQ12db(&This->biquadFilter, freq,This->lpQ, Filter_Level_Lowpass);
-    BMMultiLevelBiquad_setHighOrderBWLP(&This->biquadFilter, freq, Filter_Level_Lowpass, 2);
+    BMMultiLevelBiquad_setLowPass6db(&This->biquadFilter, freq, Filter_Level_Tone);
 }
 
 #pragma mark - Test
-void BMCloudReverb_impulseResponse(BMCloudReverb* This,float* outputL,float* outputR,size_t length){
-    float* data = malloc(sizeof(float)*length);
-    memset(data, 0, sizeof(float)*length);
-    data[0] = 1.0f;
+void BMCloudReverb_impulseResponse(BMCloudReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t length){
     size_t sampleProcessed = 0;
     size_t sampleProcessing = 0;
     This->biquadFilter.useSmoothUpdate = false;
     while(sampleProcessed<length){
         sampleProcessing = BM_MIN(BM_BUFFER_CHUNK_SIZE, length - sampleProcessed);
         
-        BMCloudReverb_processStereo(This, data+sampleProcessed, data+sampleProcessed, outputL+sampleProcessed, outputR+sampleProcessed, sampleProcessing);
-        
+        BMCloudReverb_processStereo(This, inputL+sampleProcessed, inputR+sampleProcessed, outputL+sampleProcessed, outputR+sampleProcessed, sampleProcessing);
+        if(outputL[sampleProcessed]>1.0f)
+            printf("error\n");
         sampleProcessed += sampleProcessing;
     }
     This->biquadFilter.useSmoothUpdate = true;

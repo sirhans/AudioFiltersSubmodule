@@ -39,7 +39,7 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	
 	// set the matrix attenuation and inverse attenuation
 	This->matrixAttenuation = sqrt(1.0f / (float)blockSize);
-	This->inverseMatrixAttenuation = 1.0f / This->matrixAttenuation;
+	This->inverseMatrixAttenuation = 2.0f / This->matrixAttenuation;
 	
 	This->numDelays = numDelays;
 	This->hasZeroTaps = hasZeroTaps;
@@ -63,8 +63,10 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	//		delayLengths[j+numDelays/2] = temp[i + 1];
 	//		j++;
 	//	}
-	for(size_t i=0; i<numDelays; i++)
+    for(size_t i=0; i<numDelays; i++){
 		delayLengths[i] = temp[(i*39)%This->numDelays];
+    
+    }
 	
 	This->mixBuffers = malloc(sizeof(float*) * This->numDelays);
 	This->mixBuffers[0] = malloc(sizeof(float) * This->numDelays * minDelaySamples);
@@ -93,6 +95,11 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 		writePointer = TPCircularBufferHead(&This->delays[i], &bytesAvailable);
 		vDSP_vclr(writePointer, 1, delayLengths[i]);
 		TPCircularBufferProduce(&This->delays[i], (uint32_t)delayLengths[i] * sizeof(float));
+        
+        //Set the buffer to 0 to avoid the noise when startup
+        uint32_t bytesAvailableForRead;
+        float* tail = TPCircularBufferTail(&This->delays[i], &bytesAvailableForRead);
+        memset(tail, 0, bytesAvailableForRead);
 	}
 	
 	// init the arrays of read and write pointers
@@ -317,16 +324,16 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		}
 		if(This->blockSize == 8){
 			for(size_t i=0; i<This->numDelays; i+=8){
+                size_t shift = (i + This->feedbackShiftByDelay) % This->numDelays;
 				// fast hadamard transform stage 1
 				for(size_t j=0; j<8; j+=2)
-					BMLongLoopFDN_FHTHelper(rp+i+j, wp+i+j, 2, samplesProcessing);
+					BMLongLoopFDN_FHTHelper(rp+i+j, wp+shift+j, 2, samplesProcessing);
 				
 				// fast hadamard transform stage 2
 				for(size_t j=0; j<8; j+=4)
-					BMLongLoopFDN_FHTHelper(wp+i+j, mb+i+j, 4, samplesProcessing);
+					BMLongLoopFDN_FHTHelper(wp+shift+j, mb+i+j, 4, samplesProcessing);
 				
 				// fast hadamard transform stage 3 with rotation
-				size_t shift = (i + This->feedbackShiftByDelay) % This->numDelays;
 				BMLongLoopFDN_FHTHelper(mb+i, wp+shift, 8, samplesProcessing);
 			}
 		}

@@ -78,7 +78,7 @@ void BMMultibandAttackShaper_init(BMMultibandAttackShaper *This, bool isStereo, 
 	float dsfSensitivity = 1000.0f;
 	float dsfFcMin = releaseFC;
 	float dsfFcMax = 1000.0f;
-	float exaggeration = 1.5f;
+	float exaggeration = 2.1f;
 	BMAttackShaperSection_init(&This->asSections[0],
 							   releaseFC,
 							   attackFC,
@@ -101,9 +101,9 @@ void BMMultibandAttackShaper_init(BMMultibandAttackShaper *This, bool isStereo, 
 	size_t bufferSize = sizeof(float) * BM_BUFFER_CHUNK_SIZE;
 	if(isStereo){
 		This->b1L = malloc(4 * bufferSize);
-		This->b2L = This->b1L + bufferSize;
-		This->b1R = This->b2L + bufferSize;
-		This->b2R = This->b1R + bufferSize;
+        This->b2L = This->b1L + BM_BUFFER_CHUNK_SIZE;
+        This->b1R = This->b2L + BM_BUFFER_CHUNK_SIZE;
+        This->b2R = This->b1R + BM_BUFFER_CHUNK_SIZE;
 	} else {
 		This->b1L = malloc(2 * bufferSize);
 		This->b2L = This->b1L + bufferSize;
@@ -141,7 +141,6 @@ void BMMultibandAttackShaper_processStereo(BMMultibandAttackShaper *This,
 		// split the signal into two bands
 		BMCrossover_processStereo(&This->crossover2, inputL, inputR, This->b1L, This->b1R, This->b2L, This->b2R, numSamples);
         
-
 		// process transient shapers on each band
 		BMAttackShaperSection_processStereo(&This->asSections[0], This->b1L, This->b1R, This->b1L, This->b1R, samplesProcessing);
 		BMAttackShaperSection_processStereo(&This->asSections[1], This->b2L, This->b2R, This->b2L, This->b2R, samplesProcessing);
@@ -149,6 +148,7 @@ void BMMultibandAttackShaper_processStereo(BMMultibandAttackShaper *This,
 		// recombine the signal
 		vDSP_vadd(This->b1L, 1, This->b2L, 1, outputL, 1, samplesProcessing);
 		vDSP_vadd(This->b1R, 1, This->b2R, 1, outputR, 1, samplesProcessing);
+
 		
 		// advance pointers
 		numSamples -= samplesProcessing;
@@ -398,13 +398,14 @@ void BMAttackShaperSection_processStereo(BMAttackShaperSection *This,
 		BMAttackShaperSection_generateControlSignal(This, This->b1, This->b2, controlSignal, samplesProcessing);
 		
 		// delay the input signal to enable faster response time without clicks
-		const float *inputs [2];
-		float *outputs [2];
-		inputs[0] = inputL; inputs[1] = inputR;
+		const float *inputs [2] = {inputL, inputR};
 		float *delayedInputL = This->b0;
 		float *delayedInputR = This->b2;
-		outputs[0] = delayedInputL; outputs[1] = delayedInputR;
-		BMShortSimpleDelay_process(&This->dly, inputs, outputs, 1, samplesProcessing);
+		float* outputs [2] = {delayedInputL, delayedInputR};
+		size_t numChannels = 2;
+		BMShortSimpleDelay_process(&This->dly, inputs, outputs, numChannels, samplesProcessing);
+//		memcpy(delayedInputL,inputL,sizeof(float)*samplesProcessing);
+//		memcpy(delayedInputR,inputR,sizeof(float)*samplesProcessing);
 		
 		// apply the volume control signal to the delayed input
 		vDSP_vmul(delayedInputL, 1, controlSignal, 1, outputL, 1, samplesProcessing);
@@ -439,11 +440,9 @@ void BMAttackShaperSection_processMono(BMAttackShaperSection *This,
 		BMAttackShaperSection_generateControlSignal(This, input, This->b2, controlSignal, samplesProcessing);
 		
         // delay the input signal to enable faster response time without clicks
-        const float *inputs [1];
-        float *outputs [1];
-        inputs[0] = input;
+		const float *inputs [1] = {input};
         float *delayedInput = This->b0;
-        outputs[0] = delayedInput;
+		float *outputs [1] = {delayedInput};
         BMShortSimpleDelay_process(&This->dly, inputs, outputs, 1, samplesProcessing);
         
         // apply the volume control signal to the delayed input
