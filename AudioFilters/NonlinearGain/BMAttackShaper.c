@@ -11,7 +11,7 @@
 #include "Constants.h"
 #include "fastpow.h"
 
-#define BMAS_NOISE_GATE_CLOSED_LEVEL -71.0f
+#define BMAS_NOISE_GATE_CLOSED_LEVEL -63.0f
 
 
 
@@ -78,7 +78,7 @@ void BMMultibandAttackShaper_init(BMMultibandAttackShaper *This, bool isStereo, 
 	float dsfSensitivity = 1000.0f;
 	float dsfFcMin = releaseFC;
 	float dsfFcMax = 1000.0f;
-	float exaggeration = 2.1f;
+	float exaggeration = 1.8f;
 	BMAttackShaperSection_init(&This->asSections[0],
 							   releaseFC,
 							   attackFC,
@@ -200,6 +200,18 @@ void BMAttackShaperSection_setAttackFrequency(BMAttackShaperSection *This, float
 	for(size_t i=0; i<BMAS_AF_NUMLEVELS; i++)
 	BMAttackFilter_setCutoff(&This->af[i], attackFc);
 }
+
+
+
+void BMAttackShaperSection_setReleaseFrequency(BMAttackShaperSection *This, float releaseFc){
+	for(size_t i=0; i<BMAS_RF_NUMLEVELS; i++)
+		BMReleaseFilter_setCutoff(&This->rf[i], releaseFc);
+	for(size_t i=0; i<BMAS_DSF_NUMLEVELS; i++)
+		BMDynamicSmoothingFilter_setMinFc(&This->dsf[i], releaseFc);
+}
+
+
+
 
 
 void BMAttackShaperSection_init(BMAttackShaperSection *This,
@@ -475,10 +487,14 @@ bool BMAttackShaperSection_sidechainNoiseGateIsOpen(BMAttackShaperSection *This)
 
 void BMMultibandAttackShaper_setAttackTime(BMMultibandAttackShaper *This, float attackTimeInSeconds){
 	// find the lpf cutoff frequency that corresponds to the specified attack time
-	float fc = ARTimeToCutoffFrequency(attackTimeInSeconds, BMAS_AF_NUMLEVELS);
+	float attackFc = ARTimeToCutoffFrequency(attackTimeInSeconds, BMAS_AF_NUMLEVELS);
 	
-	BMAttackShaperSection_setAttackFrequency(&This->asSections[0], fc);
-	BMAttackShaperSection_setAttackFrequency(&This->asSections[1], fc*BMAS_SECTION_2_AF_MULTIPLIER);
+	BMAttackShaperSection_setAttackFrequency(&This->asSections[0], attackFc);
+	BMAttackShaperSection_setAttackFrequency(&This->asSections[1], attackFc*BMAS_SECTION_2_AF_MULTIPLIER);
+	
+	float releaseFc = BM_MIN(attackFc * 0.6666f, 20.0f);
+	BMAttackShaperSection_setReleaseFrequency(&This->asSections[0], releaseFc);
+	BMAttackShaperSection_setReleaseFrequency(&This->asSections[1], releaseFc*BMAS_SECTION_2_RF_MULTIPLIER);
 }
 	
 
