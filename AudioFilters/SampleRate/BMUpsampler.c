@@ -18,7 +18,6 @@ extern "C" {
     
     
     
-    
     void BMUpsampler_init(BMUpsampler* This, bool stereo, size_t upsampleFactor, enum resamplerType type){
         assert(isPowerOfTwo(upsampleFactor));
         
