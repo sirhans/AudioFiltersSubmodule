@@ -11,6 +11,8 @@
 #include "Constants.h"
 #include "fastpow.h"
 
+#define BMAS_NOISE_GATE_CLOSED_LEVEL -63.0f
+
 
 
 /*!
@@ -68,7 +70,7 @@ void BMMultibandAttackShaper_init(BMMultibandAttackShaper *This, bool isStereo, 
 	This->isStereo = isStereo;
 	
 	// init the 2-way crossover
-	float crossover2fc = 300.0;
+	float crossover2fc = 400.0;
 	BMCrossover_init(&This->crossover2, crossover2fc, sampleRate, true, isStereo);
 	
 	float attackFC = 40.0f;
@@ -76,7 +78,7 @@ void BMMultibandAttackShaper_init(BMMultibandAttackShaper *This, bool isStereo, 
 	float dsfSensitivity = 1000.0f;
 	float dsfFcMin = releaseFC;
 	float dsfFcMax = 1000.0f;
-	float exaggeration = 2.1f;
+	float exaggeration = 2.0f;
 	BMAttackShaperSection_init(&This->asSections[0],
 							   releaseFC,
 							   attackFC,
@@ -200,6 +202,22 @@ void BMAttackShaperSection_setAttackFrequency(BMAttackShaperSection *This, float
 }
 
 
+
+void BMAttackShaperSection_setReleaseFrequency(BMAttackShaperSection *This, float releaseFc){
+	for(size_t i=0; i<BMAS_RF_NUMLEVELS; i++)
+		BMReleaseFilter_setCutoff(&This->rf[i], releaseFc);
+}
+
+
+void BMAttackShaperSection_setDSMinFrequency(BMAttackShaperSection *This, float dsMinFc){
+	for(size_t i=0; i<BMAS_DSF_NUMLEVELS; i++)
+		BMDynamicSmoothingFilter_setMinFc(&This->dsf[i], dsMinFc);
+}
+
+
+
+
+
 void BMAttackShaperSection_init(BMAttackShaperSection *This,
 								float releaseFilterFc,
 								float attackFc,
@@ -276,18 +294,31 @@ void BMAttackShaper_upperLimit(float limit, const float* input, float *output, s
  *    else output[i] = input[i];
  * }
  *
+ * @param This pointer to an initialised struct
  * @param input input array
  * @param threshold below this value, the gate closes
  * @param closedValue when the gate is closed, this is the output value
  * @param output output array
  * @param numSamples length of input and output arrays
  */
-void BMAttackShaper_simpleNoiseGate(const float* input, float threshold, float closedValue, float* output, size_t numSamples){
+void BMAttackShaperSection_simpleNoiseGate(BMAttackShaperSection *This,
+									const float* input,
+									float threshold,
+									float closedValue,
+									float* output,
+									size_t numSamples){
+	
 	// (input[i] < threshold) ? output[i] = 0;
 	if(threshold > closedValue)
 		vDSP_vthres(input, 1, &threshold, output, 1, numSamples);
 	// (output[i] < closedValue) ? output[i] = closedValue;
 	vDSP_vthr(output, 1, &closedValue, output, 1, numSamples);
+	
+	// get the max value to find out if the gate was open at any point during the buffer
+	float maxValue;
+	vDSP_maxv(output, 1, &maxValue, numSamples);
+	This->noiseGateIsOpen = maxValue > This->noiseGateThreshold;
+	if(This->noiseGateThreshold < closedValue) This->noiseGateIsOpen = false;
 }
 
 
@@ -314,14 +345,8 @@ void BMAttackShaperSection_generateControlSignal(BMAttackShaperSection *This,
 	vDSP_vabs(input, 1, instantAttackEnvelope, 1, numSamples);
 	
 	// apply a simple per-sample noise gate
-	float noiseGateClosedValue = BM_DB_TO_GAIN(-60.0f);
-	BMAttackShaper_simpleNoiseGate(instantAttackEnvelope, This->noiseGateThreshold, noiseGateClosedValue, instantAttackEnvelope, numSamples);
-	
-	// get the max value to find out if the gate was open at any point during the buffer
-	float maxValue;
-	vDSP_maxv(instantAttackEnvelope, 1, &maxValue, numSamples);
-	This->noiseGateIsOpen = maxValue > This->noiseGateThreshold;
-	if(This->noiseGateThreshold < noiseGateClosedValue) This->noiseGateIsOpen = false;
+	float noiseGateClosedValue = BM_DB_TO_GAIN(BMAS_NOISE_GATE_CLOSED_LEVEL);
+	BMAttackShaperSection_simpleNoiseGate(This, instantAttackEnvelope, This->noiseGateThreshold, noiseGateClosedValue, instantAttackEnvelope, numSamples);
 	
 	// convert to decibels
 	float one = 1.0f;
@@ -466,10 +491,18 @@ bool BMAttackShaperSection_sidechainNoiseGateIsOpen(BMAttackShaperSection *This)
 
 void BMMultibandAttackShaper_setAttackTime(BMMultibandAttackShaper *This, float attackTimeInSeconds){
 	// find the lpf cutoff frequency that corresponds to the specified attack time
-	float fc = ARTimeToCutoffFrequency(attackTimeInSeconds, BMAS_AF_NUMLEVELS);
+	float attackFc = ARTimeToCutoffFrequency(attackTimeInSeconds, BMAS_AF_NUMLEVELS);
 	
-	BMAttackShaperSection_setAttackFrequency(&This->asSections[0], fc);
-	BMAttackShaperSection_setAttackFrequency(&This->asSections[1], fc*BMAS_SECTION_2_AF_MULTIPLIER);
+	BMAttackShaperSection_setAttackFrequency(&This->asSections[0], attackFc);
+	BMAttackShaperSection_setAttackFrequency(&This->asSections[1], attackFc*BMAS_SECTION_2_AF_MULTIPLIER);
+	
+	float releaseFc = BM_MIN(attackFc * 0.6666f, 20.0f);
+	BMAttackShaperSection_setReleaseFrequency(&This->asSections[0], releaseFc);
+	BMAttackShaperSection_setReleaseFrequency(&This->asSections[1], releaseFc*BMAS_SECTION_2_RF_MULTIPLIER);
+	
+	float dsMinFc = releaseFc;
+	BMAttackShaperSection_setDSMinFrequency(&This->asSections[0], dsMinFc);
+	BMAttackShaperSection_setDSMinFrequency(&This->asSections[1], dsMinFc);
 }
 	
 
@@ -482,9 +515,14 @@ void BMMultibandAttackShaper_setAttackDepth(BMMultibandAttackShaper *This, float
 
 
 void BMMultibandAttackShaper_setSidechainNoiseGateThreshold(BMMultibandAttackShaper *This, float thresholdDb){
+	// Don't allow the noise gate threshold to be set lower than the
+	// gain setting the gate takes when it's closed
+	assert(thresholdDb > BMAS_NOISE_GATE_CLOSED_LEVEL);
+	
 	for(size_t i=0; i<BMAS_NUM_SECTIONS; i++)
 		This->asSections[i].noiseGateThreshold = BM_DB_TO_GAIN(thresholdDb);
 }
+
 
 
 bool BMMultibandAttackShaper_sidechainNoiseGateIsOpen(BMMultibandAttackShaper *This){
