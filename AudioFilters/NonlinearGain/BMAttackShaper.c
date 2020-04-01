@@ -78,7 +78,7 @@ void BMMultibandAttackShaper_init(BMMultibandAttackShaper *This, bool isStereo, 
 	float dsfSensitivity = 1000.0f;
 	float dsfFcMin = releaseFC;
 	float dsfFcMax = 1000.0f;
-	float exaggeration = 1.8f;
+	float exaggeration = 2.0f;
 	BMAttackShaperSection_init(&This->asSections[0],
 							   releaseFC,
 							   attackFC,
@@ -206,8 +206,12 @@ void BMAttackShaperSection_setAttackFrequency(BMAttackShaperSection *This, float
 void BMAttackShaperSection_setReleaseFrequency(BMAttackShaperSection *This, float releaseFc){
 	for(size_t i=0; i<BMAS_RF_NUMLEVELS; i++)
 		BMReleaseFilter_setCutoff(&This->rf[i], releaseFc);
+}
+
+
+void BMAttackShaperSection_setDSMinFrequency(BMAttackShaperSection *This, float dsMinFc){
 	for(size_t i=0; i<BMAS_DSF_NUMLEVELS; i++)
-		BMDynamicSmoothingFilter_setMinFc(&This->dsf[i], releaseFc);
+		BMDynamicSmoothingFilter_setMinFc(&This->dsf[i], dsMinFc);
 }
 
 
@@ -495,6 +499,10 @@ void BMMultibandAttackShaper_setAttackTime(BMMultibandAttackShaper *This, float 
 	float releaseFc = BM_MIN(attackFc * 0.6666f, 20.0f);
 	BMAttackShaperSection_setReleaseFrequency(&This->asSections[0], releaseFc);
 	BMAttackShaperSection_setReleaseFrequency(&This->asSections[1], releaseFc*BMAS_SECTION_2_RF_MULTIPLIER);
+	
+	float dsMinFc = releaseFc;
+	BMAttackShaperSection_setDSMinFrequency(&This->asSections[0], dsMinFc);
+	BMAttackShaperSection_setDSMinFrequency(&This->asSections[1], dsMinFc);
 }
 	
 
