@@ -70,7 +70,7 @@ void BMMultibandAttackShaper_init(BMMultibandAttackShaper *This, bool isStereo, 
 	This->isStereo = isStereo;
 	
 	// init the 2-way crossover
-	float crossover2fc = 300.0;
+	float crossover2fc = 400.0;
 	BMCrossover_init(&This->crossover2, crossover2fc, sampleRate, true, isStereo);
 	
 	float attackFC = 40.0f;
