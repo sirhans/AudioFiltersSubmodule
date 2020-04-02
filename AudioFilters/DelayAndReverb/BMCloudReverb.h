@@ -17,6 +17,7 @@
 #include "BMWetDryMixer.h"
 #include "BMSmoothGain.h"
 #include "BMLongLoopFDN.h"
+#include "BMQuadratureOscillator.h"
 
 typedef struct BMStereoBuffer{
     void* bufferL;
@@ -41,15 +42,15 @@ typedef struct BMCloudReverb {
     BMStereoBuffer loopInput;
     BMStereoBuffer lastLoopBuffer;
     BMStereoBuffer wetBuffer;
+    BMStereoBuffer LFOBuffer;
+    
+    BMQuadratureOscillator qosc;
 
     float sampleRate;
     float maxTapsEachVND;
     float diffusion;
     bool updateDiffusion;
     float decayTime;
-    
-    BMSmoothGain leftGain;
-    BMSmoothGain rightGain;
     
     float bellQ;
     float lsGain;

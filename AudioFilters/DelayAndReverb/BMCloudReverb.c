@@ -71,6 +71,8 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     
     This->buffer.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->buffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+    This->LFOBuffer.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+    This->LFOBuffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->loopInput.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->loopInput.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->lastLoopBuffer.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
@@ -89,13 +91,8 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     BMWetDryMixer_init(&This->reverbMixer, sr);
     BMCloudReverb_setOutputMixer(This, 0.5f);
     
-    //pan
-    BMSmoothGain_init(&This->leftGain, sr);
-    BMSmoothGain_init(&This->rightGain, sr);
-    float panL = 0.2f;
-    float panR = sqrtf(1.0f - powf(panL, 2));
-    BMSmoothGain_setGainDbInstant(&This->leftGain, BM_GAIN_TO_DB(panL));
-    BMSmoothGain_setGainDbInstant(&This->rightGain, BM_GAIN_TO_DB(panR));
+    //Pan
+    BMQuadratureOscillator_init(&This->qosc, 0.25, sr);
 }
 
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
@@ -118,10 +115,15 @@ void BMCloudReverb_destroy(BMCloudReverb* This){
     
     BMLongLoopFDN_free(&This->loopFND);
     
+    
     free(This->buffer.bufferL);
     This->buffer.bufferL = nil;
     free(This->buffer.bufferR);
     This->buffer.bufferR = nil;
+    free(This->LFOBuffer.bufferL);
+    This->LFOBuffer.bufferL = nil;
+    free(This->LFOBuffer.bufferR);
+    This->LFOBuffer.bufferR = nil;
     free(This->loopInput.bufferL);
     This->loopInput.bufferL = nil;
     free(This->loopInput.bufferR);
@@ -139,15 +141,17 @@ void BMCloudReverb_destroy(BMCloudReverb* This){
 void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t numSamples){
     BMCloudReverb_updateDiffusion(This);
     
-    //Pan
-    BMSmoothGain_processBufferMono(&This->leftGain, inputL, This->buffer.bufferL, numSamples);
-    BMSmoothGain_processBufferMono(&This->rightGain, inputR, This->buffer.bufferR, numSamples);
+    //Quadrature oscilliscope
+    BMQuadratureOscillator_process(&This->qosc, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
+    vDSP_vmul(inputL, 1, This->LFOBuffer.bufferL, 1, This->buffer.bufferL, 1, numSamples);
+    vDSP_vmul(inputR, 1, This->LFOBuffer.bufferR, 1, This->buffer.bufferR, 1, numSamples);
     
     //Filters
     BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
     
-//    memcpy(This->buffer.bufferL, inputL, sizeof(float)*numSamples);
-//    memcpy(This->buffer.bufferR, inputR, sizeof(float)*numSamples);
+//    memcpy(outputL, This->buffer.bufferL, sizeof(float)*numSamples);
+//    memcpy(outputR, This->buffer.bufferR, sizeof(float)*numSamples);
+//    return;
     
     //VND
     BMVelvetNoiseDecorrelator_processBufferStereo(&This->vnd1, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
