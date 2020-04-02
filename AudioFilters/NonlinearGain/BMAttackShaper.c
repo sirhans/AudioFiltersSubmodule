@@ -106,7 +106,7 @@ void BMMultibandAttackShaper_init(BMMultibandAttackShaper *This, bool isStereo, 
         This->b2R = This->b1R + BM_BUFFER_CHUNK_SIZE;
 	} else {
 		This->b1L = malloc(2 * bufferSize);
-		This->b2L = This->b1L + bufferSize;
+		This->b2L = This->b1L + BM_BUFFER_CHUNK_SIZE;
 	}
 	
 	// set default noise gate threshold
@@ -139,11 +139,13 @@ void BMMultibandAttackShaper_processStereo(BMMultibandAttackShaper *This,
 		size_t samplesProcessing = BM_MIN(numSamples, BM_BUFFER_CHUNK_SIZE);
 		
 		// split the signal into two bands
-		BMCrossover_processStereo(&This->crossover2, inputL, inputR, This->b1L, This->b1R, This->b2L, This->b2R, numSamples);
-        
+		BMCrossover_processStereo(&This->crossover2, inputL, inputR, This->b1L, This->b1R, This->b2L, This->b2R, samplesProcessing);
+
+		
 		// process transient shapers on each band
 		BMAttackShaperSection_processStereo(&This->asSections[0], This->b1L, This->b1R, This->b1L, This->b1R, samplesProcessing);
 		BMAttackShaperSection_processStereo(&This->asSections[1], This->b2L, This->b2R, This->b2L, This->b2R, samplesProcessing);
+		
 		
 		// recombine the signal
 		vDSP_vadd(This->b1L, 1, This->b2L, 1, outputL, 1, samplesProcessing);
