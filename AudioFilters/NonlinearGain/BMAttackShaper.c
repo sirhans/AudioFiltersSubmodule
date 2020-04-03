@@ -88,6 +88,7 @@ void BMMultibandAttackShaper_init(BMMultibandAttackShaper *This, bool isStereo, 
 							   sampleRate,
 							   isStereo);
 	
+	dsfFcMax = 1000.0f;
 	BMAttackShaperSection_init(&This->asSections[1],
 							   releaseFC*BMAS_SECTION_2_RF_MULTIPLIER,
 							   attackFC*BMAS_SECTION_2_AF_MULTIPLIER,
@@ -111,6 +112,22 @@ void BMMultibandAttackShaper_init(BMMultibandAttackShaper *This, bool isStereo, 
 	
 	// set default noise gate threshold
 	BMMultibandAttackShaper_setSidechainNoiseGateThreshold(This, -45.0f);
+	
+	// process a few buffers of silence to get the filters warmed up
+	float* input = calloc(256,sizeof(float));
+	float* outputL = calloc(256,sizeof(float));
+	float* outputR = calloc(256,sizeof(float));
+	//
+	if(isStereo)
+		for(size_t i=0; i<10; i++)
+			BMMultibandAttackShaper_processStereo(This, input, input, outputL, outputR, 256);
+	else
+		for(size_t i=0; i<10; i++)
+			BMMultibandAttackShaper_processMono(This, input, outputL, 256);
+	//
+	free(input);
+	free(outputL);
+	free(outputR);
 }
 
 
