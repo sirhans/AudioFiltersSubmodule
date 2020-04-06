@@ -24,7 +24,7 @@
 void BMCloudReverb_updateDiffusion(BMCloudReverb* This);
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This);
 void BMCloudReverb_updateLoopGain(BMCloudReverb* This,size_t* delayTimeL,size_t* delayTimeR,float* gainL,float* gainR);
-
+float calculateScaleVol(BMCloudReverb* This);
 
 float getVNDLength(float numTaps,float length){
     float vndLength = ((numTaps*numTaps)*length)/(1 + numTaps + numTaps*numTaps);
@@ -168,19 +168,24 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
     
     BMLongLoopFDN_process(&This->loopFND, This->wetBuffer.bufferL, This->wetBuffer.bufferR, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
 
+    vDSP_vsmul(This->wetBuffer.bufferL, 1, &This->normallizeVol, This->wetBuffer.bufferL, 1, numSamples);
+    vDSP_vsmul(This->wetBuffer.bufferR, 1, &This->normallizeVol, This->wetBuffer.bufferR, 1, numSamples);
+    
     //Process reverb dry/wet mixer
     BMWetDryMixer_processBufferInPhase(&This->reverbMixer, This->wetBuffer.bufferL, This->wetBuffer.bufferR, inputL, inputR, outputL, outputR, numSamples);
-    
-    float scaleVol = BM_DB_TO_GAIN(-30);
-    vDSP_vsmul(outputL, 1, &scaleVol, outputL, 1, numSamples);
-    vDSP_vsmul(outputR, 1, &scaleVol, outputR, 1, numSamples);
+}
+
+float calculateScaleVol(BMCloudReverb* This){
+    float factor = log2f(This->decayTime);
+    float scaleDB = -3 * (factor);
+    return scaleDB;
 }
 
 #pragma mark - Set
 void BMCloudReverb_setLoopDecayTime(BMCloudReverb* This,float decayTime){
     This->decayTime = decayTime;
     BMLongLoopFDN_setRT60Decay(&This->loopFND, decayTime);
-//    BMVelvetNoiseDecorrelator_setRT60DecayTime(&This->loopVND, decayTime);
+    This->normallizeVol = BM_DB_TO_GAIN(calculateScaleVol(This));
 }
 
 void BMCloudReverb_setDelayPitchMixer(BMCloudReverb* This,float wetMix){
