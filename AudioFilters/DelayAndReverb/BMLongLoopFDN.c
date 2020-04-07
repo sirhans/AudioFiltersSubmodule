@@ -65,7 +65,6 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	//	}
     for(size_t i=0; i<numDelays; i++){
 		delayLengths[i] = temp[(i*39)%This->numDelays];
-    
     }
 	
 	This->mixBuffers = malloc(sizeof(float*) * This->numDelays);
@@ -108,9 +107,9 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	
 	// how much does the input have to be attenuated to keep unity gain at the output?
 	size_t numInputsPerChannelWithZeroTap;
-	if(This->feedbackShiftByDelay > 0)
-		numInputsPerChannelWithZeroTap = This->blockSize + (hasZeroTaps ? 1 : 0);
-	else
+//	if(This->feedbackShiftByDelay > 0)
+//		numInputsPerChannelWithZeroTap = This->blockSize + (hasZeroTaps ? 1 : 0);
+//	else
 		numInputsPerChannelWithZeroTap = This->numDelays/2 + (hasZeroTaps ? 1 : 0);
 	This->inputAttenuation = sqrt(1.0f / (float)numInputsPerChannelWithZeroTap);
 	
@@ -342,24 +341,24 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		// mix inputs with feedback signals and write back into the delays
 		uint32_t bytesProcessing = (uint32_t)samplesProcessing * sizeof(float);
 		for(size_t i=0; i<This->numDelays; i++){
-			// if we are circulating by block, input only to the first block
-			if(This->feedbackShiftByDelay > 0){
-				// mix the input to the left channel delays
-				if(i<This->blockSize)
-					vDSP_vadd(This->inputBufferL, 1, This->writePointers[i], 1, This->writePointers[i], 1, samplesProcessing);
-				// mix the input to the right channel delays
-				else if(This->numDelays/2 <= i && i < This->numDelays/2 + This->blockSize)
-					vDSP_vadd(This->inputBufferR, 1, This->writePointers[i], 1, This->writePointers[i], 1, samplesProcessing);
-			}
-			// if each block feeds back to itself, input to all blocks
-			else {
+//			// if we are circulating by block, input only to the first block
+//			if(This->feedbackShiftByDelay > 0){
+//				// mix the input to the left channel delays
+//				if(i<This->blockSize)
+//					vDSP_vadd(This->inputBufferL, 1, This->writePointers[i], 1, This->writePointers[i], 1, samplesProcessing);
+//				// mix the input to the right channel delays
+//				else if(This->numDelays/2 <= i && i < This->numDelays/2 + This->blockSize)
+//					vDSP_vadd(This->inputBufferR, 1, This->writePointers[i], 1, This->writePointers[i], 1, samplesProcessing);
+//			}
+//			// if each block feeds back to itself, input to all blocks
+//			else {
 				// mix the input to the left channel delays
 				if(i<This->numDelays/2)
 					vDSP_vadd(This->writePointers[i], 1, This->inputBufferL, 1, This->writePointers[i], 1, samplesProcessing);
 				// mix the input to the right channel delays
 				else
 					vDSP_vadd(This->writePointers[i], 1, This->inputBufferR, 1, This->writePointers[i], 1, samplesProcessing);
-			}
+//			}
 			
 			// mark the delays read
 			TPCircularBufferConsume(&This->delays[i], bytesProcessing);
