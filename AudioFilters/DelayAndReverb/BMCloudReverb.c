@@ -10,11 +10,10 @@
 #include "BMReverb.h"
 
 
-#define Filter_Level_Bell 0
-#define Filter_Level_Highpass 1
-#define Filter_Level_Lowshelf 2
-#define Filter_Level_Tone 3
-#define Filter_Level_Lowpass10k 4
+
+#define Filter_Level_Lowshelf 0
+#define Filter_Level_Tone 1
+#define Filter_Level_Lowpass10k 2
 #define Filter_Level_TotalLP 3
 
 #define Filter_TotalLevel Filter_Level_Lowpass10k + Filter_Level_TotalLP
@@ -43,17 +42,12 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     //BIQUAD FILTER
     BMMultiLevelBiquad_init(&This->biquadFilter, Filter_TotalLevel, sr, true, false, true);
     //Tone control - use 6db
-    BMMultiLevelBiquad_setLowPass6db(&This->biquadFilter, 1300, Filter_Level_Tone);
-//    //lowpass 36db
-    BMMultiLevelBiquad_setHighOrderBWLP(&This->biquadFilter, 9300, Filter_Level_Lowpass10k, Filter_Level_TotalLP);
-    
-    //High passs
-    BMMultiLevelBiquad_setHighPass6db(&This->biquadFilter, 300, Filter_Level_Highpass);
+	BMCloudReverb_setHighCutFreq(This, 1200.0f);
+    //lowpass 36db
+	BMMultiLevelBiquad_setHighOrderBWLP(&This->biquadFilter, 9300, Filter_Level_Lowpass10k, Filter_Level_TotalLP);
     //Low shelf
     This->lsGain = 0;
-    BMMultiLevelBiquad_setLowShelf(&This->biquadFilter, Filter_LS_FC, This->lsGain, Filter_Level_Lowshelf);
-    
-//    BMMultiLevelBiquad_setGainInstant(&This->biquadFilter,0);
+	BMCloudReverb_setLSGain(This, This->lsGain);
     
     //VND
     This->updateVND = false;
@@ -208,7 +202,7 @@ void BMCloudReverb_updateDiffusion(BMCloudReverb* This){
 }
 
 void BMCloudReverb_setLSGain(BMCloudReverb* This,float gainDb){
-    BMMultiLevelBiquad_setLowShelf(&This->biquadFilter, Filter_LS_FC, gainDb, Filter_Level_Lowshelf);
+    BMMultiLevelBiquad_setLowShelfFirstOrder(&This->biquadFilter, Filter_LS_FC, gainDb, Filter_Level_Lowshelf);
 }
 
 void BMCloudReverb_setHighCutFreq(BMCloudReverb* This,float freq){
