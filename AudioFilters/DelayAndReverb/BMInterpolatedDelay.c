@@ -132,26 +132,6 @@ extern "C" {
     
     
     
-    
-    
-    static __inline__ __attribute__((always_inline)) void BMInterpolatedDelay_processSampleLinearInterpMono(BMInterpolatedDelay *This,
-                                                          float in,
-                                                          float* out){
-
-    }
-    
-
-    
-    
-    
-    static __inline__ __attribute__((always_inline)) void BMInterpolatedDelay_processSampleLinearInterpStereo(BMInterpolatedDelay *This,
-                                                            float inL,
-                                                            float inR,
-                                                            float* outL,
-                                                            float* outR);
-    
-    
-    
     void BMInterpolatedDelay_setSpeed(float newSpeed){
         
     }

@@ -109,8 +109,9 @@ void BMMultiLevelBiquad_processBuffer4(BMMultiLevelBiquad *This,
     vDSP_biquadm(This->multiChannelFilterSetup, (const float* _Nonnull * _Nonnull)fourChannelInput, 1, fourChannelOutput, 1, numSamples);
     
     // apply a gain adjustment
-    float *outputs [4] = {out1, out2, out3, out4};
-    BMSmoothGain_processBuffers(&This->gain, outputs, outputs, 4, numSamples);
+    const float *inputs [4] = {out1, out2, out3, out4};
+	float *outputs [4] = {out1, out2, out3, out4};
+    BMSmoothGain_processBuffers(&This->gain, inputs, outputs, 4, numSamples);
 }
 
 
@@ -358,7 +359,11 @@ inline void BMMultiLevelBiquad_recreate(BMMultiLevelBiquad *This){
 // we are doing this to change the name of the function from destroy to free
 // without breaking old code that calls destroy
 void BMMultiLevelBiquad_free(BMMultiLevelBiquad* This){
+	// the pragma commands silence the compiler warning when we call this deprecated function
+	#pragma clang diagnostic push
+	#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 	BMMultiLevelBiquad_destroy(This);
+	#pragma clang diagnostic pop
 }
 
 
@@ -2183,7 +2188,7 @@ void BMMultiLevelBiquad_tfMagVectorAtLevel(BMMultiLevelBiquad *This, const float
 /*!
  * BMMultiLevelBiquad_groupDelay
  *
- * returns the total group delay of all levels of the filter at the specified frequency.
+ * returns the total group delay (in samples) of all levels of the filter at the specified frequency.
  *
  * @discussion uses a cookbook formula for group delay of biquad filters, based on the fft derivative method.
  *

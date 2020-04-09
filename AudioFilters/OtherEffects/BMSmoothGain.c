@@ -193,7 +193,7 @@ extern "C" {
              // otherwise just copy
              else {
                  // check that the arrays are not in place; if they are, do nothing
-                 if (inputs != outputs){
+                 if (inputs != (const float**)outputs){
                      for(size_t j=0; j<numChannels; j++)
                          memcpy(outputs[j],inputs[j],sizeof(float)*numSamples);
                  }
