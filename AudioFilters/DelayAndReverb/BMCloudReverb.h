@@ -43,7 +43,8 @@ typedef struct BMCloudReverb {
     BMStereoBuffer wetBuffer;
     BMStereoBuffer LFOBuffer;
     
-    BMPanLFO panLFO;
+    BMPanLFO inputPan;
+    BMPanLFO outputPan;
 
     float sampleRate;
     float maxTapsEachVND;

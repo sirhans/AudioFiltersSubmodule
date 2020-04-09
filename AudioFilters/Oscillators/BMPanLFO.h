@@ -32,4 +32,6 @@ void BMPanLFO_process(BMPanLFO *This,
                       float* outR,
                       size_t numSamples);
 
+void BMPanLFO_setDepth(BMPanLFO *This,float depth);
+
 #endif /* BMPanLFO_h */

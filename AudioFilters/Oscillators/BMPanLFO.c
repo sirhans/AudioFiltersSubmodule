@@ -28,6 +28,10 @@ void BMPanLFO_destroy(BMPanLFO *This){
     This->tempR = NULL;
 }
 
+void BMPanLFO_setDepth(BMPanLFO *This,float depth){
+    This->depth = depth;
+}
+
 
 void BMPanLFO_process(BMPanLFO *This,
                       float* outL,
