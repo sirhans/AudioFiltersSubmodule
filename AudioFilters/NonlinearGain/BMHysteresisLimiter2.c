@@ -421,18 +421,22 @@ void BMHysteresisLimiter2_setSag(BMHysteresisLimiter2 *This, float sag){
 
 
 
-void BMHysteresisLimiter2_setAAFilterFC(BMHysteresisLimiter2 *This, float fc){
+void BMHysteresisLimiter2_setAAFilterFC(BMHysteresisLimiter2 *This, float lowpassFc){
 	// safety check: don't let fc exceed 90% of the Nyquist frequency
-	fc = BM_MIN(This->sampleRate * 0.5f * 0.9f, fc);
+	lowpassFc = BM_MIN(This->sampleRate * 0.5f * 0.9f, lowpassFc);
 	// set the AA filters
 	// the first level has highpass and lowpass packed in one biquad section
-	BMMultiLevelBiquad_setHighPassLowPass(&This->filter1,This->hp, fc, 0);
-	BMMultiLevelBiquad_setHighPassLowPass(&This->filter2,This->hp, fc, 0);
+	BMMultiLevelBiquad_setHighPassLowPass(&This->filter1, This->highpassFc, lowpassFc, 0);
+	BMMultiLevelBiquad_setHighPassLowPass(&This->filter2, This->highpassFc, lowpassFc, 0);
+//	BMMultiLevelBiquad_setHighPass6db(&This->filter1, This->highpassFc, 0);
+//	BMMultiLevelBiquad_setHighPass6db(&This->filter2, This->highpassFc, 0);
 	// subsequent levels are criticaly damped lowpass only
 	for(size_t i=1; i<This->filter1.numLevels; i++){
-		float q = 0.5f;
-		BMMultiLevelBiquad_setLowPassQ12db(&This->filter1, fc, q, i);
-		BMMultiLevelBiquad_setLowPassQ12db(&This->filter2, fc, q, i);
+		float Q = 0.5f; // critically-damped lowpass Q
+		BMMultiLevelBiquad_setLowPassQ12db(&This->filter1, lowpassFc, Q, i);
+		BMMultiLevelBiquad_setLowPassQ12db(&This->filter2, lowpassFc, Q, i);
+//		BMMultiLevelBiquad_setLowPass6db(&This->filter1, lowpassFc, i);
+//		BMMultiLevelBiquad_setLowPass6db(&This->filter2, lowpassFc, i);
 	}
 }
 
@@ -449,6 +453,9 @@ void BMHysteresisLimiter2_init(BMHysteresisLimiter2 *This,
 	
 	This->sampleRate = sampleRate;
 	This->highpassFc = hpFilterFc;
+	
+	// add a level because we are (temporarily) putting the highpass filters on their own level
+//	aaFilterNumLevels++;
 	
 	// init the AA filter
 	assert(aaFilterFc < sampleRate * 0.5f);
