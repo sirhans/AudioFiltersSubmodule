@@ -289,6 +289,19 @@ void BMMultiLevelBiquad_setLowPass6db(BMMultiLevelBiquad* This, double fc, size_
 */
 void BMMultiLevelBiquad_setHighPass6db(BMMultiLevelBiquad* This, double fc, size_t level);
 
+
+/*!
+ *BMMultiLevelBiquad_setHighPassLowPass
+ *
+ * This packs a first order highpass and a first order lowpass filter into a single biquad section.
+ *
+ * @param This pointer
+ * @param highPassFc cutoff frequency of 6dB highpass filter
+ * @param lowPassFc cutoff frequency of 6dB lowpass filter
+ */
+void BMMultiLevelBiquad_setHighPassLowPass(BMMultiLevelBiquad *This, double highPassFc, double lowPassFc, size_t level);
+
+
 /*!
 *BMMultiLevelBiquad_setLinkwitzRileyLP
 */

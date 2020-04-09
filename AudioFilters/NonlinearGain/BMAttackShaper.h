@@ -121,4 +121,15 @@ void BMMultibandAttackShaper_setSidechainNoiseGateThreshold(BMMultibandAttackSha
  */
 bool BMMultibandAttackShaper_sidechainNoiseGateIsOpen(BMMultibandAttackShaper *This);
 
+
+
+/*!
+ *BMMultibandAttackShaper_getLatencyInSeconds
+ *
+ * @param This pointer to a struct
+ *
+ * @returns the latency in seconds
+ */
+float BMMultibandAttackShaper_getLatencyInSeconds(BMMultibandAttackShaper *This);
+
 #endif /* BMAttackShaper_h */

@@ -271,6 +271,29 @@ extern "C" {
         // process the impulse
         BMDownsampler_processBufferMono(This, impulse, IR, inputLength);
     }
+	
+	
+	
+	
+	float BMDownsampler_getLatencyInSamples(BMDownsampler *This){
+		// latency is frequency dependent. We will check it at this frequency
+		float groupDelayTestFrequency = 300.0f;
+		
+		// get the latency at each stage
+		float latency = 0.0f;
+		for(size_t i=0; i<This->numStages; i++){
+			float stageILatencyInSamples = BMMultiLevelBiquad_groupDelay(&This->downsamplers2x[i].even, groupDelayTestFrequency);
+			float stageIOversampleFactor = powf(2.0f,(float)(This->numStages - i - 1));
+			latency += stageILatencyInSamples / stageIOversampleFactor;
+		}
+		
+		// add the latency of the anti-ringing filter
+		latency += BMMultiLevelBiquad_groupDelay(&This->antiRingingFilter, groupDelayTestFrequency);
+		
+		return latency;
+	}
+	
+	
     
     
 #ifdef __cplusplus

@@ -74,7 +74,7 @@ fastlog2 (float x)
  * @log2X     output array of length length
  * @length    the length of the arrays
  */
-static void vector_fastlog2 (const float* X, float* log2X, size_t length)
+static inline void vector_fastlog2 (const float* X, float* log2X, size_t length)
 {
     
     // process in chunks of 32 floats
@@ -179,7 +179,7 @@ fasterlog10 (float x){
  * @param X     input array of length "length"
  * @param log10X output array of length "length"
  */
-static void vector_fasterLog10(const float* X, float* log10X, size_t length){
+static inline void vector_fasterLog10(const float* X, float* log10X, size_t length){
     // compute the log base 2
     vector_fasterLog2(X,log10X,length);
     
@@ -197,7 +197,7 @@ static void vector_fasterLog10(const float* X, float* log10X, size_t length){
  * @gain   an input array of length length
  * @dB     output array of length length
  */
-static void vector_fasterGainToDb(const float* gain, float* dB, size_t length){
+static inline void vector_fasterGainToDb(const float* gain, float* dB, size_t length){
     vector_fasterLog2(gain, dB, length);
     float B = 20.0 * 0.3010299957f;
     vDSP_vsmul(dB, 1, &B, dB, 1, length);

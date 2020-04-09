@@ -223,10 +223,8 @@ extern "C" {
         This->settingsQueuedForUpdate = true;
     }
     
-    
-    
-    
-    
+
+	
     
     
     // sets the cutoff frequency of the high shelf filters that increase

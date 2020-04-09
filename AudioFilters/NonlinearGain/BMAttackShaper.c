@@ -146,6 +146,15 @@ void BMMultibandAttackShaper_free(BMMultibandAttackShaper *This){
 
 
 
+float BMMultibandAttackShaper_getLatencyInSeconds(BMMultibandAttackShaper *This){
+	return (float)This->asSections->dly.delayLength / This->asSections[0].sampleRate;
+}
+
+
+
+
+
+
 void BMMultibandAttackShaper_processStereo(BMMultibandAttackShaper *This,
 										   const float *inputL, const float *inputR,
 										   float *outputL, float *outputR,
