@@ -6,13 +6,15 @@
 //  This file is in the public domain.
 //
 
+#include <stdlib.h>
 #include "BMLongLoopFDN.h"
 #include "BMReverb.h"
 #include "BMIntegerMath.h"
 
 #define BMLLFDN_MAX_BLOCK_SIZE 8
 
-void BMLongLoopFDN_randomShuffle(bool* A, size_t length);
+void BMLongLoopFDN_randomShuffleBool(bool* A, size_t length);
+void BMLongLoopFDN_randomShuffleSizet(size_t* A, size_t length);
 void BMLongLoopFDN_FHTHelper(float **in, float **out, size_t length, size_t samplesProcessing);
 
 void BMLongLoopFDN_init(BMLongLoopFDN *This,
@@ -57,15 +59,19 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	// channel gets some short ones and some long ones
 	size_t *temp = malloc(sizeof(size_t)*numDelays);
 	memcpy(temp,delayLengths,sizeof(size_t)*numDelays);
-	//	size_t j=0;
-	//	for(size_t i=0; i<numDelays; i+= 2){
-	//		delayLengths[j] = temp[i];
-	//		delayLengths[j+numDelays/2] = temp[i + 1];
-	//		j++;
-	//	}
-    for(size_t i=0; i<numDelays; i++){
-		delayLengths[i] = temp[(i*39)%This->numDelays];
-    }
+	size_t j=0;
+	for(size_t i=0; i<numDelays; i+= 2){
+		delayLengths[j] = temp[i];
+		delayLengths[j+numDelays/2] = temp[i + 1];
+		j++;
+	}
+	
+	// seed the random number generator so the randomised parts of the reverb get the same result every time
+	srand(17);
+	
+	// randomise the order of the delays in each channel
+	BMLongLoopFDN_randomShuffleSizet(delayLengths, numDelays/2);
+	BMLongLoopFDN_randomShuffleSizet(delayLengths + numDelays/2, numDelays/2);
 	
 	This->mixBuffers = malloc(sizeof(float*) * This->numDelays);
 	This->mixBuffers[0] = malloc(sizeof(float) * This->numDelays * minDelaySamples);
@@ -107,10 +113,7 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	
 	// how much does the input have to be attenuated to keep unity gain at the output?
 	size_t numInputsPerChannelWithZeroTap;
-//	if(This->feedbackShiftByDelay > 0)
-//		numInputsPerChannelWithZeroTap = This->blockSize + (hasZeroTaps ? 1 : 0);
-//	else
-		numInputsPerChannelWithZeroTap = This->numDelays/2 + (hasZeroTaps ? 1 : 0);
+	numInputsPerChannelWithZeroTap = This->numDelays/2 + (hasZeroTaps ? 1 : 0);
 	This->inputAttenuation = sqrt(1.0f / (float)numInputsPerChannelWithZeroTap);
 	
 	// init the feedback coefficients
@@ -124,8 +127,8 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 		This->tapSigns[i] = i % 2 == 0 ? false : true;
 	
 	// randomise the order of the output tap signs in each channel
-	BMLongLoopFDN_randomShuffle(This->tapSigns, numDelays/2);
-	BMLongLoopFDN_randomShuffle(This->tapSigns + numDelays/2, numDelays/2);
+	BMLongLoopFDN_randomShuffleBool(This->tapSigns, numDelays/2);
+	BMLongLoopFDN_randomShuffleBool(This->tapSigns + numDelays/2, numDelays/2);
 	
 	This->inputPan = 0.2;
 	
@@ -139,11 +142,24 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 
 
 
-void BMLongLoopFDN_randomShuffle(bool* A, size_t length){
+void BMLongLoopFDN_randomShuffleBool(bool* A, size_t length){
 	// swap every element in A with another element in a random position
 	for(size_t i=0; i<length; i++){
-		size_t randomIndex = arc4random() % length;
-		float temp = A[i];
+		size_t randomIndex = rand() % length;
+		bool temp = A[i];
+		A[i] = A[randomIndex];
+		A[randomIndex] = temp;
+	}
+}
+
+
+
+
+void BMLongLoopFDN_randomShuffleSizet(size_t* A, size_t length){
+	// swap every element in A with another element in a random position
+	for(size_t i=0; i<length; i++){
+		size_t randomIndex = rand() % length;
+		size_t temp = A[i];
 		A[i] = A[randomIndex];
 		A[randomIndex] = temp;
 	}
