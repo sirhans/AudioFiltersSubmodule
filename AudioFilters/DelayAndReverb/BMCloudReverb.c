@@ -86,7 +86,8 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     BMCloudReverb_setOutputMixer(This, 0.5f);
     
     //Pan
-    BMQuadratureOscillator_init(&This->qosc, 0.25, sr);
+    BMPanLFO_init(&This->inputPan, 0.25f, 0.4f, sr);
+    BMPanLFO_init(&This->outputPan, 0.25f, 0.4f, sr);
 }
 
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
@@ -137,16 +138,16 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
     BMCloudReverb_updateVND(This);
     
     //Quadrature oscilliscope
-    BMQuadratureOscillator_process(&This->qosc, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
+    BMPanLFO_process(&This->inputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
     vDSP_vmul(inputL, 1, This->LFOBuffer.bufferL, 1, This->buffer.bufferL, 1, numSamples);
     vDSP_vmul(inputR, 1, This->LFOBuffer.bufferR, 1, This->buffer.bufferR, 1, numSamples);
-    
-    //Filters
-    BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
     
 //    memcpy(outputL, This->buffer.bufferL, sizeof(float)*numSamples);
 //    memcpy(outputR, This->buffer.bufferR, sizeof(float)*numSamples);
 //    return;
+    
+    //Filters
+    BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
     
     //VND
     BMVelvetNoiseDecorrelator_processBufferStereo(&This->vnd1, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
@@ -163,6 +164,11 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
     
     //Process reverb dry/wet mixer
     BMWetDryMixer_processBufferInPhase(&This->reverbMixer, This->wetBuffer.bufferL, This->wetBuffer.bufferR, inputL, inputR, outputL, outputR, numSamples);
+    
+    //Quadrature oscilliscope
+    BMPanLFO_process(&This->outputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
+    vDSP_vmul(outputL, 1, This->LFOBuffer.bufferL, 1, outputL, 1, numSamples);
+    vDSP_vmul(outputR, 1, This->LFOBuffer.bufferR, 1, outputR, 1, numSamples);
 }
 
 float calculateScaleVol(BMCloudReverb* This){
@@ -180,6 +186,8 @@ void BMCloudReverb_setLoopDecayTime(BMCloudReverb* This,float decayTime){
 
 void BMCloudReverb_setDelayPitchMixer(BMCloudReverb* This,float wetMix){
     BMPitchShiftDelay_setWetGain(&This->pitchDelay, wetMix);
+    BMPanLFO_setDepth(&This->inputPan, wetMix);
+    BMPanLFO_setDepth(&This->outputPan, wetMix);
 }
 
 void BMCloudReverb_setOutputMixer(BMCloudReverb* This,float wetMix){
