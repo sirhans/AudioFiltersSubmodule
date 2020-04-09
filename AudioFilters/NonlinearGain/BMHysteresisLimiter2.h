@@ -35,8 +35,8 @@
 #include "BMMultiLevelBiquad.h"
 
 typedef struct BMHysteresisLimiter2 {
-	BMMultiLevelBiquad AAFilter1, AAFilter2;
-    float c, R, oneOverR, sampleRate, sag, s, sR, halfSR;
+	BMMultiLevelBiquad filter1, filter2;
+    float c, R, oneOverR, sampleRate, sag, s, sR, halfSR, highpassFc;
 	simd_float2 cs;
 } BMHysteresisLimiter2;
 
