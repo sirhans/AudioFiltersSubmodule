@@ -223,18 +223,7 @@ extern "C" {
         This->settingsQueuedForUpdate = true;
     }
     
-    
-    
-	double BMReverbDelayGainFromRT60(double rt60, double delayTime){
-		return pow(10.0, (-3.0 * delayTime) / rt60 );
-	}
-	
-	
-	
-	double BMReverbDelayGainFromRT30(double rt30, double delayTime){
-		return pow(10.0, (-2.0 * delayTime) / rt30 );
-	}
-    
+
 	
     
     
