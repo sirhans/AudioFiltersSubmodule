@@ -86,7 +86,7 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     BMCloudReverb_setOutputMixer(This, 0.5f);
     
     //Pan
-    BMQuadratureOscillator_init(&This->qosc, 0.25, sr);
+    BMPanLFO_init(&This->panLFO, 0.25f, 0.4f, sr);
 }
 
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
@@ -137,16 +137,16 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
     BMCloudReverb_updateVND(This);
     
     //Quadrature oscilliscope
-    BMQuadratureOscillator_process(&This->qosc, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
+    BMPanLFO_process(&This->panLFO, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
     vDSP_vmul(inputL, 1, This->LFOBuffer.bufferL, 1, This->buffer.bufferL, 1, numSamples);
     vDSP_vmul(inputR, 1, This->LFOBuffer.bufferR, 1, This->buffer.bufferR, 1, numSamples);
     
+    memcpy(outputL, This->buffer.bufferL, sizeof(float)*numSamples);
+    memcpy(outputR, This->buffer.bufferR, sizeof(float)*numSamples);
+    return;
+    
     //Filters
     BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
-    
-//    memcpy(outputL, This->buffer.bufferL, sizeof(float)*numSamples);
-//    memcpy(outputR, This->buffer.bufferR, sizeof(float)*numSamples);
-//    return;
     
     //VND
     BMVelvetNoiseDecorrelator_processBufferStereo(&This->vnd1, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
