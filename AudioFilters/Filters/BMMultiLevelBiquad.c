@@ -1368,6 +1368,63 @@ void BMMultiLevelBiquad_setLowPass6db(BMMultiLevelBiquad *This, double fc, size_
 }
 
 
+/*!
+ *packFirstOrder
+ *
+ * packs two first order filters into a single biquad section. The first six inputs are the coefficients of the two first order filters. the last five outputs are the packed biquad coefficients.
+ */
+void packFirstOrder(double b0a, double b1a, double a1a,
+					double b0b, double b1b, double a1b,
+					double* b0, double* b1, double* b2, double* a1, double* a2){
+	*b0 = b0a * b0b;
+	*b1 = (b0a*b1b) + (b0b*b1a);
+	*b2 = b1a * b1b;
+	
+	*a1 = a1a + a1b;
+	*a2 = a1a * a1b;
+}
+
+
+
+// packs two first order filters into a single biquad section
+void BMMultiLevelBiquad_setHighPassLowPass(BMMultiLevelBiquad *This, double highPassFc, double lowPassFc, size_t level){
+    // for left and right channels, set coefficients
+    for(size_t i=0; i < This->numChannels; i++){
+        
+        double* b0 = This->coefficients_d + level*This->numChannels*5 + i*5;
+        double* b1 = b0 + 1;
+        double* b2 = b1 + 1;
+        double* a1 = b2 + 1;
+        double* a2 = a1 + 1;
+        
+        
+        double gamma = tan(M_PI * highPassFc / This->sampleRate);
+        double one_over_denominator = 1.0 / (gamma + 1.0);
+        
+		double b0h = 1.0 * one_over_denominator;
+		double b1h = -b0h;
+		double a1h = (gamma - 1.0) * one_over_denominator;
+		
+		
+        gamma = tan(M_PI * lowPassFc / This->sampleRate);
+        one_over_denominator = 1.0 / (gamma + 1.0);
+        
+        double b0l = gamma * one_over_denominator;
+		double b1l = b0l;
+        double a1l = (gamma - 1.0) * one_over_denominator;
+		
+		// pack the two first order filters into the biquad section
+		packFirstOrder(b0h, b1h, a1h,
+					   b0l, b1l, a1l,
+					   b0, b1, b2, a1, a2);
+    }
+    
+    BMMultiLevelBiquad_queueUpdate(This);
+}
+
+
+
+
 
 void BMMultiLevelBiquad_setHighPass6db(BMMultiLevelBiquad *This, double fc, size_t level){
     assert(level < This->numLevels);
