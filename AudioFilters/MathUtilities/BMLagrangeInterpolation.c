@@ -12,7 +12,7 @@
 #include "Constants.h"
 
 float calculateH(float fractionalDelay, float n,float order);
-int BMLI_getStartIdx(float orderF,float strideIdx);
+//static inline int BMLI_getStartIdx(float orderF,float strideIdx);
 
 void BMLagrangeInterpolation_init(BMLagrangeInterpolation* This, int order){
     assert(order%2==0);
