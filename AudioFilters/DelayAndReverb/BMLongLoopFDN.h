@@ -19,7 +19,7 @@ typedef struct BMLongLoopFDN{
 	TPCircularBuffer *delays;
 	float **readPointers, **writePointers, **mixBuffers;
 	float *feedbackCoefficients, *delayTimes, *inputBufferL, *inputBufferR;
-	float inputAttenuation, matrixAttenuation, inverseMatrixAttenuation, inputPan;
+	float inputAttenuation, matrixAttenuation, inverseMatrixAttenuation;
 	bool *tapSigns;
 	size_t numDelays, minDelaySamples, blockSize, feedbackShiftByDelay;
 	bool hasZeroTaps;
@@ -61,15 +61,7 @@ void BMLongLoopFDN_free(BMLongLoopFDN *This);
 void BMLongLoopFDN_setRT60Decay(BMLongLoopFDN *This, float timeSeconds);
 
 
-/*!
- *BMLongLoopFDN_setInputBalance
- *
- * panning the input creates a side-to-side rocking in the impulse response
- *
- * @param This pointer to an initialised struct
- * @param pan01 0 is hard left pan and 1 is hard right. 0.5 is centre
- */
-void BMLongLoopFDN_setInputPan(BMLongLoopFDN *This, float pan01);
+
 
 
 
@@ -83,5 +75,36 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 						   const float* inputL, const float* inputR,
 						   float *outputL, float *outputR,
 						   size_t numSamples);
+
+
+
+/*!
+ *BMLongLoopFDN_processMultiChannelInput
+ *
+ * This class takes multi-channel inputs. We do this because when the input
+ * comes from a diffuser it typically has some spectral variance that will
+ * be multiplied with the spectral variance of this FDN. To mitigate that effect
+ * and keep the spectrum flat, you can send multichannel input where each
+ * channel comes from a different diffusion source with a different spectrum.
+ * When several different spectra meet inside the FDN the resulting mixture will
+ * be flatter than what we would get if all FDN inputs came from a single
+ * diffusor.
+ * 
+ * That this process function is 100% wet. You must handle wet/dry mix
+ * outside.
+ *
+ * @param This p
+ * @param inputL 2 dimensional array of size [numInputChannels, numSamples] WARNING: DATA IN THIS ARRAY WILL BE MODIFIED
+ * @param inputR 2 dimensional array of size [numInputChannels, numSamples] WARNING: DATA IN THIS ARRAY WILL BE MODIFIED
+ * @param numInputChannels number of input channels in each L, R input
+ * @param outputL 1 dimensional array of length numSamples
+ * @param outputR 1 dimensional array of length numSamples
+ * @param numSamples length of input arrays
+ */
+void BMLongLoopFDN_processMultiChannelInput(BMLongLoopFDN *This,
+											float** inputL, float** inputR,
+											size_t numInputChannels,
+											float *outputL, float *outputR,
+											size_t numSamples);
 
 #endif /* BMLongLoopFDN_h */
