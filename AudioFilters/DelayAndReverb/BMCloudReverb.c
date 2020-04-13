@@ -96,7 +96,6 @@ void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
     float minDT = 0.02f;
 	bool zeroTaps = true;
     BMLongLoopFDN_init(&This->loopFND, numDelays, minDT, maxDT, zeroTaps, 4, 1, This->sampleRate);
-    BMLongLoopFDN_setInputPan(&This->loopFND, 0.5f);
 }
 
 void BMCloudReverb_destroy(BMCloudReverb* This){
