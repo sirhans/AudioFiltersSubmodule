@@ -112,16 +112,16 @@ void BMHysteresisLimiter2_processMonoSigned(BMHysteresisLimiter2 *This,
 										 input,
 										 limited,
 										 numSamples);
-	
+
 	// apply asymptotic limit
 	BMAsymptoticLimit(limited, limited, This->sampleRate, This->sag, numSamples);
-	
+
 	// antialiasing filter
 	BMMultiLevelBiquad_processBufferMono(&This->filter2,
 										 limited,
 										 limited,
 										 numSamples);
-	
+
 	for(size_t i=0; i<numSamples; i++){
 		float charge = This->halfSR * (1.0f - This->c);
 		float o = limited[i] * (This->c + charge);
@@ -130,9 +130,10 @@ void BMHysteresisLimiter2_processMonoSigned(BMHysteresisLimiter2 *This,
 		// output
 		output[i] = o;
 	}
-	
+
 	// scale to compensate for gain loss
 	vDSP_vsmul(output,1,&This->oneOverR,output,1,numSamples);
+//	memmove(output,input,sizeof(float)*numSamples);
 }
 
 
@@ -426,8 +427,10 @@ void BMHysteresisLimiter2_setAAFilterFC(BMHysteresisLimiter2 *This, float lowpas
 	lowpassFc = BM_MIN(This->sampleRate * 0.5f * 0.9f, lowpassFc);
 	// set the AA filters
 	// the first level has highpass and lowpass packed in one biquad section
-	BMMultiLevelBiquad_setHighPassLowPass(&This->filter1, This->highpassFc, lowpassFc, 0);
-	BMMultiLevelBiquad_setHighPassLowPass(&This->filter2, This->highpassFc, lowpassFc, 0);
+//	BMMultiLevelBiquad_setHighPassLowPass(&This->filter1, This->highpassFc, lowpassFc, 0);
+//	BMMultiLevelBiquad_setHighPassLowPass(&This->filter2, This->highpassFc, lowpassFc, 0);
+	BMMultiLevelBiquad_setLowPass6db(&This->filter1, lowpassFc, 0);
+	BMMultiLevelBiquad_setLowPass6db(&This->filter2, lowpassFc, 0);
 //	BMMultiLevelBiquad_setHighPass6db(&This->filter1, This->highpassFc, 0);
 //	BMMultiLevelBiquad_setHighPass6db(&This->filter2, This->highpassFc, 0);
 	// subsequent levels are criticaly damped lowpass only
