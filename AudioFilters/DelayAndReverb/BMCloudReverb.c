@@ -51,7 +51,7 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     
     //VND
     This->updateVND = false;
-    This->maxTapsEachVND = 8.0f;
+    This->maxTapsEachVND = 24.0f;
     This->diffusion = 1.0f;
     This->vndLength = 0.25f;
     
@@ -94,8 +94,8 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     BMCloudReverb_setOutputMixer(This, 0.5f);
     
     //Pan
-    BMPanLFO_init(&This->inputPan, 0.25f, 0.4f, sr);
-    BMPanLFO_init(&This->outputPan, 0.25f, 0.4f, sr);
+    BMPanLFO_init(&This->inputPan, 0.25f, 0.6f, sr);
+    BMPanLFO_init(&This->outputPan, 0.25f, 0.6f, sr);
 }
 
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
@@ -220,8 +220,9 @@ void BMCloudReverb_updateDiffusion(BMCloudReverb* This){
     if(This->updateDiffusion){
         This->updateDiffusion = false;
         float numTaps = roundf(This->maxTapsEachVND * This->diffusion);
-//        BMVelvetNoiseDecorrelator_setNumTaps(&This->vnd1, numTaps);
-//        BMVelvetNoiseDecorrelator_setNumTaps(&This->vnd2, numTaps);
+        for(int i=0;i<This->numVND;i++){
+            BMVelvetNoiseDecorrelator_setNumTaps(&This->vndArray[i], numTaps);
+        }
     }
 }
 
@@ -242,8 +243,9 @@ void BMCloudReverb_setVNDLength(BMCloudReverb* This,float timeInS){
 void BMCloudReverb_updateVND(BMCloudReverb* This){
     if(This->updateVND){
         This->updateVND = false;
-//        BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vnd1, This->vndLength, This->maxTapsEachVND, 100, false, This->sampleRate);
-//        BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vnd2, This->vndLength, This->maxTapsEachVND, 100, false, This->sampleRate);
+        for(int i=0;i<This->numVND;i++){
+            BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vndArray[i], This->vndLength, This->maxTapsEachVND, 100, false, This->sampleRate);
+        }
     }
 }
 
