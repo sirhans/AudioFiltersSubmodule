@@ -19,6 +19,8 @@ typedef struct BMAllpassFilterData{
     float decay1,decay2;
     float* tempL;
     float* tempR;
+    float* tempOutL;
+    float* tempOutR;
 } BMAllpassFilterData;
 
 typedef struct BMAllpassNestedFilter{

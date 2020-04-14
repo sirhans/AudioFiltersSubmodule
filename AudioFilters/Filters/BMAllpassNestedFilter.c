@@ -39,15 +39,17 @@ void BMAllpassNestedFilter_destroy(BMAllpassNestedFilter* This){
 }
 
 void BMAllpassFilterData_init(BMAllpassFilterData* This,size_t delaySamples,float dc1, float dc2){
-    This->delaySamples = delaySamples;
+    This->delaySamples = delaySamples * fmodl(random(), 100.0f)/100.0f;
     This->decay1 = dc1;
     This->decay2 = dc2;
     
-    SetupCircularBuffer(&This->circularBufferL, delaySamples);
-    SetupCircularBuffer(&This->circularBufferR, delaySamples);
+    SetupCircularBuffer(&This->circularBufferL, This->delaySamples);
+    SetupCircularBuffer(&This->circularBufferR, This->delaySamples);
     
     This->tempL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->tempR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+    This->tempOutL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+    This->tempOutR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
 }
 
 void BMAllpassFilterData_destroy(BMAllpassFilterData* This){
@@ -58,6 +60,11 @@ void BMAllpassFilterData_destroy(BMAllpassFilterData* This){
     This->tempL = NULL;
     free(This->tempR);
     This->tempR = NULL;
+    
+    free(This->tempOutL);
+    This->tempOutL = NULL;
+    free(This->tempOutR);
+    This->tempOutR = NULL;
 }
 
 
@@ -67,45 +74,54 @@ void BMAllpassNestedFilter_processBufferStereo(BMAllpassNestedFilter* This,float
     
     BMAllpassFilterData* filterData = &This->nestedData[level];
     
-    //Produce buffer - write
-    uint32_t bytesAvailableForWrite;
-    void* headL = TPCircularBufferHead(&filterData->circularBufferL, &bytesAvailableForWrite);
-    void* headR = TPCircularBufferHead(&filterData->circularBufferL, &bytesAvailableForWrite);
+    size_t sampleProcessed = 0;
+    size_t sampleProcessing = 0;
     
-    //Tail for read
-    uint32_t bytesAvailableForRead;
-    float* tailL = TPCircularBufferTail(&filterData->circularBufferL, &bytesAvailableForRead);
-    float* tailR = TPCircularBufferTail(&filterData->circularBufferR, &bytesAvailableForRead);
+    while(sampleProcessed<numSamples){
+        sampleProcessing = BM_MIN(BM_BUFFER_CHUNK_SIZE, numSamples - sampleProcessed);
+        sampleProcessing = BM_MIN(sampleProcessing, filterData->delaySamples);
     
-    //Add delay output to the input
-    vDSP_vsma(tailL, 1, &filterData->decay1, inputL, 1, filterData->tempL, 1, numSamples);
-    vDSP_vsma(tailR, 1, &filterData->decay1, inputR, 1, filterData->tempR, 1, numSamples);
-    
-    //Save temp to output
-    float dcNeg = - filterData->decay1;
-    vDSP_vsmul(filterData->tempL, 1, &dcNeg, outputL, 1, numSamples);
-    vDSP_vsmul(filterData->tempR, 1, &dcNeg, outputR, 1, numSamples);
-    
-    //Nested here
-    if(level<This->numLevel-1){
-        BMAllpassNestedFilter_processBufferStereo(This, filterData->tempL, filterData->tempR, filterData->tempL, filterData->tempR, level+1, numSamples);
+        //Produce buffer - write
+        uint32_t bytesAvailableForWrite;
+        float* headL = TPCircularBufferHead(&filterData->circularBufferL, &bytesAvailableForWrite);
+        float* headR = TPCircularBufferHead(&filterData->circularBufferR, &bytesAvailableForWrite);
+
+        //Tail for read
+        uint32_t bytesAvailableForRead;
+        float* tailL = TPCircularBufferTail(&filterData->circularBufferL, &bytesAvailableForRead);
+        float* tailR = TPCircularBufferTail(&filterData->circularBufferR, &bytesAvailableForRead);
+        
+        //Add delay output to the input
+        vDSP_vsma(tailL, 1, &filterData->decay1, inputL+sampleProcessed, 1, filterData->tempL+sampleProcessed, 1, sampleProcessing);
+        vDSP_vsma(tailR, 1, &filterData->decay1, inputR+sampleProcessed, 1, filterData->tempR+sampleProcessed, 1, sampleProcessing);
+        
+        //Save temp to output
+        float dcNeg = -filterData->decay1;
+        vDSP_vsmul(filterData->tempL+sampleProcessed, 1, &dcNeg, filterData->tempOutL+sampleProcessed, 1, sampleProcessing);
+        vDSP_vsmul(filterData->tempR+sampleProcessed, 1, &dcNeg, filterData->tempOutL+sampleProcessed, 1, sampleProcessing);
+        
+        //Nested here
+        if(level<This->numLevel-1){
+            BMAllpassNestedFilter_processBufferStereo(This, filterData->tempL+sampleProcessed, filterData->tempR+sampleProcessed, filterData->tempL+sampleProcessed, filterData->tempR+sampleProcessed, level+1, sampleProcessing);
+        }
+        
+        //Feed temp to the circular buffer
+        uint32_t byteProcessing = (uint32_t)(sampleProcessing * sizeof(float));
+        memcpy(headL, filterData->tempL+sampleProcessed, byteProcessing);
+        // mark the written region of the buffer as written
+        TPCircularBufferProduce(&filterData->circularBufferL, byteProcessing);
+        memcpy(headR, filterData->tempR+sampleProcessed, byteProcessing);
+        // mark the written region of the buffer as written
+        TPCircularBufferProduce(&filterData->circularBufferR, byteProcessing);
+        
+        vDSP_vsma(tailL, 1, &filterData->decay2, filterData->tempOutL+sampleProcessed, 1, outputL+sampleProcessed, 1, sampleProcessing);
+        vDSP_vsma(tailR, 1, &filterData->decay2, filterData->tempOutR+sampleProcessed, 1, outputR+sampleProcessed, 1, sampleProcessing);
+        
+        TPCircularBufferConsume(&filterData->circularBufferL, byteProcessing);
+        TPCircularBufferConsume(&filterData->circularBufferR, byteProcessing);
+        
+        sampleProcessed += sampleProcessing;
     }
-    
-    //Feed temp to the circular buffer
-    uint32_t byteProcessing = (uint32_t)(numSamples * sizeof(float));
-    memcpy(headL, filterData->tempL, byteProcessing);
-    // mark the written region of the buffer as written
-    TPCircularBufferProduce(&filterData->circularBufferL, byteProcessing);
-    memcpy(headR, filterData->tempR, byteProcessing);
-    // mark the written region of the buffer as written
-    TPCircularBufferProduce(&filterData->circularBufferR, byteProcessing);
-    
-    //Output
-    vDSP_vsma(tailL, 1, &filterData->decay2, outputL, 1, outputL, 1, numSamples);
-    vDSP_vsma(tailR, 1, &filterData->decay2, outputR, 1, outputR, 1, numSamples);
-    
-    TPCircularBufferConsume(&filterData->circularBufferL, byteProcessing);
-    TPCircularBufferConsume(&filterData->circularBufferR, byteProcessing);
 }
 
 

@@ -27,10 +27,12 @@ typedef struct BMStereoBuffer{
 
 typedef struct BMCloudReverb {
     BMMultiLevelBiquad biquadFilter;
-    BMVelvetNoiseDecorrelator vnd1;
-    BMVelvetNoiseDecorrelator vnd2;
+    BMVelvetNoiseDecorrelator* vndArray;
+    float** vndBufferL;
+    float** vndBufferR;
+    size_t numVND;
     
-    BMAllpassNestedFilter allpassFilter;
+//    BMAllpassNestedFilter allpassFilter;
     
     BMPitchShiftDelay pitchDelay;
     

@@ -391,18 +391,20 @@ void BMLongLoopFDN_processMultiChannelInput(BMLongLoopFDN *This,
 	assert(numInputChannels <= This->numDelays / 2);
 	
 	// limit the input to chunks of size <= minDelayLength
-	while(numSamples > 0){
-		size_t samplesProcessing = BM_MIN(numSamples, This->minDelaySamples);
+    size_t samplesProccessed = 0;
+    size_t samplesProcessing;
+	while(samplesProccessed < numSamples){
+		samplesProcessing = BM_MIN(numSamples - samplesProccessed, This->minDelaySamples);
 		
 		// attenuate the inputs
 		for(size_t i=0; i<numInputChannels; i++){
-			vDSP_vsmul(inputL[i], 1, &This->inputAttenuation, inputL[i], 1, samplesProcessing);
-			vDSP_vsmul(inputR[i], 1, &This->inputAttenuation, inputR[i], 1, samplesProcessing);
+			vDSP_vsmul(inputL[i]+samplesProccessed, 1, &This->inputAttenuation, inputL[i]+samplesProccessed, 1, samplesProcessing);
+			vDSP_vsmul(inputR[i]+samplesProccessed, 1, &This->inputAttenuation, inputR[i]+samplesProccessed, 1, samplesProcessing);
 		}
 		
 		// set the outputs to zero
-		vDSP_vclr(outputL, 1, samplesProcessing);
-		vDSP_vclr(outputR, 1, samplesProcessing);
+		vDSP_vclr(outputL+samplesProccessed, 1, samplesProcessing);
+		vDSP_vclr(outputR+samplesProccessed, 1, samplesProcessing);
 		
 		
 		// get read pointers for each delay and limit the number of samples processing
@@ -435,7 +437,7 @@ void BMLongLoopFDN_processMultiChannelInput(BMLongLoopFDN *This,
 			vDSP_vsmul(This->readPointers[i], 1, &This->feedbackCoefficients[i], This->readPointers[i], 1, samplesProcessing);
 			
 			// we will write the first half the delays to the left output and the second half to the right output
-			float *outputPointer = (i < This->numDelays/2) ? outputL : outputR;
+			float *outputPointer = (i < This->numDelays/2) ? outputL+samplesProccessed : outputR+samplesProccessed;
 			// output mix: add the ith delay to the output if its tap sign is positive
 			if(This->tapSigns[i])
 				vDSP_vadd(outputPointer, 1, This->readPointers[i], 1, outputPointer, 1, samplesProcessing);
@@ -446,14 +448,14 @@ void BMLongLoopFDN_processMultiChannelInput(BMLongLoopFDN *This,
 		
 		
 		// remove the matrix attenuation from the outputs by dividing it out
-		vDSP_vsmul(outputL, 1, &This->inverseMatrixAttenuation, outputL, 1, samplesProcessing);
-		vDSP_vsmul(outputR, 1, &This->inverseMatrixAttenuation, outputR, 1, samplesProcessing);
+		vDSP_vsmul(outputL+samplesProccessed, 1, &This->inverseMatrixAttenuation, outputL+samplesProccessed, 1, samplesProcessing);
+		vDSP_vsmul(outputR+samplesProccessed, 1, &This->inverseMatrixAttenuation, outputR+samplesProccessed, 1, samplesProcessing);
 		
 		
 		// mix the zero taps to the output if we have them
 		if(This->hasZeroTaps){
-			vDSP_vadd(This->inputBufferL, 1, outputL, 1, outputL, 1, samplesProcessing);
-			vDSP_vadd(This->inputBufferR, 1, outputR, 1, outputR, 1, samplesProcessing);
+			vDSP_vadd(inputL[0]+samplesProccessed, 1, outputL+samplesProccessed, 1, outputL+samplesProccessed, 1, samplesProcessing);
+			vDSP_vadd(inputR[0]+samplesProccessed, 1, outputR+samplesProccessed, 1, outputR+samplesProccessed, 1, samplesProcessing);
 		}
 		
 		
@@ -511,10 +513,10 @@ void BMLongLoopFDN_processMultiChannelInput(BMLongLoopFDN *This,
 		for(size_t i=0; i<This->numDelays; i++){
 			// mix the input to the left channel delays
 			if(i<This->numDelays/2)
-				vDSP_vadd(inputL[i%numInputChannels], 1, This->writePointers[i], 1, This->writePointers[i], 1, samplesProcessing);
+				vDSP_vadd(inputL[i%numInputChannels]+samplesProccessed, 1, This->writePointers[i], 1, This->writePointers[i], 1, samplesProcessing);
 			// mix the input to the right channel delays
 			else
-				vDSP_vadd(inputR[i%numInputChannels], 1, This->writePointers[i], 1, This->writePointers[i], 1, samplesProcessing);
+				vDSP_vadd(inputR[i%numInputChannels]+samplesProccessed, 1, This->writePointers[i], 1, This->writePointers[i], 1, samplesProcessing);
 			
 			// mark the delays read
 			TPCircularBufferConsume(&This->delays[i], bytesProcessing);
@@ -525,12 +527,12 @@ void BMLongLoopFDN_processMultiChannelInput(BMLongLoopFDN *This,
 		
 		
 		// advance pointers
-		numSamples -= samplesProcessing;
-		outputL += samplesProcessing;
-		outputR += samplesProcessing;
-		for(size_t i=0; i<numInputChannels; i++){
-			inputL[i] += samplesProcessing;
-			inputR[i] += samplesProcessing;
-		}
+		samplesProccessed += samplesProcessing;
+//		outputL += samplesProcessing;
+//		outputR += samplesProcessing;
+//		for(size_t i=0; i<numInputChannels; i++){
+//			inputL[i] += samplesProcessing;
+//			inputR[i] += samplesProcessing;
+//		}
 	}
 }

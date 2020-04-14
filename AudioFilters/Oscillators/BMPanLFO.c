@@ -30,6 +30,7 @@ void BMPanLFO_destroy(BMPanLFO *This){
 
 void BMPanLFO_setDepth(BMPanLFO *This,float depth){
     This->depth = depth;
+    This->base = 1.0f - depth;
 }
 
 
@@ -40,9 +41,11 @@ void BMPanLFO_process(BMPanLFO *This,
     assert(numSamples<=BM_BUFFER_CHUNK_SIZE);
     
     BMQuadratureOscillator_process(&This->oscil, outL, outR, numSamples);
-    //Get sign
-    vDSP_vabs(outL, 1, outL, 1, numSamples);
-    vDSP_vabs(outR, 1, outR, 1, numSamples);
+    
+    //Remove sign
+    vDSP_vsq(outL, 1, outL, 1, numSamples);
+    vDSP_vsq(outR, 1, outR, 1, numSamples);
+    
     //Mul value to depth + base to sign
     vDSP_vsmsa(outL, 1, &This->depth, &This->base, outL, 1, numSamples);
     vDSP_vsmsa(outR, 1, &This->depth, &This->base, outR, 1, numSamples);
@@ -51,5 +54,4 @@ void BMPanLFO_process(BMPanLFO *This,
 //
 //        printf("%f %f\n",outL[i],outR[i]);
 //    }
-    
 }
