@@ -18,6 +18,7 @@
 #include "BMSmoothGain.h"
 #include "BMLongLoopFDN.h"
 #include "BMPanLFO.h"
+#include "BMAllpassNestedFilter.h"
 
 typedef struct BMStereoBuffer{
     void* bufferL;
@@ -28,7 +29,8 @@ typedef struct BMCloudReverb {
     BMMultiLevelBiquad biquadFilter;
     BMVelvetNoiseDecorrelator vnd1;
     BMVelvetNoiseDecorrelator vnd2;
-    BMVelvetNoiseDecorrelator vnd3;
+    
+    BMAllpassNestedFilter allpassFilter;
     
     BMPitchShiftDelay pitchDelay;
     

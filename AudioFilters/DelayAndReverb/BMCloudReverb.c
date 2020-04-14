@@ -57,6 +57,9 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vnd1, This->vndLength, This->maxTapsEachVND, 100, false, sr);
     BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vnd2, This->vndLength, This->maxTapsEachVND, 100, false, sr);
 
+    //Allpass
+    BMAllpassNestedFilter_init(&This->allpassFilter, 200, -0.99, 0.99,0);
+    
     //Pitch shifting
     float delaySampleRange = 0.02f*sr;
     float duration = 20.0f;
@@ -103,7 +106,8 @@ void BMCloudReverb_destroy(BMCloudReverb* This){
     
     BMVelvetNoiseDecorrelator_free(&This->vnd1);
     BMVelvetNoiseDecorrelator_free(&This->vnd2);
-    BMVelvetNoiseDecorrelator_free(&This->vnd3);
+    
+    BMAllpassNestedFilter_destroy(&This->allpassFilter);
     
     BMPitchShiftDelay_destroy(&This->pitchDelay);
     
@@ -136,22 +140,27 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
     BMCloudReverb_updateDiffusion(This);
     BMCloudReverb_updateVND(This);
     
-    //Quadrature oscilliscope
-    BMPanLFO_process(&This->inputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
-    vDSP_vmul(inputL, 1, This->LFOBuffer.bufferL, 1, This->buffer.bufferL, 1, numSamples);
-    vDSP_vmul(inputR, 1, This->LFOBuffer.bufferR, 1, This->buffer.bufferR, 1, numSamples);
+//    //Quadrature oscilliscope
+//    BMPanLFO_process(&This->inputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
+//    vDSP_vmul(inputL, 1, This->LFOBuffer.bufferL, 1, This->buffer.bufferL, 1, numSamples);
+//    vDSP_vmul(inputR, 1, This->LFOBuffer.bufferR, 1, This->buffer.bufferR, 1, numSamples);
     
-//    memcpy(outputL, This->buffer.bufferL, sizeof(float)*numSamples);
-//    memcpy(outputR, This->buffer.bufferR, sizeof(float)*numSamples);
-//    return;
+    memcpy(This->buffer.bufferL, inputL, sizeof(float)*numSamples);
+    memcpy(This->buffer.bufferR, inputR, sizeof(float)*numSamples);
     
     //Filters
     BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
     
-    //VND
-    BMVelvetNoiseDecorrelator_processBufferStereo(&This->vnd1, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
-    BMVelvetNoiseDecorrelator_processBufferStereo(&This->vnd2, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
+//    //VND
+//    BMVelvetNoiseDecorrelator_processBufferStereo(&This->vnd1, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
+//    BMVelvetNoiseDecorrelator_processBufferStereo(&This->vnd2, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
 
+    //Allpass
+    BMAllpassNestedFilter_processBufferStereo(&This->allpassFilter, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR,0, numSamples);
+    
+    memcpy(outputL, This->buffer.bufferL, sizeof(float)*numSamples);
+    memcpy(outputR, This->buffer.bufferR, sizeof(float)*numSamples);
+    return;
     
     //PitchShifting delay into wetbuffer
     BMPitchShiftDelay_processStereoBuffer(&This->pitchDelay, This->buffer.bufferL, This->buffer.bufferR, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
@@ -204,7 +213,6 @@ void BMCloudReverb_updateDiffusion(BMCloudReverb* This){
         float numTaps = roundf(This->maxTapsEachVND * This->diffusion);
         BMVelvetNoiseDecorrelator_setNumTaps(&This->vnd1, numTaps);
         BMVelvetNoiseDecorrelator_setNumTaps(&This->vnd2, numTaps);
-        BMVelvetNoiseDecorrelator_setNumTaps(&This->vnd3, numTaps);
     }
 }
 
