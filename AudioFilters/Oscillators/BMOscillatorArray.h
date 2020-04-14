@@ -9,7 +9,7 @@
 //  Created by Hans on 28/4/17.
 //  This file may be used, distributed and modified freely by anyone,
 //  for any purpose, without restrictions.
-//
+// x
 //
 
 #ifndef BMOscillatorArray_h
