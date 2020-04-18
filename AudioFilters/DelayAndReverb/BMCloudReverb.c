@@ -163,14 +163,14 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
     //Filters
     BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
     
-    //PitchShifting delay into wetbuffer
-    BMPitchShiftDelay_processStereoBuffer(&This->pitchDelay, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
-    
     for(int i=0;i<This->numVND;i++){
         BMVelvetNoiseDecorrelator_processBufferStereo(&This->vndArray[i], This->buffer.bufferL, This->buffer.bufferR, This->vndBufferL[i], This->vndBufferR[i], numSamples);
     }
     
     BMLongLoopFDN_processMultiChannelInput(&This->loopFND, This->vndBufferL, This->vndBufferR, This->numVND, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
+    
+    //PitchShifting delay into wetbuffer
+    BMPitchShiftDelay_processStereoBuffer(&This->pitchDelay, This->wetBuffer.bufferL, This->wetBuffer.bufferR, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
 
     vDSP_vsmul(This->wetBuffer.bufferL, 1, &This->normallizeVol, This->wetBuffer.bufferL, 1, numSamples);
     vDSP_vsmul(This->wetBuffer.bufferR, 1, &This->normallizeVol, This->wetBuffer.bufferR, 1, numSamples);
