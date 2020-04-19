@@ -36,7 +36,7 @@
 
 typedef struct BMHysteresisLimiter2 {
 	BMMultiLevelBiquad filter1, filter2;
-    float c, R, oneOverR, sampleRate, sag, s, sR, halfSR, highpassFc;
+	float c, R, oneOverR, sampleRate, sag, s, sR, halfSR;
 	simd_float2 cs;
 } BMHysteresisLimiter2;
 
@@ -84,6 +84,11 @@ void BMHysteresisLimiter2_setPowerLimit(BMHysteresisLimiter2 *This, float limitD
  */
 void BMHysteresisLimiter2_setSag(BMHysteresisLimiter2 *This, float sag);
 
+/*!
+ *BMHysteresisLimiter2_setFilterFC
+ */
+void BMHysteresisLimiter2_setFilterFC(BMHysteresisLimiter2 *This, float highpassFc, float lowpassFc);
+
 
 
 
@@ -105,7 +110,7 @@ void BMHysteresisLimiter2_processMonoRectified(BMHysteresisLimiter2 *This,
 /*!
  *BMHysteresisLimiter2_processMonoSigned
  *
- * We suspect this sounds the same as the rectified version but runs faster
+ * This processes both positive and negative signals in one go without rectifying, using a single reservoir
  *
  * @param This pointer to an initialised struct
  * @param input array of length numSamples
@@ -116,6 +121,18 @@ void BMHysteresisLimiter2_processMonoSigned(BMHysteresisLimiter2 *This,
 											const float *input,
 											float* output,
 											size_t numSamples);
+
+
+/*!
+ *BMHysteresisLimiter2_processMonoSignedDualRes
+ *
+ *  This has seperate positive and negative side reservoirs and a crude linear crossfade rectifier
+ */
+void BMHysteresisLimiter2_processMonoSignedDualRes(BMHysteresisLimiter2 *This,
+												   const float *input,
+												   float* output,
+												   size_t numSamples);
+
 
 
 /*!

@@ -10,7 +10,6 @@
 //  This file may be used, distributed and modified freely by anyone,
 //  for any purpose, without restrictions.
 //
-//
 
 #ifndef BMOscillatorArray_h
 #define BMOscillatorArray_h
