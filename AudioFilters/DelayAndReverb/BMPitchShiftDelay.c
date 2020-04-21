@@ -257,6 +257,7 @@ void BMPitchShiftDelay_processStereoBuffer(BMPitchShiftDelay* This,float* inL, f
             if(This->currentSample==This->sampleToReachTarget){
                 //Need to reset sample to reach target
                 This->currentSample = 0;
+                This->delayRange = (rand()%10 + 90)*This->maxDelayRange/100.0f;
                 This->delayParamL.stopSamples = This->delayRange - This->delayParamL.stopSamples;
                 This->delayParamL.startSamples = This->delayLeft.delaySamples;
                 This->delayParamR.stopSamples = This->delayRange - This->delayParamR.stopSamples;
