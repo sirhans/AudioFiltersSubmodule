@@ -53,7 +53,7 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     This->updateVND = false;
     This->maxTapsEachVND = 24.0f;
     This->diffusion = 1.0f;
-    This->vndLength = 0.25f;
+    This->vndLength = 0.48f;
     
     This->numVND = 8;
     This->vndArray = malloc(sizeof(BMVelvetNoiseDecorrelator)*This->numVND);
@@ -61,6 +61,7 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     This->vndBufferR = malloc(sizeof(float*)*This->numVND);
     for(int i=0;i<This->numVND;i++){
         BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vndArray[i], This->vndLength, This->maxTapsEachVND, 100, false, sr);
+        BMVelvetNoiseDecorrelator_setFadeIn(&This->vndArray[i], 0.5f);
         This->vndBufferL[i] = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
         This->vndBufferR[i] = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     }
@@ -95,13 +96,13 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     
     //Pan
     BMPanLFO_init(&This->inputPan, 0.25f, 0.6f, sr);
-    BMPanLFO_init(&This->outputPan, 0.25f, 0.6f, sr);
+    BMPanLFO_init(&This->outputPan, 0.1f, 0.6f, sr);
 }
 
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
     size_t numDelays = 32;
-    float maxDT = 0.20f;
-    float minDT = 0.02f;
+    float maxDT = 0.20f*2;
+    float minDT = 0.02f*2;
 	bool zeroTaps = true;
     BMLongLoopFDN_init(&This->loopFND, numDelays, minDT, maxDT, zeroTaps, 4, 1, This->sampleRate);
 }
@@ -201,10 +202,11 @@ void BMCloudReverb_setLoopDecayTime(BMCloudReverb* This,float decayTime){
     This->normallizeVol = BM_DB_TO_GAIN(calculateScaleVol(This));
 }
 
+#define DepthMax 0.35f
 void BMCloudReverb_setDelayPitchMixer(BMCloudReverb* This,float wetMix){
     BMPitchShiftDelay_setWetGain(&This->pitchDelay, wetMix);
-    BMPanLFO_setDepth(&This->inputPan, wetMix);
-    BMPanLFO_setDepth(&This->outputPan, wetMix);
+    BMPanLFO_setDepth(&This->inputPan, wetMix*DepthMax);
+    BMPanLFO_setDepth(&This->outputPan, wetMix*DepthMax);
 }
 
 void BMCloudReverb_setOutputMixer(BMCloudReverb* This,float wetMix){

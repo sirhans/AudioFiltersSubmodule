@@ -19,12 +19,14 @@ typedef struct BMVelvetNoiseDecorrelator {
     float sampleRate, wetMix, rt60, maxDelayTimeS;
 	size_t *delayLengthsL, *delayLengthsR;
 	float *gainsL, *gainsR;
+    float fadeInSamples;
 	bool hasDryTap, evenTapDensity;
 	size_t numWetTaps;
     float lastTapGainL;
     float lastTapGainR;
     bool resetNumTaps;
     bool resetRT60DecayTime;
+    bool resetFadeIn;
     float* tempBuffer;
 } BMVelvetNoiseDecorrelator;
 
@@ -79,7 +81,7 @@ void BMVelvetNoiseDecorrelator_setRT60DecayTime(BMVelvetNoiseDecorrelator *This,
  */
 void BMVelvetNoiseDecorrelator_randomiseAll(BMVelvetNoiseDecorrelator *This);
 
-
+void BMVelvetNoiseDecorrelator_setFadeIn(BMVelvetNoiseDecorrelator *This,float fadeInS);
 
 /*!
  *BMVelvetNoiseDecorrelator_free
