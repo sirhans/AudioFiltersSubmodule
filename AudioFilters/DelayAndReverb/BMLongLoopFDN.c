@@ -98,8 +98,10 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	uint32_t bytesAvailable;
 	for(size_t i=0; i<numDelays; i++){
 		writePointer = TPCircularBufferHead(&This->delays[i], &bytesAvailable);
-		vDSP_vclr(writePointer, 1, delayLengths[i] + (uint32_t)minDelaySamples);
-		TPCircularBufferProduce(&This->delays[i], (uint32_t)delayLengths[i] * sizeof(float));
+		size_t bytesClearing = (uint32_t)delayLengths[i] * sizeof(float);
+		assert(bytesAvailable >= bytesClearing);
+		memset(writePointer, 0, bytesClearing);
+		TPCircularBufferProduce(&This->delays[i], (int)bytesClearing);
         
         //Set the buffer to 0 to avoid the noise when startup
         uint32_t bytesAvailableForRead;
