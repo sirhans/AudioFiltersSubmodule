@@ -73,18 +73,18 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	BMLongLoopFDN_randomShuffleSizet(delayLengths, numDelays/2);
 	BMLongLoopFDN_randomShuffleSizet(delayLengths + numDelays/2, numDelays/2);
 	
-	This->mixBuffers = malloc(sizeof(float*) * This->numDelays);
-	This->mixBuffers[0] = malloc(sizeof(float) * This->numDelays * minDelaySamples);
+	This->mixBuffers = calloc(This->numDelays, sizeof(float*));
+	This->mixBuffers[0] = calloc(This->numDelays * minDelaySamples, sizeof(float));
 	for(size_t i=1; i<numDelays; i++)
 		This->mixBuffers[i] = This->mixBuffers[0] + i * minDelaySamples;
 	
 	// record delay times
-	This->delayTimes = malloc(sizeof(float)*numDelays);
+	This->delayTimes = calloc(numDelays,sizeof(float));
 	for(size_t i=0; i<numDelays; i++)
 		This->delayTimes[i] = (float)delayLengths[i] / sampleRate;
 	
 	// init the input buffers
-	This->inputBufferL = malloc(sizeof(float) * minDelaySamples * 2);
+	This->inputBufferL = calloc(minDelaySamples * 2, sizeof(float));
 	This->inputBufferR = This->inputBufferL + minDelaySamples;
 	
 	// init the delay buffers
