@@ -63,6 +63,8 @@ typedef struct BMCloudReverb {
     float bellQ;
     float lsGain;
     float normallizeVol;
+    
+    int initNo;
 } BMCloudReverb;
 
 void BMCloudReverb_init(BMCloudReverb* This,float sr);

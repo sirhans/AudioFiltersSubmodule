@@ -20,6 +20,7 @@
 
 #define Filter_LS_FC 400
 #define PitchShift_BaseLength 0.2
+#define ReadyNo 98573
 
 void BMCloudReverb_updateDiffusion(BMCloudReverb* This);
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This);
@@ -104,6 +105,8 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     //Pan
     BMPanLFO_init(&This->inputPan, 0.25f, 0.6f, sr);
     BMPanLFO_init(&This->outputPan, 0.1f, 0.6f, sr);
+    
+    This->initNo = ReadyNo;
 }
 
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
@@ -156,49 +159,51 @@ void BMCloudReverb_destroy(BMCloudReverb* This){
 }
 
 void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t numSamples){
-    assert(numSamples<=BM_BUFFER_CHUNK_SIZE);
-    
-    BMCloudReverb_updateDiffusion(This);
-    BMCloudReverb_updateVND(This);
-    
-    //Quadrature oscilliscope
-    BMPanLFO_process(&This->inputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
-    vDSP_vmul(inputL, 1, This->LFOBuffer.bufferL, 1, This->buffer.bufferL, 1, numSamples);
-    vDSP_vmul(inputR, 1, This->LFOBuffer.bufferR, 1, This->buffer.bufferR, 1, numSamples);
-    
-//    memcpy(This->buffer.bufferL, inputL, sizeof(float)*numSamples);
-//    memcpy(This->buffer.bufferR, inputR, sizeof(float)*numSamples);
-    
-    //Filters
-    BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
-    
-    
-    
-    for(int i=0;i<This->numVND;i++){
-        if(i<This->numPitchShift){
-            //PitchShifting delay
-            BMPitchShiftDelay_processStereoBuffer(&This->pitchShiftArray[i], This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
-        }
-        //PitchShifting delay into wetbuffer
-        BMVelvetNoiseDecorrelator_processBufferStereo(&This->vndArray[i], This->buffer.bufferL, This->buffer.bufferR, This->vndBufferL[i], This->vndBufferR[i], numSamples);
-    }
-    
-    BMLongLoopFDN_processMultiChannelInput(&This->loopFND, This->vndBufferL, This->vndBufferR, This->numVND, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
+    if(This->initNo==ReadyNo){
+        assert(numSamples<=BM_BUFFER_CHUNK_SIZE);
+        
+        BMCloudReverb_updateDiffusion(This);
+        BMCloudReverb_updateVND(This);
+        
+        //Quadrature oscilliscope
+        BMPanLFO_process(&This->inputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
+        vDSP_vmul(inputL, 1, This->LFOBuffer.bufferL, 1, This->buffer.bufferL, 1, numSamples);
+        vDSP_vmul(inputR, 1, This->LFOBuffer.bufferR, 1, This->buffer.bufferR, 1, numSamples);
+        
+//        memcpy(This->buffer.bufferL, inputL, sizeof(float)*numSamples);
+//        memcpy(This->buffer.bufferR, inputR, sizeof(float)*numSamples);
+        
+        //Filters
+        BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
+        
 
-    vDSP_vsmul(This->wetBuffer.bufferL, 1, &This->normallizeVol, This->wetBuffer.bufferL, 1, numSamples);
-    vDSP_vsmul(This->wetBuffer.bufferR, 1, &This->normallizeVol, This->wetBuffer.bufferR, 1, numSamples);
-    
-    //Process reverb dry/wet mixer
-    BMWetDryMixer_processBufferInPhase(&This->reverbMixer, This->wetBuffer.bufferL, This->wetBuffer.bufferR, inputL, inputR, outputL, outputR, numSamples);
-    
-    //Quadrature oscilliscope
-    BMPanLFO_process(&This->outputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
-    vDSP_vmul(outputL, 1, This->LFOBuffer.bufferL, 1, outputL, 1, numSamples);
-    vDSP_vmul(outputR, 1, This->LFOBuffer.bufferR, 1, outputR, 1, numSamples);
-    
-//    memcpy(outputL, This->wetBuffer.bufferL, sizeof(float)*numSamples);
-//    memcpy(outputR, This->wetBuffer.bufferR, sizeof(float)*numSamples);
-//    return;
+        for(int i=0;i<This->numVND;i++){
+            //PitchShifting delay into wetbuffer
+            BMVelvetNoiseDecorrelator_processBufferStereo(&This->vndArray[i], This->buffer.bufferL, This->buffer.bufferR, This->vndBufferL[i], This->vndBufferR[i], numSamples);
+            
+            if(i<This->numPitchShift){
+                //PitchShifting delay
+                BMPitchShiftDelay_processStereoBuffer(&This->pitchShiftArray[i], This->vndBufferL[i], This->vndBufferR[i], This->vndBufferL[i], This->vndBufferR[i], numSamples);
+            }
+        }
+        
+        BMLongLoopFDN_processMultiChannelInput(&This->loopFND, This->vndBufferL, This->vndBufferR, This->numVND, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
+
+        vDSP_vsmul(This->wetBuffer.bufferL, 1, &This->normallizeVol, This->wetBuffer.bufferL, 1, numSamples);
+        vDSP_vsmul(This->wetBuffer.bufferR, 1, &This->normallizeVol, This->wetBuffer.bufferR, 1, numSamples);
+        
+        //Process reverb dry/wet mixer
+        BMWetDryMixer_processBufferInPhase(&This->reverbMixer, This->wetBuffer.bufferL, This->wetBuffer.bufferR, inputL, inputR, outputL, outputR, numSamples);
+        
+        //Quadrature oscilliscope
+        BMPanLFO_process(&This->outputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
+        vDSP_vmul(outputL, 1, This->LFOBuffer.bufferL, 1, outputL, 1, numSamples);
+        vDSP_vmul(outputR, 1, This->LFOBuffer.bufferR, 1, outputR, 1, numSamples);
+        
+//        memcpy(outputL, This->wetBuffer.bufferL, sizeof(float)*numSamples);
+//        memcpy(outputR, This->wetBuffer.bufferR, sizeof(float)*numSamples);
+//        return;
+    }
 }
 
 float calculateScaleVol(BMCloudReverb* This){
