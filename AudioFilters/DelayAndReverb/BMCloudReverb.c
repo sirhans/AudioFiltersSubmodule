@@ -19,6 +19,7 @@
 #define Filter_TotalLevel Filter_Level_Lowpass10k + Filter_Level_TotalLP
 
 #define Filter_LS_FC 400
+#define PitchShift_BaseLength 0.2
 
 void BMCloudReverb_updateDiffusion(BMCloudReverb* This);
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This);
@@ -51,7 +52,7 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     
     //VND
     This->updateVND = false;
-    This->maxTapsEachVND = 24.0f;
+    This->maxTapsEachVND = 20.0f;
     This->diffusion = 1.0f;
     This->vndLength = 0.48f;
     
@@ -67,9 +68,15 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     }
     
     //Pitch shifting
-    float delaySampleRange = 0.02f*sr;
+    This->numPitchShift = floorf(This->numVND * 0.5f);
+    size_t delaySampleRange = PitchShift_BaseLength*sr;
+    size_t maxDelayRange = PitchShift_BaseLength*sr*This->numPitchShift;
     float duration = 20.0f;
-    BMPitchShiftDelay_init(&This->pitchDelay, duration,delaySampleRange , delaySampleRange, sr);
+    This->pitchShiftArray = malloc(sizeof(BMPitchShiftDelay)*This->numPitchShift);
+    for(int i=0;i<This->numPitchShift;i++){
+        BMPitchShiftDelay_init(&This->pitchShiftArray[i], duration,delaySampleRange , maxDelayRange, sr);
+        BMPitchShiftDelay_setWetGain(&This->pitchShiftArray[i], 1.0f);
+    }
     
     
     This->buffer.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
@@ -101,8 +108,8 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
 
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
     size_t numDelays = 32;
-    float maxDT = 0.20f*2;
-    float minDT = 0.02f*2;
+    float maxDT = 0.20f*4;
+    float minDT = 0.02f;
 	bool zeroTaps = true;
     BMLongLoopFDN_init(&This->loopFND, numDelays, minDT, maxDT, zeroTaps, 4, 1, This->sampleRate);
 }
@@ -120,7 +127,8 @@ void BMCloudReverb_destroy(BMCloudReverb* This){
     free(This->vndBufferL);
     free(This->vndBufferR);
     
-    BMPitchShiftDelay_destroy(&This->pitchDelay);
+    for(int i =0;i<This->numPitchShift;i++)
+        BMPitchShiftDelay_destroy(&This->pitchShiftArray[i]);
     
     BMLongLoopFDN_free(&This->loopFND);
     
@@ -164,10 +172,13 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
     //Filters
     BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
     
-    //PitchShifting delay into wetbuffer
-    BMPitchShiftDelay_processStereoBuffer(&This->pitchDelay, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
+    
     
     for(int i=0;i<This->numVND;i++){
+        if(i<This->numPitchShift){
+            //PitchShifting delay
+            BMPitchShiftDelay_processStereoBuffer(&This->pitchShiftArray[i], This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
+        }
         //PitchShifting delay into wetbuffer
         BMVelvetNoiseDecorrelator_processBufferStereo(&This->vndArray[i], This->buffer.bufferL, This->buffer.bufferR, This->vndBufferL[i], This->vndBufferR[i], numSamples);
     }
@@ -204,8 +215,15 @@ void BMCloudReverb_setLoopDecayTime(BMCloudReverb* This,float decayTime){
 }
 
 #define DepthMax 0.35f
+#define BaseMix 0.3f
 void BMCloudReverb_setDelayPitchMixer(BMCloudReverb* This,float wetMix){
-    BMPitchShiftDelay_setWetGain(&This->pitchDelay, wetMix);
+    //Set delayrange of pitch shift to control speed of pitch shift
+    float speedAdjust = BaseMix + (1.0f-BaseMix)*(1.0f - wetMix);
+    for(int i=0;i<This->numPitchShift;i++){
+        size_t delaySampleRange = (i+1.0f) * PitchShift_BaseLength * This->sampleRate * speedAdjust;
+        BMPitchShiftDelay_setDelayRange(&This->pitchShiftArray[i], delaySampleRange);
+    }
+    //Control pan
     BMPanLFO_setDepth(&This->inputPan, wetMix*DepthMax);
     BMPanLFO_setDepth(&This->outputPan, wetMix*DepthMax);
 }

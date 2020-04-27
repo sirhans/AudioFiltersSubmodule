@@ -94,6 +94,10 @@ void BMPitchShiftDelay_setWetGain(BMPitchShiftDelay* This,float vol){
 void BMPitchShiftDelay_setDelayRange(BMPitchShiftDelay* This,size_t newDelayRange){
     assert(newDelayRange<=This->maxDelayRange);
     This->delayRange = newDelayRange;
+    //Reset filter
+    BMSmoothSwitch_setState(&This->offSwitchL, false);
+    BMSmoothSwitch_setState(&This->offSwitchR, false);
+    This->resetFilter = true;
 }
 
 void BMPitchShiftDelay_setBandLowpass(BMPitchShiftDelay* This,float fc){

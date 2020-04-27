@@ -34,7 +34,8 @@ typedef struct BMCloudReverb {
     
 //    BMAllpassNestedFilter allpassFilter;
     
-    BMPitchShiftDelay pitchDelay;
+    BMPitchShiftDelay* pitchShiftArray;
+    size_t numPitchShift;
     
     //Loopdelay
     BMLongLoopFDN loopFND;
