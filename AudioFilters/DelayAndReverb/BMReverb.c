@@ -360,7 +360,8 @@ extern "C" {
 	 * @returns a random number in [min,max]
 	 */
     size_t BMReverbRandomInRangeUI(size_t min, size_t max){
-        size_t output = min + (size_t)arc4random_uniform(1+(UInt32)max-(UInt32)min);
+        //size_t output = min + (size_t)arc4random_uniform(1+(UInt32)max-(UInt32)min);
+		size_t output = min + (int)rand() % (1 + (int)max - (int)min);
 		assert(output >= min && output <=max);
 		return output;
     }
@@ -437,9 +438,11 @@ extern "C" {
 			bool didShift = false;
 			while(!didShift){
 				// select an element at random
-				int64_t randomIndex = arc4random_uniform((uint32_t)innerLength);
+				//int64_t randomIndex = arc4random_uniform((uint32_t)innerLength);
+				int64_t randomIndex = rand() % (int64_t)innerLength;
 				// generate a random shift in [-spread, spread]
-				int randomShift = (int)arc4random_uniform((uint32_t)spread*2) - (int)spread;
+				//int randomShift = (int)arc4random_uniform((uint32_t)spread*2) - (int)spread;
+				int randomShift = ((int)rand() % (int)spread*2) - (int)spread;
 				
 				// check the validity of the proposed shift on the pair {i,randomIndex}
 				//

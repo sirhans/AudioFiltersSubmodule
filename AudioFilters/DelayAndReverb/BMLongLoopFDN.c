@@ -51,6 +51,9 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	size_t maxDelaySamples = maxDelaySeconds * sampleRate;
 	This->minDelaySamples = minDelaySamples;
 	
+	// seed the random number generator so the randomised parts of the reverb get the same result every time
+	srand(17);
+	
 	// generate random delay times
 	size_t *delayLengths = malloc(sizeof(size_t)*numDelays);
 	BMReverbRandomsInRange(minDelaySamples, maxDelaySamples, delayLengths, numDelays);
@@ -65,9 +68,6 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 		delayLengths[j+numDelays/2] = temp[i + 1];
 		j++;
 	}
-	
-	// seed the random number generator so the randomised parts of the reverb get the same result every time
-	srand(17);
 	
 	// randomise the order of the delays in each channel
 	BMLongLoopFDN_randomShuffleSizet(delayLengths, numDelays/2);
