@@ -19,7 +19,7 @@
 #define Filter_TotalLevel Filter_Level_Lowpass10k + Filter_Level_TotalLP
 
 #define Filter_LS_FC 400
-#define PitchShift_BaseLength 0.2
+#define PitchShift_BaseNote 0.5f
 #define ReadyNo 98573
 
 void BMCloudReverb_updateDiffusion(BMCloudReverb* This);
@@ -70,12 +70,15 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     
     //Pitch shifting
     This->numPitchShift = floorf(This->numVND * 0.5f);
-    size_t delaySampleRange = PitchShift_BaseLength*sr;
-    size_t maxDelayRange = PitchShift_BaseLength*sr*This->numPitchShift;
+    //Max delay range is when the pitchshift is equal baseNote
+    float sampleToReachTarget = 20* This->sampleRate;
+    Float64 pitchShift = powf(2, PitchShift_BaseNote/12.0f);
+    size_t maxDelayRange = fabs(1.0f - pitchShift)*sampleToReachTarget;
+    
     float duration = 20.0f;
     This->pitchShiftArray = malloc(sizeof(BMPitchShiftDelay)*This->numPitchShift);
     for(int i=0;i<This->numPitchShift;i++){
-        BMPitchShiftDelay_init(&This->pitchShiftArray[i], duration,delaySampleRange , maxDelayRange, sr);
+        BMPitchShiftDelay_init(&This->pitchShiftArray[i], duration,maxDelayRange , maxDelayRange, sr);
         BMPitchShiftDelay_setWetGain(&This->pitchShiftArray[i], 1.0f);
     }
     
@@ -223,9 +226,13 @@ void BMCloudReverb_setLoopDecayTime(BMCloudReverb* This,float decayTime){
 #define BaseMix 0.3f
 void BMCloudReverb_setDelayPitchMixer(BMCloudReverb* This,float wetMix){
     //Set delayrange of pitch shift to control speed of pitch shift
-    float speedAdjust = BaseMix + (1.0f-BaseMix)*(1.0f - wetMix);
+    float baseNote = wetMix * PitchShift_BaseNote;
+    
+    float sampleToReachTarget = 20* This->sampleRate;
     for(int i=0;i<This->numPitchShift;i++){
-        size_t delaySampleRange = (i+1.0f) * PitchShift_BaseLength * This->sampleRate * speedAdjust;
+         float newNote = baseNote/(i+1.0f);
+        Float64 pitchShift = powf(2, newNote/12.0f);
+        size_t delaySampleRange = fabs(1.0f - pitchShift)*sampleToReachTarget;
         BMPitchShiftDelay_setDelayRange(&This->pitchShiftArray[i], delaySampleRange);
     }
     //Control pan
