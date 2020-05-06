@@ -26,8 +26,6 @@ void BMSmoothDelay_init(BMSmoothDelay* This,size_t defaultDS,float speed,size_t 
     
     //Left channel start at 0 delaytime
     TPCircularBufferInit(&This->buffer, (This->delaySampleRange + BM_BUFFER_CHUNK_SIZE)*sizeof(float));
-    TPCircularBufferClear(&This->buffer);
-    
     //Produce
     uint32_t availableByte;
     float* head = TPCircularBufferHead(&This->buffer, &availableByte);
