@@ -66,10 +66,7 @@ void BMSmoothDelay_prepareLGIBuffer(BMSmoothDelay* This,size_t bufferSize){
     BMLagrangeInterpolation_init(&This->lgInterpolation, LGI_Order);
     
     //Temp buffer
-    This->lgiBuffer = malloc(sizeof(float) * (bufferSize + This->storeSamples));
-    //memset(&lgiBuffer, 0, sizeof(lgiBuffer));
-    
-    This->lgiUpBuffer = malloc(sizeof(float) * bufferSize * This->storeSamples);
+    This->lgiBuffer = calloc(bufferSize + This->storeSamples, sizeof(float));
 }
 
 void BMSmoothDelay_destroy(BMSmoothDelay* This){
@@ -81,9 +78,6 @@ void BMSmoothDelay_destroy(BMSmoothDelay* This){
     
     free(This->lgiBuffer);
     This->lgiBuffer = nil;
-    
-    free(This->lgiUpBuffer);
-    This->lgiUpBuffer = nil;
     
     BMLagrangeInterpolation_destroy(&This->lgInterpolation);
 }

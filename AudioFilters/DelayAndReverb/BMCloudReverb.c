@@ -20,6 +20,7 @@
 
 #define Filter_LS_FC 400
 #define PitchShift_BaseNote 0.5f
+#define PitchShift_BaseDuration 20.0f
 #define ReadyNo 98573
 
 void BMCloudReverb_updateDiffusion(BMCloudReverb* This);
@@ -71,14 +72,13 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     //Pitch shifting
     This->numPitchShift = floorf(This->numVND * 0.5f);
     //Max delay range is when the pitchshift is equal baseNote
-    float sampleToReachTarget = 20* This->sampleRate;
+    float sampleToReachTarget = PitchShift_BaseDuration* This->sampleRate;
     Float64 pitchShift = powf(2, PitchShift_BaseNote/12.0f);
     size_t maxDelayRange = fabs(1.0f - pitchShift)*sampleToReachTarget;
     
-    float duration = 20.0f;
     This->pitchShiftArray = malloc(sizeof(BMPitchShiftDelay)*This->numPitchShift);
     for(int i=0;i<This->numPitchShift;i++){
-        BMPitchShiftDelay_init(&This->pitchShiftArray[i], duration,maxDelayRange , maxDelayRange, sr);
+        BMPitchShiftDelay_init(&This->pitchShiftArray[i], PitchShift_BaseDuration,maxDelayRange , maxDelayRange, sr);
         BMPitchShiftDelay_setWetGain(&This->pitchShiftArray[i], 1.0f);
     }
     
@@ -179,7 +179,7 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
         //Filters
         BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
         
-
+        
         for(int i=0;i<This->numVND;i++){
             //PitchShifting delay into wetbuffer
             BMVelvetNoiseDecorrelator_processBufferStereo(&This->vndArray[i], This->buffer.bufferL, This->buffer.bufferR, This->vndBufferL[i], This->vndBufferR[i], numSamples);
@@ -228,7 +228,7 @@ void BMCloudReverb_setDelayPitchMixer(BMCloudReverb* This,float wetMix){
     //Set delayrange of pitch shift to control speed of pitch shift
     float baseNote = wetMix * PitchShift_BaseNote;
     
-    float sampleToReachTarget = 20* This->sampleRate;
+    float sampleToReachTarget = PitchShift_BaseDuration* This->sampleRate;
     for(int i=0;i<This->numPitchShift;i++){
          float newNote = baseNote/(i+1.0f);
         Float64 pitchShift = powf(2, newNote/12.0f);
