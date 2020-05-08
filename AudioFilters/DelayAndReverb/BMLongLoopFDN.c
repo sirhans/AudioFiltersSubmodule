@@ -456,8 +456,12 @@ void BMLongLoopFDN_processMultiChannelInput(BMLongLoopFDN *This,
 		
 		// mix the zero taps to the output if we have them
 		if(This->hasZeroTaps){
-			vDSP_vadd(inputL[0]+samplesProccessed, 1, outputL+samplesProccessed, 1, outputL+samplesProccessed, 1, samplesProcessing);
-			vDSP_vadd(inputR[0]+samplesProccessed, 1, outputR+samplesProccessed, 1, outputR+samplesProccessed, 1, samplesProcessing);
+            float mul = 1.0f/sqrtf(numInputChannels);
+            for(int j=0;j<numInputChannels;j++){
+                vDSP_vsma(inputL[j]+samplesProccessed, 1, &mul, outputL+samplesProccessed, 1, outputL+samplesProccessed, 1, samplesProcessing);
+                vDSP_vsma(inputR[j]+samplesProccessed, 1, &mul, outputR+samplesProccessed, 1, outputR+samplesProccessed, 1, samplesProcessing);
+            }
+			
 		}
 		
 		

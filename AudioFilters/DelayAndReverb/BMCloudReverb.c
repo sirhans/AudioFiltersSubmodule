@@ -211,7 +211,7 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
 
 float calculateScaleVol(BMCloudReverb* This){
     float factor = log2f(This->decayTime);
-    float scaleDB = -3 * (factor);
+    float scaleDB = (-3 * (factor)) + 4.5f;
     return scaleDB;
 }
 
@@ -276,7 +276,9 @@ void BMCloudReverb_setVNDLength(BMCloudReverb* This,float timeInS){
 void BMCloudReverb_updateVND(BMCloudReverb* This){
     if(This->updateVND){
         This->updateVND = false;
+        //Free & reinit
         for(int i=0;i<This->numVND;i++){
+            BMVelvetNoiseDecorrelator_free(&This->vndArray[i]);
             BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vndArray[i], This->vndLength, This->maxTapsEachVND, 100, false, This->sampleRate);
         }
     }
