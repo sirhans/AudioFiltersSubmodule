@@ -20,6 +20,9 @@ typedef struct BMPanLFO {
     float* tempR;
 } BMPanLFO;
 
+/*!
+ *BMPanLFO_init
+ */
 void BMPanLFO_init(BMPanLFO *This,
                    float fHz,
                    float depth,

@@ -19,8 +19,8 @@
 #define Filter_TotalLevel Filter_Level_Lowpass10k + Filter_Level_TotalLP
 
 #define Filter_LS_FC 400
-#define PitchShift_BaseNote 0.5f
-#define PitchShift_BaseDuration 20.0f
+#define PitchShift_BaseNote 0.14f
+#define PitchShift_BaseDuration 10.0f
 #define ReadyNo 98573
 
 void BMCloudReverb_updateDiffusion(BMCloudReverb* This);
@@ -64,7 +64,7 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     This->vndBufferR = malloc(sizeof(float*)*This->numVND);
     for(int i=0;i<This->numVND;i++){
         BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vndArray[i], This->vndLength, This->maxTapsEachVND, 100, false, sr);
-        BMVelvetNoiseDecorrelator_setFadeIn(&This->vndArray[i], 0.5f);
+        BMVelvetNoiseDecorrelator_setFadeIn(&This->vndArray[i], 0.0f);
         This->vndBufferL[i] = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
         This->vndBufferR[i] = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     }
@@ -106,8 +106,8 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     BMCloudReverb_setOutputMixer(This, 0.5f);
     
     //Pan
-    BMPanLFO_init(&This->inputPan, 0.25f, 0.6f, sr);
-    BMPanLFO_init(&This->outputPan, 0.1f, 0.6f, sr);
+    BMPanLFO_init(&This->inputPan, 0.412f, 0.6f, sr);
+    BMPanLFO_init(&This->outputPan, 0.5456f, 0.6f, sr);
     
     This->initNo = ReadyNo;
 }
@@ -168,13 +168,8 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
         BMCloudReverb_updateDiffusion(This);
         BMCloudReverb_updateVND(This);
         
-        //Quadrature oscilliscope
-        BMPanLFO_process(&This->inputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
-        vDSP_vmul(inputL, 1, This->LFOBuffer.bufferL, 1, This->buffer.bufferL, 1, numSamples);
-        vDSP_vmul(inputR, 1, This->LFOBuffer.bufferR, 1, This->buffer.bufferR, 1, numSamples);
-        
-//        memcpy(This->buffer.bufferL, inputL, sizeof(float)*numSamples);
-//        memcpy(This->buffer.bufferR, inputR, sizeof(float)*numSamples);
+        memcpy(This->buffer.bufferL, inputL, sizeof(float)*numSamples);
+        memcpy(This->buffer.bufferR, inputR, sizeof(float)*numSamples);
         
         //Filters
         BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
@@ -191,14 +186,18 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
         }
         
         BMLongLoopFDN_processMultiChannelInput(&This->loopFND, This->vndBufferL, This->vndBufferR, This->numVND, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
-
+		
         vDSP_vsmul(This->wetBuffer.bufferL, 1, &This->normallizeVol, This->wetBuffer.bufferL, 1, numSamples);
         vDSP_vsmul(This->wetBuffer.bufferR, 1, &This->normallizeVol, This->wetBuffer.bufferR, 1, numSamples);
         
         //Process reverb dry/wet mixer
         BMWetDryMixer_processBufferInPhase(&This->reverbMixer, This->wetBuffer.bufferL, This->wetBuffer.bufferR, inputL, inputR, outputL, outputR, numSamples);
         
-        //Quadrature oscilliscope
+        //LFO pan
+		// Input pan LFO
+        BMPanLFO_process(&This->inputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
+        vDSP_vmul(outputL, 1, This->LFOBuffer.bufferL, 1, outputL, 1, numSamples);
+        vDSP_vmul(outputR, 1, This->LFOBuffer.bufferR, 1, outputR, 1, numSamples);
         BMPanLFO_process(&This->outputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
         vDSP_vmul(outputL, 1, This->LFOBuffer.bufferL, 1, outputL, 1, numSamples);
         vDSP_vmul(outputR, 1, This->LFOBuffer.bufferR, 1, outputR, 1, numSamples);
@@ -211,7 +210,7 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
 
 float calculateScaleVol(BMCloudReverb* This){
     float factor = log2f(This->decayTime);
-    float scaleDB = (-3 * (factor)) + 4.5f;
+    float scaleDB = (-3 * (factor)) + 14.0f;
     return scaleDB;
 }
 
@@ -222,18 +221,21 @@ void BMCloudReverb_setLoopDecayTime(BMCloudReverb* This,float decayTime){
     This->normallizeVol = BM_DB_TO_GAIN(calculateScaleVol(This));
 }
 
-#define DepthMax 0.35f
-#define BaseMix 0.3f
+#define DepthMax 0.25f
+//#define BaseMix 0.3f
 void BMCloudReverb_setDelayPitchMixer(BMCloudReverb* This,float wetMix){
     //Set delayrange of pitch shift to control speed of pitch shift
     float baseNote = wetMix * PitchShift_BaseNote;
     
-    float sampleToReachTarget = PitchShift_BaseDuration* This->sampleRate;
+    float sampleToReachTarget = PitchShift_BaseDuration * This->sampleRate;
     for(int i=0;i<This->numPitchShift;i++){
          float newNote = baseNote/(i+1.0f);
         Float64 pitchShift = powf(2, newNote/12.0f);
         size_t delaySampleRange = fabs(1.0f - pitchShift)*sampleToReachTarget;
         BMPitchShiftDelay_setDelayRange(&This->pitchShiftArray[i], delaySampleRange);
+		
+		// reduce the sampes to reach target a little for the next pitch shifter to ensure that they do not all change direction at the same time.
+		sampleToReachTarget *= 0.97f;
     }
     //Control pan
     BMPanLFO_setDepth(&This->inputPan, wetMix*DepthMax);
@@ -241,7 +243,7 @@ void BMCloudReverb_setDelayPitchMixer(BMCloudReverb* This,float wetMix){
 }
 
 void BMCloudReverb_setOutputMixer(BMCloudReverb* This,float wetMix){
-    BMWetDryMixer_setMix(&This->reverbMixer, wetMix);
+    BMWetDryMixer_setMix(&This->reverbMixer, wetMix*wetMix);
 }
 
 void BMCloudReverb_setDiffusion(BMCloudReverb* This,float diffusion){

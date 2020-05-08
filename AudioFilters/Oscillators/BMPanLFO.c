@@ -30,7 +30,7 @@ void BMPanLFO_destroy(BMPanLFO *This){
 
 void BMPanLFO_setDepth(BMPanLFO *This,float depth){
     This->depth = depth;
-    This->base = 1.0f - depth;
+    This->base = 1.0f - depth * 0.5f;
 }
 
 
