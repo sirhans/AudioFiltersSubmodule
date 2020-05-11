@@ -76,7 +76,7 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     }
     
     //Pitch shifting
-    This->numPitchShift = floorf(This->numVND * 0.5f);
+    This->numPitchShift = floorf(This->numInput * 0.5f);
     //Max delay range is when the pitchshift is equal baseNote
     float sampleToReachTarget = PitchShift_BaseDuration* This->sampleRate;
     Float64 pitchShift = powf(2, PitchShift_BaseNote/12.0f);
@@ -84,7 +84,7 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     
     This->pitchShiftArray = malloc(sizeof(BMPitchShiftDelay)*This->numPitchShift);
     for(int i=0;i<This->numPitchShift;i++){
-        BMPitchShiftDelay_init(&This->pitchShiftArray[i], PitchShift_BaseDuration,maxDelayRange , maxDelayRange, sr);
+        BMPitchShiftDelay_init(&This->pitchShiftArray[i], PitchShift_BaseDuration,maxDelayRange , maxDelayRange, sr,fmodf(i, 2)==0);
         BMPitchShiftDelay_setWetGain(&This->pitchShiftArray[i], 1.0f);
     }
     

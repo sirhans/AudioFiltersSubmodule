@@ -13,17 +13,24 @@
 #include <Accelerate/Accelerate.h>
 #include "Constants.h"
 
-void BMPitchShiftDelay_init(BMPitchShiftDelay* This,float duration,size_t delayRange,size_t maxDelayRange,size_t sampleRate){
+void BMPitchShiftDelay_init(BMPitchShiftDelay* This,float duration,size_t delayRange,size_t maxDelayRange,size_t sampleRate,bool startAtMaxRange){
     //init buffer
     This->sampleRate = sampleRate;
     This->duration = duration;
     This->delayRange = delayRange;
     This->maxDelayRange = maxDelayRange;
     This->mixToOtherValue = 1.0f;
-    This->delayParamL.startSamples = 0;
-    This->delayParamL.stopSamples = delayRange;
-    This->delayParamR.startSamples = delayRange;
-    This->delayParamR.stopSamples = 0;
+    if(!startAtMaxRange){
+        This->delayParamL.startSamples = 0;
+        This->delayParamL.stopSamples = delayRange;
+        This->delayParamR.startSamples = delayRange;
+        This->delayParamR.stopSamples = 0;
+    }else{
+        This->delayParamL.startSamples = delayRange;
+        This->delayParamL.stopSamples = 0;
+        This->delayParamR.startSamples = 0;
+        This->delayParamR.stopSamples = delayRange;
+    }
     This->delayParamL.lastSTC = 0;
     This->delayParamR.lastSTC = 0;
     This->delayParamL.sampleToConsume = 0;

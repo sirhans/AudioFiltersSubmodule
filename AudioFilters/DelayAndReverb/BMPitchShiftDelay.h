@@ -64,7 +64,7 @@ typedef struct BMPitchShiftDelay {
  * speed : calculate in second
  * delayRange : max delay sample range
  */
-void BMPitchShiftDelay_init(BMPitchShiftDelay* This,float speed,size_t delayRange,size_t maxDelayRange,size_t sampleRate);
+void BMPitchShiftDelay_init(BMPitchShiftDelay* This,float duration,size_t delayRange,size_t maxDelayRange,size_t sampleRate,bool startAtMaxRange);
 void BMPitchShiftDelay_destroy(BMPitchShiftDelay* This);
 
 void BMPitchShiftDelay_processStereoBuffer(BMPitchShiftDelay* This,float* inL, float* inR, float* outL, float* outR,size_t numSamples);
