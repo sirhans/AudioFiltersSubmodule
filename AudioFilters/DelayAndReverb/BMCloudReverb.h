@@ -70,7 +70,7 @@ typedef struct BMCloudReverb {
 
 void BMCloudReverb_init(BMCloudReverb* This,float sr);
 void BMCloudReverb_destroy(BMCloudReverb* This);
-void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t numSamples);
+void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t numSamples,bool offlineRendering);
 //Set
 void BMCloudReverb_setLoopDecayTime(BMCloudReverb* This,float decayTime);
 void BMCloudReverb_setDelayPitchMixer(BMCloudReverb* This,float wetMix);

@@ -170,18 +170,17 @@ void BMCloudReverb_destroy(BMCloudReverb* This){
     This->wetBuffer.bufferR = nil;
 }
 
-void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t numSamples){
+void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t numSamples,bool offlineRendering){
     if(This->initNo==ReadyNo){
         assert(numSamples<=BM_BUFFER_CHUNK_SIZE);
         
         BMCloudReverb_updateDiffusion(This);
         BMCloudReverb_updateVND(This);
         
-        memcpy(This->buffer.bufferL, inputL, sizeof(float)*numSamples);
-        memcpy(This->buffer.bufferR, inputR, sizeof(float)*numSamples);
-        
         //Filters
-        BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, This->buffer.bufferL, This->buffer.bufferR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
+        BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, inputL, inputR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
+        
+        
         
         
         for(int i=0;i<This->numInput;i++){
@@ -200,8 +199,18 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
         vDSP_vsmul(This->wetBuffer.bufferL, 1, &This->normallizeVol, This->wetBuffer.bufferL, 1, numSamples);
         vDSP_vsmul(This->wetBuffer.bufferR, 1, &This->normallizeVol, This->wetBuffer.bufferR, 1, numSamples);
         
-        //Process reverb dry/wet mixer
-        BMWetDryMixer_processBufferInPhase(&This->reverbMixer, This->wetBuffer.bufferL, This->wetBuffer.bufferR, inputL, inputR, outputL, outputR, numSamples);
+        if(offlineRendering){
+            float dryMix = 1 - This->reverbMixer.mixTarget;
+            vDSP_vsmsma(This->wetBuffer.bufferL, 1, &This->reverbMixer.mixTarget, inputL, 1, &dryMix, outputL, 1, numSamples);
+            vDSP_vsmsma(This->wetBuffer.bufferR, 1, &This->reverbMixer.mixTarget, inputR, 1, &dryMix, outputR, 1, numSamples);
+        }else{
+            //Process reverb dry/wet mixer
+            BMWetDryMixer_processBufferInPhase(&This->reverbMixer, This->wetBuffer.bufferL, This->wetBuffer.bufferR, inputL, inputR, outputL, outputR, numSamples);
+        }
+        
+//        memcpy(outputL,This->wetBuffer.bufferL, sizeof(float)*numSamples);
+//        memcpy(outputR,This->wetBuffer.bufferL, sizeof(float)*numSamples);
+//        return;
         
         //LFO pan
 		// Input pan LFO
@@ -304,7 +313,7 @@ void BMCloudReverb_impulseResponse(BMCloudReverb* This,float* inputL,float* inpu
     while(sampleProcessed<length){
         sampleProcessing = BM_MIN(BM_BUFFER_CHUNK_SIZE, length - sampleProcessed);
         
-        BMCloudReverb_processStereo(This, inputL+sampleProcessed, inputR+sampleProcessed, outputL+sampleProcessed, outputR+sampleProcessed, sampleProcessing);
+        BMCloudReverb_processStereo(This, inputL+sampleProcessed, inputR+sampleProcessed, outputL+sampleProcessed, outputR+sampleProcessed, sampleProcessing,true);
         if(outputL[sampleProcessed]>1.0f)
             printf("error\n");
         sampleProcessed += sampleProcessing;
