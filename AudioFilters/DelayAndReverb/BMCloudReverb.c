@@ -58,7 +58,7 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     This->diffusion = 1.0f;
     This->vndLength = 0.1f;
     
-    This->numInput = 4;
+    This->numInput = 8;
     This->numVND = This->numInput*2;
     This->vndArray = malloc(sizeof(BMVelvetNoiseDecorrelator)*This->numVND);
     This->vndBufferL = malloc(sizeof(float*)*This->numInput);
@@ -123,7 +123,7 @@ void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
     float maxDT = 0.20f;
     float minDT = 0.02f;
 	bool zeroTaps = true;
-    BMLongLoopFDN_init(&This->loopFND, numDelays, minDT, maxDT, zeroTaps, 4, 1, This->sampleRate);
+    BMLongLoopFDN_init(&This->loopFND, numDelays, minDT, maxDT, zeroTaps, 8, 1, This->sampleRate);
 }
 
 void BMCloudReverb_destroy(BMCloudReverb* This){
