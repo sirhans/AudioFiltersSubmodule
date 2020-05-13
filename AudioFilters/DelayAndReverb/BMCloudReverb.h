@@ -19,6 +19,7 @@
 #include "BMLongLoopFDN.h"
 #include "BMPanLFO.h"
 #include "BMAllpassNestedFilter.h"
+#include "BMFIRFilter.h"
 
 typedef struct BMStereoBuffer{
     void* bufferL;
@@ -28,12 +29,11 @@ typedef struct BMStereoBuffer{
 typedef struct BMCloudReverb {
     BMMultiLevelBiquad biquadFilter;
     BMVelvetNoiseDecorrelator* vndArray;
+    
     float** vndBufferL;
     float** vndBufferR;
     size_t numVND;
     size_t numInput;
-    
-//    BMAllpassNestedFilter allpassFilter;
     
     BMPitchShiftDelay* pitchShiftArray;
     size_t numPitchShift;
@@ -79,6 +79,7 @@ void BMCloudReverb_setDiffusion(BMCloudReverb* This,float diffusion);
 void BMCloudReverb_setLSGain(BMCloudReverb* This,float gainDb);
 void BMCloudReverb_setHighCutFreq(BMCloudReverb* This,float freq);
 void BMCloudReverb_setFadeInVND(BMCloudReverb* This,float timeInS);
+void BMCloudReverb_setVNDLength(BMCloudReverb* This,float timeInS);
 //Test
 void BMCloudReverb_impulseResponse(BMCloudReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t length);
 #endif /* BMCloudReverb_h */

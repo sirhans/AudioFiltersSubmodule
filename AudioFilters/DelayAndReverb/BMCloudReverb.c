@@ -54,20 +54,20 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     
     //VND
     This->updateVND = false;
-    This->maxTapsEachVND = 36.0;
+    This->maxTapsEachVND = 16.0;
     This->diffusion = 1.0f;
-    This->vndLength = 0.20f;
+    This->vndLength = 0.1f;
     
     This->numInput = 4;
     This->numVND = This->numInput*2;
     This->vndArray = malloc(sizeof(BMVelvetNoiseDecorrelator)*This->numVND);
     This->vndBufferL = malloc(sizeof(float*)*This->numInput);
     This->vndBufferR = malloc(sizeof(float*)*This->numInput);
+    
     //Using 2 layer of vnd
     for(int i=0;i<This->numVND;i++){
         BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vndArray[i], This->vndLength, This->maxTapsEachVND, 100, false, sr);
         BMVelvetNoiseDecorrelator_setFadeIn(&This->vndArray[i], 0.0f);
-        
     }
     //Init temp buffer
     for(int i=0;i<This->numInput;i++){
@@ -180,12 +180,9 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
         //Filters
         BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, inputL, inputR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
         
-        
-        
-        
         for(int i=0;i<This->numInput;i++){
             //PitchShifting delay into wetbuffer
-            BMVelvetNoiseDecorrelator_processBufferStereo(&This->vndArray[i*2], This->buffer.bufferL, This->buffer.bufferR, This->vndBufferL[i], This->vndBufferR[i], numSamples);
+            BMVelvetNoiseDecorrelator_processBufferStereo(&This->vndArray[i*2], This->buffer.bufferL, This->buffer.bufferR,This->buffer.bufferL, This->buffer.bufferR, numSamples);
             BMVelvetNoiseDecorrelator_processBufferStereo(&This->vndArray[i*2+1], This->buffer.bufferL, This->buffer.bufferR, This->vndBufferL[i], This->vndBufferR[i], numSamples);
             
             if(i<This->numPitchShift){
@@ -292,6 +289,11 @@ void BMCloudReverb_setFadeInVND(BMCloudReverb* This,float timeInS){
     for(int i=0;i<This->numVND;i++){
         BMVelvetNoiseDecorrelator_setFadeIn(&This->vndArray[i], timeInS);
     }
+}
+
+void BMCloudReverb_setVNDLength(BMCloudReverb* This,float timeInS){
+    This->vndLength = timeInS;
+    This->updateVND = true;
 }
 
 void BMCloudReverb_updateVND(BMCloudReverb* This){
