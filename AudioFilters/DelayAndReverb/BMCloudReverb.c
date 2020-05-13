@@ -119,7 +119,7 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
 }
 
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
-    size_t numDelays = 8;
+    size_t numDelays = 16;
     float maxDT = 0.20f;
     float minDT = 0.02f;
 	bool zeroTaps = true;
@@ -226,7 +226,7 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
 
 float calculateScaleVol(BMCloudReverb* This){
     float factor = log2f(This->decayTime);
-    float scaleDB = (-3 * (factor)) + 14.0f;
+    float scaleDB = (-3 * (factor)) + 7.0f;
     return scaleDB;
 }
 
