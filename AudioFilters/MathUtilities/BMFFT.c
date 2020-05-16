@@ -176,7 +176,7 @@ void BMFFT_hammingWindow(BMFFT *This,
 
 
 
-void BMFFT_generateBlackmanHarris(float* window, size_t length){
+void BMFFT_generateBlackmanHarrisCoefficients(float* window, size_t length){
 	for(size_t i=0; i<length; i++){
 		// the function is defined on [-1/2,1/2]
 		double x = -0.5 + ( (double)i / (double)(length-1) );
@@ -204,7 +204,7 @@ void BMFFT_blackmanHarrisWindow(BMFFT *This,
     
     // if the window cached in the buffer does not have the specified length, or isn't a blackman-harris window recompute it.
     if(This->windowCurrentLength != numSamples || This->windowType != BMFFT_BLACKMANHARRIS){
-        BMFFT_generateBlackmanHarris(This->window, numSamples);
+        BMFFT_generateBlackmanHarrisCoefficients(This->window, numSamples);
         This->windowCurrentLength = numSamples;
 		This->windowType = BMFFT_BLACKMANHARRIS;
     }
