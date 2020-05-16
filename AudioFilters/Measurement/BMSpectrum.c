@@ -83,10 +83,10 @@ float BMSpectrum_processDataBasic(BMSpectrum* This,
     assert(IsPowerOfTwo(inputLength));
     assert(inputLength <= This->maxInputLength);
     
-    // apply a hamming window to the input
+    // apply a Blackman-Harris window to the input
     const float *windowedInput = input;
     if(applyWindow){
-        BMFFT_hammingWindow(&This->fft, input, This->buffer, inputLength);
+        BMFFT_blackmanHarrisWindow(&This->fft, input, This->buffer, inputLength);
         windowedInput = This->buffer;
     }
     

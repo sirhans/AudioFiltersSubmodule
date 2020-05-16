@@ -82,7 +82,7 @@ void vectorConvertIntToSize_t(const int* input, size_t* output, size_t length){
 }
 
 
-void BMLagrangeInterpolation_processUpSample(BMLagrangeInterpolation* This, const float* input, const float* strideInput, float* output, int outputStride,size_t inputLength,size_t outputLength){
+void BMLagrangeInterpolation_processUpSample(BMLagrangeInterpolation* This, const float* input, const float* strideInput, float* output, int outputStride, size_t inputLength,size_t outputLength){
     
     // get the start index for the input data used to calculate each sample of output
     float negStartIdxFactor = - This->startIdxFactor;

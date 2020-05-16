@@ -42,10 +42,11 @@ void BMFFT_init(BMFFT *This, size_t maxInputLength){
     // prepare the fft coefficeints
     This->setup = vDSP_create_fftsetup(This->recursionLevels, kFFTRadix2);
     
-    // set up the hamming window
-    This->hammingWindow = malloc(sizeof(float)*maxInputLength);
-    vDSP_hamm_window(This->hammingWindow, maxInputLength, 0);
-    This->hammingWindowCurrentLength = maxInputLength;
+    // set up the window
+	This->windowType = BMFFT_HAMMING;
+    This->window = malloc(sizeof(float)*maxInputLength);
+    vDSP_hamm_window(This->window, maxInputLength, 0);
+    This->windowCurrentLength = maxInputLength;
 }
 
 
@@ -62,7 +63,7 @@ void BMFFT_free(BMFFT *This){
     free(This->fft_output_buffer_r);
     free(This->fft_buffer_buffer_i);
     free(This->fft_buffer_buffer_r);
-    free(This->hammingWindow);
+    free(This->window);
     
     This->fft_input_buffer_i = NULL;
     This->fft_input_buffer_r = NULL;
@@ -70,7 +71,7 @@ void BMFFT_free(BMFFT *This){
     This->fft_output_buffer_r = NULL;
     This->fft_buffer_buffer_i = NULL;
     This->fft_buffer_buffer_r = NULL;
-    This->hammingWindow = NULL;
+    This->window = NULL;
 }
 
 
@@ -160,11 +161,53 @@ void BMFFT_hammingWindow(BMFFT *This,
                          size_t numSamples){
     assert(numSamples <= This->maxInputLength);
     
-    // if the window cached in the buffer does not have the specified length, recompute it.
-    if(This->hammingWindowCurrentLength != numSamples){
-        vDSP_hamm_window(This->hammingWindow, numSamples, 0);
-        This->hammingWindowCurrentLength = numSamples;
+    // if the window cached in the buffer does not have the specified length or isn't a hamming window, recompute it.
+    if(This->windowCurrentLength != numSamples || This->windowType != BMFFT_HAMMING){
+        vDSP_hamm_window(This->window, numSamples, 0);
+        This->windowCurrentLength = numSamples;
+		This->windowType = BMFFT_HAMMING;
     }
     
-    vDSP_vmul(input,1,This->hammingWindow,1,output,1,numSamples);
+    vDSP_vmul(input,1,This->window,1,output,1,numSamples);
+}
+
+
+
+
+
+
+void BMFFT_generateBlackmanHarris(float* window, size_t length){
+	for(size_t i=0; i<length; i++){
+		// the function is defined on [-1/2,1/2]
+		double x = -0.5 + ( (double)i / (double)(length-1) );
+		
+		// this formula is copied out of the documentation for the blackmanHarris function in Mathematica
+		double y = 48829.0 * cos(2.0 * M_PI * x) +
+				   14128.0 * cos(4.0 * M_PI * x) +
+		           1168.0 * cos(6.0 * M_PI * x) +
+				   35875.0;
+		y /= 100000.0;
+		
+		// copy the result to the output
+		window[i] = y;
+	}
+}
+
+
+
+
+void BMFFT_blackmanHarrisWindow(BMFFT *This,
+								const float* input,
+								float* output,
+								size_t numSamples){
+	assert(numSamples <= This->maxInputLength);
+    
+    // if the window cached in the buffer does not have the specified length, or isn't a blackman-harris window recompute it.
+    if(This->windowCurrentLength != numSamples || This->windowType != BMFFT_BLACKMANHARRIS){
+        BMFFT_generateBlackmanHarris(This->window, numSamples);
+        This->windowCurrentLength = numSamples;
+		This->windowType = BMFFT_BLACKMANHARRIS;
+    }
+    
+    vDSP_vmul(input,1,This->window,1,output,1,numSamples);
 }
