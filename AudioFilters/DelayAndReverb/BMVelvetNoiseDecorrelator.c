@@ -77,6 +77,7 @@ void BMVelvetNoiseDecorrelator_initFullSettings(BMVelvetNoiseDecorrelator *This,
 	This->evenTapDensity = evenTapDensity;
     This->resetNumTaps = false;
     This->resetRT60DecayTime = false;
+    This->fadeInSamples = 0;
 	if (hasDryTap) This->numWetTaps--;
 	
 	// allocate memory for calculating delay setups
@@ -120,12 +121,17 @@ void BMVelvetNoiseDecorrelator_genRandGains(BMVelvetNoiseDecorrelator *This){
 		// left channel
 		float delayTimeInSeconds = This->delayLengthsL[i] / This->sampleRate;
 		float rt60Gain = BMReverbDelayGainFromRT60(This->rt60, delayTimeInSeconds);
-		This->gainsL[i] *= rt60Gain;
+        float fadeIn = 1;
+        if(This->fadeInSamples>0)
+            fadeIn = MIN(This->delayLengthsL[i], This->fadeInSamples)/This->fadeInSamples;
+		This->gainsL[i] *= rt60Gain * fadeIn;
 		
 		// right channel
 		delayTimeInSeconds = This->delayLengthsR[i] / This->sampleRate;
 		rt60Gain = BMReverbDelayGainFromRT60(This->rt60, delayTimeInSeconds);
-		This->gainsR[i] *= rt60Gain;
+        if(This->fadeInSamples>0)
+            fadeIn = MIN(This->delayLengthsR[i], This->fadeInSamples)/This->fadeInSamples;
+		This->gainsR[i] *= rt60Gain * fadeIn;
 	}
     
     //Last tap gain
@@ -294,6 +300,18 @@ void BMVelvetNoiseDecorrelator_resetRT60DecayTime(BMVelvetNoiseDecorrelator *Thi
     }
 }
 
+void BMVelvetNoiseDecorrelator_setFadeIn(BMVelvetNoiseDecorrelator *This,float fadeInS){
+    This->fadeInSamples = fadeInS * This->sampleRate;
+    This->resetFadeIn = true;
+}
+
+void BMVelvetNoiseDecorrelator_resetFadeIn(BMVelvetNoiseDecorrelator *This){
+    if(This->resetFadeIn){
+        This->resetFadeIn = false;
+        BMVelvetNoiseDecorrelator_genRandGains(This);
+    }
+}
+
 /*!
  *BMVelvetNoiseDecorrelator_free
  */
@@ -313,8 +331,6 @@ void BMVelvetNoiseDecorrelator_free(BMVelvetNoiseDecorrelator *This){
 }
 
 
-
-
 /*!
  *BMVelvetNoiseDecorrelator_processBufferStereo
  */
@@ -327,6 +343,7 @@ void BMVelvetNoiseDecorrelator_processBufferStereo(BMVelvetNoiseDecorrelator *Th
     //Reset numtap if needed
     BMVelvetNoiseDecorrelator_resetNumTaps(This);
     BMVelvetNoiseDecorrelator_resetRT60DecayTime(This);
+    BMVelvetNoiseDecorrelator_resetFadeIn(This);
 	// all processing is done by the multi-tap delay class
     BMMultiTapDelay_processBufferStereo(&This->multiTapDelay,
 										inputL, inputR,
@@ -345,6 +362,7 @@ void BMVelvetNoiseDecorrelator_processBufferStereoWithFinalOutput(BMVelvetNoiseD
     //Reset numtap if needed
     BMVelvetNoiseDecorrelator_resetNumTaps(This);
     BMVelvetNoiseDecorrelator_resetRT60DecayTime(This);
+    BMVelvetNoiseDecorrelator_resetFadeIn(This);
     // all processing is done by the multi-tap delay class
     BMMultiTapDelay_processStereoWithFinalOutput(&This->multiTapDelay,
                                                  inputL, inputR,
@@ -365,6 +383,7 @@ void BMVelvetNoiseDecorrelator_processBufferMonoToStereo(BMVelvetNoiseDecorrelat
     //Reset numtap if needed
     BMVelvetNoiseDecorrelator_resetNumTaps(This);
     BMVelvetNoiseDecorrelator_resetRT60DecayTime(This);
+    BMVelvetNoiseDecorrelator_resetFadeIn(This);
 	// all processing is done by the multi-tap delay class
 	BMMultiTapDelay_processBufferStereo(&This->multiTapDelay,
 										inputL, inputL,

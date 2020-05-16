@@ -11,7 +11,7 @@
 #include "Constants.h"
 #include "fastpow.h"
 
-#define BMAS_NOISE_GATE_CLOSED_LEVEL -71.0f
+#define BMAS_NOISE_GATE_CLOSED_LEVEL -63.0f
 
 
 
@@ -70,7 +70,7 @@ void BMMultibandAttackShaper_init(BMMultibandAttackShaper *This, bool isStereo, 
 	This->isStereo = isStereo;
 	
 	// init the 2-way crossover
-	float crossover2fc = 300.0;
+	float crossover2fc = 400.0;
 	BMCrossover_init(&This->crossover2, crossover2fc, sampleRate, true, isStereo);
 	
 	float attackFC = 40.0f;
@@ -78,7 +78,7 @@ void BMMultibandAttackShaper_init(BMMultibandAttackShaper *This, bool isStereo, 
 	float dsfSensitivity = 1000.0f;
 	float dsfFcMin = releaseFC;
 	float dsfFcMax = 1000.0f;
-	float exaggeration = 2.1f;
+	float exaggeration = 2.0f;
 	BMAttackShaperSection_init(&This->asSections[0],
 							   releaseFC,
 							   attackFC,
@@ -88,6 +88,7 @@ void BMMultibandAttackShaper_init(BMMultibandAttackShaper *This, bool isStereo, 
 							   sampleRate,
 							   isStereo);
 	
+	dsfFcMax = 1000.0f;
 	BMAttackShaperSection_init(&This->asSections[1],
 							   releaseFC*BMAS_SECTION_2_RF_MULTIPLIER,
 							   attackFC*BMAS_SECTION_2_AF_MULTIPLIER,
@@ -106,11 +107,27 @@ void BMMultibandAttackShaper_init(BMMultibandAttackShaper *This, bool isStereo, 
         This->b2R = This->b1R + BM_BUFFER_CHUNK_SIZE;
 	} else {
 		This->b1L = malloc(2 * bufferSize);
-		This->b2L = This->b1L + bufferSize;
+		This->b2L = This->b1L + BM_BUFFER_CHUNK_SIZE;
 	}
 	
 	// set default noise gate threshold
 	BMMultibandAttackShaper_setSidechainNoiseGateThreshold(This, -45.0f);
+	
+	// process a few buffers of silence to get the filters warmed up
+	float* input = calloc(256,sizeof(float));
+	float* outputL = calloc(256,sizeof(float));
+	float* outputR = calloc(256,sizeof(float));
+	//
+	if(isStereo)
+		for(size_t i=0; i<10; i++)
+			BMMultibandAttackShaper_processStereo(This, input, input, outputL, outputR, 256);
+	else
+		for(size_t i=0; i<10; i++)
+			BMMultibandAttackShaper_processMono(This, input, outputL, 256);
+	//
+	free(input);
+	free(outputL);
+	free(outputR);
 }
 
 
@@ -129,6 +146,15 @@ void BMMultibandAttackShaper_free(BMMultibandAttackShaper *This){
 
 
 
+float BMMultibandAttackShaper_getLatencyInSeconds(BMMultibandAttackShaper *This){
+	return (float)This->asSections->dly.delayLength / This->asSections[0].sampleRate;
+}
+
+
+
+
+
+
 void BMMultibandAttackShaper_processStereo(BMMultibandAttackShaper *This,
 										   const float *inputL, const float *inputR,
 										   float *outputL, float *outputR,
@@ -139,11 +165,13 @@ void BMMultibandAttackShaper_processStereo(BMMultibandAttackShaper *This,
 		size_t samplesProcessing = BM_MIN(numSamples, BM_BUFFER_CHUNK_SIZE);
 		
 		// split the signal into two bands
-		BMCrossover_processStereo(&This->crossover2, inputL, inputR, This->b1L, This->b1R, This->b2L, This->b2R, numSamples);
-        
+		BMCrossover_processStereo(&This->crossover2, inputL, inputR, This->b1L, This->b1R, This->b2L, This->b2R, samplesProcessing);
+
+		
 		// process transient shapers on each band
 		BMAttackShaperSection_processStereo(&This->asSections[0], This->b1L, This->b1R, This->b1L, This->b1R, samplesProcessing);
 		BMAttackShaperSection_processStereo(&This->asSections[1], This->b2L, This->b2R, This->b2L, This->b2R, samplesProcessing);
+		
 		
 		// recombine the signal
 		vDSP_vadd(This->b1L, 1, This->b2L, 1, outputL, 1, samplesProcessing);
@@ -200,6 +228,22 @@ void BMAttackShaperSection_setAttackFrequency(BMAttackShaperSection *This, float
 	for(size_t i=0; i<BMAS_AF_NUMLEVELS; i++)
 	BMAttackFilter_setCutoff(&This->af[i], attackFc);
 }
+
+
+
+void BMAttackShaperSection_setReleaseFrequency(BMAttackShaperSection *This, float releaseFc){
+	for(size_t i=0; i<BMAS_RF_NUMLEVELS; i++)
+		BMReleaseFilter_setCutoff(&This->rf[i], releaseFc);
+}
+
+
+void BMAttackShaperSection_setDSMinFrequency(BMAttackShaperSection *This, float dsMinFc){
+	for(size_t i=0; i<BMAS_DSF_NUMLEVELS; i++)
+		BMDynamicSmoothingFilter_setMinFc(&This->dsf[i], dsMinFc);
+}
+
+
+
 
 
 void BMAttackShaperSection_init(BMAttackShaperSection *This,
@@ -475,10 +519,18 @@ bool BMAttackShaperSection_sidechainNoiseGateIsOpen(BMAttackShaperSection *This)
 
 void BMMultibandAttackShaper_setAttackTime(BMMultibandAttackShaper *This, float attackTimeInSeconds){
 	// find the lpf cutoff frequency that corresponds to the specified attack time
-	float fc = ARTimeToCutoffFrequency(attackTimeInSeconds, BMAS_AF_NUMLEVELS);
+	float attackFc = ARTimeToCutoffFrequency(attackTimeInSeconds, BMAS_AF_NUMLEVELS);
 	
-	BMAttackShaperSection_setAttackFrequency(&This->asSections[0], fc);
-	BMAttackShaperSection_setAttackFrequency(&This->asSections[1], fc*BMAS_SECTION_2_AF_MULTIPLIER);
+	BMAttackShaperSection_setAttackFrequency(&This->asSections[0], attackFc);
+	BMAttackShaperSection_setAttackFrequency(&This->asSections[1], attackFc*BMAS_SECTION_2_AF_MULTIPLIER);
+	
+	float releaseFc = BM_MIN(attackFc * 0.6666f, 20.0f);
+	BMAttackShaperSection_setReleaseFrequency(&This->asSections[0], releaseFc);
+	BMAttackShaperSection_setReleaseFrequency(&This->asSections[1], releaseFc*BMAS_SECTION_2_RF_MULTIPLIER);
+	
+	float dsMinFc = releaseFc;
+	BMAttackShaperSection_setDSMinFrequency(&This->asSections[0], dsMinFc);
+	BMAttackShaperSection_setDSMinFrequency(&This->asSections[1], dsMinFc);
 }
 	
 

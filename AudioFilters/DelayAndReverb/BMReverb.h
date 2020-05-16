@@ -206,6 +206,7 @@ void BMReverbSetHighPassFC(struct BMReverb *This, float fc);
 // not affect the dry signal at all.
 void BMReverbSetLowPassFC(struct BMReverb *This, float fc);
 
+
 /*!
  *BMReverbDelayGainFromRT60
  *

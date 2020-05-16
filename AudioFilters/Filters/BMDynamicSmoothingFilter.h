@@ -28,7 +28,7 @@ extern "C" {
 #include <stdio.h>
 
 typedef struct BMDynamicSmoothingFilter {
-	float low1z, low2z, g, gMin, gMax, sensitivity;
+	float low1z, low2z, g, gMin, gMax, sensitivity, sampleRate;
 } BMDynamicSmoothingFilter;
 
 
@@ -81,5 +81,17 @@ void BMDynamicSmoothingFilter_init(BMDynamicSmoothingFilter *This,
 								   float minFc,
 								   float maxFc,
 								   float sampleRate);
+
+
+/*!
+ *BMDynamicSmoothingFilter_setMinFc
+ */
+void BMDynamicSmoothingFilter_setMinFc(BMDynamicSmoothingFilter *This, float minFC);
+
+
+/*!
+*BMDynamicSmoothingFilter_setMaxFc
+*/
+void BMDynamicSmoothingFilter_setMaxFc(BMDynamicSmoothingFilter *This, float maxFC);
 
 #endif /* BMDynamicSmoothingFilter_h */

@@ -26,12 +26,7 @@
 #define BM_DSF_MIN_FC 1.0f
 #define BM_DSF_MAX_FC 500.0f
 
-// this softens the way the filter changes its own cutoff frequency
-static inline float DSControlCurve(float x){
-	// Mathematica: DSControlCurve[x_]:=1-(x-1)^2
-	float xMinus1 = x - 1.0f;
-	return 1.0f - xMinus1 * xMinus1;
-}
+
 
 
 void BMDynamicSmoothingFilter_initDefault(BMDynamicSmoothingFilter *This,
@@ -49,6 +44,7 @@ void BMDynamicSmoothingFilter_init(BMDynamicSmoothingFilter *This,
 								   float minFc,
 								   float maxFc,
 								   float sampleRate){
+	This->sampleRate = sampleRate;
 	This->sensitivity = sensitivity;
 	This->gMin = tanf(M_PI * minFc / sampleRate);
 	This->gMax = tanf(M_PI * maxFc / sampleRate);
@@ -56,6 +52,24 @@ void BMDynamicSmoothingFilter_init(BMDynamicSmoothingFilter *This,
 	This->low2z = 0.0f;
 	This->g = This->gMin;
 }
+
+
+
+/*!
+ *BMDynamicSmoothingFilter_setMinFc
+ */
+void BMDynamicSmoothingFilter_setMinFc(BMDynamicSmoothingFilter *This, float minFc){
+	This->gMin = tanf(M_PI * minFc / This->sampleRate);
+}
+
+
+/*!
+*BMDynamicSmoothingFilter_setMaxFc
+*/
+void BMDynamicSmoothingFilter_setMaxFc(BMDynamicSmoothingFilter *This, float maxFc){
+	This->gMax = tanf(M_PI * maxFc / This->sampleRate);
+}
+
 
 
 void BMDynamicSmoothingFilter_processBuffer(BMDynamicSmoothingFilter *This,

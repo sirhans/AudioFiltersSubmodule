@@ -30,7 +30,6 @@ typedef struct BMSmoothDelay {
     bool shouldUpdateDS;
     
     float* lgiBuffer;
-    float* lgiUpBuffer;
     float strideIdx;
     float* strideBuffer;
     float baseIdx;

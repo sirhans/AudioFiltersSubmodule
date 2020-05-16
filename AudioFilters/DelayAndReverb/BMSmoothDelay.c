@@ -26,10 +26,12 @@ void BMSmoothDelay_init(BMSmoothDelay* This,size_t defaultDS,float speed,size_t 
     
     //Left channel start at 0 delaytime
     TPCircularBufferInit(&This->buffer, (This->delaySampleRange + BM_BUFFER_CHUNK_SIZE)*sizeof(float));
-    TPCircularBufferClear(&This->buffer);
+    //Produce
+    uint32_t availableByte;
+    float* head = TPCircularBufferHead(&This->buffer, &availableByte);
+    memset(head, 0, This->delaySamples*sizeof(float));
     TPCircularBufferProduce(&This->buffer, This->delaySamples*sizeof(float));
     
-    uint32_t availableByte;
     void* tail = TPCircularBufferTail(&This->buffer, &availableByte);
     memset(tail, 0, availableByte);
     
@@ -47,12 +49,16 @@ void BMSmoothDelay_init(BMSmoothDelay* This,size_t defaultDS,float speed,size_t 
 void BMSmoothDelay_resetToDelaySample(BMSmoothDelay* This,size_t defaultDS){
     This->delaySamples = defaultDS;
     TPCircularBufferClear(&This->buffer);
+    //Produce
+    uint32_t availableByte;
+    float* head = TPCircularBufferHead(&This->buffer, &availableByte);
+    memset(head, 0, This->delaySamples*sizeof(float));
     TPCircularBufferProduce(&This->buffer, This->delaySamples*sizeof(float));
     
     uint32_t bytesAvailableForRead;
     float* tail = TPCircularBufferTail(&This->buffer, &bytesAvailableForRead);
     memset(tail, 0, bytesAvailableForRead);
-    size_t correctDS = bytesAvailableForRead/sizeof(float);
+//    size_t correctDS = bytesAvailableForRead/sizeof(float);
 //    printf("reset %zu\n",correctDS);
 }
 
@@ -60,10 +66,7 @@ void BMSmoothDelay_prepareLGIBuffer(BMSmoothDelay* This,size_t bufferSize){
     BMLagrangeInterpolation_init(&This->lgInterpolation, LGI_Order);
     
     //Temp buffer
-    This->lgiBuffer = malloc(sizeof(float) * (bufferSize + This->storeSamples));
-    //memset(&lgiBuffer, 0, sizeof(lgiBuffer));
-    
-    This->lgiUpBuffer = malloc(sizeof(float) * bufferSize * This->storeSamples);
+    This->lgiBuffer = calloc(bufferSize + This->storeSamples, sizeof(float));
 }
 
 void BMSmoothDelay_destroy(BMSmoothDelay* This){
@@ -75,9 +78,6 @@ void BMSmoothDelay_destroy(BMSmoothDelay* This){
     
     free(This->lgiBuffer);
     This->lgiBuffer = nil;
-    
-    free(This->lgiUpBuffer);
-    This->lgiUpBuffer = nil;
     
     BMLagrangeInterpolation_destroy(&This->lgInterpolation);
 }
