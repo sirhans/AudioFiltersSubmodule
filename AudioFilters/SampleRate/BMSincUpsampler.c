@@ -58,12 +58,12 @@ size_t BMSincUpsampler_process(BMSincUpsampler *This,
 	
 	// copy the original samples from input to output, leaving spaces for the interpolated samples to be inserted
 	float one = 1.0f;
-	vDSP_vsmul(input+This->inputPadding, 1, &one, output, This->upsampleFactor, inputLengthMinusPadding);
+	vDSP_vsmul(input+This->inputPadding, 1, &one, output+This->numKernels-1, This->upsampleFactor, inputLengthMinusPadding);
 	
 	// insert the interpolated samples into the remaining spaces.
 	// the index starts at 1 because the first filter kernel is replaced by the vsmul line above
 	for(size_t i=1; i<This->upsampleFactor; i++){
-		vDSP_conv(input, 1, This->filterKernels[i], 1, output+i, This->upsampleFactor, inputLengthMinusPadding, This->kernelLength);
+		vDSP_conv(input, 1, This->filterKernels[This->numKernels - i], 1, output+i-1, This->upsampleFactor, inputLengthMinusPadding, This->kernelLength);
 	}
 	
 	return inputLengthMinusPadding * This->upsampleFactor;
