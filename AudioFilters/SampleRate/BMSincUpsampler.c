@@ -92,8 +92,14 @@ void BMSincUpsampler_initFilterKernels(BMSincUpsampler *This){
 		double phi = (td - (K / 2.0)) * M_PI / us;
 		
 		// calculate the sinc function
-		interleavedKernel[t] = sin(phi)/phi;
+		if(fabs(phi) > FLT_EPSILON)
+			interleavedKernel[t] = sin(phi)/phi;
+		else
+			interleavedKernel[t] = 1.0;
+		
+		printf("%f,",interleavedKernel[t]);
 	}
+	printf("\n");
 	
 	// generate a blackman-harris window
 	//
@@ -114,7 +120,7 @@ void BMSincUpsampler_initFilterKernels(BMSincUpsampler *This){
 	// copy from the complete kernel to the polyphase kernels
 	for(size_t i=0; i<This->numKernels; i++)
 		for(size_t j=0; j<This->kernelLength; j++)
-			This->filterKernels[i][j] = interleavedKernel[i*This->kernelLength + j];
+			This->filterKernels[i][j] = interleavedKernel[j*This->numKernels + i];
 	
 	free(interleavedKernel);
 	free(blackmanHarrisWindow);
