@@ -96,10 +96,7 @@ void BMSincUpsampler_initFilterKernels(BMSincUpsampler *This){
 			interleavedKernel[t] = sin(phi)/phi;
 		else
 			interleavedKernel[t] = 1.0;
-		
-		printf("%f,",interleavedKernel[t]);
 	}
-	printf("\n");
 	
 	// generate a blackman-harris window
 	//
