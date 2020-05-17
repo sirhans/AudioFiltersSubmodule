@@ -15,6 +15,9 @@ void BMSincUpsampler_initFilterKernels(BMSincUpsampler *This);
 
 
 
+
+
+
 void BMSincUpsampler_init(BMSincUpsampler *This,
 						  size_t interpolationPoints,
 						  size_t upsampleFactor){

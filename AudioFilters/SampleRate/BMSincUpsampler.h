@@ -23,8 +23,10 @@ typedef struct BMSincUpsampler {
 /*!
  *BMSincUpsampler_init
  *
+ * When using this for drawing graphs of audio, we recommend setting interpolationPoints to at least 8.
+ *
  * @param This pointer to an uninitialised struct
- * @param interpolationPoints number of points read for each new point generated. This MUST be an even number.
+ * @param interpolationPoints number of points read for each new point generated. This MUST be an even number. Recommended minimum value = 8
  * @param upsampleFactor if upsampleFactor = N then you get N points out from every 1 point in, minus the padding at the left and right ends of the input
  */
 void BMSincUpsampler_init(BMSincUpsampler *This,
