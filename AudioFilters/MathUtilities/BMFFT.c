@@ -175,6 +175,65 @@ void BMFFT_hammingWindow(BMFFT *This,
 
 
 
+// Bessel function from http://www.iowahills.com/Example%20Code/WindowedFIRFilterWebCode.txt
+// Used to calculate Kaiser window
+double Bessel(double x)
+{
+	double Sum=0.0, XtoIpower;
+	int i, j, Factorial;
+	for(i=1; i<10; i++)
+	{
+		XtoIpower = pow(x/2.0, (double)i);
+		Factorial = 1;
+		for(j=1; j<=i; j++)Factorial *= j;
+		Sum += pow(XtoIpower / (double)Factorial, 2.0);
+	}
+	return(1.0 + Sum);
+}
+
+
+
+
+
+void BMFFT_generateKaiserCoefficients(float* window, size_t length){
+	for(size_t i=0; i<length; i++){
+		// the function is defined on [-1/2,1/2]
+		double x = -0.5 + ( (double)i / (double)(length-1) );
+		
+		// this formula is from http://www.iowahills.com/Example%20Code/WindowedFIRFilterWebCode.txt
+		double arg;
+		double Beta = 3.2; // this should be adjusted as needed
+		double dM = length + 1.0;
+		for(size_t j=0; j<length; j++)
+		 {
+		  arg = Beta * sqrt(1.0 - pow( ((double)(2*j+2) - dM) / dM, 2.0) );
+		  window[j] = Bessel(arg) / Bessel(Beta);
+		 }
+	}
+}
+
+
+
+
+void BMFFT_kaiserWindow(BMFFT *This,
+						const float* input,
+						float* output,
+						size_t numSamples){
+	assert(numSamples <= This->maxInputLength);
+    
+    // if the window cached in the buffer does not have the specified length, or isn't a blackman-harris window recompute it.
+    if(This->windowCurrentLength != numSamples || This->windowType != BMFFT_KAISER){
+        BMFFT_generateKaiserCoefficients(This->window, numSamples);
+        This->windowCurrentLength = numSamples;
+		This->windowType = BMFFT_KAISER;
+    }
+    
+    vDSP_vmul(input,1,This->window,1,output,1,numSamples);
+}
+
+
+
+
 
 void BMFFT_generateBlackmanHarrisCoefficients(float* window, size_t length){
 	for(size_t i=0; i<length; i++){
@@ -192,6 +251,7 @@ void BMFFT_generateBlackmanHarrisCoefficients(float* window, size_t length){
 		window[i] = y;
 	}
 }
+
 
 
 

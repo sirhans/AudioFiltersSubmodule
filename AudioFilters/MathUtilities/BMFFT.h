@@ -12,7 +12,7 @@
 #include <stdio.h>
 #import <Accelerate/Accelerate.h>
 
-enum BMFFTWindowType {BMFFT_NONE,BMFFT_BLACKMANHARRIS,BMFFT_HAMMING};
+enum BMFFTWindowType {BMFFT_NONE,BMFFT_BLACKMANHARRIS,BMFFT_HAMMING,BMFFT_KAISER};
 
 typedef struct BMFFT {
     size_t maxInputLength;
@@ -143,7 +143,7 @@ void BMFFT_hammingWindow(BMFFT *This,
 /*!
  *BMFFT_blackmanHarrisWindow
  *
- * applies a Blackman Harris to the input and stores the result in output
+ * applies a Blackman Harris window to the input and stores the result in output
  *
  * @param This    pointer to an initialized BMFFT struct
  * @param input   an array of real valued inputs with length = numSamples
@@ -157,7 +157,7 @@ void BMFFT_blackmanHarrisWindow(BMFFT *This,
 
 
 /*!
- *BMFFT_generateBlackmanHarris
+ *BMFFT_generateBlackmanHarrisCoefficients
  *
  * This function generates the blackman-harris window coefficients with the
  * window centred at length/2.
@@ -167,6 +167,39 @@ void BMFFT_blackmanHarrisWindow(BMFFT *This,
  * significant improvement in performance.
  */
 void BMFFT_generateBlackmanHarrisCoefficients(float* window, size_t length);
+
+
+
+
+/*!
+ *BMFFT_kaiserWindow
+ *
+ * applies a Kaiser window to the input and stores the result in output
+ *
+ * @param This    pointer to an initialized BMFFT struct
+ * @param input   an array of real valued inputs with length = numSamples
+ * @param output  an array of real valued output with length = numSamples
+ * @param numSamples must be <= This->maxLength
+ */
+void BMFFT_kaiserWindow(BMFFT *This,
+								const float* input,
+								float* output,
+								size_t numSamples);
+
+
+
+
+/*!
+*BMFFT_generateKaiserCoefficients
+*
+* This function generates the blackman-harris window coefficients with the
+* window centred at length/2.
+* If you need to apply this window in realtime you should use
+* BMFFT_blackmanKaiserWindow instead because it automatically caches previous
+* calculations and reuses them the next time you call the function for a
+* significant improvement in performance.
+*/
+void BMFFT_generateKaiserCoefficients(float* window, size_t length);
 
 
 

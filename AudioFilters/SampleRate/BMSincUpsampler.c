@@ -98,7 +98,7 @@ void BMSincUpsampler_initFilterKernels(BMSincUpsampler *This){
 			interleavedKernel[t] = 1.0;
 	}
 	
-	// generate a blackman-harris window
+	// generate window coefficients (hamming, blackman-harris, hann, etc.)
 	//
 	// note that the window has an extra coefficient at the end that is not used
 	// on the kernel. This is because the complete interleaved kernel is not
@@ -107,12 +107,16 @@ void BMSincUpsampler_initFilterKernels(BMSincUpsampler *This){
 	// polyphase kernels. Technically, that final zero belongs to the first
 	// polyphase kernel, the one that is all zeros except its centre element.
 	//
-	size_t bhWindowLength = completeKernelLength + 1;
-	float* blackmanHarrisWindow = malloc(sizeof(float)*bhWindowLength);
-	BMFFT_generateBlackmanHarrisCoefficients(blackmanHarrisWindow, bhWindowLength);
+	size_t windowLength = completeKernelLength + 1;
+	float* window = malloc(sizeof(float)*windowLength);
+	// BMFFT_generateBlackmanHarrisCoefficients(window, windowLength);
+	// BMFFT_generateKaiserCoefficients(window, windowLength);
+	int useHalfWindow = false;
+	//vDSP_hamm_window(window, windowLength, useHalfWindow);
+	vDSP_blkman_window(window, windowLength, useHalfWindow);
 	
 	// apply the blackman-harris window to the interleaved kernel
-	vDSP_vmul(blackmanHarrisWindow,1,interleavedKernel,1,interleavedKernel,1,completeKernelLength);
+	vDSP_vmul(window,1,interleavedKernel,1,interleavedKernel,1,completeKernelLength);
 	
 	// copy from the complete kernel to the polyphase kernels
 	for(size_t i=0; i<This->numKernels; i++)
@@ -120,5 +124,5 @@ void BMSincUpsampler_initFilterKernels(BMSincUpsampler *This){
 			This->filterKernels[i][j] = interleavedKernel[j*This->numKernels + i];
 	
 	free(interleavedKernel);
-	free(blackmanHarrisWindow);
+	free(window);
 }
