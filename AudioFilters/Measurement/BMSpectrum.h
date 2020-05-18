@@ -41,6 +41,8 @@ void BMSpectrum_initWithLength(BMSpectrum* This, size_t maxInputLength);
 
 /*!
  *BMSpectrum_processData
+ *
+ *  calculates toDb(clip(abs(fft(input))))
  */
 bool BMSpectrum_processData(BMSpectrum* This,
                             const float* inData,
@@ -49,8 +51,9 @@ bool BMSpectrum_processData(BMSpectrum* This,
                             int* outSize,
                             float* nyquist);
 
+
 /*!
- *BMSpectrum_processDataRaw
+ *BMSpectrum_processDataBasic
  *
  * calculates abs(fft(input)) from bins DC up to Nyquist-1
  *
