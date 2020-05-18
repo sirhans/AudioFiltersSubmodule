@@ -17,7 +17,7 @@ typedef struct BMSpectrogram {
 	BMSpectrum spectrum;
 	float *b1, *b2, *b3;
 	float prevMinF, prevMaxF, sampleRate;
-	size_t prevImageHeight, prevFFTSize;
+	size_t prevImageHeight, prevFFTSize, maxImageHeight, maxFFTSize, fftBinInterpolationPadding;
 } BMSpectrogram;
 
 
@@ -28,9 +28,12 @@ typedef simd_float3 BMHSBPixel;
 
 /*!
  *BMSpectrogram_init
+ *
+ * Once initialised, this spectrogram object can generate spectrograms with any
+ * FFTSize <= maxFFTSize and any image height <= maxImageHeight.
  */
 void BMSpectrogram_init(BMSpectrogram *This,
-						size_t maxFFTLength,
+						size_t maxFFTSize,
 						size_t maxImageHeight,
 						float sampleRate);
 
