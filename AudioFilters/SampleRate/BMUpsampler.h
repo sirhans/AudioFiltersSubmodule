@@ -92,6 +92,7 @@ void BMUpsampler_impulseResponse(BMUpsampler *This, float* IR, size_t IRLength);
  */
 float BMUpsampler_getLatencyInSamples(BMUpsampler *This);
 
+
 #endif /* BMUpsampler_h */
 
 #ifdef __cplusplus

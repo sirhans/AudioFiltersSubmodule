@@ -63,13 +63,52 @@ size_t BMSincUpsampler_process(BMSincUpsampler *This,
 	// the index starts at 1 because the first filter kernel will be
 	// replaced by the vsmul command on the line below
 	for(size_t i=1; i<This->upsampleFactor; i++)
-		vDSP_conv(input, 1, This->filterKernels[This->numKernels - i], 1, output+i-1, This->upsampleFactor, inputLengthMinusPadding, This->kernelLength);
+		vDSP_conv(input, 1, This->filterKernels[This->numKernels - i], 1, output+i, This->upsampleFactor, inputLengthMinusPadding-1, This->kernelLength);
 	
 	// copy the original samples from input to output to fill in the remaining samples
 	float one = 1.0f;
-	vDSP_vsmul(input+This->inputPadding, 1, &one, output+This->numKernels-1, This->upsampleFactor, inputLengthMinusPadding);
+	vDSP_vsmul(input+This->inputPadding, 1, &one, output, This->upsampleFactor, inputLengthMinusPadding);
 	
-	return inputLengthMinusPadding * This->upsampleFactor;
+	return 1 + inputLengthMinusPadding * This->upsampleFactor - (This->upsampleFactor - 1);
+}
+
+
+
+
+
+/*!
+ *BMSincUpsampler_inputPaddingBefore
+ *
+ * @returns the number of samples at the beginning of the input array that are not present in the output
+ */
+size_t BMSincUpsampler_inputPaddingBefore(BMSincUpsampler *This){
+	return This->inputPadding;
+}
+
+
+
+
+/*!
+ *BMSincUpsampler_inputPaddingAfter
+ *
+ * @returns the number of samples at the end of the input that are not present in the output
+ */
+size_t BMSincUpsampler_inputPaddingAfter(BMSincUpsampler *This){
+	return This->inputPadding;
+}
+
+
+
+
+/*!
+ *BMSincUpsampler_outputLength
+ *
+ * @returns the number of samples output for the given length of input
+ */
+size_t BMSincUpsampler_outputLength(BMSincUpsampler *This, size_t inputLength){
+	// how many samples of the input must be left out from the output at the beginning and end?
+	size_t inputLengthMinusPadding = inputLength - 2*This->inputPadding;
+	return 1 + inputLengthMinusPadding * This->upsampleFactor - (This->upsampleFactor - 1);
 }
 
 
