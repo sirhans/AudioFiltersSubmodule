@@ -20,6 +20,7 @@
 #include "BMPanLFO.h"
 #include "BMAllpassNestedFilter.h"
 #include "BMFIRFilter.h"
+#include "BMSimpleDelay.h"
 
 typedef struct BMStereoBuffer{
     void* bufferL;
@@ -30,8 +31,10 @@ typedef struct BMCloudReverb {
     BMMultiLevelBiquad biquadFilter;
     BMVelvetNoiseDecorrelator* vndArray;
     
-    float** vndBufferL;
-    float** vndBufferR;
+    float** vnd1BufferL;
+    float** vnd1BufferR;
+    float** vnd2BufferL;
+    float** vnd2BufferR;
     size_t numVND;
     size_t numInput;
     
@@ -39,7 +42,10 @@ typedef struct BMCloudReverb {
     size_t numPitchShift;
     
     //Loopdelay
-    BMLongLoopFDN loopFND;
+    BMLongLoopFDN loopFDN;
+    BMLongLoopFDN shortFDN1;
+    BMLongLoopFDN shortFDN2;
+    BMSimpleDelayStereo fdnDelay;
     
     BMWetDryMixer reverbMixer;
     

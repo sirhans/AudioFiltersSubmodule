@@ -273,17 +273,8 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		// mixing matrix attenuation
 		// 2. mix output to outputL and outputR
 		for(size_t i=0; i<This->numDelays; i++){
-			// attenuate the data at the read pointers to get desired decay time
-			vDSP_vsmul(This->readPointers[i], 1, &This->feedbackCoefficients[i], This->readPointers[i], 1, samplesProcessing);
-			
-			// we will write the first half the delays to the left output and the second half to the right output
-			float *outputPointer = (i < This->numDelays/2) ? outputL : outputR;
-			// output mix: add the ith delay to the output if its tap sign is positive
-			if(This->tapSigns[i])
-				vDSP_vadd(outputPointer, 1, This->readPointers[i], 1, outputPointer, 1, samplesProcessing);
-			// or subtract it if negative
-			else
-				vDSP_vsub(outputPointer, 1, This->readPointers[i], 1, outputPointer, 1, samplesProcessing);
+            // attenuate the data at the read pointers to get desired decay time
+            vDSP_vsmul(This->readPointers[i], 1, &This->feedbackCoefficients[i], This->readPointers[i], 1, samplesProcessing);
 		}
 		
 		
@@ -346,6 +337,22 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 				BMLongLoopFDN_FHTHelper(mb+i, wp+shift, 8, samplesProcessing);
 			}
 		}
+        
+        
+        // 1. attenuate the output signal according to the RT60 decay time and the
+        // mixing matrix attenuation
+        // 2. mix output to outputL and outputR
+        for(size_t i=0; i<This->numDelays; i++){
+            
+            // we will write the first half the delays to the left output and the second half to the right output
+            float *outputPointer = (i < This->numDelays/2) ? outputL : outputR;
+            // output mix: add the ith delay to the output if its tap sign is positive
+            if(This->tapSigns[i])
+                vDSP_vadd(outputPointer, 1, wp[i], 1, outputPointer, 1, samplesProcessing);
+            // or subtract it if negative
+            else
+                vDSP_vsub(outputPointer, 1, wp[i], 1, outputPointer, 1, samplesProcessing);
+        }
 		
 		
 		// mix inputs with feedback signals and write back into the delays
@@ -435,8 +442,7 @@ void BMLongLoopFDN_processMultiChannelInput(BMLongLoopFDN *This,
 		// mixing matrix attenuation
 		// 2. mix output to outputL and outputR
 		for(size_t i=0; i<This->numDelays; i++){
-			// attenuate the data at the read pointers to get desired decay time
-			vDSP_vsmul(This->readPointers[i], 1, &This->feedbackCoefficients[i], This->readPointers[i], 1, samplesProcessing);
+			
 			
 			// we will write the first half the delays to the left output and the second half to the right output
 			float *outputPointer = (i < This->numDelays/2) ? outputL+samplesProccessed : outputR+samplesProccessed;
@@ -446,6 +452,9 @@ void BMLongLoopFDN_processMultiChannelInput(BMLongLoopFDN *This,
 			// or subtract it if negative
 			else
 				vDSP_vsub(outputPointer, 1, This->readPointers[i], 1, outputPointer, 1, samplesProcessing);
+            
+            // attenuate the data at the read pointers to get desired decay time
+            vDSP_vsmul(This->readPointers[i], 1, &This->feedbackCoefficients[i], This->readPointers[i], 1, samplesProcessing);
 		}
 		
 		

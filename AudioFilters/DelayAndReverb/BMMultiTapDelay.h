@@ -30,6 +30,9 @@ typedef struct{
 typedef struct{
     BMMultiTapDelaySetting setting;
     TPCircularBuffer *buffer;
+    TPCircularBuffer *multiBuffer;
+    size_t numInput;
+    
     float** tempBuffer;
     float** input;
     float** output;
@@ -79,6 +82,11 @@ void BMMultiTapDelay_initBypass(BMMultiTapDelay *This,
 								size_t maxDelayLength,
 								size_t maxTapsPerChannel);
 
+void BMMultiTapDelay_initBypassMultiChannel(BMMultiTapDelay *This,
+                                            bool isStereo,
+                                            size_t maxDelayLength,
+                                            size_t numInput,
+                                            size_t maxTapsPerChannel);
 
 /*!
  *BMMultiTapDelay_processBufferStereo
@@ -89,6 +97,14 @@ void BMMultiTapDelay_processBufferStereo(BMMultiTapDelay* delay,
                                          const float* inputL, const float* inputR,
                                          float* outputL, float* outputR,
                                          size_t frames);
+
+void BMMultiTapDelay_processMultiChannelInput(BMMultiTapDelay* delay,
+                                              float** inputL,
+                                              float** inputR,
+                                              float* outputL,
+                                              float* outputR,
+                                              size_t numInput,
+                                              size_t numSamples);
 
 void BMMultiTapDelay_processStereoWithFinalOutput(BMMultiTapDelay* delay,
                                                   const float* inputL, const float* inputR,

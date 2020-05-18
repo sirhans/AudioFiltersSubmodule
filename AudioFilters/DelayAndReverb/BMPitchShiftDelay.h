@@ -31,6 +31,7 @@ typedef struct BMPitchShiftDelay {
     float delayRange;
     float maxDelayRange;
     float mixToOtherValue;
+    bool useFilter;
     
     float* wetBufferL;
     float* wetBufferR;
@@ -64,7 +65,7 @@ typedef struct BMPitchShiftDelay {
  * speed : calculate in second
  * delayRange : max delay sample range
  */
-void BMPitchShiftDelay_init(BMPitchShiftDelay* This,float duration,size_t delayRange,size_t maxDelayRange,size_t sampleRate,bool startAtMaxRange);
+void BMPitchShiftDelay_init(BMPitchShiftDelay* This,float duration,size_t delayRange,size_t maxDelayRange,size_t sampleRate,bool startAtMaxRange,bool useFilter);
 void BMPitchShiftDelay_destroy(BMPitchShiftDelay* This);
 
 void BMPitchShiftDelay_processStereoBuffer(BMPitchShiftDelay* This,float* inL, float* inR, float* outL, float* outR,size_t numSamples);
