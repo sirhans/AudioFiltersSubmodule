@@ -26,7 +26,8 @@ void BMSincUpsampler_init(BMSincUpsampler *This,
 	
 	This->upsampleFactor = upsampleFactor;
 	This->kernelLength = interpolationPoints;
-	This->inputPadding = (This->kernelLength) / 2;
+	This->inputPaddingLeft = (This->kernelLength / 2) - 1;
+	This->inputPaddingRight = (This->kernelLength / 2) - 1;
 	This->numKernels = This->upsampleFactor;
 	
 	This->filterKernels = malloc(sizeof(float*) * This->numKernels);
@@ -57,7 +58,7 @@ size_t BMSincUpsampler_process(BMSincUpsampler *This,
 							 size_t inputLength){
 	
 	// how many samples of the input must be left out from the output at the beginning and end?
-	size_t inputLengthMinusPadding = inputLength - 2*This->inputPadding;
+	size_t inputLengthMinusPadding = inputLength - This->inputPaddingLeft - This->inputPaddingRight;
 	
 	// do the interpolation by convolution
 	// the index starts at 1 because the first filter kernel will be
@@ -66,10 +67,10 @@ size_t BMSincUpsampler_process(BMSincUpsampler *This,
 		vDSP_conv(input, 1, This->filterKernels[This->numKernels - i], 1, output+i, This->upsampleFactor, inputLengthMinusPadding-1, This->kernelLength);
 	
 	// copy the original samples from input to output to fill in the remaining samples
-	float one = 1.0f;
-	vDSP_vsmul(input+This->inputPadding-1, 1, &one, output, This->upsampleFactor, inputLengthMinusPadding);
+	float zero = 0.0f;
+	vDSP_vsadd(input+This->inputPaddingLeft, 1, &zero, output, This->upsampleFactor, inputLengthMinusPadding);
 	
-	return 1 + inputLengthMinusPadding * This->upsampleFactor - (This->upsampleFactor - 1);
+	return 1 + (inputLengthMinusPadding - 1)*This->upsampleFactor;
 }
 
 
@@ -82,7 +83,7 @@ size_t BMSincUpsampler_process(BMSincUpsampler *This,
  * @returns the number of samples at the beginning of the input array that are not present in the output
  */
 size_t BMSincUpsampler_inputPaddingBefore(BMSincUpsampler *This){
-	return This->inputPadding - 1;
+	return This->inputPaddingLeft;
 }
 
 
@@ -94,7 +95,7 @@ size_t BMSincUpsampler_inputPaddingBefore(BMSincUpsampler *This){
  * @returns the number of samples at the end of the input that are not present in the output
  */
 size_t BMSincUpsampler_inputPaddingAfter(BMSincUpsampler *This){
-	return This->inputPadding;
+	return This->inputPaddingRight;
 }
 
 
@@ -107,8 +108,8 @@ size_t BMSincUpsampler_inputPaddingAfter(BMSincUpsampler *This){
  */
 size_t BMSincUpsampler_outputLength(BMSincUpsampler *This, size_t inputLength){
 	// how many samples of the input must be left out from the output at the beginning and end?
-	size_t inputLengthMinusPadding = inputLength - 2*This->inputPadding;
-	return 1 + inputLengthMinusPadding * This->upsampleFactor - (This->upsampleFactor - 1);
+	size_t inputLengthMinusPadding = inputLength - This->inputPaddingLeft - This->inputPaddingRight;
+	return 1 + (inputLengthMinusPadding - 1)*This->upsampleFactor;
 }
 
 

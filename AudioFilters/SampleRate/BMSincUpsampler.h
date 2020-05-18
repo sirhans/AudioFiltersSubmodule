@@ -14,7 +14,7 @@
 #define BMSINC_MAX_KERNEL_LENGTH
 
 typedef struct BMSincUpsampler {
-	size_t upsampleFactor, kernelLength, inputPadding, numKernels;
+	size_t upsampleFactor, kernelLength, inputPaddingLeft, inputPaddingRight, numKernels;
 	float **filterKernels;
 } BMSincUpsampler;
 
