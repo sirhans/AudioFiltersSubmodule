@@ -28,6 +28,7 @@ typedef struct BMVelvetNoiseDecorrelator {
     bool resetRT60DecayTime;
     bool resetFadeIn;
     float* tempBuffer;
+    size_t numInput;
 } BMVelvetNoiseDecorrelator;
 
 
@@ -68,6 +69,13 @@ void BMVelvetNoiseDecorrelator_initWithEvenTapDensity(BMVelvetNoiseDecorrelator 
 													  float sampleRate);
 
 
+void BMVelvetNoiseDecorrelator_initMultiChannelInputEvenTapDensity(BMVelvetNoiseDecorrelator *This,
+                                                        float maxDelaySeconds,
+                                                        size_t numTaps,
+                                                        float rt60DecayTimeSeconds,
+                                                        bool hasDryTap,
+                                                        size_t numInput,
+                                                       float sampleRate);
 /*!
  *BMVelvetNoiseDecorrelator_setWetMix
  */
@@ -100,6 +108,13 @@ void BMVelvetNoiseDecorrelator_processBufferStereo(BMVelvetNoiseDecorrelator *Th
                                                    float* outputL,
                                                    float* outputR,
                                                    size_t length);
+
+void BMVelvetNoiseDecorrelator_processMultiChannelInput(BMVelvetNoiseDecorrelator *This,
+                                                    float** inputL,
+                                                    float** inputR,
+                                                    float* outputL,
+                                                    float* outputR,
+                                                    size_t length);
 
 void BMVelvetNoiseDecorrelator_processBufferStereoWithFinalOutput(BMVelvetNoiseDecorrelator *This,
                                                     float* inputL,

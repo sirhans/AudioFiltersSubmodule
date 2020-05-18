@@ -19,6 +19,8 @@
 
 #define BM_VND_WET_MIX 0.40f
 
+void BMVelvetNoiseDecorrelator_genRandGains(BMVelvetNoiseDecorrelator *This);
+
 void BMVelvetNoiseDecorrelator_initFullSettings(BMVelvetNoiseDecorrelator *This,
 												float maxDelaySeconds,
 												size_t numTaps,
@@ -27,7 +29,14 @@ void BMVelvetNoiseDecorrelator_initFullSettings(BMVelvetNoiseDecorrelator *This,
 												float sampleRate,
 												bool evenTapDensity);
 
-
+void BMVelvetNoiseDecorrelator_initMultiChannelInput(BMVelvetNoiseDecorrelator *This,
+                                                float maxDelaySeconds,
+                                                size_t numTaps,
+                                                float rt60DecayTimeSeconds,
+                                                bool hasDryTap,
+                                                size_t numInput,
+                                                float sampleRate,
+                                                bool evenTapDensity);
 /*!
  *BMVelvetNoiseDecorrelator_init
  */
@@ -55,7 +64,15 @@ void BMVelvetNoiseDecorrelator_initWithEvenTapDensity(BMVelvetNoiseDecorrelator 
 	BMVelvetNoiseDecorrelator_initFullSettings(This, maxDelaySeconds, numTaps, rt60DecayTimeSeconds, hasDryTap, sampleRate, true);
 }
 
-
+void BMVelvetNoiseDecorrelator_initMultiChannelInputEvenTapDensity(BMVelvetNoiseDecorrelator *This,
+                                    float maxDelaySeconds,
+                                    size_t numTaps,
+                                    float rt60DecayTimeSeconds,
+                                    bool hasDryTap,
+                                    size_t numInput,
+                                    float sampleRate){
+    BMVelvetNoiseDecorrelator_initMultiChannelInput(This, maxDelaySeconds, numTaps, rt60DecayTimeSeconds, hasDryTap,numInput, sampleRate, true);
+}
 
 
 /*!
@@ -86,7 +103,7 @@ void BMVelvetNoiseDecorrelator_initFullSettings(BMVelvetNoiseDecorrelator *This,
 	This->gainsL = calloc(numTaps, sizeof(float));
 	This->gainsR = calloc(numTaps, sizeof(float));
     This->tempBuffer = calloc(BM_BUFFER_CHUNK_SIZE, sizeof(float));
-	
+	This->numInput = 0;
 	// init the multi-tap delay in bypass mode
 	size_t maxDelayLenth = ceil(maxDelaySeconds*sampleRate);
 	BMMultiTapDelay_initBypass(&This->multiTapDelay,
@@ -99,7 +116,58 @@ void BMVelvetNoiseDecorrelator_initFullSettings(BMVelvetNoiseDecorrelator *This,
 }
 
 
-
+void BMVelvetNoiseDecorrelator_initMultiChannelInput(BMVelvetNoiseDecorrelator *This,
+                                                float maxDelaySeconds,
+                                                size_t numTaps,
+                                                float rt60DecayTimeSeconds,
+                                                bool hasDryTap,
+                                                size_t numInput,
+                                                float sampleRate,
+                                                bool evenTapDensity){
+    This->sampleRate = sampleRate;
+    This->hasDryTap    = hasDryTap;
+    This->wetMix = BM_VND_WET_MIX;
+    This->rt60 = rt60DecayTimeSeconds;
+    This->maxDelayTimeS = maxDelaySeconds;
+    This->numWetTaps = numTaps;
+    This->evenTapDensity = evenTapDensity;
+    This->resetNumTaps = false;
+    This->resetRT60DecayTime = false;
+    This->fadeInSamples = 0;
+    if (hasDryTap) This->numWetTaps--;
+    
+    // allocate memory for calculating delay setups
+    This->delayLengthsL = calloc(numTaps, sizeof(size_t));
+    This->delayLengthsR = calloc(numTaps, sizeof(size_t));
+    This->gainsL = calloc(numTaps, sizeof(float));
+    This->gainsR = calloc(numTaps, sizeof(float));
+    This->tempBuffer = calloc(BM_BUFFER_CHUNK_SIZE, sizeof(float));
+    This->numInput = numInput;
+    // init the multi-tap delay in bypass mode
+    size_t maxDelayLenth = ceil(maxDelaySeconds*sampleRate);
+    BMMultiTapDelay_initBypassMultiChannel(&This->multiTapDelay, true, maxDelayLenth, numInput, numTaps);
+    
+    // setup the delay for processing
+//    BMVelvetNoiseDecorrelator_randomiseAll(This);
+    
+    // compute the spacing for evenly spaced between startTime and endTime
+    
+    float startTimeS = This->hasDryTap ? This->maxDelayTimeS / (float)This->numWetTaps : 0;
+    float endTimeS = This->maxDelayTimeS;
+    float incrementS = (endTimeS - startTimeS) / (float)numTaps;
+    float incrementSamples = sampleRate * incrementS;
+    float startTimeSamples = sampleRate * startTimeS;
+    
+    for(size_t i=0; i< numTaps; i++){
+        // generate an evenly spaced tap time
+        This->delayLengthsL[i] = (float)i * incrementSamples + startTimeSamples;
+        This->delayLengthsR[i] = (float)i * incrementSamples + startTimeSamples;
+        printf("%zu %f\n",This->delayLengthsL[i],endTimeS*sampleRate);
+    }
+    
+    // randomise gains
+    BMVelvetNoiseDecorrelator_genRandGains(This);
+}
 
 
 /*!
@@ -278,11 +346,14 @@ void BMVelvetNoiseDecorrelator_resetNumTaps(BMVelvetNoiseDecorrelator *This){
         
         // init the multi-tap delay in bypass mode
         size_t maxDelayLenth = ceil(This->maxDelayTimeS*This->sampleRate);
-        BMMultiTapDelay_initBypass(&This->multiTapDelay,
-                                   true,
-                                   maxDelayLenth,
-                                   This->numWetTaps);
-        
+        if(This->numInput==0){
+            BMMultiTapDelay_initBypass(&This->multiTapDelay,
+                                       true,
+                                       maxDelayLenth,
+                                       This->numWetTaps);
+        }else{
+            BMMultiTapDelay_initBypassMultiChannel(&This->multiTapDelay, true, maxDelayLenth, This->numInput, This->numWetTaps);
+        }
         // setup the delay for processing
         BMVelvetNoiseDecorrelator_randomiseAll(This);
     }
@@ -349,6 +420,20 @@ void BMVelvetNoiseDecorrelator_processBufferStereo(BMVelvetNoiseDecorrelator *Th
 										inputL, inputR,
 										outputL, outputR,
 										length);
+}
+
+void BMVelvetNoiseDecorrelator_processMultiChannelInput(BMVelvetNoiseDecorrelator *This,
+                                                   float** inputL,
+                                                   float** inputR,
+                                                   float* outputL,
+                                                   float* outputR,
+                                                   size_t length){
+    //Reset numtap if needed
+    BMVelvetNoiseDecorrelator_resetNumTaps(This);
+    BMVelvetNoiseDecorrelator_resetRT60DecayTime(This);
+    BMVelvetNoiseDecorrelator_resetFadeIn(This);
+    // all processing is done by the multi-tap delay class
+    BMMultiTapDelay_processMultiChannelInput(&This->multiTapDelay, inputL, inputR, outputL, outputR, This->numInput, length);
 }
 
 void BMVelvetNoiseDecorrelator_processBufferStereoWithFinalOutput(BMVelvetNoiseDecorrelator *This,

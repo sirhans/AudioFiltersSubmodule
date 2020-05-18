@@ -13,13 +13,14 @@
 #include <Accelerate/Accelerate.h>
 #include "Constants.h"
 
-void BMPitchShiftDelay_init(BMPitchShiftDelay* This,float duration,size_t delayRange,size_t maxDelayRange,size_t sampleRate,bool startAtMaxRange){
+void BMPitchShiftDelay_init(BMPitchShiftDelay* This,float duration,size_t delayRange,size_t maxDelayRange,size_t sampleRate,bool startAtMaxRange,bool useFilter){
     //init buffer
     This->sampleRate = sampleRate;
     This->duration = duration;
     This->delayRange = delayRange;
     This->maxDelayRange = maxDelayRange;
     This->mixToOtherValue = 1.0f;
+    This->useFilter = useFilter;
     if(!startAtMaxRange){
         This->delayParamL.startSamples = 0;
         This->delayParamL.stopSamples = delayRange;
@@ -49,13 +50,15 @@ void BMPitchShiftDelay_init(BMPitchShiftDelay* This,float duration,size_t delayR
     BMSmoothGain_init(&This->wetGain, sampleRate);
     BMSmoothGain_init(&This->dryGain, sampleRate);
     
-    BMMultiLevelBiquad_init(&This->midBandFilter, 2, sampleRate, true, true, false);
-    BMMultiLevelBiquad_setLowPass6db(&This->midBandFilter, 4000, 0);
-    BMMultiLevelBiquad_setHighPass6db(&This->midBandFilter, 120, 1);
-    
-    BMMultiLevelBiquad_init(&This->midBandAfterDelayFilter, 2, sampleRate, true, true, false);
-    BMMultiLevelBiquad_setLowPass6db(&This->midBandAfterDelayFilter, 4000, 0);
-    BMMultiLevelBiquad_setHighPass6db(&This->midBandAfterDelayFilter, 120, 1);
+    if(This->useFilter){
+        BMMultiLevelBiquad_init(&This->midBandFilter, 2, sampleRate, true, true, false);
+        BMMultiLevelBiquad_setLowPass6db(&This->midBandFilter, 4000, 0);
+        BMMultiLevelBiquad_setHighPass6db(&This->midBandFilter, 120, 1);
+        
+        BMMultiLevelBiquad_init(&This->midBandAfterDelayFilter, 2, sampleRate, true, true, false);
+        BMMultiLevelBiquad_setLowPass6db(&This->midBandAfterDelayFilter, 4000, 0);
+        BMMultiLevelBiquad_setHighPass6db(&This->midBandAfterDelayFilter, 120, 1);
+    }
     
     This->wetBufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->wetBufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
@@ -89,7 +92,10 @@ void BMPitchShiftDelay_destroy(BMPitchShiftDelay* This){
     free(This->strideBufferR);
     This->strideBufferR = nil;
     
-    
+    if(This->useFilter){
+        BMMultiLevelBiquad_free(&This->midBandFilter);
+        BMMultiLevelBiquad_free(&This->midBandAfterDelayFilter);
+    }
 }
 
 #pragma mark - Set
@@ -242,8 +248,13 @@ void BMPitchShiftDelay_processStereoBuffer(BMPitchShiftDelay* This,float* inL, f
         //Reset filter if neccessary
         BMPitchShiftDelay_processResetFilter(This);
         
+        if(This->useFilter){
         //Filter midrange between 120 - 4000 hz
-        BMMultiLevelBiquad_processBufferStereo(&This->midBandFilter, inL, inR, This->wetBufferL, This->wetBufferR, numSamples);
+            BMMultiLevelBiquad_processBufferStereo(&This->midBandFilter, inL, inR, This->wetBufferL, This->wetBufferR, numSamples);
+        }else{
+            memcpy(This->wetBufferL, inL, sizeof(float)*numSamples);
+            memcpy(This->wetBufferR, inR, sizeof(float)*numSamples);
+        }
         
         //Process left channel
         size_t samplesProcessing;
