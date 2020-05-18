@@ -57,6 +57,7 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     This->maxTapsEachVND = 10.0;
     This->diffusion = 1.0f;
     This->vndLength = 0.1f;
+    This->fadeInS = 0;
     
     This->numInput = 8;
     This->numVND = This->numInput*2;
@@ -203,14 +204,14 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
     if(This->initNo==ReadyNo){
         assert(numSamples<=BM_BUFFER_CHUNK_SIZE);
         
-        BMCloudReverb_updateDiffusion(This);
         BMCloudReverb_updateVND(This);
+        BMCloudReverb_updateDiffusion(This);
         
-//        //Filters
-//        BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, inputL, inputR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
+        //Filters
+        BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, inputL, inputR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
         
-        memcpy(This->buffer.bufferL, inputL, sizeof(float)*numSamples);
-        memcpy(This->buffer.bufferR, inputR, sizeof(float)*numSamples);
+//        memcpy(This->buffer.bufferL, inputL, sizeof(float)*numSamples);
+//        memcpy(This->buffer.bufferR, inputR, sizeof(float)*numSamples);
         
         //1st layer VND
         for(int i=0;i<This->numInput;i++){
@@ -361,6 +362,7 @@ void BMCloudReverb_setHighCutFreq(BMCloudReverb* This,float freq){
 
 #pragma mark - VND
 void BMCloudReverb_setFadeInVND(BMCloudReverb* This,float timeInS){
+    This->fadeInS = timeInS;
     for(int i=0;i<This->numVND;i++){
         BMVelvetNoiseDecorrelator_setFadeIn(&This->vndArray[i], timeInS);
     }
@@ -385,6 +387,9 @@ void BMCloudReverb_updateVND(BMCloudReverb* This){
                 BMVelvetNoiseDecorrelator_initMultiChannelInputEvenTapDensity(&This->vndArray[i], This->vndLength, This->maxTapsEachVND, 100, false,This->numInput, This->sampleRate);
             }
         }
+        
+        BMCloudReverb_setFadeInVND(This, This->fadeInS);
+        BMCloudReverb_setDiffusion(This, This->diffusion);
     }
 }
 

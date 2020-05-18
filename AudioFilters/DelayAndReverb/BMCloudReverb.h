@@ -37,6 +37,7 @@ typedef struct BMCloudReverb {
     float** vnd2BufferR;
     size_t numVND;
     size_t numInput;
+    float fadeInS;
     
     BMPitchShiftDelay* pitchShiftArray;
     size_t numPitchShift;
