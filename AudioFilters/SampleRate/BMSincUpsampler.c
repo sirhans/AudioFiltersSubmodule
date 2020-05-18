@@ -67,7 +67,7 @@ size_t BMSincUpsampler_process(BMSincUpsampler *This,
 	
 	// copy the original samples from input to output to fill in the remaining samples
 	float one = 1.0f;
-	vDSP_vsmul(input+This->inputPadding, 1, &one, output, This->upsampleFactor, inputLengthMinusPadding);
+	vDSP_vsmul(input+This->inputPadding-1, 1, &one, output, This->upsampleFactor, inputLengthMinusPadding);
 	
 	return 1 + inputLengthMinusPadding * This->upsampleFactor - (This->upsampleFactor - 1);
 }
@@ -82,7 +82,7 @@ size_t BMSincUpsampler_process(BMSincUpsampler *This,
  * @returns the number of samples at the beginning of the input array that are not present in the output
  */
 size_t BMSincUpsampler_inputPaddingBefore(BMSincUpsampler *This){
-	return This->inputPadding;
+	return This->inputPadding - 1;
 }
 
 
