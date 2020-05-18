@@ -19,6 +19,8 @@
 
 #define BM_VND_WET_MIX 0.40f
 
+void BMVelvetNoiseDecorrelator_genRandGains(BMVelvetNoiseDecorrelator *This);
+
 void BMVelvetNoiseDecorrelator_initFullSettings(BMVelvetNoiseDecorrelator *This,
 												float maxDelaySeconds,
 												size_t numTaps,
@@ -146,7 +148,25 @@ void BMVelvetNoiseDecorrelator_initMultiChannelInput(BMVelvetNoiseDecorrelator *
     BMMultiTapDelay_initBypassMultiChannel(&This->multiTapDelay, true, maxDelayLenth, numInput, numTaps);
     
     // setup the delay for processing
-    BMVelvetNoiseDecorrelator_randomiseAll(This);
+//    BMVelvetNoiseDecorrelator_randomiseAll(This);
+    
+    // compute the spacing for evenly spaced between startTime and endTime
+    
+    float startTimeS = This->hasDryTap ? This->maxDelayTimeS / (float)This->numWetTaps : 0;
+    float endTimeS = This->maxDelayTimeS;
+    float incrementS = (endTimeS - startTimeS) / (float)numTaps;
+    float incrementSamples = sampleRate * incrementS;
+    float startTimeSamples = sampleRate * startTimeS;
+    
+    for(size_t i=0; i< numTaps; i++){
+        // generate an evenly spaced tap time
+        This->delayLengthsL[i] = (float)i * incrementSamples + startTimeSamples;
+        This->delayLengthsR[i] = (float)i * incrementSamples + startTimeSamples;
+        printf("%zu %f\n",This->delayLengthsL[i],endTimeS*sampleRate);
+    }
+    
+    // randomise gains
+    BMVelvetNoiseDecorrelator_genRandGains(This);
 }
 
 

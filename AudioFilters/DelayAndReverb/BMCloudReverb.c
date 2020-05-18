@@ -218,10 +218,10 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
             //PitchShifting delay into wetbuffer
             BMVelvetNoiseDecorrelator_processBufferStereo(&This->vndArray[i], This->buffer.bufferL, This->buffer.bufferR, This->vnd1BufferL[i], This->vnd1BufferR[i], numSamples);
 
-            if(i<This->numPitchShift){
-                //PitchShifting delay
-                BMPitchShiftDelay_processStereoBuffer(&This->pitchShiftArray[i], This->vnd1BufferL[i], This->vnd1BufferR[i], This->vnd1BufferL[i], This->vnd1BufferR[i], numSamples);
-            }
+//            if(i<This->numPitchShift){
+//                //PitchShifting delay
+//                BMPitchShiftDelay_processStereoBuffer(&This->pitchShiftArray[i], This->vnd1BufferL[i], This->vnd1BufferR[i], This->vnd1BufferL[i], This->vnd1BufferR[i], numSamples);
+//            }
         }
         //2nd layer VND
         for(int i=0;i<This->numInput;i++){
@@ -229,8 +229,14 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
             BMVelvetNoiseDecorrelator_processMultiChannelInput(&This->vndArray[i+This->numInput], This->vnd1BufferL, This->vnd1BufferR, This->vnd2BufferL[i], This->vnd2BufferR[i], numSamples);
         }
         
+        
+        
         //Long FDN
         BMLongLoopFDN_processMultiChannelInput(&This->loopFDN, This->vnd2BufferL, This->vnd2BufferR, This->numInput, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
+        
+//        memcpy(outputL,This->wetBuffer.bufferL, sizeof(float)*numSamples);
+//        memcpy(outputR,This->wetBuffer.bufferR, sizeof(float)*numSamples);
+//        return;
         
 //        vDSP_vclr(This->wetBuffer.bufferL, 1, numSamples);
 //        vDSP_vclr(This->wetBuffer.bufferR, 1, numSamples);
@@ -280,22 +286,16 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
             BMWetDryMixer_processBufferInPhase(&This->reverbMixer, This->wetBuffer.bufferL, This->wetBuffer.bufferR, inputL, inputR, outputL, outputR, numSamples);
         }
         
-//        memcpy(outputL,This->wetBuffer.bufferL, sizeof(float)*numSamples);
-//        memcpy(outputR,This->wetBuffer.bufferL, sizeof(float)*numSamples);
-//        return;
+
         
-        //LFO pan
-		// Input pan LFO
-        BMPanLFO_process(&This->inputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
-        vDSP_vmul(outputL, 1, This->LFOBuffer.bufferL, 1, outputL, 1, numSamples);
-        vDSP_vmul(outputR, 1, This->LFOBuffer.bufferR, 1, outputR, 1, numSamples);
-        BMPanLFO_process(&This->outputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
-        vDSP_vmul(outputL, 1, This->LFOBuffer.bufferL, 1, outputL, 1, numSamples);
-        vDSP_vmul(outputR, 1, This->LFOBuffer.bufferR, 1, outputR, 1, numSamples);
-        
-//        memcpy(outputL, This->wetBuffer.bufferL, sizeof(float)*numSamples);
-//        memcpy(outputR, This->wetBuffer.bufferR, sizeof(float)*numSamples);
-//        return;
+//        //LFO pan
+//		// Input pan LFO
+//        BMPanLFO_process(&This->inputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
+//        vDSP_vmul(outputL, 1, This->LFOBuffer.bufferL, 1, outputL, 1, numSamples);
+//        vDSP_vmul(outputR, 1, This->LFOBuffer.bufferR, 1, outputR, 1, numSamples);
+//        BMPanLFO_process(&This->outputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
+//        vDSP_vmul(outputL, 1, This->LFOBuffer.bufferL, 1, outputL, 1, numSamples);
+//        vDSP_vmul(outputR, 1, This->LFOBuffer.bufferR, 1, outputR, 1, numSamples);
     }
 }
 
