@@ -54,9 +54,9 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     
     //VND
     This->updateVND = false;
-    This->maxTapsEachVND = 16;
+    This->maxTapsEachVND = 32;
     This->diffusion = 1.0f;
-    This->vndLength = 0.5f;
+    This->vndLength = 0.2f;
     This->fadeInS = 0;
     
     This->numInput = 8;
@@ -124,7 +124,7 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
 
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
     size_t numDelays = 16;
-    float maxDT = 0.040f;
+    float maxDT = 0.080f;
     float minDT = 0.020f;
 	bool zeroTaps = true;
     BMLongLoopFDN_init(&This->loopFDN, numDelays, minDT, maxDT, zeroTaps, 8, 1, This->sampleRate);
