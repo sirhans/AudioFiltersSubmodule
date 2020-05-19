@@ -186,11 +186,11 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
         BMCloudReverb_updateVND(This);
         BMCloudReverb_updateDiffusion(This);
         
-//        //Filters
-//        BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, inputL, inputR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
+        //Filters
+        BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, inputL, inputR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
         
-        memcpy(This->buffer.bufferL, inputL, sizeof(float)*numSamples);
-        memcpy(This->buffer.bufferR, inputR, sizeof(float)*numSamples);
+//        memcpy(This->buffer.bufferL, inputL, sizeof(float)*numSamples);
+//        memcpy(This->buffer.bufferR, inputR, sizeof(float)*numSamples);
         
         //1st layer VND
         for(int i=0;i<This->numInput;i++){
@@ -199,7 +199,7 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
               
             if(i<This->numPitchShift){
                 //PitchShifting delay
-                BMPitchShiftDelay_processStereoBuffer(&This->pitchShiftArray[i], This->vnd2BufferL[i], This->vnd2BufferR[i], This->vnd2BufferL[i], This->vnd2BufferR[i], numSamples);
+                BMPitchShiftDelay_processStereoBuffer(&This->pitchShiftArray[i], This->vnd1BufferL[i], This->vnd1BufferR[i], This->vnd1BufferL[i], This->vnd1BufferR[i], numSamples);
             }
         }
         
@@ -239,7 +239,7 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
 
 float calculateScaleVol(BMCloudReverb* This){
     float factor = log2f(This->decayTime);
-    float scaleDB = (-3 * (factor)) - 8.0f;
+    float scaleDB = (-3 * (factor)) - 2.0f;
     return scaleDB;
 }
 
@@ -313,21 +313,16 @@ void BMCloudReverb_setVNDLength(BMCloudReverb* This,float timeInS){
 void BMCloudReverb_updateVND(BMCloudReverb* This){
     if(This->updateVND){
         This->updateVND = false;
-//        //Free & reinit
-//        for(int i=0;i<This->numVND;i++){
-//            if(i<This->numInput){
-//                //1st layer
-//                BMVelvetNoiseDecorrelator_free(&This->vndArray[i]);
-//                BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vndArray[i], This->vndLength, This->maxTapsEachVND, 100, false, This->sampleRate);
-//            }else{
-//                //2nd layer
-//                BMVelvetNoiseDecorrelator_free(&This->vndArray[i]);
-//                BMVelvetNoiseDecorrelator_initMultiChannelInputEvenTapDensity(&This->vndArray[i], This->vndLength, This->vndLength*This->maxTapsEachVND, 100, false,This->numInput, This->sampleRate);
-//            }
-//        }
-//
-//        BMCloudReverb_setFadeInVND(This, This->fadeInS);
-//        BMCloudReverb_setDiffusion(This, This->diffusion);
+        //Free & reinit
+        for(int i=0;i<This->numVND;i++){
+            //1st layer
+            BMVelvetNoiseDecorrelator_free(&This->vndArray[i]);
+            BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vndArray[i], This->vndLength, This->maxTapsEachVND, 100, false, This->sampleRate);
+            
+        }
+
+        BMCloudReverb_setFadeInVND(This, This->fadeInS);
+        BMCloudReverb_setDiffusion(This, This->diffusion);
     }
 }
 
