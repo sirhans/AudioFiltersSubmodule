@@ -54,10 +54,11 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     
     //VND
     This->updateVND = false;
-    This->maxTapsEachVND = 32;
+    This->maxTapsEachVND = 16;
     This->diffusion = 1.0f;
     This->vndLength = 0.2f;
     This->fadeInS = 0;
+    This->vndDryTap = false;
     
     This->numInput = 8;
     This->numVND = This->numInput;
@@ -70,8 +71,10 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     //Using vnd
     for(int i=0;i<This->numVND;i++){
         //First layer
-        BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vndArray[i], This->vndLength, This->maxTapsEachVND, 100, false, sr);
+        BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vndArray[i], This->vndLength, This->maxTapsEachVND, 100, This->vndDryTap, sr);
         BMVelvetNoiseDecorrelator_setFadeIn(&This->vndArray[i], 0.0f);
+        if(This->vndDryTap)
+            BMVelvetNoiseDecorrelator_setWetMix(&This->vndArray[i], 1.0f);
         
         This->vnd1BufferL[i] = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
         This->vnd1BufferR[i] = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
@@ -202,13 +205,15 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
                 BMPitchShiftDelay_processStereoBuffer(&This->pitchShiftArray[i], This->vnd1BufferL[i], This->vnd1BufferR[i], This->vnd1BufferL[i], This->vnd1BufferR[i], numSamples);
             }
         }
+
+        memcpy(outputL,This->vnd1BufferL[0], sizeof(float)*numSamples);
+        memcpy(outputR,This->vnd1BufferR[0], sizeof(float)*numSamples);
+        return;
         
         BMFastHadamardTransformBuffer(This->vnd1BufferL, This->vnd2BufferL, This->numInput, numSamples);
         BMFastHadamardTransformBuffer(This->vnd1BufferR, This->vnd2BufferR, This->numInput, numSamples);
         
-//        memcpy(outputL,This->vnd2BufferL[0], sizeof(float)*numSamples);
-//        memcpy(outputR,This->vnd2BufferR[0], sizeof(float)*numSamples);
-//        return;
+
         
         //Long FDN
         BMLongLoopFDN_processMultiChannelInput(&This->loopFDN, This->vnd2BufferL, This->vnd2BufferR, This->numInput, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
@@ -317,8 +322,9 @@ void BMCloudReverb_updateVND(BMCloudReverb* This){
         for(int i=0;i<This->numVND;i++){
             //1st layer
             BMVelvetNoiseDecorrelator_free(&This->vndArray[i]);
-            BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vndArray[i], This->vndLength, This->maxTapsEachVND, 100, false, This->sampleRate);
-            
+            BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vndArray[i], This->vndLength, This->maxTapsEachVND, 100, This->vndDryTap, This->sampleRate);
+            if(This->vndDryTap)
+                BMVelvetNoiseDecorrelator_setWetMix(&This->vndArray[i], 1.0f);
         }
 
         BMCloudReverb_setFadeInVND(This, This->fadeInS);

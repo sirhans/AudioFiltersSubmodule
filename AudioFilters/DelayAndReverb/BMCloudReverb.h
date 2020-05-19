@@ -63,6 +63,7 @@ typedef struct BMCloudReverb {
     float decayTime;
     //Vnd lenght
     bool updateVND;
+    bool vndDryTap;
     float vndLength;
     
     float bellQ;
