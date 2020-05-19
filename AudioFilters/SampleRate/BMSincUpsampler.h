@@ -14,7 +14,7 @@
 #define BMSINC_MAX_KERNEL_LENGTH
 
 typedef struct BMSincUpsampler {
-	size_t upsampleFactor, kernelLength, inputPadding, numKernels;
+	size_t upsampleFactor, kernelLength, inputPaddingLeft, inputPaddingRight, numKernels;
 	float **filterKernels;
 } BMSincUpsampler;
 
@@ -40,6 +40,36 @@ void BMSincUpsampler_init(BMSincUpsampler *This,
  *BMSincUpsampler_free
  */
 void BMSincUpsampler_free(BMSincUpsampler *This);
+
+
+
+
+/*!
+ *BMSincUpsampler_inputPaddingBefore
+ *
+ * @returns the number of input samples that are not present in the output
+ */
+size_t BMSincUpsampler_inputPaddingBefore(BMSincUpsampler *This);
+
+
+
+
+/*!
+ *BMSincUpsampler_inputPaddingAfter
+ *
+ * @returns the number of samples at the end of the input that are not present in the output
+ */
+size_t BMSincUpsampler_inputPaddingAfter(BMSincUpsampler *This);
+
+
+
+
+/*!
+ *BMSincUpsampler_outputLength
+ *
+ * @returns the number of samples output for the given length of input
+ */
+size_t BMSincUpsampler_outputLength(BMSincUpsampler *This, size_t inputLength);
 
 
 

@@ -7,20 +7,30 @@
 //
 
 #include "BMSpectrogram.h"
-
+#include "BMIntegerMath.h"
 
 void BMSpectrogram_init(BMSpectrogram *This,
-						size_t maxFFTLength,
+						size_t maxFFTSize,
 						size_t maxImageHeight,
 						float sampleRate){
-	size_t maxFFTOutput = 1 + maxFFTLength/2;
-	This->b1 = malloc(sizeof(float)*maxFFTOutput);
-	This->b2 = malloc(sizeof(float)*maxImageHeight);
-	This->b3 = malloc(sizeof(float)*maxImageHeight);
 	
 	This->sampleRate = sampleRate;
 	This->prevMinF = This->prevMaxF = 0.0f;
 	This->prevImageHeight = This->prevFFTSize = 0;
+	
+	BMSpectrum_initWithLength(&This->spectrum, maxFFTSize);
+	This->maxFFTSize = maxFFTSize;
+	This->maxImageHeight = maxImageHeight;
+	
+	// we need some extra samples at the end of the fftBin array because the
+	// interpolating function that converts from linear scale to bark scale
+	// reads beyond the interpolation index
+	This->fftBinInterpolationPadding = 2;
+	
+	size_t maxFFTOutput = 1 + maxFFTSize/2;
+	This->b1 = malloc(sizeof(float)*(maxFFTOutput+This->fftBinInterpolationPadding));
+	This->b2 = malloc(sizeof(float)*maxImageHeight);
+	This->b3 = malloc(sizeof(float)*maxImageHeight);
 }
 
 
@@ -84,7 +94,7 @@ void BMSpectrogram_fftBinsToBarkScale(BMSpectrogram *This,
 	
 	// now that we have the fft bin indices we can interpolate and get the results
 	size_t numFFTBins = 1 + fftSize/2;
-	assert(numFFTBins - 2 >= floor(interpolatedIndices[outputLength-1])); // requirement of vDSP_vqint. can be ignored if there is extra space at the end of the fftBins array and zeros are written there.
+	assert(numFFTBins + This->fftBinInterpolationPadding - 2 >= floor(interpolatedIndices[outputLength-1])); // requirement of vDSP_vqint. can be ignored if there is extra space at the end of the fftBins array and zeros are written there.
 	vDSP_vqint(fftBins, interpolatedIndices, 1, output, 1, outputLength, numFFTBins);
 }
 
@@ -134,6 +144,10 @@ void BMSpectrogram_process(BMSpectrogram *This,
 						   SInt32 pixelHeight,
 						   float minFrequency,
 						   float maxFrequency){
+	assert(4 <= fftSize && fftSize <= This->maxFFTSize);
+	assert(isPowerOfTwo((size_t)fftSize));
+	assert(2 <= pixelHeight && pixelHeight < This->maxImageHeight);
+	
 	// we will need this later
 	SInt32 fftOutputSize = 1 + fftSize / 2;
 	
@@ -170,6 +184,9 @@ void BMSpectrogram_process(BMSpectrogram *This,
 														  This->b1,
 														  true,
 														  fftSize);
+		
+		// write some zeros after the end as padding for the interpolation function
+		memset(This->b1 + fftOutputSize, 0, sizeof(float)*This->fftBinInterpolationPadding);
 		
 		// interpolate the output from linear scale frequency to Bark Scale
 		BMSpectrogram_fftBinsToBarkScale(This,
