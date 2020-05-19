@@ -217,16 +217,16 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
         for(int i=0;i<This->numInput;i++){
             //PitchShifting delay into wetbuffer
             BMVelvetNoiseDecorrelator_processBufferStereo(&This->vndArray[i], This->buffer.bufferL, This->buffer.bufferR, This->vnd1BufferL[i], This->vnd1BufferR[i], numSamples);
-
-//            if(i<This->numPitchShift){
-//                //PitchShifting delay
-//                BMPitchShiftDelay_processStereoBuffer(&This->pitchShiftArray[i], This->vnd1BufferL[i], This->vnd1BufferR[i], This->vnd1BufferL[i], This->vnd1BufferR[i], numSamples);
-//            }
         }
         //2nd layer VND
         for(int i=0;i<This->numInput;i++){
             //PitchShifting delay into wetbuffer
             BMVelvetNoiseDecorrelator_processMultiChannelInput(&This->vndArray[i+This->numInput], This->vnd1BufferL, This->vnd1BufferR, This->vnd2BufferL[i], This->vnd2BufferR[i], numSamples);
+            
+            if(i<This->numPitchShift){
+                //PitchShifting delay
+                BMPitchShiftDelay_processStereoBuffer(&This->pitchShiftArray[i], This->vnd2BufferL[i], This->vnd2BufferR[i], This->vnd2BufferL[i], This->vnd2BufferR[i], numSamples);
+            }
         }
         
         
