@@ -128,17 +128,6 @@ void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
     float minDT = 0.020f;
 	bool zeroTaps = true;
     BMLongLoopFDN_init(&This->loopFDN, numDelays, minDT, maxDT, zeroTaps, 8, 1, This->sampleRate);
-
-    minDT = 0.001f;
-    maxDT = 0.020f;
-    BMLongLoopFDN_init(&This->shortFDN2, numDelays, minDT, maxDT, zeroTaps, 8, 0, This->sampleRate);
-    
-    //
-    minDT = 0.001f;
-    maxDT = 0.020f;
-    BMLongLoopFDN_init(&This->shortFDN1, numDelays, minDT, maxDT, zeroTaps, 8, 0, This->sampleRate);
-
-    BMSimpleDelayStereo_init(&This->fdnDelay, maxDT*This->sampleRate*2.0f);
 }
 
 void BMCloudReverb_destroy(BMCloudReverb* This){
@@ -167,8 +156,6 @@ void BMCloudReverb_destroy(BMCloudReverb* This){
         BMPitchShiftDelay_destroy(&This->pitchShiftArray[i]);
     
     BMLongLoopFDN_free(&This->loopFDN);
-    BMLongLoopFDN_free(&This->shortFDN1);
-    BMLongLoopFDN_free(&This->shortFDN2);
     
     free(This->buffer.bufferL);
     This->buffer.bufferL = nil;
@@ -239,20 +226,20 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
         }
 
         
-//        //LFO pan
-//		// Input pan LFO
-//        BMPanLFO_process(&This->inputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
-//        vDSP_vmul(outputL, 1, This->LFOBuffer.bufferL, 1, outputL, 1, numSamples);
-//        vDSP_vmul(outputR, 1, This->LFOBuffer.bufferR, 1, outputR, 1, numSamples);
-//        BMPanLFO_process(&This->outputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
-//        vDSP_vmul(outputL, 1, This->LFOBuffer.bufferL, 1, outputL, 1, numSamples);
-//        vDSP_vmul(outputR, 1, This->LFOBuffer.bufferR, 1, outputR, 1, numSamples);
+        //LFO pan
+		// Input pan LFO
+        BMPanLFO_process(&This->inputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
+        vDSP_vmul(outputL, 1, This->LFOBuffer.bufferL, 1, outputL, 1, numSamples);
+        vDSP_vmul(outputR, 1, This->LFOBuffer.bufferR, 1, outputR, 1, numSamples);
+        BMPanLFO_process(&This->outputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
+        vDSP_vmul(outputL, 1, This->LFOBuffer.bufferL, 1, outputL, 1, numSamples);
+        vDSP_vmul(outputR, 1, This->LFOBuffer.bufferR, 1, outputR, 1, numSamples);
     }
 }
 
 float calculateScaleVol(BMCloudReverb* This){
     float factor = log2f(This->decayTime);
-    float scaleDB = (-3 * (factor));
+    float scaleDB = (-3 * (factor)) - 8.0f;
     return scaleDB;
 }
 
@@ -260,8 +247,6 @@ float calculateScaleVol(BMCloudReverb* This){
 void BMCloudReverb_setLoopDecayTime(BMCloudReverb* This,float decayTime){
     This->decayTime = decayTime;
     BMLongLoopFDN_setRT60Decay(&This->loopFDN, decayTime);
-    BMLongLoopFDN_setRT60Decay(&This->shortFDN1, decayTime*0.03f);
-    BMLongLoopFDN_setRT60Decay(&This->shortFDN2, decayTime*0.03f);
     This->normallizeVol = BM_DB_TO_GAIN(calculateScaleVol(This));
 }
 
