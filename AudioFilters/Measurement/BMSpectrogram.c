@@ -191,26 +191,8 @@ void BMSpectrogram_process(BMSpectrogram *This,
 														  true,
 														  fftSize);
 		
-		bool print = false;
-		if(print){
-			printf("{");
-			for(size_t i=0; i<fftSize-1; i++)
-					printf("%f,",inputAudio[fftCurrentWindowStart+i]);
-			printf("%f}\n*******\n*******\n",inputAudio[fftCurrentWindowStart+fftSize-1]);
-			
-			
-			printf("{");
-			for(size_t i=0; i<fftOutputSize-1; i++)
-				printf("%f,",This->b1[i]);
-			printf("%f}\n",This->b1[fftOutputSize-1]);
-		}
-		
 		// write some zeros after the end as padding for the interpolation function
 		memset(This->b1 + fftOutputSize, 0, sizeof(float)*This->fftBinInterpolationPadding);
-		
-		float maxMag;
-		vDSP_maxmgv(This->b1, 1, &maxMag, fftOutputSize);
-		printf("%f,",maxMag);
 		
 		// convert to dB, scale to [0,1] and clip values outside that range
 		BMSpectrogram_toDbScaleAndClip(This->b1, This->b1, fftSize, fftOutputSize);
@@ -223,9 +205,6 @@ void BMSpectrogram_process(BMSpectrogram *This,
 										 pixelHeight,
 										 minFrequency,
 										 maxFrequency);
-		
-//		// convert to dB, scale to [0,1] and clip values outside that range
-//		BMSpectrogram_toDbScaleAndClip(This->b2, This->b2, fftSize, pixelHeight);
 		
 		// convert to HSB colours and write to output
 		BMSpectrogram_toHSBColour(This->b2,imageOutput[i],pixelHeight);
