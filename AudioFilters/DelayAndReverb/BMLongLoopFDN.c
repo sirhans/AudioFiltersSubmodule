@@ -24,6 +24,7 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 						bool hasZeroTaps,
 						size_t blockSize,
 						size_t feedbackShiftByBlock,
+                        float decayTimeS,
 						float sampleRate){
 	// require block size to be a power of two
 	assert(isPowerOfTwo(blockSize));
@@ -37,8 +38,11 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	assert(numDelays % blockSize == 0);
 	
 	This->blockSize = blockSize;
+    This->feedbackShiftByBlock = feedbackShiftByBlock;
 	This->feedbackShiftByDelay = feedbackShiftByBlock * blockSize;
-	
+    This->maxDelayS = maxDelaySeconds;
+    This->minDelayS = minDelaySeconds;
+    This->sampleRate = sampleRate;
 	// set the matrix attenuation and inverse attenuation
 	This->matrixAttenuation = sqrt(1.0f / (float)blockSize);
 	This->inverseMatrixAttenuation = 2.0f / This->matrixAttenuation;
@@ -119,9 +123,9 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	This->inputAttenuation = sqrt(1.0f / (float)numInputsPerChannelWithZeroTap);
 	
 	// init the feedback coefficients
-	float defaultDecayTime = 100.0f;
+    This->decayTimeS = decayTimeS;
 	This->feedbackCoefficients = malloc(sizeof(float)*numDelays);
-	BMLongLoopFDN_setRT60Decay(This, defaultDecayTime);
+	BMLongLoopFDN_setRT60Decay(This, decayTimeS);
 	
 	// set output tap signs
 	This->tapSigns = malloc(numDelays * sizeof(bool));
@@ -199,10 +203,24 @@ void BMLongLoopFDN_free(BMLongLoopFDN *This){
 }
 
 
+#pragma mark - Set
+void BMLongLoopFDN_setMaxDelay(BMLongLoopFDN* This,float maxDelayS){
+    This->maxDelayS = maxDelayS;
+    This->needReinit = true;
+}
+
+void BMLongLoopFDN_needReinit(BMLongLoopFDN* This){
+    if(This->needReinit){
+        This->needReinit = false;
+        BMLongLoopFDN_free(This);
+        BMLongLoopFDN_init(This, This->numDelays, This->minDelayS, This->maxDelayS, This->hasZeroTaps, This->blockSize, This->feedbackShiftByBlock,This->decayTimeS, This->sampleRate);
+    }
+}
 
 
 
 void BMLongLoopFDN_setRT60Decay(BMLongLoopFDN *This, float timeSeconds){
+    This->decayTimeS = timeSeconds;
 	for(size_t i=0; i<This->numDelays; i++){
 		This->feedbackCoefficients[i] = This->matrixAttenuation * BMReverbDelayGainFromRT60(timeSeconds, This->delayTimes[i]);
 	}
@@ -231,6 +249,8 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 						   float *outputL, float *outputR,
 						   size_t numSamples){
 	
+    BMLongLoopFDN_needReinit(This);
+    
 	// limit the input to chunks of size <= minDelayLength
 	while(numSamples > 0){
 		size_t samplesProcessing = BM_MIN(numSamples, This->minDelaySamples);
@@ -399,6 +419,8 @@ void BMLongLoopFDN_processMultiChannelInput(BMLongLoopFDN *This,
 	// waste CPU cycles.
 	assert(numInputChannels <= This->numDelays / 2);
 	
+    BMLongLoopFDN_needReinit(This);
+    
 	// limit the input to chunks of size <= minDelayLength
     size_t samplesProccessed = 0;
     size_t samplesProcessing;
@@ -442,7 +464,8 @@ void BMLongLoopFDN_processMultiChannelInput(BMLongLoopFDN *This,
 		// mixing matrix attenuation
 		// 2. mix output to outputL and outputR
 		for(size_t i=0; i<This->numDelays; i++){
-			
+			// attenuate the data at the read pointers to get desired decay time
+            vDSP_vsmul(This->readPointers[i], 1, &This->feedbackCoefficients[i], This->readPointers[i], 1, samplesProcessing);
 			
 			// we will write the first half the delays to the left output and the second half to the right output
 			float *outputPointer = (i < This->numDelays/2) ? outputL+samplesProccessed : outputR+samplesProccessed;
@@ -452,9 +475,6 @@ void BMLongLoopFDN_processMultiChannelInput(BMLongLoopFDN *This,
 			// or subtract it if negative
 			else
 				vDSP_vsub(outputPointer, 1, This->readPointers[i], 1, outputPointer, 1, samplesProcessing);
-            
-            // attenuate the data at the read pointers to get desired decay time
-            vDSP_vsmul(This->readPointers[i], 1, &This->feedbackCoefficients[i], This->readPointers[i], 1, samplesProcessing);
 		}
 		
 		
