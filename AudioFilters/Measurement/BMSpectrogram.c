@@ -112,6 +112,75 @@ void BMSpectrogram_toHSBColour(float* input, BMHSBPixel* output, size_t length){
 
 
 
+// http://www.chilliant.com/rgb2hsv.html
+/*
+ float3 HUEtoRGB(in float H)
+  {
+    float R = abs(H * 6 - 3) - 1;
+    float G = 2 - abs(H * 6 - 2);
+    float B = 2 - abs(H * 6 - 4);
+    return saturate(float3(R,G,B));
+  }
+ */
+simd_float3 BMSpectrum_HUEtoRGB(float h) {
+	simd_float3 a = {-1.0f, 2.0f, 2.0f};
+	simd_float3 b = {-3.0f, -2.0f, -4.0f};
+	simd_float3 c = {1.0f, -1.0f, -1.0f};
+	simd_float3 rgb = simd_abs(6.0f * h + b) * c;
+	return simd_clamp(rgb+a,0.0f, 1.0f);
+}
+
+
+
+// http://www.chilliant.com/rgb2hsv.html
+simd_float3 BMSpectrum_HSLToRGB(simd_float3 hsl){
+	// generate an rgb pixel with 100% saturation
+	simd_float3 rgb = BMSpectrum_HUEtoRGB(hsl.x);
+	
+	// find out how much we need to scale down the saturated pixel to apply the
+	// saturation and make headroom for the lightness
+	float c = (1.0f - fabsf(2.0f * hsl.z - 1.0f)) * hsl.y;
+	
+	// scale the rgb pixel and mix with the lightness
+	return (rgb - 0.5f) * c + hsl.z;
+}
+
+
+
+/*
+ * since h and s are fixed, we can bake their values into the code and it runs
+ * faster.
+ */
+simd_float3 BMSpectrum_HSLToRGB_baked(float l){
+	// generate an rgb pixel with 100% saturation
+	simd_float3 rgb = {0.0f, 0.625f, 1.0f};
+
+	// find out how much we need to scale down the saturated pixel to apply the
+	// saturation and make headroom for the lightness
+	float s = 0.5f;
+	float c = (1.0f - fabsf(2.0f * l - 1.0f)) * s;
+
+	// scale the rgb pixel and mix with the lightness
+	return (rgb - 0.5f) * c + l;
+}
+
+
+
+void BMSpectrogram_toRGBColour(float* input, BMRGBPixel* output, size_t length){
+	// toHSBColourFunction[x_] := {7/12, 1 - x, x}
+//	float h = (6.75/12.0);
+//	float s = 0.5f;
+//	simd_float3 hsl = {h,s,0.f};
+	for(size_t i=0; i<length; i++){
+		//hsl.z = input[i];
+		//output[i] = BMSpectrum_HSLToRGB(hsl);
+		output[i] = BMSpectrum_HSLToRGB_baked(input[i]);
+	}
+}
+
+
+
+
 
 void BMSpectrogram_toDbScaleAndClip(const float* input, float* output, size_t fftSize, size_t length){
 	// compensate for the scaling of the vDSP FFT
@@ -148,7 +217,7 @@ void BMSpectrogram_process(BMSpectrogram *This,
 						   SInt32 startSampleIndex,
 						   SInt32 endSampleIndex,
 						   SInt32 fftSize,
-						   BMHSBPixel** imageOutput,
+						   BMRGBPixel** imageOutput,
 						   SInt32 pixelWidth,
 						   SInt32 pixelHeight,
 						   float minFrequency,
@@ -206,7 +275,12 @@ void BMSpectrogram_process(BMSpectrogram *This,
 										 minFrequency,
 										 maxFrequency);
 		
-		// convert to HSB colours and write to output
-		BMSpectrogram_toHSBColour(This->b2,imageOutput[i],pixelHeight);
+		// clamp the outputs to [0,1]
+		float lowerLimit = 0;
+		float upperLimit = 1;
+		vDSP_vclip(This->b2, 1, &lowerLimit, &upperLimit, This->b2, 1, pixelHeight);
+		
+		// convert to RGB colours and write to output
+		BMSpectrogram_toRGBColour(This->b2,imageOutput[i],pixelHeight);
 	}
 }
