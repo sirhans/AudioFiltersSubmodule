@@ -280,6 +280,8 @@ void BMVelvetNoiseDecorrelator_resetNumTaps(BMVelvetNoiseDecorrelator *This){
     if(This->resetNumTaps){
         This->resetNumTaps = false;
         
+        //Free it first
+        BMMultiTapDelay_free(&This->multiTapDelay);
         // init the multi-tap delay in bypass mode
         size_t maxDelayLenth = ceil(This->maxDelayTimeS*This->sampleRate);
         BMMultiTapDelay_initBypass(&This->multiTapDelay,

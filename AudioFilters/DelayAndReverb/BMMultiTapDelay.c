@@ -64,6 +64,78 @@ void BMMultiTapDelay_Init(BMMultiTapDelay *This,
     BMMultiTapDelay_initBuffer(This);
 }
 
+void BMMultiTapDelay_destroyBuffer(BMMultiTapDelay* delay){
+    free(delay->zeroArray);
+    delay->zeroArray = NULL;
+    //Clear circular buffer
+    for(size_t i=0; i<delay->numberChannel; i++){
+        TPCircularBufferCleanup(&delay->buffer[i]);
+    }
+}
+
+void BMMultiTapDelay_free(BMMultiTapDelay *This){
+    BMMultiTapDelaySetting *setting = &This->setting;
+    
+    BMMultiTapDelay_destroyBuffer(This);
+    
+    for (int i=0; i<This->numberChannel; i++) {
+        free(This->tempBuffer[i]);
+        This->tempBuffer[i] = NULL;
+        
+        This->input[i] = NULL;
+        This->output[i] = NULL;
+        
+        
+        free(setting->indices[i]);
+        setting->indices[i] = NULL;
+        
+        free(setting->gains[i]);
+        setting->gains[i] = NULL;
+        
+        free(This->tempIndices[i]);
+        This->tempIndices[i] = NULL;
+        
+        free(This->tempGains[i]);
+        This->tempGains[i] = NULL;
+
+    }
+    
+    free(This->lastTapOutput);
+    This->lastTapOutput = NULL;
+    
+    free(This->buffer);
+    This->buffer = NULL;
+    
+    
+    free(This->tempBuffer);
+    This->tempBuffer = NULL;
+    
+    free(This->input);
+    This->input = NULL;
+    
+    free(This->output);
+    This->output = NULL;
+    
+    free(This->zeroArray);
+    This->zeroArray = NULL;
+    
+    //Memory leak
+    free(setting->indices);
+    setting->indices = NULL;
+    
+    free(setting->gains);
+    setting->gains = NULL;
+    
+    free(setting->delayTimes);
+    setting->delayTimes = NULL;
+    
+    free(This->tempGains);
+    This->tempGains = NULL;
+    
+    free(This->tempIndices);
+    This->tempIndices = NULL;
+}
+
 void BMMultiTapDelay_initBypass(BMMultiTapDelay *This,
 						   bool isStereo,
 						   size_t maxDelayLength,
@@ -112,14 +184,7 @@ void BMMultiTapDelay_initBuffer(BMMultiTapDelay* delay){
 
 
 
-void BMMultiTapDelay_destroyBuffer(BMMultiTapDelay* delay){
-    free(delay->zeroArray);
-    delay->zeroArray = NULL;
-    //Clear circular buffer
-    for(size_t i=0; i<delay->numberChannel; i++){
-        TPCircularBufferCleanup(&delay->buffer[i]);
-    }
-}
+
 
 /*
  * works in place
@@ -368,64 +433,7 @@ void BMMultiTapDelay_clearBuffers(BMMultiTapDelay* delay){
 /*
  *  Free memory of the struct at *This
  */
-void BMMultiTapDelay_free(BMMultiTapDelay *This){
-    BMMultiTapDelaySetting *setting = &This->setting;
-    
-    for (int i=0; i<This->numberChannel; i++) {
-        free(This->tempBuffer[i]);
-        This->tempBuffer[i] = NULL;
-        
-        This->input[i] = NULL;
-        This->output[i] = NULL;
-        
-        TPCircularBufferCleanup(&This->buffer[i]);
-        
-        
-        free(setting->indices[i]);
-        setting->indices[i] = NULL;
-        
-        free(setting->gains[i]);
-        setting->gains[i] = NULL;
-        
-        free(This->tempIndices[i]);
-        This->tempIndices[i] = NULL;
-        
-        free(This->tempGains[i]);
-        This->tempGains[i] = NULL;
-    }
-    
-    free(This->buffer);
-    This->buffer = NULL;
-    
-    
-    free(This->tempBuffer);
-    This->tempBuffer = NULL;
-    
-    free(This->input);
-    This->input = NULL;
-    
-    free(This->output);
-    This->output = NULL;
-    
-    free(This->zeroArray);
-    This->zeroArray = NULL;
-    
-    //Memory leak
-    free(setting->indices);
-    setting->indices = NULL;
-    
-    free(setting->gains);
-    setting->gains = NULL;
-    
-    free(setting->delayTimes);
-    setting->delayTimes = NULL;
-    
-    free(This->tempGains);
-    This->tempGains = NULL;
-    
-    free(This->tempIndices);
-    This->tempIndices = NULL;
-}
+
 
 void BMMultiTapDelay_PerformUpdateIndices(BMMultiTapDelay *This){
     //write data from tempArray
