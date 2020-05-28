@@ -68,14 +68,6 @@ void BMVelvetNoiseDecorrelator_initWithEvenTapDensity(BMVelvetNoiseDecorrelator 
 													  bool hasDryTap,
 													  float sampleRate);
 
-
-void BMVelvetNoiseDecorrelator_initMultiChannelInputEvenTapDensity(BMVelvetNoiseDecorrelator *This,
-                                                        float maxDelaySeconds,
-                                                        size_t numTaps,
-                                                        float rt60DecayTimeSeconds,
-                                                        bool hasDryTap,
-                                                        size_t numInput,
-                                                       float sampleRate);
 /*!
  *BMVelvetNoiseDecorrelator_setWetMix
  */

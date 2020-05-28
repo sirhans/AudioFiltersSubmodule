@@ -8,6 +8,7 @@
 
 #include "BMSpectrogram.h"
 #include "BMIntegerMath.h"
+#include "Constants.h"
 
 void BMSpectrogram_init(BMSpectrogram *This,
 						size_t maxFFTSize,
@@ -112,11 +113,19 @@ void BMSpectrogram_toHSBColour(float* input, BMHSBPixel* output, size_t length){
 
 
 
-void BMSpectrogram_toDbScaleAndClip(const float* input, float* output, size_t length){
+void BMSpectrogram_toDbScaleAndClip(const float* input, float* output, size_t fftSize, size_t length){
+	// compensate for the scaling of the vDSP FFT
+	float scale = 32.0f / (float)fftSize;
+	vDSP_vsmul(input, 1, &scale, output, 1, length);
+	
+	// eliminate zeros and negative values
+	float threshold = BM_DB_TO_GAIN(-110);
+	vDSP_vthr(output, 1, &threshold, output, 1, length);
+	
 	// convert to db
-	float zeroDb = 1.0f;
+	float zeroDb = sqrt((float)fftSize)/2.0f;
 	uint32_t use20not10 = 1;
-	vDSP_vdbcon(input, 1, &zeroDb, output, 1, length, use20not10);
+	vDSP_vdbcon(output, 1, &zeroDb, output, 1, length, use20not10);
 	
 	// clip to [-100,0]
 	float min = -100.0f;
@@ -124,7 +133,7 @@ void BMSpectrogram_toDbScaleAndClip(const float* input, float* output, size_t le
 	vDSP_vclip(output, 1, &min, &max, output, 1, length);
 	
 	// shift and scale to [0,1]
-	float scale = 1.0f/100.0f;
+	scale = 1.0f/100.0f;
 	float shift = 1.0f;
 	vDSP_vsmsa(output, 1, &scale, &shift, output, 1, length);
 }
@@ -151,7 +160,7 @@ void BMSpectrogram_process(BMSpectrogram *This,
 	// we will need this later
 	SInt32 fftOutputSize = 1 + fftSize / 2;
 	
-	// check that the fft start and end inices are within the bounds of the input array
+	// check that the fft start and end indices are within the bounds of the input array
 	// note that we define the fft centred at sample n to mean that the fft is
 	// calculated on samples in the interval [n-(fftSize/2)+1, n+(fftSize/2)]
 	SInt32 fftStartIndex = startSampleIndex - (fftSize/2) + 1;
@@ -162,21 +171,18 @@ void BMSpectrogram_process(BMSpectrogram *This,
 	// samples we shift the fft window each time we compute it. It may take a
 	// non-integer value. If stride is a non-integer then the actual stride used
 	// will still be an integer but it will vary between two consecutive values.
-	SInt32 sampleWidth = endSampleIndex - startSampleIndex + 1;
-	float fftStride = (float)(sampleWidth) / (float)pixelWidth;
-	
-	// find the first sample of the first fft window
-	SInt32 fftFirstWindowStart = fftStartIndex - fftSize/2 + 1;
+	float sampleWidth = endSampleIndex - startSampleIndex + 1;
+	float fftStride = sampleWidth / (float)(pixelWidth-1);
 	
 	
 	// generate the image one column at a time
 	for(SInt32 i=0; i<pixelWidth; i++){
-		// find the index where the fft window starts
-		SInt32 fftCurrentWindowStart = (SInt32)roundf((float)i*fftStride + FLT_EPSILON) + fftFirstWindowStart;
+		// find the index where the current fft window starts
+		SInt32 fftCurrentWindowStart = (SInt32)roundf((float)i*fftStride + FLT_EPSILON) + fftStartIndex;
 		
 		// set the last window to start in the correct place in case the multiplication above isn't accurate
 		if(i==pixelWidth-1)
-			fftCurrentWindowStart = fftEndIndex - fftSize/2 + 1;
+			fftCurrentWindowStart = fftEndIndex - fftSize + 1;
 		
 		// take abs(fft(windowFunctin*windowSamples))
 		This->b1[fftOutputSize-1] = BMSpectrum_processDataBasic(&This->spectrum,
@@ -188,6 +194,9 @@ void BMSpectrogram_process(BMSpectrogram *This,
 		// write some zeros after the end as padding for the interpolation function
 		memset(This->b1 + fftOutputSize, 0, sizeof(float)*This->fftBinInterpolationPadding);
 		
+		// convert to dB, scale to [0,1] and clip values outside that range
+		BMSpectrogram_toDbScaleAndClip(This->b1, This->b1, fftSize, fftOutputSize);
+		
 		// interpolate the output from linear scale frequency to Bark Scale
 		BMSpectrogram_fftBinsToBarkScale(This,
 										 This->b1,
@@ -196,9 +205,6 @@ void BMSpectrogram_process(BMSpectrogram *This,
 										 pixelHeight,
 										 minFrequency,
 										 maxFrequency);
-		
-		// convert to dB, scale to [0,1] and clip values outside that range
-		BMSpectrogram_toDbScaleAndClip(This->b2, This->b2, pixelHeight);
 		
 		// convert to HSB colours and write to output
 		BMSpectrogram_toHSBColour(This->b2,imageOutput[i],pixelHeight);

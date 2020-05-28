@@ -8,7 +8,7 @@
 
 #include "BMCloudReverb.h"
 #include "BMReverb.h"
-
+#include "BMFastHadamard.h"
 
 
 #define Filter_Level_Lowshelf 0
@@ -54,33 +54,28 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     
     //VND
     This->updateVND = false;
-    This->maxTapsEachVND = 8.0;
+    This->maxTapsEachVND = 16;
     This->diffusion = 1.0f;
-    This->vndLength = 0.05f;
+    This->vndLength = 0.2f;
     This->fadeInS = 0;
+    This->vndDryTap = false;
     
     This->numInput = 8;
-    This->numVND = This->numInput*2;
+    This->numVND = This->numInput;
     This->vndArray = malloc(sizeof(BMVelvetNoiseDecorrelator)*This->numVND);
     This->vnd1BufferL = malloc(sizeof(float*)*This->numInput);
     This->vnd1BufferR = malloc(sizeof(float*)*This->numInput);
     This->vnd2BufferL = malloc(sizeof(float*)*This->numInput);
     This->vnd2BufferR = malloc(sizeof(float*)*This->numInput);
     
-    //Using 2 layer of vnd
+    //Using vnd
     for(int i=0;i<This->numVND;i++){
-        if(i<This->numInput){
-            //First layer
-            BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vndArray[i], This->vndLength, This->maxTapsEachVND, 100, false, sr);
-            BMVelvetNoiseDecorrelator_setFadeIn(&This->vndArray[i], 0.0f);
-        }else{
-            //2nd layer
-            BMVelvetNoiseDecorrelator_initMultiChannelInputEvenTapDensity(&This->vndArray[i], This->vndLength*This->maxTapsEachVND, This->maxTapsEachVND, 100, false,This->numInput, sr);
-            BMVelvetNoiseDecorrelator_setFadeIn(&This->vndArray[i], 0.0f);
-        }
-    }
-    //Init temp buffer
-    for(int i=0;i<This->numInput;i++){
+        //First layer
+        BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vndArray[i], This->vndLength, This->maxTapsEachVND, 100, This->vndDryTap, sr);
+        BMVelvetNoiseDecorrelator_setFadeIn(&This->vndArray[i], 0.0f);
+        if(This->vndDryTap)
+            BMVelvetNoiseDecorrelator_setWetMix(&This->vndArray[i], 1.0f);
+        
         This->vnd1BufferL[i] = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
         This->vnd1BufferR[i] = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
         This->vnd2BufferL[i] = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
@@ -132,21 +127,10 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
 
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
     size_t numDelays = 16;
-    float maxDT = 0.040f;
+    float maxDT = 0.080f;
     float minDT = 0.020f;
 	bool zeroTaps = true;
     BMLongLoopFDN_init(&This->loopFDN, numDelays, minDT, maxDT, zeroTaps, 8, 1, This->sampleRate);
-
-    minDT = 0.001f;
-    maxDT = 0.020f;
-    BMLongLoopFDN_init(&This->shortFDN2, numDelays, minDT, maxDT, zeroTaps, 8, 0, This->sampleRate);
-    
-    //
-    minDT = 0.001f;
-    maxDT = 0.020f;
-    BMLongLoopFDN_init(&This->shortFDN1, numDelays, minDT, maxDT, zeroTaps, 8, 0, This->sampleRate);
-
-    BMSimpleDelayStereo_init(&This->fdnDelay, maxDT*This->sampleRate*2.0f);
 }
 
 void BMCloudReverb_destroy(BMCloudReverb* This){
@@ -175,8 +159,6 @@ void BMCloudReverb_destroy(BMCloudReverb* This){
         BMPitchShiftDelay_destroy(&This->pitchShiftArray[i]);
     
     BMLongLoopFDN_free(&This->loopFDN);
-    BMLongLoopFDN_free(&This->shortFDN1);
-    BMLongLoopFDN_free(&This->shortFDN2);
     
     free(This->buffer.bufferL);
     This->buffer.bufferL = nil;
@@ -217,62 +199,24 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
         for(int i=0;i<This->numInput;i++){
             //PitchShifting delay into wetbuffer
             BMVelvetNoiseDecorrelator_processBufferStereo(&This->vndArray[i], This->buffer.bufferL, This->buffer.bufferR, This->vnd1BufferL[i], This->vnd1BufferR[i], numSamples);
-        }
-        //2nd layer VND
-        for(int i=0;i<This->numInput;i++){
-            //PitchShifting delay into wetbuffer
-            BMVelvetNoiseDecorrelator_processMultiChannelInput(&This->vndArray[i+This->numInput], This->vnd1BufferL, This->vnd1BufferR, This->vnd2BufferL[i], This->vnd2BufferR[i], numSamples);
-            
+              
             if(i<This->numPitchShift){
                 //PitchShifting delay
-                BMPitchShiftDelay_processStereoBuffer(&This->pitchShiftArray[i], This->vnd2BufferL[i], This->vnd2BufferR[i], This->vnd2BufferL[i], This->vnd2BufferR[i], numSamples);
+                BMPitchShiftDelay_processStereoBuffer(&This->pitchShiftArray[i], This->vnd1BufferL[i], This->vnd1BufferR[i], This->vnd1BufferL[i], This->vnd1BufferR[i], numSamples);
             }
         }
+
+        memcpy(outputL,This->vnd1BufferL[0], sizeof(float)*numSamples);
+        memcpy(outputR,This->vnd1BufferR[0], sizeof(float)*numSamples);
+        return;
         
+        BMFastHadamardTransformBuffer(This->vnd1BufferL, This->vnd2BufferL, This->numInput, numSamples);
+        BMFastHadamardTransformBuffer(This->vnd1BufferR, This->vnd2BufferR, This->numInput, numSamples);
         
+
         
         //Long FDN
         BMLongLoopFDN_processMultiChannelInput(&This->loopFDN, This->vnd2BufferL, This->vnd2BufferR, This->numInput, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
-        
-//        memcpy(outputL,This->wetBuffer.bufferL, sizeof(float)*numSamples);
-//        memcpy(outputR,This->wetBuffer.bufferR, sizeof(float)*numSamples);
-//        return;
-        
-//        vDSP_vclr(This->wetBuffer.bufferL, 1, numSamples);
-//        vDSP_vclr(This->wetBuffer.bufferR, 1, numSamples);
-//
-//        //FDN 1
-//        BMLongLoopFDN_process(&This->shortFDN1, This->buffer.bufferL, This->buffer.bufferR, This->loopInput.bufferL, This->loopInput.bufferR, numSamples);
-//        float vol = 1.0f;
-//        vDSP_vsmul(This->loopInput.bufferL, 1, &vol, This->loopInput.bufferL, 1, numSamples);
-//        vDSP_vsmul(This->loopInput.bufferR, 1, &vol, This->loopInput.bufferR, 1, numSamples);
-        
-
-//        BMVelvetNoiseDecorrelator_processBufferStereo(&This->vndArray[0], This->loopInput.bufferL, This->loopInput.bufferR, This->loopInput.bufferL, This->loopInput.bufferR, numSamples);
-        
-//        vDSP_vadd(This->wetBuffer.bufferL, 1, This->loopInput.bufferL, 1, This->wetBuffer.bufferL, 1, numSamples);
-//        vDSP_vadd(This->wetBuffer.bufferR, 1, This->loopInput.bufferR, 1, This->wetBuffer.bufferR, 1, numSamples);
-        
-//        //FDN 2
-//        BMLongLoopFDN_process(&This->shortFDN2, This->loopInput.bufferL, This->loopInput.bufferR, This->loopInput.bufferL, This->loopInput.bufferR, numSamples);
-//
-//        vol = 0.2f;
-//        vDSP_vsmul(This->loopInput.bufferL, 1, &vol, This->loopInput.bufferL, 1, numSamples);
-//        vDSP_vsmul(This->loopInput.bufferR, 1, &vol, This->loopInput.bufferR, 1, numSamples);
-
-//
-//        vDSP_vadd(This->wetBuffer.bufferL, 1, This->loopInput.bufferL, 1, This->wetBuffer.bufferL, 1, numSamples);
-//        vDSP_vadd(This->wetBuffer.bufferR, 1, This->loopInput.bufferR, 1, This->wetBuffer.bufferR, 1, numSamples);
-        
-//        //FDN 3
-//        BMLongLoopFDN_process(&This->loopFDN, This->buffer.bufferL, This->buffer.bufferR, This->loopInput.bufferL, This->loopInput.bufferR, numSamples);
-//        vol = 1.0f;
-//        vDSP_vsmul(This->loopInput.bufferL, 1, &vol, This->loopInput.bufferL, 1, numSamples);
-//        vDSP_vsmul(This->loopInput.bufferR, 1, &vol, This->loopInput.bufferR, 1, numSamples);
-//        vDSP_vadd(This->wetBuffer.bufferL, 1, This->loopInput.bufferL, 1, This->wetBuffer.bufferL, 1, numSamples);
-//        vDSP_vadd(This->wetBuffer.bufferR, 1, This->loopInput.bufferR, 1, This->wetBuffer.bufferR, 1, numSamples);
-        
-
 		
         vDSP_vsmul(This->wetBuffer.bufferL, 1, &This->normallizeVol, This->wetBuffer.bufferL, 1, numSamples);
         vDSP_vsmul(This->wetBuffer.bufferR, 1, &This->normallizeVol, This->wetBuffer.bufferR, 1, numSamples);
@@ -285,23 +229,22 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
             //Process reverb dry/wet mixer
             BMWetDryMixer_processBufferInPhase(&This->reverbMixer, This->wetBuffer.bufferL, This->wetBuffer.bufferR, inputL, inputR, outputL, outputR, numSamples);
         }
-        
 
         
-//        //LFO pan
-//		// Input pan LFO
-//        BMPanLFO_process(&This->inputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
-//        vDSP_vmul(outputL, 1, This->LFOBuffer.bufferL, 1, outputL, 1, numSamples);
-//        vDSP_vmul(outputR, 1, This->LFOBuffer.bufferR, 1, outputR, 1, numSamples);
-//        BMPanLFO_process(&This->outputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
-//        vDSP_vmul(outputL, 1, This->LFOBuffer.bufferL, 1, outputL, 1, numSamples);
-//        vDSP_vmul(outputR, 1, This->LFOBuffer.bufferR, 1, outputR, 1, numSamples);
+        //LFO pan
+		// Input pan LFO
+        BMPanLFO_process(&This->inputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
+        vDSP_vmul(outputL, 1, This->LFOBuffer.bufferL, 1, outputL, 1, numSamples);
+        vDSP_vmul(outputR, 1, This->LFOBuffer.bufferR, 1, outputR, 1, numSamples);
+        BMPanLFO_process(&This->outputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
+        vDSP_vmul(outputL, 1, This->LFOBuffer.bufferL, 1, outputL, 1, numSamples);
+        vDSP_vmul(outputR, 1, This->LFOBuffer.bufferR, 1, outputR, 1, numSamples);
     }
 }
 
 float calculateScaleVol(BMCloudReverb* This){
     float factor = log2f(This->decayTime);
-    float scaleDB = (-3 * (factor));
+    float scaleDB = (-3 * (factor)) - 2.0f;
     return scaleDB;
 }
 
@@ -309,8 +252,6 @@ float calculateScaleVol(BMCloudReverb* This){
 void BMCloudReverb_setLoopDecayTime(BMCloudReverb* This,float decayTime){
     This->decayTime = decayTime;
     BMLongLoopFDN_setRT60Decay(&This->loopFDN, decayTime);
-    BMLongLoopFDN_setRT60Decay(&This->shortFDN1, decayTime*0.03f);
-    BMLongLoopFDN_setRT60Decay(&This->shortFDN2, decayTime*0.03f);
     This->normallizeVol = BM_DB_TO_GAIN(calculateScaleVol(This));
 }
 
@@ -377,21 +318,17 @@ void BMCloudReverb_setVNDLength(BMCloudReverb* This,float timeInS){
 void BMCloudReverb_updateVND(BMCloudReverb* This){
     if(This->updateVND){
         This->updateVND = false;
-//        //Free & reinit
-//        for(int i=0;i<This->numVND;i++){
-//            if(i<This->numInput){
-//                //1st layer
-//                BMVelvetNoiseDecorrelator_free(&This->vndArray[i]);
-//                BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vndArray[i], This->vndLength, This->maxTapsEachVND, 100, false, This->sampleRate);
-//            }else{
-//                //2nd layer
-//                BMVelvetNoiseDecorrelator_free(&This->vndArray[i]);
-//                BMVelvetNoiseDecorrelator_initMultiChannelInputEvenTapDensity(&This->vndArray[i], This->vndLength, This->vndLength*This->maxTapsEachVND, 100, false,This->numInput, This->sampleRate);
-//            }
-//        }
-//
-//        BMCloudReverb_setFadeInVND(This, This->fadeInS);
-//        BMCloudReverb_setDiffusion(This, This->diffusion);
+        //Free & reinit
+        for(int i=0;i<This->numVND;i++){
+            //1st layer
+            BMVelvetNoiseDecorrelator_free(&This->vndArray[i]);
+            BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vndArray[i], This->vndLength, This->maxTapsEachVND, 100, This->vndDryTap, This->sampleRate);
+            if(This->vndDryTap)
+                BMVelvetNoiseDecorrelator_setWetMix(&This->vndArray[i], 1.0f);
+        }
+
+        BMCloudReverb_setFadeInVND(This, This->fadeInS);
+        BMCloudReverb_setDiffusion(This, This->diffusion);
     }
 }
 

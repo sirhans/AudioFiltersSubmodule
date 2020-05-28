@@ -44,9 +44,6 @@ typedef struct BMCloudReverb {
     
     //Loopdelay
     BMLongLoopFDN loopFDN;
-    BMLongLoopFDN shortFDN1;
-    BMLongLoopFDN shortFDN2;
-    BMSimpleDelayStereo fdnDelay;
     
     BMWetDryMixer reverbMixer;
     
@@ -66,6 +63,7 @@ typedef struct BMCloudReverb {
     float decayTime;
     //Vnd lenght
     bool updateVND;
+    bool vndDryTap;
     float vndLength;
     
     float bellQ;
