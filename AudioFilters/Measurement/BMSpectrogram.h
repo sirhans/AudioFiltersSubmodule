@@ -23,6 +23,7 @@ typedef struct BMSpectrogram {
 
 
 typedef simd_float3 BMHSBPixel;
+typedef simd_float3 BMRGBPixel;
 
 
 
@@ -57,7 +58,7 @@ void BMSpectrogram_process(BMSpectrogram *This,
 						   SInt32 startSampleIndex,
 						   SInt32 endSampleIndex,
 						   SInt32 fftSize,
-						   BMHSBPixel** imageOutput,
+						   BMRGBPixel** imageOutput,
 						   SInt32 pixelWidth,
 						   SInt32 pixelHeight,
 						   float minFrequency,

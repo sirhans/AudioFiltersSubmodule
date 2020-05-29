@@ -21,8 +21,13 @@ typedef struct BMLongLoopFDN{
 	float *feedbackCoefficients, *delayTimes, *inputBufferL, *inputBufferR;
 	float inputAttenuation, matrixAttenuation, inverseMatrixAttenuation;
 	bool *tapSigns;
-	size_t numDelays, minDelaySamples, blockSize, feedbackShiftByDelay;
+	size_t numDelays, minDelaySamples, blockSize, feedbackShiftByDelay,feedbackShiftByBlock;
+    float minDelayS;
+    float maxDelayS;
+    float decayTimeS;
 	bool hasZeroTaps;
+    float sampleRate;
+    bool needReinit;
 } BMLongLoopFDN;
 
 
@@ -46,6 +51,7 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 						bool hasZeroTaps,
 						size_t blockSize,
 						size_t feedbackShiftByBlock,
+                        float decayTimeS,
 						float sampleRate);
 
 
@@ -61,6 +67,7 @@ void BMLongLoopFDN_free(BMLongLoopFDN *This);
 void BMLongLoopFDN_setRT60Decay(BMLongLoopFDN *This, float timeSeconds);
 
 
+void BMLongLoopFDN_setMaxDelay(BMLongLoopFDN* This,float maxDelayS);
 
 
 

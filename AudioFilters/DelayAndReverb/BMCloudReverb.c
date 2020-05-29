@@ -22,6 +22,7 @@
 #define PitchShift_BaseNote 0.14f
 #define PitchShift_BaseDuration 10.0f
 #define ReadyNo 98573
+#define FDN_BaseMaxDelaySecond 0.800f
 
 void BMCloudReverb_updateDiffusion(BMCloudReverb* This);
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This);
@@ -127,10 +128,10 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
 
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
     size_t numDelays = 16;
-    float maxDT = 0.080f;
+    float maxDT = FDN_BaseMaxDelaySecond;
     float minDT = 0.020f;
 	bool zeroTaps = true;
-    BMLongLoopFDN_init(&This->loopFDN, numDelays, minDT, maxDT, zeroTaps, 8, 1, This->sampleRate);
+    BMLongLoopFDN_init(&This->loopFDN, numDelays, minDT, maxDT, zeroTaps, 8, 1,100, This->sampleRate);
 }
 
 void BMCloudReverb_destroy(BMCloudReverb* This){
@@ -205,19 +206,25 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
                 BMPitchShiftDelay_processStereoBuffer(&This->pitchShiftArray[i], This->vnd1BufferL[i], This->vnd1BufferR[i], This->vnd1BufferL[i], This->vnd1BufferR[i], numSamples);
             }
         }
-
-        memcpy(outputL,This->vnd1BufferL[0], sizeof(float)*numSamples);
-        memcpy(outputR,This->vnd1BufferR[0], sizeof(float)*numSamples);
-        return;
         
-        BMFastHadamardTransformBuffer(This->vnd1BufferL, This->vnd2BufferL, This->numInput, numSamples);
-        BMFastHadamardTransformBuffer(This->vnd1BufferR, This->vnd2BufferR, This->numInput, numSamples);
-        
+        if(This->numInput>4){
+            BMFastHadamardTransformBuffer(This->vnd1BufferL, This->vnd2BufferL, This->numInput, numSamples);
+            BMFastHadamardTransformBuffer(This->vnd1BufferR, This->vnd2BufferR, This->numInput, numSamples);
+        }else{
+            for(int j=0;j<This->numInput;j++){
+                memcpy(This->vnd2BufferL[j], This->vnd1BufferL[j], sizeof(float)*numSamples);
+                memcpy(This->vnd2BufferR[j], This->vnd1BufferR[j], sizeof(float)*numSamples);
+            }
+        }
 
         
         //Long FDN
         BMLongLoopFDN_processMultiChannelInput(&This->loopFDN, This->vnd2BufferL, This->vnd2BufferR, This->numInput, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
 		
+//        memcpy(outputL,This->wetBuffer.bufferL, sizeof(float)*numSamples);
+//        memcpy(outputR,This->wetBuffer.bufferR , sizeof(float)*numSamples);
+//        return;
+        
         vDSP_vsmul(This->wetBuffer.bufferL, 1, &This->normallizeVol, This->wetBuffer.bufferL, 1, numSamples);
         vDSP_vsmul(This->wetBuffer.bufferR, 1, &This->normallizeVol, This->wetBuffer.bufferR, 1, numSamples);
         
@@ -244,7 +251,8 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
 
 float calculateScaleVol(BMCloudReverb* This){
     float factor = log2f(This->decayTime);
-    float scaleDB = (-3 * (factor)) - 2.0f;
+    float scaleDB = (-3. * (factor)) + (0.9-This->diffusion)*14.0f;
+    printf("%f\n",scaleDB);
     return scaleDB;
 }
 
@@ -280,14 +288,23 @@ void BMCloudReverb_setOutputMixer(BMCloudReverb* This,float wetMix){
 }
 
 void BMCloudReverb_setDiffusion(BMCloudReverb* This,float diffusion){
-    This->diffusion = diffusion;
-    This->updateDiffusion = true;
+    if(This->diffusion!=diffusion){
+        This->diffusion = diffusion;
+        This->updateDiffusion = true;
+        This->numInput = BM_MAX((roundf(8 * diffusion)/2.0f)*2,2);
+        
+        //Diff go from 0.1 to 1
+        float maxDelayS = FDN_BaseMaxDelaySecond*(1.1f-diffusion);
+        BMLongLoopFDN_setMaxDelay(&This->loopFDN, maxDelayS);
+        //update wet vol
+        This->normallizeVol = BM_DB_TO_GAIN(calculateScaleVol(This));
+    }
 }
 
 void BMCloudReverb_updateDiffusion(BMCloudReverb* This){
     if(This->updateDiffusion){
         This->updateDiffusion = false;
-        float numTaps = roundf(This->maxTapsEachVND * This->diffusion);
+        float numTaps = floorf(This->maxTapsEachVND * This->diffusion);
         for(int i=0;i<This->numVND;i++){
             BMVelvetNoiseDecorrelator_setNumTaps(&This->vndArray[i], numTaps);
         }
