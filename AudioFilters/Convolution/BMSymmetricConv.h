@@ -24,8 +24,10 @@ extern "C" {
 #define BMSymmetricConv_h
     
     
-    /*
-     * convolution with a symmetric filter kernel
+    /*!
+	 *BMSymmetricConv
+     *
+	 * convolution with a symmetric filter kernel
      *
      * @param filterKernel   the complete set of filter coefficients
      * @param filterStride   used for polyphase filtering
