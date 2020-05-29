@@ -58,7 +58,9 @@ size_t BMSincUpsampler_process(BMSincUpsampler *This,
 							 size_t inputLength){
 	
 	// how many samples of the input must be left out from the output at the beginning and end?
-	size_t inputLengthMinusPadding = inputLength - This->inputPaddingLeft - This->inputPaddingRight;
+	int inputLengthMinusPadding_i = (int)inputLength - (int)This->inputPaddingLeft - (int)This->inputPaddingRight;
+    assert(inputLengthMinusPadding_i>0);
+    size_t inputLengthMinusPadding = inputLengthMinusPadding_i;
 	
 	// do the interpolation by convolution
 	// the index starts at 1 because the first filter kernel will be
