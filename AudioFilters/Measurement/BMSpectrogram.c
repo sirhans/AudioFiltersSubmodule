@@ -10,6 +10,8 @@
 #include "BMIntegerMath.h"
 #include "Constants.h"
 
+#define BMSG_BYTES_PER_PIXEL 4
+
 void BMSpectrogram_init(BMSpectrogram *This,
 						size_t maxFFTSize,
 						size_t maxImageHeight,
@@ -147,34 +149,37 @@ simd_float3 BMSpectrum_HSLToRGB(simd_float3 hsl){
 
 
 
-/*
- * since h and s are fixed, we can bake their values into the code and it runs
- * faster.
+/*!
+ *BMSpectrum_valueToRGBA
+ *
+ * let the value, v, be the lightness of a pixel in HSL space. We then create
+ * a pixel in HSL and convert to RGBA.
  */
-simd_float3 BMSpectrum_HSLToRGB_baked(float l){
+void BMSpectrum_valueToRGBA(float v, uint8_t *output){
 	// generate an rgb pixel with 100% saturation
 	simd_float3 rgb = {0.0f, 0.625f, 1.0f};
 
 	// find out how much we need to scale down the saturated pixel to apply the
 	// saturation and make headroom for the lightness
 	float s = 0.5f;
-	float c = (1.0f - fabsf(2.0f * l - 1.0f)) * s;
+	float c = (1.0f - fabsf(2.0f * v - 1.0f)) * s;
 
 	// scale the rgb pixel and mix with the lightness
-	return (rgb - 0.5f) * c + l;
+	rgb = (rgb - 0.5f) * c + v;
+    
+    // convert to 8 bit RGBA and return
+    rgb *= 255.0;
+    output[0] = round(rgb.x);
+    output[1] = round(rgb.y);
+    output[2] = round(rgb.z);
+    output[3] = 255;
 }
 
 
 
-void BMSpectrogram_toRGBColour(float* input, BMRGBPixel* output, size_t length){
-	// toHSBColourFunction[x_] := {7/12, 1 - x, x}
-//	float h = (6.75/12.0);
-//	float s = 0.5f;
-//	simd_float3 hsl = {h,s,0.f};
-	for(size_t i=0; i<length; i++){
-		//hsl.z = input[i];
-		//output[i] = BMSpectrum_HSLToRGB(hsl);
-		output[i] = BMSpectrum_HSLToRGB_baked(input[i]);
+void BMSpectrogram_toRGBAColour(float* input, uint8_t *output, size_t inputLength){
+	for(size_t i=0; i<inputLength; i++){
+		BMSpectrum_valueToRGBA(input[i], output + (i*4));
 	}
 }
 
@@ -236,7 +241,7 @@ void BMSpectrogram_process(BMSpectrogram *This,
 						   SInt32 startSampleIndex,
 						   SInt32 endSampleIndex,
 						   SInt32 fftSize,
-						   BMRGBPixel** imageOutput,
+						   uint8_t *imageOutput,
 						   SInt32 pixelWidth,
 						   SInt32 pixelHeight,
 						   float minFrequency,
@@ -299,7 +304,7 @@ void BMSpectrogram_process(BMSpectrogram *This,
 		float upperLimit = 1;
 		vDSP_vclip(This->b2, 1, &lowerLimit, &upperLimit, This->b2, 1, pixelHeight);
 		
-		// convert to RGB colours and write to output
-		BMSpectrogram_toRGBColour(This->b2,imageOutput[i],pixelHeight);
+		// convert to RGBA colours and write to output
+		BMSpectrogram_toRGBAColour(This->b2,&imageOutput[i*pixelHeight*BMSG_BYTES_PER_PIXEL],pixelHeight);
 	}
 }

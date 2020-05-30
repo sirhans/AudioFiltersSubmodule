@@ -23,7 +23,9 @@ typedef struct BMSpectrogram {
 
 
 typedef simd_float3 BMHSBPixel;
-typedef simd_float3 BMRGBPixel;
+typedef struct BMRGBPixel {
+    uint8_t r,g,b;
+} BMRGBPixel;
 
 
 
@@ -75,7 +77,7 @@ float BMSpectrogram_getPaddingRight(size_t fftSize);
  * @param startSampleIndex first sample of audio in inputAudio that you want to draw on the screen
  * @param endSampleIndex last sample of audio in inputAudio that you want to draw on the screen
  * @param fftSize length of fft. must be an integer power of two. each fft output represents one row of pixels in the image. overlap and stride are computed from fftSize and pixelWidth
- * @param imageOutput 2d array of pixels: [width,height] column major order
+ * @param imageOutput an array of RGBA pixels with 32 bits per pixel, in column major order, having height = pixelHeight and width = pixelWidth
  * @param pixelWidth width of image output in pixels. one pixel for each fft output
  * @param pixelHeight height of image outptu in pixels. the output is in bark scale frequency, interpolated fromt the FFT output so the pixelHeight does not correspond to the fft length or the frequency resolution.
  */
@@ -85,7 +87,7 @@ void BMSpectrogram_process(BMSpectrogram *This,
 						   SInt32 startSampleIndex,
 						   SInt32 endSampleIndex,
 						   SInt32 fftSize,
-						   BMRGBPixel** imageOutput,
+						   uint8_t *imageOutput,
 						   SInt32 pixelWidth,
 						   SInt32 pixelHeight,
 						   float minFrequency,
