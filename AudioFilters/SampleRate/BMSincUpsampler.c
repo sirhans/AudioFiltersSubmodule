@@ -9,6 +9,10 @@
 #include "BMSincUpsampler.h"
 #include <Accelerate/Accelerate.h>
 #include "BMFFT.h"
+#include "BMSymmetricConv.h"
+#include "Constants.h"
+
+#define BMSU_BUFFER_SIZE BM_BUFFER_CHUNK_SIZE * 4
 
 
 void BMSincUpsampler_initFilterKernels(BMSincUpsampler *This);
@@ -34,6 +38,8 @@ void BMSincUpsampler_init(BMSincUpsampler *This,
 	for(size_t i=0; i<This->numKernels; i++)
 		This->filterKernels[i] = malloc(sizeof(float*)*This->kernelLength);
 	
+	This->buffer = malloc(sizeof(float)*(BMSU_BUFFER_SIZE + This->kernelLength - 1));
+	
 	BMSincUpsampler_initFilterKernels(This);
 }
 
@@ -46,6 +52,9 @@ void BMSincUpsampler_free(BMSincUpsampler *This){
 		free(This->filterKernels[i]);
 	free(This->filterKernels);
 	This->filterKernels = NULL;
+	
+	free(This->buffer);
+	This->buffer = NULL;
 }
 
 
@@ -67,6 +76,17 @@ size_t BMSincUpsampler_process(BMSincUpsampler *This,
 	// replaced by the vsmul command on the line below
 	for(size_t i=1; i<This->upsampleFactor; i++)
 		vDSP_conv(input, 1, This->filterKernels[This->numKernels - i], 1, output+i, This->upsampleFactor, inputLengthMinusPadding-1, This->kernelLength);
+	
+	// do the interpolation by efficient symmetric convolution
+//	size_t numSamplesConv = inputLengthMinusPadding-1;
+//	size_t indexShift = 0;
+//	while(numSamplesConv > 0){
+//		size_t samplesProcessing = BM_MIN(BMSU_BUFFER_SIZE,numSamplesConv);
+//		for(size_t i=1; i<This->upsampleFactor; i++)
+//			BMSymmetricConv(This->filterKernels[This->numKernels - i], 1, input + indexShift, 1, output+i + indexShift, This->upsampleFactor, This->buffer, This->kernelLength, samplesProcessing);
+//		numSamplesConv -= samplesProcessing;
+//		indexShift += samplesProcessing;
+//	}
 	
 	// copy the original samples from input to output to fill in the remaining samples
 	float zero = 0.0f;

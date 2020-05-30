@@ -16,6 +16,7 @@
 typedef struct BMSincUpsampler {
 	size_t upsampleFactor, kernelLength, inputPaddingLeft, inputPaddingRight, numKernels;
 	float **filterKernels;
+	float *buffer;
 } BMSincUpsampler;
 
 

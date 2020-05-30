@@ -9,7 +9,7 @@
 #include "BMSincDownsampler.h"
 #include <Accelerate/Accelerate.h>
 
-void BMSincDownsampler_genKernel(float* kernel, size_t kernelLength, size_t downsampleFactor);
+void BMSincDownsampler_genKernel(BMSincDownsampler *This);
 
 void BMSincDownsampler_init(BMSincDownsampler *This, size_t kernelLength, size_t downsampleFactor){
     // the kernel length should be an odd whole-number greater than zero
@@ -42,7 +42,7 @@ void BMSincDownsampler_init(BMSincDownsampler *This, size_t kernelLength, size_t
         This->kernel = malloc(sizeof(float)*kernelLength);
 
         // generate the sinc lowpass filter kernel
-        BMSincDownsampler_genKernel(This->kernel,kernelLength,downsampleFactor);
+        BMSincDownsampler_genKernel(This);
     }
 }
 
@@ -57,20 +57,20 @@ void BMSincDownsampler_free(BMSincDownsampler *This){
 
 float BMSinc(float t){
     // avoid divide by zero error
-    if (abs(t)<=FLT_EPSILON)
+    if (fabsf(t)<=FLT_EPSILON)
         return 1.0f;
 
     // else return sinc(t)
-    return fsinf(t)/t;
+    return sinf(t)/t;
 }
 
 
-void BMSincDownsampler_genKernel(float* kernel, size_t kernelLength, size_t downsampleFactor){
-    for(size_t i=0; i<kernelLength; i++){
+void BMSincDownsampler_genKernel(BMSincDownsampler *This){
+    for(size_t i=0; i<This->kernelLength; i++){
         // t is the index i shifted so the centre of the kernel is at 0
         float t = (float)i - (float)This->paddingLeft;
         // p is the phase of the sine wave in the sinc function
-        float p = M_PI * t / (float)downsampleFactor;
+        float p = M_PI * t / (float)This->downsampleFactor;
         // this places the cutoff frequency of the filter at nyquist/downsampleFactor
         This->kernel[i] = BMSinc(p);
     }
@@ -78,10 +78,10 @@ void BMSincDownsampler_genKernel(float* kernel, size_t kernelLength, size_t down
     // apply a Hamming window function to the filter kernel. Hamming is the
     // window function that doesn't go all the way down to zero at its edges.
     // It has steeper cutoff and less flat frequency response.
-    float *window = malloc(sizeof(float)*kernelLength);
+    float *window = malloc(sizeof(float)*This->kernelLength);
     int useHalfWindow = false;
-    vDSP_hamm_window(window,kernelLength,useHalfWindow);
-    vDSP_vmul(window,1,kernel,1,kernel,1,kernelLength);
+    vDSP_hamm_window(window,This->kernelLength,useHalfWindow);
+    vDSP_vmul(window,1,This->kernel,1,This->kernel,1,This->kernelLength);
     free(window);
 }
 

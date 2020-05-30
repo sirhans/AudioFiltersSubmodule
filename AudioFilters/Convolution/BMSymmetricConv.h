@@ -41,9 +41,9 @@ extern "C" {
      * @param numSamples     does not include convolution margin
      */
     static __inline__ __attribute__((always_inline)) void BMSymmetricConv(
-         float* filterKernel,
+         const float* filterKernel,
          size_t filterStride,
-         float* audioInput,
+         const float* audioInput,
          size_t inputStride,
          float* audioOutput,
          size_t outputStride,
