@@ -62,10 +62,12 @@ float BMSpectrogram_getPaddingRight(size_t fftSize);
  *BMSpectrogram_process
  *
  * This function takes an audio array as input and converts it to a 2d image in
- * HSB colour format.
+ * RGB colour format.
  *
  * It requires some additional samples to be available in the input array beyond
- * the region you actually plan to plot.
+ * the region you actually plan to plot. Call BMSpectrogram_getPaddingLeft(...)
+ * and BMSpectrogram_getPaddingRight(...) to find out how many extra samples you
+ * need to provide.
  *
  * @param This pointer to an initialised struct
  * @param inputAudio input array with length = inputLength

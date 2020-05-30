@@ -215,7 +215,7 @@ float BMSpectrogram_getPaddingLeft(size_t fftSize){
 		printf("[BMSpectrogram] WARNING: fftSize must be >=4\n");
 	if(!isPowerOfTwo((size_t)fftSize))
 		printf("[BMSpectrogram] WARNING: fftSize must be a power of two\n");
-	return fftSize/2 - 1;
+	return (fftSize/2) - 1;
 }
 
 
