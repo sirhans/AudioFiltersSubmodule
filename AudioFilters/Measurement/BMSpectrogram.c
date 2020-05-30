@@ -210,6 +210,25 @@ void BMSpectrogram_toDbScaleAndClip(const float* input, float* output, size_t ff
 
 
 
+float BMSpectrogram_getPaddingLeft(size_t fftSize){
+	if(4 > fftSize)
+		printf("[BMSpectrogram] WARNING: fftSize must be >=4\n");
+	if(!isPowerOfTwo((size_t)fftSize))
+		printf("[BMSpectrogram] WARNING: fftSize must be a power of two\n");
+	return fftSize/2 - 1;
+}
+
+
+float BMSpectrogram_getPaddingRight(size_t fftSize){
+	if(4 > fftSize)
+		printf("[BMSpectrogram] WARNING: fftSize must be >=4\n");
+	if(!isPowerOfTwo((size_t)fftSize))
+		printf("[BMSpectrogram] WARNING: fftSize must be a power of two\n");
+	return fftSize/2;
+}
+
+
+
 
 void BMSpectrogram_process(BMSpectrogram *This,
 						   const float* inputAudio,
