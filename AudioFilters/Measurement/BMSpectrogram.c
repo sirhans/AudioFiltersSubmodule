@@ -10,6 +10,8 @@
 #include "BMIntegerMath.h"
 #include "Constants.h"
 
+#define BMSG_BYTES_PER_PIXEL 4
+
 void BMSpectrogram_init(BMSpectrogram *This,
 						size_t maxFFTSize,
 						size_t maxImageHeight,
@@ -112,6 +114,78 @@ void BMSpectrogram_toHSBColour(float* input, BMHSBPixel* output, size_t length){
 
 
 
+// http://www.chilliant.com/rgb2hsv.html
+/*
+ float3 HUEtoRGB(in float H)
+  {
+    float R = abs(H * 6 - 3) - 1;
+    float G = 2 - abs(H * 6 - 2);
+    float B = 2 - abs(H * 6 - 4);
+    return saturate(float3(R,G,B));
+  }
+ */
+simd_float3 BMSpectrum_HUEtoRGB(float h) {
+	simd_float3 a = {-1.0f, 2.0f, 2.0f};
+	simd_float3 b = {-3.0f, -2.0f, -4.0f};
+	simd_float3 c = {1.0f, -1.0f, -1.0f};
+	simd_float3 rgb = simd_abs(6.0f * h + b) * c;
+	return simd_clamp(rgb+a,0.0f, 1.0f);
+}
+
+
+
+// http://www.chilliant.com/rgb2hsv.html
+simd_float3 BMSpectrum_HSLToRGB(simd_float3 hsl){
+	// generate an rgb pixel with 100% saturation
+	simd_float3 rgb = BMSpectrum_HUEtoRGB(hsl.x);
+	
+	// find out how much we need to scale down the saturated pixel to apply the
+	// saturation and make headroom for the lightness
+	float c = (1.0f - fabsf(2.0f * hsl.z - 1.0f)) * hsl.y;
+	
+	// scale the rgb pixel and mix with the lightness
+	return (rgb - 0.5f) * c + hsl.z;
+}
+
+
+
+/*!
+ *BMSpectrum_valueToRGBA
+ *
+ * let the value, v, be the lightness of a pixel in HSL space. We then create
+ * a pixel in HSL and convert to RGBA.
+ */
+void BMSpectrum_valueToRGBA(float v, uint8_t *output){
+	// generate an rgb pixel with 100% saturation
+	simd_float3 rgb = {0.0f, 0.625f, 1.0f};
+
+	// find out how much we need to scale down the saturated pixel to apply the
+	// saturation and make headroom for the lightness
+	float s = 0.5f;
+	float c = (1.0f - fabsf(2.0f * v - 1.0f)) * s;
+
+	// scale the rgb pixel and mix with the lightness
+	rgb = (rgb - 0.5f) * c + v;
+    
+    // convert to 8 bit RGBA and return
+    rgb *= 255.0;
+    output[0] = round(rgb.x);
+    output[1] = round(rgb.y);
+    output[2] = round(rgb.z);
+    output[3] = 255;
+}
+
+
+
+void BMSpectrogram_toRGBAColour(float* input, uint8_t *output, size_t inputLength){
+	for(size_t i=0; i<inputLength; i++){
+		BMSpectrum_valueToRGBA(input[i], output + (i*4));
+	}
+}
+
+
+
+
 
 void BMSpectrogram_toDbScaleAndClip(const float* input, float* output, size_t fftSize, size_t length){
 	// compensate for the scaling of the vDSP FFT
@@ -141,6 +215,25 @@ void BMSpectrogram_toDbScaleAndClip(const float* input, float* output, size_t ff
 
 
 
+float BMSpectrogram_getPaddingLeft(size_t fftSize){
+	if(4 > fftSize)
+		printf("[BMSpectrogram] WARNING: fftSize must be >=4\n");
+	if(!isPowerOfTwo((size_t)fftSize))
+		printf("[BMSpectrogram] WARNING: fftSize must be a power of two\n");
+	return (fftSize/2) - 1;
+}
+
+
+float BMSpectrogram_getPaddingRight(size_t fftSize){
+	if(4 > fftSize)
+		printf("[BMSpectrogram] WARNING: fftSize must be >=4\n");
+	if(!isPowerOfTwo((size_t)fftSize))
+		printf("[BMSpectrogram] WARNING: fftSize must be a power of two\n");
+	return fftSize/2;
+}
+
+
+
 
 void BMSpectrogram_process(BMSpectrogram *This,
 						   const float* inputAudio,
@@ -148,7 +241,7 @@ void BMSpectrogram_process(BMSpectrogram *This,
 						   SInt32 startSampleIndex,
 						   SInt32 endSampleIndex,
 						   SInt32 fftSize,
-						   BMHSBPixel** imageOutput,
+						   uint8_t *imageOutput,
 						   SInt32 pixelWidth,
 						   SInt32 pixelHeight,
 						   float minFrequency,
@@ -206,7 +299,12 @@ void BMSpectrogram_process(BMSpectrogram *This,
 										 minFrequency,
 										 maxFrequency);
 		
-		// convert to HSB colours and write to output
-		BMSpectrogram_toHSBColour(This->b2,imageOutput[i],pixelHeight);
+		// clamp the outputs to [0,1]
+		float lowerLimit = 0;
+		float upperLimit = 1;
+		vDSP_vclip(This->b2, 1, &lowerLimit, &upperLimit, This->b2, 1, pixelHeight);
+		
+		// convert to RGBA colours and write to output
+		BMSpectrogram_toRGBAColour(This->b2,&imageOutput[i*pixelHeight*BMSG_BYTES_PER_PIXEL],pixelHeight);
 	}
 }
