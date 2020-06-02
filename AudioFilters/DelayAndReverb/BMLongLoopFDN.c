@@ -84,8 +84,10 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	
 	// record delay times
 	This->delayTimes = calloc(numDelays,sizeof(float));
-	for(size_t i=0; i<numDelays; i++)
+    for(size_t i=0; i<numDelays; i++){
 		This->delayTimes[i] = (float)delayLengths[i] / sampleRate;
+        printf("%f\n",This->delayTimes[i]);
+    }
 	
 	// init the input buffers
 	This->inputBufferL = calloc(minDelaySamples * 2, sizeof(float));
@@ -166,6 +168,7 @@ void BMLongLoopFDN_randomShuffleSizet(size_t* A, size_t length){
 		size_t temp = A[i];
 		A[i] = A[randomIndex];
 		A[randomIndex] = temp;
+        printf("random %zu\n",randomIndex);
 	}
 }
 

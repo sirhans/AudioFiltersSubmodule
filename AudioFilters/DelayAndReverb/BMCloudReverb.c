@@ -22,7 +22,7 @@
 #define PitchShift_BaseNote 0.14f
 #define PitchShift_BaseDuration 10.0f
 #define ReadyNo 98573
-#define FDN_BaseMaxDelaySecond 0.800f
+#define FDN_BaseMaxDelaySecond 0.400f
 
 void BMCloudReverb_updateDiffusion(BMCloudReverb* This);
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This);
@@ -128,7 +128,7 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
 }
 
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
-    size_t numDelays = 16;
+    size_t numDelays = 24;
     float maxDT = FDN_BaseMaxDelaySecond;
     float minDT = 0.020f;
 	bool zeroTaps = true;
@@ -212,15 +212,18 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
             }
         }
 
+//        memcpy(outputL,This->vnd2BufferL[0], sizeof(float)*numSamples);
+//        memcpy(outputR,This->vnd2BufferL[0] , sizeof(float)*numSamples);
+//        return;
         
         //Long FDN
         BMLongLoopFDN_processMultiChannelInput(&This->loopFDN, This->vnd2BufferL, This->vnd2BufferR, This->numInput, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
 		
         BMPitchShiftDelay_processStereoBuffer(&This->pitchShiftDelay, This->wetBuffer.bufferL, This->wetBuffer.bufferR, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
         
-//        memcpy(outputL,This->wetBuffer.bufferL, sizeof(float)*numSamples);
-//        memcpy(outputR,This->wetBuffer.bufferR , sizeof(float)*numSamples);
-//        return;
+        memcpy(outputL,This->wetBuffer.bufferL, sizeof(float)*numSamples);
+        memcpy(outputR,This->wetBuffer.bufferR , sizeof(float)*numSamples);
+        return;
         
         vDSP_vsmul(This->wetBuffer.bufferL, 1, &This->normallizeVol, This->wetBuffer.bufferL, 1, numSamples);
         vDSP_vsmul(This->wetBuffer.bufferR, 1, &This->normallizeVol, This->wetBuffer.bufferR, 1, numSamples);

@@ -205,19 +205,19 @@ int BMExportWavFile_exportAudioInt(BMExportWavFile* This,char* filePath,float* d
         goto error1;
     }
 
-    double frequency1 = 493.9; /*B4*/
-    double amplitude1 = 0.65 * (double)SHRT_MAX;
-    double frequency2 = 392.0; /*G4*/
-    double amplitude2 = 0.75 * (double)SHRT_MAX;
-
-    /*Fill the buffer*/
-    ret = generate_dual_sawtooth(   frequency1,
-                                    amplitude1,
-                                    frequency2,
-                                    amplitude2,
-                                    This->sampleRate,
-                                    length,
-                                    buffer_p);
+//    double frequency1 = 493.9; /*B4*/
+//    double amplitude1 = 0.65 * (double)SHRT_MAX;
+//    double frequency2 = 392.0; /*G4*/
+//    double amplitude2 = 0.75 * (double)SHRT_MAX;
+//
+//    /*Fill the buffer*/
+//    ret = generate_dual_sawtooth(   frequency1,
+//                                    amplitude1,
+//                                    frequency2,
+//                                    amplitude2,
+//                                    This->sampleRate,
+//                                    length,
+//                                    buffer_p);
     
     for(int i=0;i<length;i++){
 //        printf("%d\n",buffer_p[i].left);
@@ -268,7 +268,8 @@ int BMExportWavFile_exportAudioInt(BMExportWavFile* This,char* filePath,float* d
 int BMExportWavFile_exportAudioFloatToInt16(BMExportWavFile* This,char* filePath,float* dataL,float* dataR,uint32_t length){
     for(int i=0;i<length;i++){
         dataL[i] = dataL[i]*INT16_MAX;
-        dataR[i] = dataR[i]*INT16_MAX;
+        if(dataL!=dataR)
+            dataR[i] = dataR[i]*INT16_MAX;
     }
     return BMExportWavFile_exportAudioInt(This, filePath, dataL, dataR, length);
 }
