@@ -39,8 +39,7 @@ typedef struct BMCloudReverb {
     size_t numInput;
     float fadeInS;
     
-    BMPitchShiftDelay* pitchShiftArray;
-    size_t numPitchShift;
+    BMPitchShiftDelay pitchShiftDelay;
     
     //Loopdelay
     BMLongLoopFDN loopFDN;

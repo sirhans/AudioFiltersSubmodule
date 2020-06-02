@@ -26,7 +26,7 @@ typedef struct BMPanLFO {
 void BMPanLFO_init(BMPanLFO *This,
                    float fHz,
                    float depth,
-                   float sampleRate);
+                   float sampleRate,bool randomStart);
 
 void BMPanLFO_destroy(BMPanLFO *This);
 

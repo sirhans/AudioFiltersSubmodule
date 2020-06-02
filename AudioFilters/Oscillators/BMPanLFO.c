@@ -12,12 +12,22 @@
 
 void BMPanLFO_init(BMPanLFO *This,
                    float fHz,float depth,
-                   float sampleRate){
+                   float sampleRate,bool randomStart){
     BMQuadratureOscillator_init(&This->oscil, fHz, sampleRate);
     This->depth = depth;
     This->base = 1.0f - depth;
     This->tempL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->tempR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+    if(randomStart){
+        //Randomize start from hz
+        int cycleRange = sampleRate/fHz;
+        float randomStart = arc4random()%cycleRange;
+        printf("start %f\n",randomStart);
+        float output;
+        for(int i=0;i<randomStart;i++){
+            BMQuadratureOscillator_process(&This->oscil, &output, &output, 1);
+        }
+    }
 }
 
 void BMPanLFO_destroy(BMPanLFO *This){
