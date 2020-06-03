@@ -122,7 +122,7 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     
     //Pan
     BMPanLFO_init(&This->inputPan, 0.412f, 0.6f, sr,true);
-    BMPanLFO_init(&This->outputPan, 0.5456f, 0.6f, sr,true);
+    BMPanLFO_init(&This->outputPan, 1.8f, 0.3f, sr,true);
     
     This->initNo = ReadyNo;
 }
@@ -266,7 +266,7 @@ void BMCloudReverb_setLoopDecayTime(BMCloudReverb* This,float decayTime){
     This->normallizeVol = BM_DB_TO_GAIN(calculateScaleVol(This));
 }
 
-#define DepthMax 0.25f
+#define DepthMax 0.5f
 float BMCloudReverb_getMixBaseOnMode(BMCloudReverb* This,float mode){
     float mix = 0;
     if(mode==0){
@@ -331,7 +331,7 @@ void BMCloudReverb_setDelayPitchMixer(BMCloudReverb* This,float wetMix){
     
     //Control pan
     BMPanLFO_setDepth(&This->inputPan, wetMix*DepthMax);
-    BMPanLFO_setDepth(&This->outputPan, wetMix*DepthMax);
+	BMPanLFO_setDepth(&This->outputPan, 0.5*wetMix*DepthMax);
 }
 
 

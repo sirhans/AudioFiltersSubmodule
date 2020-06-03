@@ -13,7 +13,11 @@
 void BMPanLFO_init(BMPanLFO *This,
                    float fHz,float depth,
                    float sampleRate,bool randomStart){
-    BMQuadratureOscillator_init(&This->oscil, fHz, sampleRate);
+	// the oscillator frequency is half the output frequency because the square
+	// rectifier in the process function doubles the frequency
+	float oscilatorFrequency = fHz * 0.5f;
+	
+	BMQuadratureOscillator_init(&This->oscil, oscilatorFrequency, sampleRate);
     This->depth = depth;
     This->base = 1.0f - depth;
     This->tempL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
