@@ -190,11 +190,11 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
         BMCloudReverb_updateVND(This);
         BMCloudReverb_updateDiffusion(This);
         
-        //Filters
-        BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, inputL, inputR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
+//        //Filters
+//        BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, inputL, inputR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
         
-//        memcpy(This->buffer.bufferL, inputL, sizeof(float)*numSamples);
-//        memcpy(This->buffer.bufferR, inputR, sizeof(float)*numSamples);
+        memcpy(This->buffer.bufferL, inputL, sizeof(float)*numSamples);
+        memcpy(This->buffer.bufferR, inputR, sizeof(float)*numSamples);
         
         //1st layer VND
         for(int i=0;i<This->numInput;i++){
@@ -221,9 +221,12 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
 		
         BMPitchShiftDelay_processStereoBuffer(&This->pitchShiftDelay, This->wetBuffer.bufferL, This->wetBuffer.bufferR, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
         
-        memcpy(outputL,This->wetBuffer.bufferL, sizeof(float)*numSamples);
-        memcpy(outputR,This->wetBuffer.bufferR , sizeof(float)*numSamples);
-        return;
+//        memcpy(outputL,This->wetBuffer.bufferL, sizeof(float)*numSamples);
+//        memcpy(outputR,This->wetBuffer.bufferR , sizeof(float)*numSamples);
+//        return;
+        
+        //Filters
+        BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, This->wetBuffer.bufferL, This->wetBuffer.bufferR, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
         
         vDSP_vsmul(This->wetBuffer.bufferL, 1, &This->normallizeVol, This->wetBuffer.bufferL, 1, numSamples);
         vDSP_vsmul(This->wetBuffer.bufferR, 1, &This->normallizeVol, This->wetBuffer.bufferR, 1, numSamples);
@@ -286,11 +289,11 @@ float BMCloudReverb_getDelayRangeBaseOnMode(BMCloudReverb* This,float mode){
     float range = 0;
     if(mode==5){
         //Mode 6
-        range = 1600;
+        range = 800;
     }else if(mode==4){
-        range = 1250;
+        range = 600;
     }else{
-        range = 1000;
+        range = 500;
     }
     return (range/48000.0f)*This->sampleRate;
 }
