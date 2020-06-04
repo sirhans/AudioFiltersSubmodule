@@ -323,7 +323,7 @@ void BMCloudReverb_setDelayPitchMixer(BMCloudReverb* This,float wetMix){
     float duration = BMCloudReverb_getDurationBaseOnMode(This,mode);
     
     float delayRange = BMCloudReverb_getDelayRangeBaseOnMode(This,mode);
-    printf("pitch %f %f %f\n",mix,duration,delayRange);
+//    printf("pitch %f %f %f\n",mix,duration,delayRange);
     
     BMPitchShiftDelay_setWetGain(&This->pitchShiftDelay, mix);
     BMPitchShiftDelay_setDelayDuration(&This->pitchShiftDelay,duration);
@@ -331,7 +331,7 @@ void BMCloudReverb_setDelayPitchMixer(BMCloudReverb* This,float wetMix){
     
     //Control pan
     BMPanLFO_setDepth(&This->inputPan, wetMix*DepthMax);
-	BMPanLFO_setDepth(&This->outputPan, 0.33*wetMix*DepthMax);
+	BMPanLFO_setDepth(&This->outputPan, 0.6*wetMix*DepthMax);
 }
 
 
