@@ -486,15 +486,7 @@ void BMLongLoopFDN_processMultiChannelInput(BMLongLoopFDN *This,
 		vDSP_vsmul(outputR+samplesProccessed, 1, &This->inverseMatrixAttenuation, outputR+samplesProccessed, 1, samplesProcessing);
 		
 		
-		// mix the zero taps to the output if we have them
-		if(This->hasZeroTaps){
-            float mul = 1.0f/sqrtf(numInputChannels);
-            for(int j=0;j<numInputChannels;j++){
-                vDSP_vsma(inputL[j]+samplesProccessed, 1, &mul, outputL+samplesProccessed, 1, outputL+samplesProccessed, 1, samplesProcessing);
-                vDSP_vsma(inputR[j]+samplesProccessed, 1, &mul, outputR+samplesProccessed, 1, outputR+samplesProccessed, 1, samplesProcessing);
-            }
-			
-		}
+		
 		
 		
 		// rename some buffers to shorten the code in the following sections:
@@ -563,7 +555,17 @@ void BMLongLoopFDN_processMultiChannelInput(BMLongLoopFDN *This,
 			TPCircularBufferProduce(&This->delays[i], bytesProcessing);
 		}
 		
-		
+        
+        // mix the zero taps to the output if we have them
+        if(This->hasZeroTaps){
+            float mul = 1.0f/sqrtf(numInputChannels);
+            for(int j=0;j<numInputChannels;j++){
+                vDSP_vsma(inputL[j]+samplesProccessed, 1, &mul, outputL+samplesProccessed, 1, outputL+samplesProccessed, 1, samplesProcessing);
+                vDSP_vsma(inputR[j]+samplesProccessed, 1, &mul, outputR+samplesProccessed, 1, outputR+samplesProccessed, 1, samplesProcessing);
+            }
+            
+        }
+        
 		// advance pointers
 		samplesProccessed += samplesProcessing;
 //		outputL += samplesProcessing;
