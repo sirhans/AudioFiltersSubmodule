@@ -22,7 +22,7 @@
 #define PitchShift_BaseNote 0.14f
 #define PitchShift_BaseDuration 10.0f
 #define ReadyNo 98573
-#define FDN_BaseMaxDelaySecond 0.400f
+#define FDN_BaseMaxDelaySecond 0.800f
 
 void BMCloudReverb_updateDiffusion(BMCloudReverb* This);
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This);

@@ -558,7 +558,10 @@ void BMLongLoopFDN_processMultiChannelInput(BMLongLoopFDN *This,
         
         // mix the zero taps to the output if we have them
         if(This->hasZeroTaps){
-            float mul = 1.0f/sqrtf(numInputChannels);
+			// attenuate the dry signal according to the number of input channels
+			float mul = 1.0f / sqrtf(numInputChannels);
+			// remove the inputAttenuation that we applied for the FDN input
+			mul /= This->inputAttenuation;
             for(int j=0;j<numInputChannels;j++){
                 vDSP_vsma(inputL[j]+samplesProccessed, 1, &mul, outputL+samplesProccessed, 1, outputL+samplesProccessed, 1, samplesProcessing);
                 vDSP_vsma(inputR[j]+samplesProccessed, 1, &mul, outputR+samplesProccessed, 1, outputR+samplesProccessed, 1, samplesProcessing);
