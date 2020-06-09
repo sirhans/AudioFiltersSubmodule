@@ -571,7 +571,6 @@ void BMLongLoopFDN_processMultiChannelInput(BMLongLoopFDN *This,
                 vDSP_vsma(inputL[j]+samplesProccessed, 1, &mul, outputL+samplesProccessed, 1, outputL+samplesProccessed, 1, samplesProcessing);
                 vDSP_vsma(inputR[j]+samplesProccessed, 1, &mul, outputR+samplesProccessed, 1, outputR+samplesProccessed, 1, samplesProcessing);
             }
-            
         }
         
 		// advance pointers

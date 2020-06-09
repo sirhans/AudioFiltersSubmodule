@@ -84,8 +84,8 @@ static __inline__ __attribute__((always_inline)) void BMFastHadamardTransformBuf
             memcpy(input[i], output[i], bufferSize);
         }
         
-        //Go to smaller block size
-        blockSize *= 0.5;
+        //take half of the block size
+        blockSize /= 2;
     }
     
     float normalizeVol = 1/sqrtf(inputSize);
