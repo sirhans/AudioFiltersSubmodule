@@ -26,7 +26,7 @@ void BMPanLFO_init(BMPanLFO *This,
         //Randomize start from hz
         int cycleRange = sampleRate/fHz;
         float randomStart = arc4random()%cycleRange;
-        printf("start %f\n",randomStart);
+//        printf("start %f\n",randomStart);
         float output;
         for(int i=0;i<randomStart;i++){
             BMQuadratureOscillator_process(&This->oscil, &output, &output, 1);

@@ -122,7 +122,7 @@ void BMVelvetNoiseDecorrelator_genRandGains(BMVelvetNoiseDecorrelator *This){
 	
 	
 	// apply an exponential decay envelope to the gains
-    float startGain = BM_DB_TO_GAIN(VND_StartFadeInDB);
+    float startGain = 0;//BM_DB_TO_GAIN(VND_StartFadeInDB);
 	for(size_t i=shift; i<This->numWetTaps+shift; i++){
 		// left channel
 		float delayTimeInSeconds = This->delayLengthsL[i] / This->sampleRate;
