@@ -60,7 +60,12 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	
 	// generate random delay times
 	size_t *delayLengths = malloc(sizeof(size_t)*numDelays);
-	BMReverbRandomsInRange(minDelaySamples, maxDelaySamples, delayLengths, numDelays);
+    size_t firstSectionNumDelays = numDelays / 2;
+    size_t secondSectionNumDelays = numDelays - firstSectionNumDelays;
+    size_t firstSectionMaxDelaySamples = minDelaySamples + (maxDelaySamples-minDelaySamples)/3;
+    size_t secondSectionMinDelaySamples = firstSectionMaxDelaySamples + (maxDelaySamples-minDelaySamples)/(numDelays-1);
+	BMReverbRandomsInRange(minDelaySamples, firstSectionMaxDelaySamples, delayLengths, firstSectionNumDelays);
+    BMReverbRandomsInRange(secondSectionMinDelaySamples, maxDelaySamples, delayLengths+firstSectionNumDelays, secondSectionNumDelays);
 	
 	// assign the delay times evenly between L and R channels so that each
 	// channel gets some short ones and some long ones
@@ -571,11 +576,5 @@ void BMLongLoopFDN_processMultiChannelInput(BMLongLoopFDN *This,
         
 		// advance pointers
 		samplesProccessed += samplesProcessing;
-//		outputL += samplesProcessing;
-//		outputR += samplesProcessing;
-//		for(size_t i=0; i<numInputChannels; i++){
-//			inputL[i] += samplesProcessing;
-//			inputR[i] += samplesProcessing;
-//		}
 	}
 }

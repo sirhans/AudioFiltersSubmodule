@@ -131,7 +131,7 @@ void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
     size_t numDelays = 24;
     float maxDT = FDN_BaseMaxDelaySecond;
     float minDT = 0.020f;
-	bool zeroTaps = true;
+	bool zeroTaps = false;
     BMLongLoopFDN_init(&This->loopFDN, numDelays, minDT, maxDT, zeroTaps, 8, 1,100, This->sampleRate);
 }
 
@@ -190,11 +190,8 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
         BMCloudReverb_updateVND(This);
         BMCloudReverb_updateDiffusion(This);
         
-//        //Filters
-//        BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, inputL, inputR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
-        
-        memcpy(This->buffer.bufferL, inputL, sizeof(float)*numSamples);
-        memcpy(This->buffer.bufferR, inputR, sizeof(float)*numSamples);
+        //Filters
+        BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, inputL, inputR, This->buffer.bufferL, This->buffer.bufferR, numSamples);
         
         //1st layer VND
         for(int i=0;i<This->numInput;i++){
@@ -211,19 +208,21 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
                 memcpy(This->vnd2BufferR[j], This->vnd1BufferR[j], sizeof(float)*numSamples);
             }
         }
-
-//        memcpy(outputL,This->vnd2BufferL[0], sizeof(float)*numSamples);
-//        memcpy(outputR,This->vnd2BufferL[0] , sizeof(float)*numSamples);
-//        return;
         
         //Long FDN
         BMLongLoopFDN_processMultiChannelInput(&This->loopFDN, This->vnd2BufferL, This->vnd2BufferR, This->numInput, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
-		
-        BMPitchShiftDelay_processStereoBuffer(&This->pitchShiftDelay, This->wetBuffer.bufferL, This->wetBuffer.bufferR, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
         
 //        memcpy(outputL,This->wetBuffer.bufferL, sizeof(float)*numSamples);
 //        memcpy(outputR,This->wetBuffer.bufferR , sizeof(float)*numSamples);
 //        return;
+		
+        //Add vnd2Buffer[0] to the output of FDN to simulate the zero tap of fdn. Cant use zero tap setting
+        // becauz of the Fast Hadamard Transform mix all the input.
+        float mul = 1.0f;
+        vDSP_vsma(This->vnd2BufferL[0], 1, &mul, This->wetBuffer.bufferL, 1, This->wetBuffer.bufferL, 1, numSamples);
+        vDSP_vsma(This->vnd2BufferR[0], 1, &mul, This->wetBuffer.bufferR, 1, This->wetBuffer.bufferR, 1, numSamples);
+        
+        BMPitchShiftDelay_processStereoBuffer(&This->pitchShiftDelay, This->wetBuffer.bufferL, This->wetBuffer.bufferR, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
         
         //Filters
         BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, This->wetBuffer.bufferL, This->wetBuffer.bufferR, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);

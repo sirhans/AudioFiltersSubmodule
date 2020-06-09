@@ -111,6 +111,7 @@ void BMVelvetNoiseDecorrelator_initFullSettings(BMVelvetNoiseDecorrelator *This,
  *
  * @abstract generates random gains and normalises them and updates the delay
  */
+#define VND_StartFadeInDB -60
 void BMVelvetNoiseDecorrelator_genRandGains(BMVelvetNoiseDecorrelator *This){
 	// prepare to skip an array index if there is a dry tap at the beginning
 	size_t shift = This->hasDryTap ? 1 : 0;
@@ -121,20 +122,25 @@ void BMVelvetNoiseDecorrelator_genRandGains(BMVelvetNoiseDecorrelator *This){
 	
 	
 	// apply an exponential decay envelope to the gains
+    float startGain = BM_DB_TO_GAIN(VND_StartFadeInDB);
 	for(size_t i=shift; i<This->numWetTaps+shift; i++){
 		// left channel
 		float delayTimeInSeconds = This->delayLengthsL[i] / This->sampleRate;
 		float rt60Gain = BMReverbDelayGainFromRT60(This->rt60, delayTimeInSeconds);
         float fadeIn = 1;
-        if(This->fadeInSamples>0)
-            fadeIn = MIN(This->delayLengthsL[i], This->fadeInSamples)/This->fadeInSamples;
+        if(This->fadeInSamples>0){
+            float fade0To1 = MIN(This->delayLengthsL[i], This->fadeInSamples)/This->fadeInSamples;
+            fadeIn = fade0To1*(1.0f-startGain) + startGain;
+        }
 		This->gainsL[i] *= rt60Gain * fadeIn;
 		
 		// right channel
 		delayTimeInSeconds = This->delayLengthsR[i] / This->sampleRate;
 		rt60Gain = BMReverbDelayGainFromRT60(This->rt60, delayTimeInSeconds);
-        if(This->fadeInSamples>0)
-            fadeIn = MIN(This->delayLengthsR[i], This->fadeInSamples)/This->fadeInSamples;
+        if(This->fadeInSamples>0){
+            float fade0To1 = MIN(This->delayLengthsR[i], This->fadeInSamples)/This->fadeInSamples;
+            fadeIn = fade0To1*(1.0f-startGain) + startGain;
+        }
 		This->gainsR[i] *= rt60Gain * fadeIn;
 	}
     
