@@ -12,7 +12,7 @@
 
 #include <stdio.h>
 #include "BMMultiTapDelay.h"
-
+#include "BMSmoothSwitch.h"
 
 typedef struct BMVelvetNoiseDecorrelator {
     BMMultiTapDelay multiTapDelay;
@@ -29,6 +29,8 @@ typedef struct BMVelvetNoiseDecorrelator {
     bool resetFadeIn;
     float* tempBuffer;
     size_t numInput;
+    BMSmoothSwitch offSwitchL;
+    BMSmoothSwitch offSwitchR;
 } BMVelvetNoiseDecorrelator;
 
 

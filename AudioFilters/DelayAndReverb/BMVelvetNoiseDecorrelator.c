@@ -94,6 +94,11 @@ void BMVelvetNoiseDecorrelator_initFullSettings(BMVelvetNoiseDecorrelator *This,
 	This->gainsR = calloc(numTaps, sizeof(float));
     This->tempBuffer = calloc(BM_BUFFER_CHUNK_SIZE, sizeof(float));
 	This->numInput = 0;
+    
+    //Off Switch
+    BMSmoothSwitch_init(&This->offSwitchL, sampleRate);
+    BMSmoothSwitch_init(&This->offSwitchR, sampleRate);
+    
 	// init the multi-tap delay in bypass mode
 	size_t maxDelayLenth = ceil(maxDelaySeconds*sampleRate);
 	BMMultiTapDelay_initBypass(&This->multiTapDelay,
@@ -278,24 +283,35 @@ void BMVelvetNoiseDecorrelator_setWetMix(BMVelvetNoiseDecorrelator *This, float 
 
 
 void BMVelvetNoiseDecorrelator_setNumTaps(BMVelvetNoiseDecorrelator *This, size_t numTaps){
+    //Start off switch
+    BMSmoothSwitch_setState(&This->offSwitchL, false);
+    BMSmoothSwitch_setState(&This->offSwitchR, false);
+    
     This->numWetTaps = numTaps;
     This->resetNumTaps = true;
+    
 }
 
 void BMVelvetNoiseDecorrelator_resetNumTaps(BMVelvetNoiseDecorrelator *This){
-    if(This->resetNumTaps){
-        This->resetNumTaps = false;
-        
-        //Free it first
-        BMMultiTapDelay_free(&This->multiTapDelay);
-        // init the multi-tap delay in bypass mode
-        size_t maxDelayLenth = ceil(This->maxDelayTimeS*This->sampleRate);
-        BMMultiTapDelay_initBypass(&This->multiTapDelay,
-                                   true,
-                                   maxDelayLenth,
-                                   This->numWetTaps);
-        // setup the delay for processing
-        BMVelvetNoiseDecorrelator_randomiseAll(This);
+    if(BMSmoothSwitch_getState(&This->offSwitchL)==BMSwitchOff){
+        if(This->resetNumTaps){
+            This->resetNumTaps = false;
+            
+            //Free it first
+            BMMultiTapDelay_free(&This->multiTapDelay);
+            // init the multi-tap delay in bypass mode
+            size_t maxDelayLenth = ceil(This->maxDelayTimeS*This->sampleRate);
+            BMMultiTapDelay_initBypass(&This->multiTapDelay,
+                                       true,
+                                       maxDelayLenth,
+                                       This->numWetTaps);
+            // setup the delay for processing
+            BMVelvetNoiseDecorrelator_randomiseAll(This);
+            
+            //Enable off switch
+            BMSmoothSwitch_setState(&This->offSwitchL, true);
+            BMSmoothSwitch_setState(&This->offSwitchR, true);
+        }
     }
 }
 
@@ -312,14 +328,22 @@ void BMVelvetNoiseDecorrelator_resetRT60DecayTime(BMVelvetNoiseDecorrelator *Thi
 }
 
 void BMVelvetNoiseDecorrelator_setFadeIn(BMVelvetNoiseDecorrelator *This,float fadeInS){
+    //Start off switch
+    BMSmoothSwitch_setState(&This->offSwitchL, false);
+    BMSmoothSwitch_setState(&This->offSwitchR, false);
     This->fadeInSamples = fadeInS * This->sampleRate;
     This->resetFadeIn = true;
 }
 
 void BMVelvetNoiseDecorrelator_resetFadeIn(BMVelvetNoiseDecorrelator *This){
-    if(This->resetFadeIn){
-        This->resetFadeIn = false;
-        BMVelvetNoiseDecorrelator_genRandGains(This);
+    if(BMSmoothSwitch_getState(&This->offSwitchL)==BMSwitchOff){
+        if(This->resetFadeIn){
+            This->resetFadeIn = false;
+            BMVelvetNoiseDecorrelator_genRandGains(This);
+            
+            BMSmoothSwitch_setState(&This->offSwitchL, true);
+            BMSmoothSwitch_setState(&This->offSwitchR, true);
+        }
     }
 }
 
@@ -360,6 +384,11 @@ void BMVelvetNoiseDecorrelator_processBufferStereo(BMVelvetNoiseDecorrelator *Th
 										inputL, inputR,
 										outputL, outputR,
 										length);
+    //Off switch
+    if(BMSmoothSwitch_getState(&This->offSwitchL)!=BMSwitchOn){
+        BMSmoothSwitch_processBufferMono(&This->offSwitchL, outputL, outputL, length);
+        BMSmoothSwitch_processBufferMono(&This->offSwitchR, outputR, outputR, length);
+    }
 }
 
 void BMVelvetNoiseDecorrelator_processBufferStereoWithFinalOutput(BMVelvetNoiseDecorrelator *This,
@@ -381,6 +410,12 @@ void BMVelvetNoiseDecorrelator_processBufferStereoWithFinalOutput(BMVelvetNoiseD
     //Apply lasttap gain
     vDSP_vsmul(finalOutputL, 1, &This->lastTapGainL, finalOutputL, 1, length);
     vDSP_vsmul(finalOutputR, 1, &This->lastTapGainR, finalOutputR, 1, length);
+    
+    //Off switch
+    if(BMSmoothSwitch_getState(&This->offSwitchL)!=BMSwitchOn){
+        BMSmoothSwitch_processBufferMono(&This->offSwitchL, finalOutputL, finalOutputL, length);
+        BMSmoothSwitch_processBufferMono(&This->offSwitchR, finalOutputR, finalOutputR, length);
+    }
 }
 
 
@@ -400,4 +435,10 @@ void BMVelvetNoiseDecorrelator_processBufferMonoToStereo(BMVelvetNoiseDecorrelat
 										inputL, inputL,
 										outputL, outputR,
 										length);
+    
+    //Off switch
+    if(BMSmoothSwitch_getState(&This->offSwitchL)!=BMSwitchOn){
+        BMSmoothSwitch_processBufferMono(&This->offSwitchL, outputL, outputL, length);
+        BMSmoothSwitch_processBufferMono(&This->offSwitchR, outputR, outputR, length);
+    }
 }

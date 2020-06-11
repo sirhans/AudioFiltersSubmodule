@@ -21,6 +21,7 @@
 #include "BMAllpassNestedFilter.h"
 #include "BMFIRFilter.h"
 #include "BMSimpleDelay.h"
+#include "BMSmoothGain.h"
 
 typedef struct BMStereoBuffer{
     void* bufferL;
@@ -67,9 +68,10 @@ typedef struct BMCloudReverb {
     
     float bellQ;
     float lsGain;
-    float normallizeVol;
     
     int initNo;
+    
+    BMSmoothGain smoothGain;
 } BMCloudReverb;
 
 void BMCloudReverb_init(BMCloudReverb* This,float sr);

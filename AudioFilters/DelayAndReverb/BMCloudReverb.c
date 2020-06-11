@@ -11,6 +11,7 @@
 #include "BMFastHadamard.h"
 
 
+
 #define Filter_Level_Lowshelf 0
 #define Filter_Level_Tone 1
 #define Filter_Level_Lowpass10k 2
@@ -95,8 +96,6 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     BMPitchShiftDelay_setBandLowpass(&This->pitchShiftDelay, 4000);
     BMPitchShiftDelay_setBandHighpass(&This->pitchShiftDelay,120);
     BMPitchShiftDelay_setMixOtherChannel(&This->pitchShiftDelay, 1.0f);
-
-    
     
     This->buffer.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->buffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
@@ -119,6 +118,8 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     BMCloudReverb_setDelayPitchMixer(This, 0.5f);
     BMWetDryMixer_init(&This->reverbMixer, sr);
     BMCloudReverb_setOutputMixer(This, 0.5f);
+    
+    BMSmoothGain_init(&This->smoothGain, sr);
     
     //Pan
     BMPanLFO_init(&This->inputPan, 0.412f, 0.6f, sr,true);
@@ -225,8 +226,7 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
         BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, This->wetBuffer.bufferL, This->wetBuffer.bufferR, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
         
         //Normalize vol
-        vDSP_vsmul(This->wetBuffer.bufferL, 1, &This->normallizeVol, This->wetBuffer.bufferL, 1, numSamples);
-        vDSP_vsmul(This->wetBuffer.bufferR, 1, &This->normallizeVol, This->wetBuffer.bufferR, 1, numSamples);
+        BMSmoothGain_processBuffer(&This->smoothGain, This->wetBuffer.bufferL, This->wetBuffer.bufferR, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
         
         //LFO pan
         // Input pan LFO
@@ -261,7 +261,9 @@ float calculateScaleVol(BMCloudReverb* This){
 void BMCloudReverb_setLoopDecayTime(BMCloudReverb* This,float decayTime){
     This->decayTime = decayTime;
     BMLongLoopFDN_setRT60Decay(&This->loopFDN, decayTime);
-    This->normallizeVol = BM_DB_TO_GAIN(calculateScaleVol(This));
+    
+    float gainDB = calculateScaleVol(This);
+    BMSmoothGain_setGainDb(&This->smoothGain, gainDB);
 }
 
 #define DepthMax 0.90f
@@ -345,11 +347,13 @@ void BMCloudReverb_setDiffusion(BMCloudReverb* This,float diffusion){
         This->updateDiffusion = true;
         This->numInput = BM_MAX((roundf(8 * diffusion)/2.0f)*2,2);
         
-        //Diff go from 0.1 to 1
-        float maxDelayS = FDN_BaseMaxDelaySecond*(1.1f-diffusion);
-        BMLongLoopFDN_setMaxDelay(&This->loopFDN, maxDelayS);
+//        //Diff go from 0.1 to 1
+//        float maxDelayS = FDN_BaseMaxDelaySecond*(1.1f-diffusion);
+//        BMLongLoopFDN_setMaxDelay(&This->loopFDN, maxDelayS);
+        
         //update wet vol
-        This->normallizeVol = BM_DB_TO_GAIN(calculateScaleVol(This));
+        float gainDb = calculateScaleVol(This);
+        BMSmoothGain_setGainDb(&This->smoothGain, gainDb);
     }
 }
 
