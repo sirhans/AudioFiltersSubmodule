@@ -77,17 +77,6 @@ size_t BMSincUpsampler_process(BMSincUpsampler *This,
 	for(size_t i=1; i<This->upsampleFactor; i++)
 		vDSP_conv(input, 1, This->filterKernels[This->numKernels - i], 1, output+i, This->upsampleFactor, inputLengthMinusPadding-1, This->kernelLength);
 	
-	// do the interpolation by efficient symmetric convolution
-//	size_t numSamplesConv = inputLengthMinusPadding-1;
-//	size_t indexShift = 0;
-//	while(numSamplesConv > 0){
-//		size_t samplesProcessing = BM_MIN(BMSU_BUFFER_SIZE,numSamplesConv);
-//		for(size_t i=1; i<This->upsampleFactor; i++)
-//			BMSymmetricConv(This->filterKernels[This->numKernels - i], 1, input + indexShift, 1, output+i + indexShift, This->upsampleFactor, This->buffer, This->kernelLength, samplesProcessing);
-//		numSamplesConv -= samplesProcessing;
-//		indexShift += samplesProcessing;
-//	}
-	
 	// copy the original samples from input to output to fill in the remaining samples
 	float zero = 0.0f;
 	vDSP_vsadd(input+This->inputPaddingLeft, 1, &zero, output, This->upsampleFactor, inputLengthMinusPadding);
