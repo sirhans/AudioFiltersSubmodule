@@ -25,6 +25,7 @@
 #define PitchShift_BaseDuration 10.0f
 #define ReadyNo 98573
 #define FDN_BaseMaxDelaySecond 0.800f
+#define VND_BaseLength 0.2f
 
 void BMCloudReverb_updateDiffusion(BMCloudReverb* This);
 void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This);
@@ -61,7 +62,7 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     This->updateVND = false;
     This->maxTapsEachVND = 16;
     This->diffusion = 1.0f;
-    This->vndLength = 0.2f;
+    This->vndLength = VND_BaseLength;
     This->fadeInS = 0;
     This->vndDryTap = false;
     
@@ -213,9 +214,9 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
         //Long FDN
         BMLongLoopFDN_processMultiChannelInput(&This->loopFDN, This->vnd2BufferL, This->vnd2BufferR, This->numInput, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
         
-//        memcpy(outputL,This->wetBuffer.bufferL, sizeof(float)*numSamples);
-//        memcpy(outputR,This->wetBuffer.bufferR , sizeof(float)*numSamples);
-//        return;
+        memcpy(outputL,This->wetBuffer.bufferL, sizeof(float)*numSamples);
+        memcpy(outputR,This->wetBuffer.bufferR , sizeof(float)*numSamples);
+        return;
 		
         //Add vnd2Buffer[0] to the output of FDN to simulate the zero tap of fdn. Cant use zero tap setting
         // becauz of the Fast Hadamard Transform mix all the input.
@@ -379,32 +380,41 @@ void BMCloudReverb_setHighCutFreq(BMCloudReverb* This,float freq){
 }
 
 #pragma mark - VND
-void BMCloudReverb_setFadeInVND(BMCloudReverb* This,float timeInS){
-    This->fadeInS = timeInS;
-    for(int i=0;i<This->numVND;i++){
-        BMVelvetNoiseDecorrelator_setFadeIn(&This->vndArray[i], timeInS);
+void BMCloudReverb_setFadeIn(BMCloudReverb* This,float timeInS){
+    This->desiredVNDLength = VND_BaseLength;
+    if(timeInS>VND_BaseLength){
+        //If fadein time is bigger than vndlength -> need to reset vnd length
+        This->desiredVNDLength = timeInS;
     }
-}
-
-void BMCloudReverb_setVNDLength(BMCloudReverb* This,float timeInS){
-    This->vndLength = timeInS;
+    This->fadeInS = timeInS;
+    
     This->updateVND = true;
+    
 }
 
 void BMCloudReverb_updateVND(BMCloudReverb* This){
     if(This->updateVND){
         This->updateVND = false;
-        //Free & reinit
-        for(int i=0;i<This->numVND;i++){
-            //1st layer
-            BMVelvetNoiseDecorrelator_free(&This->vndArray[i]);
-            BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vndArray[i], This->vndLength, This->maxTapsEachVND, 100, This->vndDryTap, This->sampleRate);
-            if(This->vndDryTap)
-                BMVelvetNoiseDecorrelator_setWetMix(&This->vndArray[i], 1.0f);
-        }
+        if(This->desiredVNDLength!=This->vndLength){
+            This->vndLength = This->desiredVNDLength;
+            //Free & reinit
+            for(int i=0;i<This->numVND;i++){
+                //1st layer
+                BMVelvetNoiseDecorrelator_free(&This->vndArray[i]);
+                BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vndArray[i], This->vndLength, This->maxTapsEachVND, 100, This->vndDryTap, This->sampleRate);
+                if(This->vndDryTap)
+                    BMVelvetNoiseDecorrelator_setWetMix(&This->vndArray[i], 1.0f);
+                //Update fade in
+                BMVelvetNoiseDecorrelator_setFadeIn(&This->vndArray[i], This->fadeInS);
+            }
 
-        BMCloudReverb_setFadeInVND(This, This->fadeInS);
-        BMCloudReverb_setDiffusion(This, This->diffusion);
+            BMCloudReverb_setDiffusion(This, This->diffusion);
+        }else{
+            for(int i=0;i<This->numVND;i++){
+                //Update fade in
+                BMVelvetNoiseDecorrelator_setFadeIn(&This->vndArray[i], This->fadeInS);
+            }
+        }
     }
 }
 
