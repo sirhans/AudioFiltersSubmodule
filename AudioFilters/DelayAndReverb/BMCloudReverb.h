@@ -85,7 +85,7 @@ void BMCloudReverb_setOutputMixer(BMCloudReverb* This,float wetMix);
 void BMCloudReverb_setDiffusion(BMCloudReverb* This,float diffusion);
 void BMCloudReverb_setLSGain(BMCloudReverb* This,float gainDb);
 void BMCloudReverb_setHighCutFreq(BMCloudReverb* This,float freq);
-void BMCloudReverb_setFadeIn(BMCloudReverb* This,float timeInS);
+void BMCloudReverb_setFadeInVND(BMCloudReverb* This,float timeInS);
 //Test
 void BMCloudReverb_impulseResponse(BMCloudReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t length);
 #endif /* BMCloudReverb_h */

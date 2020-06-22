@@ -214,9 +214,9 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
         //Long FDN
         BMLongLoopFDN_processMultiChannelInput(&This->loopFDN, This->vnd2BufferL, This->vnd2BufferR, This->numInput, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
         
-        memcpy(outputL,This->wetBuffer.bufferL, sizeof(float)*numSamples);
-        memcpy(outputR,This->wetBuffer.bufferR , sizeof(float)*numSamples);
-        return;
+//        memcpy(outputL,This->wetBuffer.bufferL, sizeof(float)*numSamples);
+//        memcpy(outputR,This->wetBuffer.bufferR , sizeof(float)*numSamples);
+//        return;
 		
         //Add vnd2Buffer[0] to the output of FDN to simulate the zero tap of fdn. Cant use zero tap setting
         // becauz of the Fast Hadamard Transform mix all the input.
@@ -380,7 +380,7 @@ void BMCloudReverb_setHighCutFreq(BMCloudReverb* This,float freq){
 }
 
 #pragma mark - VND
-void BMCloudReverb_setFadeIn(BMCloudReverb* This,float timeInS){
+void BMCloudReverb_setFadeInVND(BMCloudReverb* This,float timeInS){
     This->desiredVNDLength = VND_BaseLength;
     if(timeInS>VND_BaseLength){
         //If fadein time is bigger than vndlength -> need to reset vnd length
