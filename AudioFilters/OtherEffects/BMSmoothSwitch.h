@@ -27,6 +27,7 @@ enum BMSmoothSwitchState {BMSwitchOn, BMSwitchOff, BMSwitchInTransition};
  */
 void BMSmoothSwitch_init(BMSmoothSwitch *This, float sampleRate);
 
+void BMSmoothSwitch_initWithRate(BMSmoothSwitch *This, float sampleRate,float rate);
 
 /*!
  *BMSmoothSwitch_processBufferMono

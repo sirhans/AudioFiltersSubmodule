@@ -49,7 +49,7 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     //BIQUAD FILTER
     BMMultiLevelBiquad_init(&This->biquadFilter, Filter_TotalLevel, sr, true, false, true);
     //Highpass 1st order 100Hz
-    BMMultiLevelBiquad_setHighPass6db(&This->biquadFilter, 100, Filter_Level_HP100Hz);
+    BMMultiLevelBiquad_setHighPass12db(&This->biquadFilter, 60, Filter_Level_HP100Hz);
     //Tone control - use 6db
 	BMCloudReverb_setHighCutFreq(This, 1200.0f);
     //lowpass 36db
