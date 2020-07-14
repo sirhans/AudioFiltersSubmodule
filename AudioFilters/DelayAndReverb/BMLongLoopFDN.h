@@ -13,6 +13,7 @@
 #include "BMSimpleDelay.h"
 #include "TPCircularBuffer.h"
 #include "BMShortSimpleDelay.h"
+#include "BMSmoothGain.h"
 
 
 typedef struct BMLongLoopFDN{
@@ -28,6 +29,9 @@ typedef struct BMLongLoopFDN{
 	bool hasZeroTaps;
     float sampleRate;
     bool needReinit;
+    //Decay smooth
+    bool smoothDecay;
+    BMSmoothGain* smoothGains;
 } BMLongLoopFDN;
 
 
@@ -52,6 +56,7 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 						size_t blockSize,
 						size_t feedbackShiftByBlock,
                         float decayTimeS,
+                        bool smoothDecay,
 						float sampleRate);
 
 
@@ -69,6 +74,7 @@ void BMLongLoopFDN_setRT60Decay(BMLongLoopFDN *This, float timeSeconds);
 
 void BMLongLoopFDN_setMaxDelay(BMLongLoopFDN* This,float maxDelayS);
 
+void BMLongLoopFDN_setRT60DecaySmooth(BMLongLoopFDN *This, float timeSeconds,bool isInstant);
 
 
 

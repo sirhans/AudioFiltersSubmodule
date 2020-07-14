@@ -9,6 +9,7 @@
 //
 
 #include "BMSFM.h"
+#include "Constants.h"
 #include <Accelerate/Accelerate.h>
 
 void BMSFM_init(BMSFM *This, size_t inputLength){
@@ -70,7 +71,9 @@ float BMSFM_process(BMSFM *This, float* input, size_t inputLength){
     
     // get the geometric mean using logarithmic transformation
     int spectrumLength_i = (int)spectrumLength;
-    vvlog2f(This->b1, This->b2, &spectrumLength_i);
+    float smallNumber = BM_DB_TO_GAIN(-85.0f);
+    vDSP_vsadd(This->b1, 1, &smallNumber, This->b1, 1, spectrumLength); // add a small number to avoid log(0)
+    vvlog2f(This->b2, This->b1, &spectrumLength_i);
     float meanExp;
     vDSP_meanv(This->b2,1,&meanExp,spectrumLength);
     float geometricMean = powf(2.0f, meanExp);
@@ -78,6 +81,8 @@ float BMSFM_process(BMSFM *This, float* input, size_t inputLength){
     // find the arithmetic mean
     float arithmeticMean;
     vDSP_meanv(This->b1, 1, &arithmeticMean, spectrumLength);
-    
-    return geometricMean / arithmeticMean;
+    if(arithmeticMean!=0)
+        return geometricMean / arithmeticMean;
+    else
+        return 0;
 }

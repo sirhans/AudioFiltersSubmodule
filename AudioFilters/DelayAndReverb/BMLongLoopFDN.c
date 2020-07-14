@@ -25,6 +25,7 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 						size_t blockSize,
 						size_t feedbackShiftByBlock,
                         float decayTimeS,
+                        bool smoothDecay,
 						float sampleRate){
 	// require block size to be a power of two
 	assert(isPowerOfTwo(blockSize));
@@ -46,6 +47,7 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	// set the matrix attenuation and inverse attenuation
 	This->matrixAttenuation = sqrt(1.0f / (float)blockSize);
 	This->inverseMatrixAttenuation = 2.0f / This->matrixAttenuation;
+    This->smoothDecay = smoothDecay;
 	
 	This->numDelays = numDelays;
 	This->hasZeroTaps = hasZeroTaps;
@@ -131,8 +133,17 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	
 	// init the feedback coefficients
     This->decayTimeS = decayTimeS;
-	This->feedbackCoefficients = malloc(sizeof(float)*numDelays);
-	BMLongLoopFDN_setRT60Decay(This, decayTimeS);
+    if(!smoothDecay){
+        This->feedbackCoefficients = malloc(sizeof(float)*numDelays);
+        BMLongLoopFDN_setRT60Decay(This, decayTimeS);
+    }else{
+        //Smooth decay
+        This->smoothGains = malloc(sizeof(BMSmoothGain)*numDelays);
+        for(size_t i=0; i<numDelays; i++){
+            BMSmoothGain_init(&This->smoothGains[i], sampleRate);
+        }
+        BMLongLoopFDN_setRT60DecaySmooth(This, decayTimeS,true);
+    }
 	
 	// set output tap signs
 	This->tapSigns = malloc(numDelays * sizeof(bool));
@@ -142,7 +153,7 @@ void BMLongLoopFDN_init(BMLongLoopFDN *This,
 	// randomise the order of the output tap signs in each channel
 	BMLongLoopFDN_randomShuffleBool(This->tapSigns, numDelays/2);
 	BMLongLoopFDN_randomShuffleBool(This->tapSigns + numDelays/2, numDelays/2);
-	
+    
 	free(delayLengths);
 	delayLengths = NULL;
 	free(temp);
@@ -208,6 +219,9 @@ void BMLongLoopFDN_free(BMLongLoopFDN *This){
 	free(This->mixBuffers[0]);
 	free(This->mixBuffers);
 	This->mixBuffers = NULL;
+    
+    free(This->smoothGains);
+    This->smoothGains = NULL;
 }
 
 
@@ -221,20 +235,36 @@ void BMLongLoopFDN_needReinit(BMLongLoopFDN* This){
     if(This->needReinit){
         This->needReinit = false;
         BMLongLoopFDN_free(This);
-        BMLongLoopFDN_init(This, This->numDelays, This->minDelayS, This->maxDelayS, This->hasZeroTaps, This->blockSize, This->feedbackShiftByBlock,This->decayTimeS, This->sampleRate);
+        BMLongLoopFDN_init(This, This->numDelays, This->minDelayS, This->maxDelayS, This->hasZeroTaps, This->blockSize, This->feedbackShiftByBlock,This->decayTimeS,This->smoothDecay, This->sampleRate);
     }
 }
 
 
 
 void BMLongLoopFDN_setRT60Decay(BMLongLoopFDN *This, float timeSeconds){
+    assert(!This->smoothDecay);
     This->decayTimeS = timeSeconds;
 	for(size_t i=0; i<This->numDelays; i++){
 		This->feedbackCoefficients[i] = This->matrixAttenuation * BMReverbDelayGainFromRT60(timeSeconds, This->delayTimes[i]);
 	}
 }
 
-
+void BMLongLoopFDN_setRT60DecaySmooth(BMLongLoopFDN *This, float timeSeconds,bool isInstant){
+    assert(This->smoothDecay);
+    if(This->decayTimeS!=timeSeconds){
+        This->decayTimeS = timeSeconds;
+        
+        for(size_t i=0; i<This->numDelays; i++){
+            float gainDb = BM_GAIN_TO_DB(This->matrixAttenuation * BMReverbDelayGainFromRT60(timeSeconds, This->delayTimes[i]));
+//            printf("gaindb %f\n",gainDb);
+            if(isInstant){
+                BMSmoothGain_setGainDbInstant(&This->smoothGains[i], gainDb);
+            }else
+                BMSmoothGain_setGainDb(&This->smoothGains[i], gainDb);
+        }
+        
+    }
+}
 
 
 
@@ -302,7 +332,11 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		// 2. mix output to outputL and outputR
 		for(size_t i=0; i<This->numDelays; i++){
             // attenuate the data at the read pointers to get desired decay time
-            vDSP_vsmul(This->readPointers[i], 1, &This->feedbackCoefficients[i], This->readPointers[i], 1, samplesProcessing);
+            if(This->smoothDecay){
+                BMSmoothGain_processBufferMono(&This->smoothGains[i], This->readPointers[i], This->readPointers[i], samplesProcessing);
+            }else{
+                vDSP_vsmul(This->readPointers[i], 1, &This->feedbackCoefficients[i], This->readPointers[i], 1, samplesProcessing);
+            }
 		}
 		
 		
@@ -408,6 +442,7 @@ void BMLongLoopFDN_process(BMLongLoopFDN *This,
 		outputL += samplesProcessing;
 		outputR += samplesProcessing;
 	}
+
 }
 
 
@@ -473,7 +508,11 @@ void BMLongLoopFDN_processMultiChannelInput(BMLongLoopFDN *This,
 		// 2. mix output to outputL and outputR
 		for(size_t i=0; i<This->numDelays; i++){
 			// attenuate the data at the read pointers to get desired decay time
-            vDSP_vsmul(This->readPointers[i], 1, &This->feedbackCoefficients[i], This->readPointers[i], 1, samplesProcessing);
+            if(This->smoothDecay){
+                BMSmoothGain_processBufferMono(&This->smoothGains[i], This->readPointers[i], This->readPointers[i], samplesProcessing);
+            }else{
+                vDSP_vsmul(This->readPointers[i], 1, &This->feedbackCoefficients[i], This->readPointers[i], 1, samplesProcessing);
+            }
 			
 			// we will write the first half the delays to the left output and the second half to the right output
 			float *outputPointer = (i < This->numDelays/2) ? outputL+samplesProccessed : outputR+samplesProccessed;
@@ -576,4 +615,5 @@ void BMLongLoopFDN_processMultiChannelInput(BMLongLoopFDN *This,
 		// advance pointers
 		samplesProccessed += samplesProcessing;
 	}
+    
 }
