@@ -98,6 +98,7 @@ float pixelWidthToFFTBinWidth(float freqHz,
     float pixelHeightInBarks = windowHeightInBarks / pixelHeight;
     
     // generate frequencies in Hz above and below the pixel at freqHz
+    float upperFreq, lowerFreq;
     
     return hzToFFTBin(upperFreq, fftSize, sampleRate) - hzToFFTBin(lowerFreq, fftSize, sampleRate);
 }

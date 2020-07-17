@@ -226,26 +226,12 @@ void signedMaxAbsDecimation(float* input, float* output, size_t N, size_t output
 
 void getResampleFactors(size_t sampleWidth, size_t targetSampleWidth, size_t *upsampleFactor, size_t *downsampleFactor){
     
-    // more than 8x extra samples
-    if (sampleWidth > 8 * targetSampleWidth){
+    // more than 4x extra samples
+    if (sampleWidth > 4 * targetSampleWidth){
         *upsampleFactor = 1;
-		*downsampleFactor = floor((float)sampleWidth/(4.0f*(float)targetSampleWidth));
+        *downsampleFactor = floor((float)sampleWidth/(2.0f*(float)targetSampleWidth));
         return;
     }
-    
-//    // more than 3/2 extra samples
-//    if (2*sampleWidth > 3*targetSampleWidth){
-//        *upsampleFactor = 2;
-//        *downsampleFactor = 3;
-//        return;
-//    }
-    
-//    // near target samples (between 2/3 and 3/2 of target)
-//    if (3*sampleWidth > 2*targetSampleWidth){
-//        *upsampleFactor = 1;
-//        *downsampleFactor = 1;
-//        return;
-//    }
     
     // near target samples (greater than 1/2 target)
     if (2*sampleWidth >= targetSampleWidth){
@@ -260,9 +246,4 @@ void getResampleFactors(size_t sampleWidth, size_t targetSampleWidth, size_t *up
         *downsampleFactor = 1;
         return;
     }
-    
-//    // between 1/2 and 2/3 of target
-//    // else
-//    *upsampleFactor = 3;
-//    *downsampleFactor = 2;
 }
