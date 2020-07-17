@@ -12,46 +12,40 @@
 #include <stdio.h>
 #include "TPCircularBuffer.h"
 #import "BMLagrangeInterpolation.h"
+#import "BMSmoothDelay.h"
 
-#define LGI_Order 10
 #define AudioBufferLength 2048
 
+typedef struct{
+    float startSamples;
+    float stopSamples;
+    float sampleToConsume;
+    float lastSTC;
+    float lastIdx;
+    size_t sampleToReachTarget;
+    float currentSample;
+    float desiredDS;
+} StereoLagDelayParam;
+
 typedef struct BMStereoLagTime {
-    TPCircularBuffer bufferL;
-    TPCircularBuffer bufferR;
-    bool isDelayLeftChannel;
     size_t sampleRate;
-    uint32_t maxDelaySamples;
-    float delaySamplesL;
-    float delaySamplesR;
-    int32_t desiredDSL;
-    int32_t desiredDSR;
-    int32_t targetDSL;
-    int32_t targetDSR;
+    uint32_t maxDelayRange;
     
-    bool shouldUpdateDS;
-    
-    float* lgiStrideIdx;
-    float* lgiBufferL;
-    float* lgiBufferR;
-    float* lgiUpBuffer;
-    float strideIdxL;
-    float strideIdxR;
+    //Smooth delay
+    BMSmoothDelay delayLeft;
+    BMSmoothDelay delayRight;
     float* strideBufferL;
     float* strideBufferR;
-    BMLagrangeInterpolation lgInterpolation;
-    
-    float speedL;
-    float speedR;
-    size_t sampleToReachTargetL;
-    size_t sampleToReachTargetR;
+    float* strideBufferUnion;
+    StereoLagDelayParam delayParamL;
+    StereoLagDelayParam delayParamR;
 } BMStereoLagTime;
 
-void BMStereoLagTime_init(BMStereoLagTime *This,size_t maxDelayTimeInMilSecond,size_t sampleRate);
-void BMStereoLagTime_destroy(BMStereoLagTime *This);
-void BMStereoLagTime_setDelayLeft(BMStereoLagTime *This,size_t delayInMilSecond);
-void BMStereoLagTime_setDelayRight(BMStereoLagTime *This,size_t delayInMilSecond);
+void BMStereoLagTime_init(BMStereoLagTime* This,size_t maxDelaySamples,float speed,size_t sampleRate);
+void BMStereoLagTime_destroy(BMStereoLagTime* This);
+void BMStereoLagTime_setDelayLeft(BMStereoLagTime* This,size_t delaySample,bool now);
+void BMStereoLagTime_setDelayRight(BMStereoLagTime* This,size_t delaySample,bool now);
 
-void BMStereoLagTime_process(BMStereoLagTime *This,float* inL, float* inR, float* outL, float* outR,size_t numSamples);
+void BMStereoLagTime_process(BMStereoLagTime* This,float* inL, float* inR, float* outL, float* outR,size_t numSamples);
 
 #endif /* BMStereoLagTime_h */

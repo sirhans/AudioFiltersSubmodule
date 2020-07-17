@@ -155,7 +155,7 @@ void BMSmoothDelay_processBuffer(BMSmoothDelay* This,float* inBuffer, float* out
             This->delaySamples += samplesProcessing - sampleToConsume;
             This->sampleToReachTarget -= sampleToRamp;
         }else{
-            assert(This->speed==1);
+//            assert(This->speed==1);
             //Normal speed
             vDSP_vramp(&This->strideIdx, &This->speed, This->strideBuffer, 1, samplesProcessing);
             sampleToConsume = samplesProcessing;
