@@ -85,6 +85,22 @@ float hzToFFTBin(float hz, float fftSize, float sampleRate){
 }
 
 
+// how many fft bins are represented by a single pixel at freqHz?
+float pixelWidthToFFTBinWidth(float freqHz,
+                              float fftSize,
+                              float pixelHeight,
+                              float minFrequency,
+                              float maxFrequency,
+                              float sampleRate){
+    
+    // what bark frequency range does 1 pixel represent?
+    float windowHeightInBarks = hzToBark(maxFrequency) - hzToBark(minFrequency);
+    float pixelHeightInBarks = windowHeightInBarks / pixelHeight;
+    
+    // generate frequencies in Hz above and below the pixel at freqHz
+    
+    return hzToFFTBin(upperFreq, fftSize, sampleRate) - hzToFFTBin(lowerFreq, fftSize, sampleRate);
+}
 
 void BMSpectrogram_fftBinsToBarkScale(BMSpectrogram *This,
                                       const float* fftBins,
