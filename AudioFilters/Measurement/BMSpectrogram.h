@@ -16,8 +16,9 @@
 typedef struct BMSpectrogram {
     BMSpectrum spectrum;
     float *b1, *b2, *b3;
-    float prevMinF, prevMaxF, sampleRate;
-    size_t prevImageHeight, prevFFTSize, maxImageHeight, maxFFTSize, fftBinInterpolationPadding;
+    size_t *b4, *b5;
+    float prevMinF, prevMaxF, sampleRate, pixelBinParityFrequency;
+    size_t prevImageHeight, prevFFTSize, maxImageHeight, maxFFTSize, fftBinInterpolationPadding, upsampledPixels;
 } BMSpectrogram;
 
 

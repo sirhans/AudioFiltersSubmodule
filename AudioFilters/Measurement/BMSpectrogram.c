@@ -36,15 +36,21 @@ void BMSpectrogram_init(BMSpectrogram *This,
     This->b1 = malloc(sizeof(float)*(maxFFTOutput+This->fftBinInterpolationPadding));
     This->b2 = malloc(sizeof(float)*maxImageHeight);
     This->b3 = malloc(sizeof(float)*maxImageHeight);
+    This->b4 = malloc(sizeof(size_t)*maxImageHeight);
+    This->b5 = malloc(sizeof(size_t)*maxImageHeight);
 }
 
 void BMSpectrogram_free(BMSpectrogram *This){
     free(This->b1);
     free(This->b2);
     free(This->b3);
+    free(This->b4);
+    free(This->b5);
     This->b1 = NULL;
     This->b2 = NULL;
     This->b3 = NULL;
+    This->b4 = NULL;
+    This->b5 = NULL;
     
     BMSpectrum_free(&This->spectrum);
 }
@@ -86,22 +92,55 @@ float hzToFFTBin(float hz, float fftSize, float sampleRate){
 
 
 // how many fft bins are represented by a single pixel at freqHz?
-float pixelWidthToFFTBinWidth(float freqHz,
-                              float fftSize,
-                              float pixelHeight,
-                              float minFrequency,
-                              float maxFrequency,
-                              float sampleRate){
+float fftBinsPerPixel(float freqHz,
+                      float fftSize,
+                      float pixelHeight,
+                      float minFrequency,
+                      float maxFrequency,
+                      float sampleRate){
     
     // what bark frequency range does 1 pixel represent?
     float windowHeightInBarks = hzToBark(maxFrequency) - hzToBark(minFrequency);
     float pixelHeightInBarks = windowHeightInBarks / pixelHeight;
     
-    // generate frequencies in Hz above and below the pixel at freqHz
-    float upperFreq, lowerFreq;
+    // what frequency is one pixel above freqHz?
+    float upperPixelFreq = barkToHz(hzToBark(freqHz)+pixelHeightInBarks);
     
-    return hzToFFTBin(upperFreq, fftSize, sampleRate) - hzToFFTBin(lowerFreq, fftSize, sampleRate);
+    // return the height of one pixel in FFT bins
+    return hzToFFTBin(upperPixelFreq, fftSize, sampleRate) - hzToFFTBin(freqHz, fftSize, sampleRate);
 }
+
+
+
+// returns the frequency at which one pixel is equal to one FFT bin.
+float pixelBinParityFrequency(float fftSize, float pixelHeight,
+                              float minFrequency, float maxFrequency,
+                              float sampleRate){
+    // initial guess
+    float f = sampleRate / 4.0;
+    
+    // numerical search for a value of f where binsPerPixel is near 1.0
+    while(true){
+        // find out how many bins per pixel at frequency f
+        float binsPerPixel = fftBinsPerPixel(f, fftSize, pixelHeight, minFrequency, maxFrequency, sampleRate);
+        
+        // if binsPerPixel < 1, increase f. else decrease f
+        f /= (binsPerPixel / 3.0f);
+        
+        // if binsPerPixel is close to 1, return
+        if (fabsf(binsPerPixel - 3.0f) < 0.001) return f;
+        
+        // if f is below half of minFrequency, stop
+        if (f < minFrequency * 0.5f) return minFrequency;
+        
+        // if f is above 2x maxFrequency, stop
+        if (f > maxFrequency * 2.0f) return maxFrequency;
+    }
+    
+    // satisfy the compiler
+    return f;
+}
+
 
 void BMSpectrogram_fftBinsToBarkScale(BMSpectrogram *This,
                                       const float* fftBins,
@@ -110,8 +149,10 @@ void BMSpectrogram_fftBinsToBarkScale(BMSpectrogram *This,
                                       size_t outputLength,
                                       float minFrequency,
                                       float maxFrequency){
-    // rename buffer 3 for readablility
+    // rename buffer 3 and 4 for readablility
     float* interpolatedIndices = This->b3;
+    size_t* integerIndices = This->b4;
+    size_t* binsPerPixel = This->b5;
     
     // if the settings have changed since last time we did this, recompute
     // the floating point array indices for interpolated reading of bark scale
@@ -140,13 +181,43 @@ void BMSpectrogram_fftBinsToBarkScale(BMSpectrogram *This,
             
             // convert to FFT bin index (floating point interpolated)
             interpolatedIndices[i] = hzToFFTBin(hz, fftSize, This->sampleRate);
+            
+            // convert the floating point index to an integer index
+            integerIndices[i] = (size_t)interpolatedIndices[i];
+            
+            // calculate bins per pixel at this index
+            binsPerPixel[i] = round(2.0f * fftBinsPerPixel(hz, fftSize, outputLength, minFrequency, maxFrequency, This->sampleRate));
         }
+        
+        // find the frequency at which 1 fft bin = 1 screen pixel
+        This->pixelBinParityFrequency = pixelBinParityFrequency(fftSize, outputLength, minFrequency, maxFrequency, This->sampleRate);
+        
+        // find the number of pixels we can interpolate by upsampling
+        float parityFrequencyBark = hzToBark(This->pixelBinParityFrequency);
+        float upsampledPixelsFraction = (parityFrequencyBark - minBark) / (maxBark - minBark);
+        This->upsampledPixels = 1 + round(1.0 * upsampledPixelsFraction * outputLength);
+        if(This->upsampledPixels > outputLength) This->upsampledPixels = outputLength;
     }
     
-    // now that we have the fft bin indices we can interpolate and get the results
+    /*************************************
+     * now that we have the fft bin indices we can interpolate and get the results
+     *************************************/
     size_t numFFTBins = 1 + fftSize/2;
     assert(numFFTBins + This->fftBinInterpolationPadding - 2 >= floor(interpolatedIndices[outputLength-1])); // requirement of vDSP_vqint. can be ignored if there is extra space at the end of the fftBins array and zeros are written there.
     vDSP_vqint(fftBins, interpolatedIndices, 1, output, 1, outputLength, numFFTBins);
+    // upsample the lower part of the image
+//    vDSP_vqint(fftBins, interpolatedIndices, 1, output, 1, This->upsampledPixels, numFFTBins);
+    // if we didn't get it all, downsample the upper half
+    if (This->upsampledPixels < outputLength){
+        // downsample from This->upsampledPixels to (outputLength - 1)
+        for(size_t i=This->upsampledPixels; i<outputLength; i++){
+            // write the average of five adjacent bins
+            float outval = 0.0f;
+            for(size_t j=0; j < binsPerPixel[i]; j++)
+                outval += fftBins[integerIndices[i] + j - binsPerPixel[i]];
+            output[i] = outval / binsPerPixel[i];
+        }
+    }
 }
 
 
