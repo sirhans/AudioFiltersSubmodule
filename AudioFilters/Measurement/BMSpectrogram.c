@@ -189,18 +189,15 @@ void BMSpectrogram_fftBinsToBarkScale(BMSpectrogram *This,
             // convert to FFT bin index (floating point interpolated)
             interpolatedIndices[i] = hzToFFTBin(hz, fftSize, This->sampleRate);
             
-//            // convert the floating point index to an integer index
-//            integerIndices[i] = (size_t)interpolatedIndices[i];
-            
             // calculate bins per pixel at this index
             float binsPerPixel_f = fftBinsPerPixel(hz, fftSize, outputLength, minFrequency, maxFrequency, This->sampleRate);
             
             // calculate the start index for this pixel
-            if(i>0)startIndices[i] = startIndices[i-1]+binIntervalLengths[i-1];
-            else(startIndices[i] = 0);
+            if(i==0) startIndices[i] = 0;
+            else startIndices[i] = startIndices[i-1]+binIntervalLengths[i-1];
             
             // calculate the end index for this pixel
-            size_t endIndex = (size_t)roundf(interpolatedIndices[i] + binsPerPixel_f);
+            size_t endIndex = (size_t)roundf(interpolatedIndices[i] + binsPerPixel_f*0.5f);
             
             // calculate the number of pixels in [startIndices[i],endIndex]
             binIntervalLengths[i] = endIndex - startIndices[i];
