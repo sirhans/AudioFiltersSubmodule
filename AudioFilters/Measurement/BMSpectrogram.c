@@ -38,6 +38,7 @@ void BMSpectrogram_init(BMSpectrogram *This,
     This->b3 = malloc(sizeof(float)*maxImageHeight);
     This->b4 = malloc(sizeof(size_t)*maxImageHeight);
     This->b5 = malloc(sizeof(size_t)*maxImageHeight);
+    This->b6 = malloc(sizeof(float)*maxImageHeight);
 }
 
 void BMSpectrogram_free(BMSpectrogram *This){
@@ -46,11 +47,13 @@ void BMSpectrogram_free(BMSpectrogram *This){
     free(This->b3);
     free(This->b4);
     free(This->b5);
+    free(This->b6);
     This->b1 = NULL;
     This->b2 = NULL;
     This->b3 = NULL;
     This->b4 = NULL;
     This->b5 = NULL;
+    This->b6 = NULL;
     
     BMSpectrum_free(&This->spectrum);
 }
@@ -112,7 +115,7 @@ float fftBinsPerPixel(float freqHz,
 
 
 
-// returns the frequency at which one pixel is equal to one FFT bin.
+// returns the frequency at which one pixel is equal to two FFT bins.
 float pixelBinParityFrequency(float fftSize, float pixelHeight,
                               float minFrequency, float maxFrequency,
                               float sampleRate){
@@ -124,11 +127,14 @@ float pixelBinParityFrequency(float fftSize, float pixelHeight,
         // find out how many bins per pixel at frequency f
         float binsPerPixel = fftBinsPerPixel(f, fftSize, pixelHeight, minFrequency, maxFrequency, sampleRate);
         
-        // if binsPerPixel < 1, increase f. else decrease f
-        f /= (binsPerPixel / 3.0f);
+        // this is the number of bins per pixel we are looking for
+        float targetParity = 2.0f;
         
-        // if binsPerPixel is close to 1, return
-        if (fabsf(binsPerPixel - 3.0f) < 0.001) return f;
+        // if binsPerPixel < targetParity, increase f. else decrease f
+        f /= (binsPerPixel / targetParity);
+        
+        // if binsPerPixel is close to 2, return
+        if (fabsf(binsPerPixel - targetParity) < 0.001) return f;
         
         // if f is below half of minFrequency, stop
         if (f < minFrequency * 0.5f) return minFrequency;
@@ -151,8 +157,9 @@ void BMSpectrogram_fftBinsToBarkScale(BMSpectrogram *This,
                                       float maxFrequency){
     // rename buffer 3 and 4 for readablility
     float* interpolatedIndices = This->b3;
-    size_t* integerIndices = This->b4;
-    size_t* binsPerPixel = This->b5;
+    size_t* startIndices = This->b4;
+    size_t* binIntervalLengths = This->b5;
+    float* downsamplingScales = This->b6;
     
     // if the settings have changed since last time we did this, recompute
     // the floating point array indices for interpolated reading of bark scale
@@ -182,14 +189,29 @@ void BMSpectrogram_fftBinsToBarkScale(BMSpectrogram *This,
             // convert to FFT bin index (floating point interpolated)
             interpolatedIndices[i] = hzToFFTBin(hz, fftSize, This->sampleRate);
             
-            // convert the floating point index to an integer index
-            integerIndices[i] = (size_t)interpolatedIndices[i];
+//            // convert the floating point index to an integer index
+//            integerIndices[i] = (size_t)interpolatedIndices[i];
             
             // calculate bins per pixel at this index
-            binsPerPixel[i] = round(1.0f * fftBinsPerPixel(hz, fftSize, outputLength, minFrequency, maxFrequency, This->sampleRate));
+            float binsPerPixel_f = fftBinsPerPixel(hz, fftSize, outputLength, minFrequency, maxFrequency, This->sampleRate);
+            
+            // calculate the start index for this pixel
+            if(i>0)startIndices[i] = startIndices[i-1]+binIntervalLengths[i-1];
+            else(startIndices[i] = 0);
+            
+            // calculate the end index for this pixel
+            size_t endIndex = (size_t)roundf(interpolatedIndices[i] + binsPerPixel_f);
+            
+            // calculate the number of pixels in [startIndices[i],endIndex]
+            binIntervalLengths[i] = endIndex - startIndices[i];
+            
+            // don't let the end index go above the limit
+            if(endIndex > fftSize-1) binIntervalLengths[i] = fftSize - startIndices[i];
+            
+            downsamplingScales[i] = 1.0f / (float)binIntervalLengths[i];
         }
         
-        // find the frequency at which 1 fft bin = 1 screen pixel
+        // find the frequency at which 2 fft bins = 1 screen pixel
         This->pixelBinParityFrequency = pixelBinParityFrequency(fftSize, outputLength, minFrequency, maxFrequency, This->sampleRate);
         
         // find the number of pixels we can interpolate by upsampling
@@ -204,22 +226,27 @@ void BMSpectrogram_fftBinsToBarkScale(BMSpectrogram *This,
      *************************************/
     size_t numFFTBins = 1 + fftSize/2;
     assert(numFFTBins + This->fftBinInterpolationPadding - 2 >= floor(interpolatedIndices[outputLength-1])); // requirement of vDSP_vqint. can be ignored if there is extra space at the end of the fftBins array and zeros are written there.
-    vDSP_vqint(fftBins, interpolatedIndices, 1, output, 1, outputLength, numFFTBins);
+    
     // upsample the lower part of the image
-//    vDSP_vqint(fftBins, interpolatedIndices, 1, output, 1, This->upsampledPixels, numFFTBins);
+    vDSP_vqint(fftBins, interpolatedIndices, 1, output, 1, This->upsampledPixels, numFFTBins);
+    
     // if we didn't get it all, downsample the upper half
     if (This->upsampledPixels < outputLength){
-        // downsample from This->upsampledPixels to (outputLength - 1)
+        // get the sum of squares of all the bins represented by the ith pixel
         for(size_t i=This->upsampledPixels; i<outputLength; i++){
-            // get the max of all bins represented by this pixel
-            float outval = 0.0f;
-            for(size_t j=0; j < binsPerPixel[i]; j++){
-                float binJ = fftBins[integerIndices[i] + j - binsPerPixel[i]/2];
-                if(binJ > outval) outval = binJ;
-            }
-//                outval += fftBins[integerIndices[i] + j - binsPerPixel[i]/2];
-            output[i] = outval;
+            vDSP_svesq(fftBins + startIndices[i], 1, output + i, binIntervalLengths[i]);
         }
+        
+        // scale and square root to get L2 norm of downsampled pixels
+        float *downsampledOutput = output + This->upsampledPixels;
+        int numDownsampledPixels_i = (int)(outputLength - This->upsampledPixels);
+        size_t numDownsampledPixels_ui = numDownsampledPixels_i;
+        vDSP_vmul(downsampledOutput, 1,
+                  downsamplingScales + This->upsampledPixels, 1,
+                  downsampledOutput, 1, numDownsampledPixels_ui);
+        vvsqrtf(downsampledOutput,
+                downsampledOutput,
+                &numDownsampledPixels_i);
     }
 }
 
