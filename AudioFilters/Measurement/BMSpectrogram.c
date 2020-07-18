@@ -186,7 +186,7 @@ void BMSpectrogram_fftBinsToBarkScale(BMSpectrogram *This,
             integerIndices[i] = (size_t)interpolatedIndices[i];
             
             // calculate bins per pixel at this index
-            binsPerPixel[i] = round(2.0f * fftBinsPerPixel(hz, fftSize, outputLength, minFrequency, maxFrequency, This->sampleRate));
+            binsPerPixel[i] = round(1.0f * fftBinsPerPixel(hz, fftSize, outputLength, minFrequency, maxFrequency, This->sampleRate));
         }
         
         // find the frequency at which 1 fft bin = 1 screen pixel
@@ -211,11 +211,14 @@ void BMSpectrogram_fftBinsToBarkScale(BMSpectrogram *This,
     if (This->upsampledPixels < outputLength){
         // downsample from This->upsampledPixels to (outputLength - 1)
         for(size_t i=This->upsampledPixels; i<outputLength; i++){
-            // write the average of five adjacent bins
+            // get the max of all bins represented by this pixel
             float outval = 0.0f;
-            for(size_t j=0; j < binsPerPixel[i]; j++)
-                outval += fftBins[integerIndices[i] + j - binsPerPixel[i]];
-            output[i] = outval / binsPerPixel[i];
+            for(size_t j=0; j < binsPerPixel[i]; j++){
+                float binJ = fftBins[integerIndices[i] + j - binsPerPixel[i]/2];
+                if(binJ > outval) outval = binJ;
+            }
+//                outval += fftBins[integerIndices[i] + j - binsPerPixel[i]/2];
+            output[i] = outval;
         }
     }
 }
