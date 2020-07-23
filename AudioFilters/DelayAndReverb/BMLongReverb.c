@@ -196,6 +196,31 @@ static inline float BMLongReverb_storeSFM(BMLongReverb* This,float sfm){
     return sum/SFMCount;
 }
 
+void BMLongReverb_measureFlatness(BMLongReverb* This,float* inputL,float* inputR,size_t numSamples){
+    //Measure the flatness of wetbuffer
+    if(This->measureFillCount>=This->measureLength){
+        This->measureFillCount = 0;
+        float sfm = BMHarmonicityMeasure_processMonoBuffer(&This->chordMeasure, This->measureInput, This->measureLength);
+        if(sfm<1){
+            //Store into sfmBuffer
+            float meanSFM = BMLongReverb_storeSFM(This, sfm);
+            
+            if(sfm>0.035f){
+                //Flatness too high -> set decay time to fast end
+                BMLongLoopFDN_setRT60DecaySmooth(&This->loopFDN, 1.0f,false);
+            }else{
+                //Set sound to long
+                BMLongLoopFDN_setRT60DecaySmooth(&This->loopFDN, 100.0f,false);
+            }
+            printf("sfm %f\n",sfm);
+        }
+    }else{
+        //Mix to mono input to calculate
+        vDSP_vadd(inputL, 1, inputR, 1, This->measureInput+This->measureFillCount, 1, numSamples);
+        This->measureFillCount += numSamples;
+    }
+}
+
 void BMLongReverb_processStereo(BMLongReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t numSamples,bool offlineRendering){
     if(This->initNo==ReadyNo){
         assert(numSamples<=BM_BUFFER_CHUNK_SIZE);
@@ -240,28 +265,8 @@ void BMLongReverb_processStereo(BMLongReverb* This,float* inputL,float* inputR,f
         //Normalize vol
         BMSmoothGain_processBuffer(&This->smoothGain, This->wetBuffer.bufferL, This->wetBuffer.bufferR, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
         
-        //Measure the flatness of wetbuffer
-        if(This->measureFillCount>=This->measureLength){
-            This->measureFillCount = 0;
-            float sfm = BMHarmonicityMeasure_processMonoBuffer(&This->chordMeasure, This->measureInput, This->measureLength);
-            if(sfm<1){
-                //Store into sfmBuffer
-                float meanSFM = BMLongReverb_storeSFM(This, sfm);
-                
-                if(meanSFM>0.035f){
-                    //Flatness too high -> set decay time to fast end
-                    BMLongLoopFDN_setRT60DecaySmooth(&This->loopFDN, 1.0f,false);
-                }else{
-                    //Set sound to long
-                    BMLongLoopFDN_setRT60DecaySmooth(&This->loopFDN, 100.0f,false);
-                }
-                printf("sfm %f\n",meanSFM);
-            }
-        }else{
-            //Mix to mono input to calculate
-            vDSP_vadd(This->wetBuffer.bufferL, 1, This->wetBuffer.bufferR, 1, This->measureInput+This->measureFillCount, 1, numSamples);
-            This->measureFillCount += numSamples;
-        }
+        //Flatness
+        BMLongReverb_measureFlatness(This, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
         
         //LFO pan
         // Input pan LFO
@@ -284,6 +289,8 @@ void BMLongReverb_processStereo(BMLongReverb* This,float* inputL,float* inputR,f
 
     }
 }
+
+
 
 float BMLongReverb_calculateScaleVol(BMLongReverb* This){
     float factor = log2f(This->decayTime);

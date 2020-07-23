@@ -36,5 +36,5 @@ float BMHarmonicityMeasure_processStereoBuffer(BMHarmonicityMeasure *This,float*
 float BMHarmonicityMeasure_processMonoBuffer(BMHarmonicityMeasure *This,float* input,size_t length){
     BMCepstrum_getCepstrum(&This->cepstrum, input, This->output, false, length);
     
-    return BMSFM_process(&This->sfm, This->output, length);
+    return BMSFM_process(&This->sfm, This->output+1, length-1);
 }
