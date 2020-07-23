@@ -63,7 +63,7 @@ bool BMSpectrum_processData(BMSpectrum* This,
         float maxValue = BM_DB_TO_GAIN(60.0f);
         vDSP_vclip(output, 1, &minValue, &maxValue, output, 1, *outputLength);
         float b = 0.01;
-        vDSP_vdbcon(input, 1, &b, output, 1, *outputLength, 1);
+        vDSP_vdbcon(output, 1, &b, output, 1, *outputLength, 1);
         
         
         return true;
