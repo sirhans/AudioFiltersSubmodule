@@ -85,6 +85,8 @@ float BMGeometricArithmeticMean(const float *X, float *temp, size_t length){
 
 
 float BMSFM_process(BMSFM *This, float* input, size_t inputLength){
+    //ignore the element 0 of input cepstrum & lower inputLength to 2/3
+    //Set input 0 to some number to make the sfm go to 0 when no sound
     
     // take the abs fft, with nyquist and DC combined into a single term
     BMFFT_absFFTCombinedDCNQ(&This->fft, input, This->b1, inputLength);
@@ -94,3 +96,26 @@ float BMSFM_process(BMSFM *This, float* input, size_t inputLength){
     // return geometric mean / arithmetic mean
 	return BMGeometricArithmeticMean(This->b1, This->b2, spectrumLength);
 }
+
+//float BMSFM_process(BMSFM *This, float* input, size_t inputLength){
+//    //ignore the element 0 of input cepstrum & lower inputLength to 2/3
+//    //Set input 0 to some number to make the sfm go to 0 when no sound
+//
+//    // get the geometric mean using logarithmic transformation
+//    int spectrumLength_i = (int)spectrumLength;
+//    float smallNumber = BM_DB_TO_GAIN(-85.0f);
+//    vDSP_vsadd(This->b1, 1, &smallNumber, This->b1, 1, spectrumLength); // add a small number to avoid log(0)
+//    vvlog2f(This->b2, This->b1, &spectrumLength_i);
+//    float meanExp;
+//
+//    vDSP_meanv(This->b2,1,&meanExp,spectrumLength);
+//    float geometricMean = powf(2.0f, meanExp);
+//
+//    // find the arithmetic mean
+//    float arithmeticMean;
+//    vDSP_meanv(This->b1, 1, &arithmeticMean, spectrumLength);
+//    if(arithmeticMean!=0)
+//        return geometricMean / arithmeticMean;
+//    else
+//        return 0;
+//}
