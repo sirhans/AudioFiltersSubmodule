@@ -28,13 +28,11 @@ void BMHarmonicityMeasure_free(BMHarmonicityMeasure *This){
 float BMHarmonicityMeasure_processStereoBuffer(BMHarmonicityMeasure *This,float* inputL,float* inputR,size_t length){
     vDSP_vadd(inputL, 1, inputR, 1, This->input, 1, length);
     
-    BMCepstrum_getCepstrum(&This->cepstrum, This->input, This->output, false, length);
-    
-    return BMSFM_process(&This->sfm, This->output, length);
+	return BMHarmonicityMeasure_processMonoBuffer(This, This->input, length);
 }
 
 float BMHarmonicityMeasure_processMonoBuffer(BMHarmonicityMeasure *This,float* input,size_t length){
     BMCepstrum_getCepstrum(&This->cepstrum, input, This->output, false, length);
     
-    return BMSFM_process(&This->sfm, This->output, length);
+    return 
 }
