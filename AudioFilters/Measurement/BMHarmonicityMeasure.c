@@ -34,8 +34,11 @@ float BMHarmonicityMeasure_processStereoBuffer(BMHarmonicityMeasure *This,float*
 float BMHarmonicityMeasure_processMonoBuffer(BMHarmonicityMeasure *This,float* input,size_t length){
     BMCepstrum_getCepstrum(&This->cepstrum, input, This->output, false, length);
 	
-	size_t cepstrumOutputLength = length/2;
-	size_t GMAMInputLength = cepstrumOutputLength * 6 / 10;
+	// the cepstrum outputs half as many elements as its input
+	size_t cepstrumOutputLength = length/4;
+	
+	// it is possible that we might want to use only part of the cepstrum output
+	size_t GMAMInputLength = cepstrumOutputLength;
     
 	// Take the geometric mean / arithmetic mean of the output, skipping the first element
 	return BMGeometricArithmeticMean(This->output + 1, This->sfm.b2, GMAMInputLength);
