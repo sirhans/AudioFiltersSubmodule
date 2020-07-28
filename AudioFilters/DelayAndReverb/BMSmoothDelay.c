@@ -242,11 +242,11 @@ void BMSmoothDelay_processBufferByStride(BMSmoothDelay* This,float* inBuffer, fl
     // mark the read bytes as used
     TPCircularBufferConsume(&This->buffer, (uint32_t)BM_MIN(sampleToConsume*sizeof(float),bytesAvailableForRead));
     
-    This->delaySamples += samplesProcessing - sampleToConsume;
-    //Check
-    TPCircularBufferTail(&This->buffer, &bytesAvailableForRead);
-    size_t correctDS = bytesAvailableForRead/sizeof(float);
-    if(This->delaySamples!=correctDS){
-        printf("next %f %lu\n",This->delaySamples,correctDS);
-    }
+//    This->delaySamples += samplesProcessing - sampleToConsume;
+//    //Check
+//    TPCircularBufferTail(&This->buffer, &bytesAvailableForRead);
+//    size_t correctDS = bytesAvailableForRead/sizeof(float);
+//    if(This->delaySamples!=correctDS){
+//        printf("next %f %lu\n",This->delaySamples,correctDS);
+//    }
 }

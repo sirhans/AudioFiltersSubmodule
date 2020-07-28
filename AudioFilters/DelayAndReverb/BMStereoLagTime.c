@@ -22,12 +22,18 @@ void BMStereoLagTime_init(BMStereoLagTime* This,size_t maxDelaySamples,float dur
     BMSmoothDelay_init(&This->delayRight, 0, duration, maxDelaySamples, sampleRate);
     
     //Smooth delay
-    This->delayParamL.sampleToReachTarget = duration*sampleRate;
-    This->delayParamR.sampleToReachTarget = duration*sampleRate;
+    float range = duration*sampleRate;
+    This->delayParamL.sampleToReachTarget = range;
+    This->delayParamR.sampleToReachTarget = range;
     This->delayParamL.startSamples = 0;
     This->delayParamL.stopSamples = 0;
+    This->delayParamL.currentSample = range;
+    This->delayParamL.sampleToConsume = 0;
+    
     This->delayParamR.startSamples = 0;
     This->delayParamR.stopSamples = 0;
+    This->delayParamR.currentSample = range;
+    This->delayParamR.sampleToConsume = 0;
     float speed = 1 - maxDelaySamples/This->delayParamL.sampleToReachTarget;
     BMSmoothDelay_init(&This->delayLeft, This->delayParamL.startSamples, speed, maxDelaySamples, sampleRate);
     BMSmoothDelay_init(&This->delayRight, This->delayParamR.startSamples, speed, maxDelaySamples, sampleRate);
