@@ -16,7 +16,7 @@
  *
  * returns the correlation between the arrays in left and right
  */
-float BMPearsonCorrelation(float *left, float *right, size_t length);
+float BMPearsonCorrelation(const float *left, const float *right, size_t length);
 
 
 #endif /* BMPearsonCorrelation_h */
