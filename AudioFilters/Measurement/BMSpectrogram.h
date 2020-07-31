@@ -13,9 +13,13 @@
 #include "BMSpectrum.h"
 #include <simd/simd.h>
 
+#define BMSG_NUM_THREADS 4
+
 typedef struct BMSpectrogram {
-    BMSpectrum spectrum;
-    float *b1, *b2, *b3, *b6;
+    BMSpectrum spectrum [BMSG_NUM_THREADS];
+	float *b1 [BMSG_NUM_THREADS];
+	float *b2 [BMSG_NUM_THREADS];
+	float *b3, *b6;
     size_t *b4, *b5;
     float prevMinF, prevMaxF, sampleRate, pixelBinParityFrequency;
     size_t prevImageHeight, prevFFTSize, maxImageHeight, maxFFTSize, fftBinInterpolationPadding, upsampledPixels;
