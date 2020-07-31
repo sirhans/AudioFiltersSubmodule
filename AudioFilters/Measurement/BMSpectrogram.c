@@ -9,6 +9,8 @@
 #include "BMSpectrogram.h"
 #include "BMIntegerMath.h"
 #include "Constants.h"
+#include <dispatch/dispatch.h>
+#include <sys/qos.h>
 
 #define BMSG_BYTES_PER_PIXEL 4
 #define SG_MIN(a,b) (((a)<(b))?(a):(b))
@@ -520,6 +522,13 @@ void BMSpectrogram_process(BMSpectrogram *This,
 	// if the configuration has changed, update some stuff
 	BMSpectrogram_updateImageHeight(This, fftSize, pixelHeight, minFrequency, maxFrequency);
 	
+	// get the global concurrent dispatch queue with highest priority
+	dispatch_queue_global_t globalQueue;
+	globalQueue = dispatch_get_global_queue(QOS_CLASS_USER_INTERACTIVE,0);
+	
+	// create a new dispatch group
+	dispatch_group_t dispatchGroup = dispatch_group_create();
+	
 	
 	// create threads for parallel processing of spectrogram
 	SInt32 blockStartIndex = 0;
@@ -531,34 +540,39 @@ void BMSpectrogram_process(BMSpectrogram *This,
 		if(nextBlockStartIndex > pixelWidth)
 			nextBlockStartIndex = pixelWidth;
 		
-		// process one block of the spectrogram image
-		for(SInt32 i=blockStartIndex; i<nextBlockStartIndex; i++){
-			BMSpectrogram_genColumn(i,
-									imageOutput,
-									fftStride,
-									fftStartIndex,
-									pixelWidth,
-									pixelHeight,
-									fftEndIndex,
-									fftSize,
-									fftOutputSize,
-									This->fftBinInterpolationPadding,
-									minFrequency,
-									maxFrequency,
-									This->upsampledPixels,
-									&This->spectrum[j],
-									inputAudio,
-									This->b1[j],
-									This->b2[j],
-									This->b3,
-									This->b4,
-									This->b5,
-									This->b6);
-		}
+		// add a block to the group and start processing
+		dispatch_group_async(dispatchGroup, globalQueue, ^{
+			for(SInt32 i=blockStartIndex; i<nextBlockStartIndex; i++){
+				BMSpectrogram_genColumn(i,
+										imageOutput,
+										fftStride,
+										fftStartIndex,
+										pixelWidth,
+										pixelHeight,
+										fftEndIndex,
+										fftSize,
+										fftOutputSize,
+										This->fftBinInterpolationPadding,
+										minFrequency,
+										maxFrequency,
+										This->upsampledPixels,
+										&This->spectrum[j],
+										inputAudio,
+										This->b1[j],
+										This->b2[j],
+										This->b3,
+										This->b4,
+										This->b5,
+										This->b6);
+			}
+		});
 		
 		// advance to the next block
 		blockStartIndex = nextBlockStartIndex;
 	}
+	
+	// Don't continue execution of this thread until all blocks have executed.
+	dispatch_group_wait(dispatchGroup, DISPATCH_TIME_FOREVER);
 }
 
 size_t nearestPowerOfTwo(float x){
