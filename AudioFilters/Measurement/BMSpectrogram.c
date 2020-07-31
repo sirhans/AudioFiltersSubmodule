@@ -148,18 +148,21 @@ float pixelBinParityFrequency(float fftSize, float pixelHeight,
 }
 
 
-void BMSpectrogram_fftBinsToBarkScale(BMSpectrogram *This,
-                                      const float* fftBins,
+void BMSpectrogram_fftBinsToBarkScale(const float* fftBins,
                                       float *output,
                                       size_t fftSize,
                                       size_t outputLength,
                                       float minFrequency,
-                                      float maxFrequency){
+                                      float maxFrequency,
+									  float *b3,
+									  size_t *b4,
+									  size_t *b5,
+									  float *b6){
     // rename buffer 3 and 4 for readablility
-    float* interpolatedIndices = This->b3;
-    size_t* startIndices = This->b4;
-    size_t* binIntervalLengths = This->b5;
-    float* downsamplingScales = This->b6;
+    float* interpolatedIndices = b3;
+    size_t* startIndices = b4;
+    size_t* binIntervalLengths = b5;
+    float* downsamplingScales = b6;
     
     // if the settings have changed since last time we did this, recompute
     // the floating point array indices for interpolated reading of bark scale
@@ -389,6 +392,59 @@ float BMSpectrogram_getPaddingRight(size_t fftSize){
 
 
 
+void BMSpectrogram_genColumn(SInt32 i,
+							 float fftStride,
+							 SInt32 fftStartIndex,
+							 SInt32 pixelWidth,
+							 SInt32 fftEndIndex,
+							 SInt32 fftSize,
+							 SInt32 fftOutputSize,
+							 SInt32 fftBinInterpolationPadding,
+							 BMSpectrum *spectrum,
+							 float *inputAudio,
+							 float *b1,
+							 float *b2){
+	// find the index where the current fft window starts
+	SInt32 fftCurrentWindowStart = (SInt32)roundf((float)i*fftStride + FLT_EPSILON) + fftStartIndex;
+	
+	// set the last window to start in the correct place in case the multiplication above isn't accurate
+	if(i==pixelWidth-1)
+		fftCurrentWindowStart = fftEndIndex - fftSize + 1;
+	
+	// take abs(fft(windowFunctin*windowSamples))
+	b1[fftOutputSize-1] = BMSpectrum_processDataBasic(spectrum,
+													  inputAudio + fftCurrentWindowStart,
+													  b1,
+													  true,
+													  fftSize);
+	
+	// write some zeros after the end as padding for the interpolation function
+	memset(b1 + fftOutputSize, 0, sizeof(float)*fftBinInterpolationPadding);
+	
+	// convert to dB, scale to [0,1] and clip values outside that range
+	BMSpectrogram_toDbScaleAndClip(b1, b1, fftSize, fftOutputSize);
+	
+	// interpolate the output from linear scale frequency to Bark Scale
+	BMSpectrogram_fftBinsToBarkScale(This,
+									 b1,
+									 b2,
+									 fftSize,
+									 pixelHeight,
+									 minFrequency,
+									 maxFrequency);
+	
+	// clamp the outputs to [0,1]
+	float lowerLimit = 0;
+	float upperLimit = 1;
+	vDSP_vclip(This->b2, 1, &lowerLimit, &upperLimit, This->b2, 1, pixelHeight);
+	
+	// convert to RGBA colours and write to output
+	BMSpectrogram_toRGBAColour(This->b2,&imageOutput[i*BMSG_BYTES_PER_PIXEL],pixelWidth, pixelHeight);
+}
+
+
+
+
 void BMSpectrogram_process(BMSpectrogram *This,
                            const float* inputAudio,
                            SInt32 inputLength,
@@ -424,42 +480,7 @@ void BMSpectrogram_process(BMSpectrogram *This,
     
     // generate the image one column at a time
     for(SInt32 i=0; i<pixelWidth; i++){
-        // find the index where the current fft window starts
-        SInt32 fftCurrentWindowStart = (SInt32)roundf((float)i*fftStride + FLT_EPSILON) + fftStartIndex;
-        
-        // set the last window to start in the correct place in case the multiplication above isn't accurate
-        if(i==pixelWidth-1)
-            fftCurrentWindowStart = fftEndIndex - fftSize + 1;
-        
-        // take abs(fft(windowFunctin*windowSamples))
-        This->b1[fftOutputSize-1] = BMSpectrum_processDataBasic(&This->spectrum,
-                                                          inputAudio + fftCurrentWindowStart,
-                                                          This->b1,
-                                                          true,
-                                                          fftSize);
-        
-        // write some zeros after the end as padding for the interpolation function
-        memset(This->b1 + fftOutputSize, 0, sizeof(float)*This->fftBinInterpolationPadding);
-        
-        // convert to dB, scale to [0,1] and clip values outside that range
-        BMSpectrogram_toDbScaleAndClip(This->b1, This->b1, fftSize, fftOutputSize);
-        
-        // interpolate the output from linear scale frequency to Bark Scale
-        BMSpectrogram_fftBinsToBarkScale(This,
-                                         This->b1,
-                                          This->b2,
-                                         fftSize,
-                                         pixelHeight,
-                                         minFrequency,
-                                         maxFrequency);
-        
-        // clamp the outputs to [0,1]
-        float lowerLimit = 0;
-        float upperLimit = 1;
-        vDSP_vclip(This->b2, 1, &lowerLimit, &upperLimit, This->b2, 1, pixelHeight);
-        
-        // convert to RGBA colours and write to output
-        BMSpectrogram_toRGBAColour(This->b2,&imageOutput[i*BMSG_BYTES_PER_PIXEL],pixelWidth, pixelHeight);
+		BMSpectrogram_genColumn(i);
     }
 }
 
