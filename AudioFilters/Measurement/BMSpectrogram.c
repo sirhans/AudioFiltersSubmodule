@@ -9,7 +9,6 @@
 #include "BMSpectrogram.h"
 #include "BMIntegerMath.h"
 #include "Constants.h"
-#include <dispatch/dispatch.h>
 #include <sys/qos.h>
 
 #define BMSG_BYTES_PER_PIXEL 4
@@ -46,6 +45,12 @@ void BMSpectrogram_init(BMSpectrogram *This,
     This->b4 = malloc(sizeof(size_t)*maxImageHeight);
     This->b5 = malloc(sizeof(size_t)*maxImageHeight);
     This->b6 = malloc(sizeof(float)*maxImageHeight);
+	
+	// get the global concurrent dispatch queue with highest priority
+	This->globalQueue = dispatch_get_global_queue(QOS_CLASS_USER_INTERACTIVE,0);
+	
+	// create a new dispatch group
+	This->dispatchGroup = dispatch_group_create();
 }
 
 void BMSpectrogram_free(BMSpectrogram *This){
@@ -66,7 +71,6 @@ void BMSpectrogram_free(BMSpectrogram *This){
     This->b4 = NULL;
     This->b5 = NULL;
     This->b6 = NULL;
-		
 }
 
 float hzToBark(float hz){
@@ -522,13 +526,6 @@ void BMSpectrogram_process(BMSpectrogram *This,
 	// if the configuration has changed, update some stuff
 	BMSpectrogram_updateImageHeight(This, fftSize, pixelHeight, minFrequency, maxFrequency);
 	
-	// get the global concurrent dispatch queue with highest priority
-	dispatch_queue_global_t globalQueue;
-	globalQueue = dispatch_get_global_queue(QOS_CLASS_USER_INTERACTIVE,0);
-	
-	// create a new dispatch group
-	dispatch_group_t dispatchGroup = dispatch_group_create();
-	
 	
 	// create threads for parallel processing of spectrogram
 	SInt32 blockStartIndex = 0;
@@ -541,7 +538,7 @@ void BMSpectrogram_process(BMSpectrogram *This,
 			nextBlockStartIndex = pixelWidth;
 		
 		// add a block to the group and start processing
-		dispatch_group_async(dispatchGroup, globalQueue, ^{
+		dispatch_group_async(This->dispatchGroup, This->globalQueue, ^{
 			for(SInt32 i=blockStartIndex; i<nextBlockStartIndex; i++){
 				BMSpectrogram_genColumn(i,
 										imageOutput,
@@ -572,7 +569,7 @@ void BMSpectrogram_process(BMSpectrogram *This,
 	}
 	
 	// Don't continue execution of this thread until all blocks have executed.
-	dispatch_group_wait(dispatchGroup, DISPATCH_TIME_FOREVER);
+	dispatch_group_wait(This->dispatchGroup, DISPATCH_TIME_FOREVER);
 }
 
 size_t nearestPowerOfTwo(float x){

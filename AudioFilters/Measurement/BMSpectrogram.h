@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include "BMSpectrum.h"
 #include <simd/simd.h>
+#include <dispatch/dispatch.h>
 
 #define BMSG_NUM_THREADS 4
 
@@ -23,6 +24,8 @@ typedef struct BMSpectrogram {
     size_t *b4, *b5;
     float prevMinF, prevMaxF, sampleRate, pixelBinParityFrequency;
     size_t prevImageHeight, prevFFTSize, maxImageHeight, maxFFTSize, fftBinInterpolationPadding, upsampledPixels;
+	dispatch_queue_global_t globalQueue;
+	dispatch_group_t dispatchGroup;
 } BMSpectrogram;
 
 
