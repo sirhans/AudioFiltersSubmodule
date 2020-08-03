@@ -526,7 +526,7 @@ void BMSpectrogram_process(BMSpectrogram *This,
 	// if the configuration has changed, update some stuff
 	BMSpectrogram_updateImageHeight(This, fftSize, pixelHeight, minFrequency, maxFrequency);
 	
-	
+	if(BMSG_NUM_THREADS > 1){
 	// create threads for parallel processing of spectrogram
 	SInt32 blockStartIndex = 0;
 	for(size_t j=0; j<BMSG_NUM_THREADS; j++){
@@ -566,6 +566,32 @@ void BMSpectrogram_process(BMSpectrogram *This,
 		
 		// advance to the next block
 		blockStartIndex = nextBlockStartIndex;
+	}
+	// if there is only one thread then don't use the dispatch queue
+	} else {
+		for(SInt32 i=0; i<pixelWidth; i++){
+			BMSpectrogram_genColumn(i,
+									imageOutput,
+									fftStride,
+									fftStartIndex,
+									pixelWidth,
+									pixelHeight,
+									fftEndIndex,
+									fftSize,
+									fftOutputSize,
+									This->fftBinInterpolationPadding,
+									minFrequency,
+									maxFrequency,
+									This->upsampledPixels,
+									&This->spectrum[0],
+									inputAudio,
+									This->b1[0],
+									This->b2[0],
+									This->b3,
+									This->b4,
+									This->b5,
+									This->b6);
+		}
 	}
 	
 	// Don't continue execution of this thread until all blocks have executed.
