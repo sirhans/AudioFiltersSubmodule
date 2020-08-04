@@ -65,7 +65,6 @@ bool BMSpectrum_processData(BMSpectrum* This,
         float b = 0.01;
         vDSP_vdbcon(output, 1, &b, output, 1, *outputLength, 1);
         
-        
         return true;
     }
     return false;
