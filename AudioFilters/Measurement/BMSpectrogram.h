@@ -104,6 +104,16 @@ void BMSpectrogram_process(BMSpectrogram *This,
                            float maxFrequency);
 
 
+
+/*!
+ *BMSpectrogram_transposeImage
+ *
+ * Converts an image array from column major to row major order
+ */
+void BMSpectrogram_transposeImage(const uint8_t *imageInput, uint8_t *imageOutput, size_t inputWidth, size_t inputHeight);
+
+
+
 size_t BMSpectrogram_GetFFTSizeFor(BMSpectrogram *This, size_t pixelWidth, size_t sampleWidth);
 
 #endif /* BMSpectrogram_h */
