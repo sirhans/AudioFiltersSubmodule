@@ -40,7 +40,9 @@ void BMSpectrogram_init(BMSpectrogram *This,
     size_t maxFFTOutput = 1 + maxFFTSize/2;
 	for(size_t i=0; i<BMSG_NUM_THREADS; i++){
 		This->b1[i] = malloc(sizeof(float)*(maxFFTOutput+This->fftBinInterpolationPadding));
-		This->b2[i] = malloc((BMSG_FLOATS_PER_COLOUR + sizeof(float))*maxImageHeight);
+		This->b2[i] = malloc(sizeof(float)*maxImageHeight);
+		This->t1[i] = malloc(sizeof(float)*maxImageHeight*BMSG_FLOATS_PER_COLOUR);
+		This->t2[i] = malloc(sizeof(float)*maxImageHeight);
 	}
     This->b3 = malloc(sizeof(float)*maxImageHeight);
     This->b4 = malloc(sizeof(size_t)*maxImageHeight);
@@ -59,8 +61,12 @@ void BMSpectrogram_free(BMSpectrogram *This){
 	for(size_t i=0; i<BMSG_NUM_THREADS; i++){
 		free(This->b1[i]);
 		free(This->b2[i]);
+		free(This->t1[i]);
+		free(This->t2[i]);
 		This->b1[i] = NULL;
 		This->b2[i] = NULL;
+		This->t1[i] = NULL;
+		This->t2[i] = NULL;
 		BMSpectrum_free(&This->spectrum[i]);
 	}
 	
@@ -365,12 +371,6 @@ void BMSpectrum_valueToRGBA(float v, uint8_t *output){
 
 
 void BMSpectrogram_toRGBAColour(float* input, float *temp1, float *temp2, uint8_t *output, size_t pixelWidth, size_t pixelHeight){
-//    size_t outputIncrement = pixelWidth * BMSG_BYTES_PER_PIXEL;
-//    int i = (int)pixelHeight - 1;
-//    for(; i>=0; i--){
-//        BMSpectrum_valueToRGBA(input[i], output);
-//        output += outputIncrement;
-//    }
 	
 	// fill the temp buffer with the rgb colour of the 100% saturated pixels
 	float r = 0.0f;
@@ -408,6 +408,8 @@ void BMSpectrogram_toRGBAColour(float* input, float *temp1, float *temp2, uint8_
 	vDSP_vma(temp1+2, BMSG_FLOATS_PER_COLOUR, temp2, 1, input, 1, temp1+2, BMSG_FLOATS_PER_COLOUR, pixelHeight);
 	
 	// convert to 8 bit RGBA colour
+	float two55 = 255.0;
+	vDSP_vsmul(temp1, 1, &two55, temp1, 1, BMSG_FLOATS_PER_COLOUR*pixelHeight);
 	vDSP_vfixru8(temp1, BMSG_FLOATS_PER_COLOUR, output, BMSG_BYTES_PER_PIXEL, pixelHeight);
 	vDSP_vfixru8(temp1+1, BMSG_FLOATS_PER_COLOUR, output+1, BMSG_BYTES_PER_PIXEL, pixelHeight);
 	vDSP_vfixru8(temp1+2, BMSG_FLOATS_PER_COLOUR, output+2, BMSG_BYTES_PER_PIXEL, pixelHeight);
@@ -416,30 +418,6 @@ void BMSpectrogram_toRGBAColour(float* input, float *temp1, float *temp2, uint8_
 	size_t outputSizeInBytes = BMSG_BYTES_PER_PIXEL * pixelHeight;
 	for(size_t i=3; i<outputSizeInBytes; i+= BMSG_BYTES_PER_PIXEL)
 		output[i] = 255;
-	
-	//***********************
-	// IT LOOKS LIKE THIS MIGHT BE DONE. TEST IT???
-	//***********************
-
-	
-//    // generate an rgb pixel with 100% saturation
-//    simd_float3 rgb = {0.0f, 0.433f, 1.0f};
-//              //rgb(51, 139, 255)
-//
-//    // find out how much we need to scale down the saturated pixel to apply the
-//    // saturation and make headroom for the lightness
-//    float s = 0.5f;
-//    float c = (1.0f - fabsf(2.0f * v - 1.0f)) * s;
-//
-//    // scale the rgb pixel and mix with the lightness
-//    rgb = (rgb - 0.5f) * c + v;
-//
-//    // convert to 8 bit RGBA and return
-//    rgb *= 255.0;
-//    output[0] = round(rgb.x);
-//    output[1] = round(rgb.y);
-//    output[2] = round(rgb.z);
-//    output[3] = 255;
 }
 
 
@@ -511,6 +489,8 @@ void BMSpectrogram_genColumn(SInt32 i,
 							 const float *inputAudio,
 							 float *b1,
 							 float *b2,
+							 float *t1,
+							 float *t2,
 							 const float *b3,
 							 const size_t *b4,
 							 const size_t *b5,
@@ -554,11 +534,11 @@ void BMSpectrogram_genColumn(SInt32 i,
 	float upperLimit = 1;
 	vDSP_vclip(b2, 1, &lowerLimit, &upperLimit, b2, 1, pixelHeight);
 	
-	// we allocated extra space in b2 so we can use the end of it at a temp buffer
-	float *temp = b2 + pixelHeight;
+	// reverse
+	vDSP_vrvrs(b2, 1, pixelHeight);
 	
 	// convert to RGBA colours and write to output
-	BMSpectrogram_toRGBAColour(b2,temp,&imageOutput[i*BMSG_BYTES_PER_PIXEL*pixelHeight],pixelWidth, pixelHeight);
+	BMSpectrogram_toRGBAColour(b2, t1, t2, &imageOutput[i*BMSG_BYTES_PER_PIXEL*pixelHeight],pixelWidth, pixelHeight);
 }
 
 
@@ -567,7 +547,7 @@ void BMSpectrogram_genColumn(SInt32 i,
 void BMSpectrogram_transposeImage(const uint8_t *imageInput, uint8_t *imageOutput, size_t inputWidth, size_t inputHeight){
 	// confirm that int32 has the same number of bytes we use for a single pixel
 	// so that we can operate on each pixel as a single int to simplify the operation
-	assert(sizeof(uint32_t) == BMSG_BYTES_PER_PIXEL);
+	assert(sizeof(int32_t) == BMSG_BYTES_PER_PIXEL);
 	
 	// cast the input and output pointers to int32 type
 	const int32_t *in32 = (int32_t*)imageInput;
@@ -581,18 +561,20 @@ void BMSpectrogram_transposeImage(const uint8_t *imageInput, uint8_t *imageOutpu
 	// i is the input index
 	size_t i = 0;
 	
-	// oc is the output index
+	// o is the output index
 	size_t o = 0;
 	
 	// copy the input to the output one row at a time
 	while(i<imageSize){
 		// copy a single row of input to a single column of output
-		cblas_ccopy((int)inputWidth, in32+i, 1, out32+o, (int)outputWidth);
-		
-		// move the input index to the next row
-		i += inputWidth;
-		
-		// move the output index to the next output column
+		//cblas_ccopy((int)inputWidth, in32+i, 1, out32+o, (int)outputWidth);
+		for(size_t j=0; j<inputHeight; j++)
+			out32[o + inputWidth*j] = in32[i+j];
+
+		// move the input index to the next column
+		i += inputHeight;
+
+		// move the output index to the next row
 		o++;
 	}
 }
@@ -666,6 +648,8 @@ void BMSpectrogram_process(BMSpectrogram *This,
 										inputAudio,
 										This->b1[j],
 										This->b2[j],
+										This->t1[j],
+										This->t2[j],
 										This->b3,
 										This->b4,
 										This->b5,
@@ -696,6 +680,8 @@ void BMSpectrogram_process(BMSpectrogram *This,
 									inputAudio,
 									This->b1[0],
 									This->b2[0],
+									This->t1[0],
+									This->t2[0],
 									This->b3,
 									This->b4,
 									This->b5,

@@ -20,6 +20,8 @@ typedef struct BMSpectrogram {
     BMSpectrum spectrum [BMSG_NUM_THREADS];
 	float *b1 [BMSG_NUM_THREADS];
 	float *b2 [BMSG_NUM_THREADS];
+	float *t1 [BMSG_NUM_THREADS];
+	float *t2 [BMSG_NUM_THREADS];
 	float *b3, *b6;
     size_t *b4, *b5;
     float prevMinF, prevMaxF, sampleRate, pixelBinParityFrequency;
