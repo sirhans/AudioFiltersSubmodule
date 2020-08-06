@@ -565,9 +565,9 @@ void BMSpectrogram_transposeImage(const uint8_t *imageInput, uint8_t *imageOutpu
 	// copy the input to the output one row at a time
 	while(i<imageSize){
 		// copy a single row of input to a single column of output
-		cblas_ccopy((int)inputHeight, in32+i, 1, out32+o, (int)inputWidth);
-//		for(size_t j=0; j<inputHeight; j++)
-//			out32[o + inputWidth*j] = in32[i+j];
+		//cblas_ccopy((int)inputHeight, in32+i, 1, out32+o, (int)inputWidth);
+		for(size_t j=0; j<inputHeight; j++)
+			out32[o + inputWidth*j] = in32[i+j];
 
 		// move the input index to the next column
 		i += inputHeight;
