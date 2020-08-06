@@ -553,8 +553,6 @@ void BMSpectrogram_transposeImage(const uint8_t *imageInput, uint8_t *imageOutpu
 	const int32_t *in32 = (int32_t*)imageInput;
 	int32_t	*out32 = (int32_t*)imageOutput;
 	
-	size_t outputWidth = inputHeight;
-	
 	// calculate the number of pixels in the image
 	size_t imageSize = inputHeight * inputWidth;
 	
