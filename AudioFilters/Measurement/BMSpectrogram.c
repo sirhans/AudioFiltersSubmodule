@@ -549,9 +549,9 @@ void BMSpectrogram_transposeImage(const uint8_t *imageInput, uint8_t *imageOutpu
 	// so that we can operate on each pixel as a single int to simplify the operation
 	assert(sizeof(int32_t) == BMSG_BYTES_PER_PIXEL);
 	
-	// cast the input and output pointers to int32 type
-	const int32_t *in32 = (int32_t*)imageInput;
-	int32_t	*out32 = (int32_t*)imageOutput;
+	// cast the input and output pointers to float32 type
+	const float32_t *in32 = (float32_t*)imageInput;
+	float32_t *out32 = (float32_t*)imageOutput;
 	
 	// calculate the number of pixels in the image
 	size_t imageSize = inputHeight * inputWidth;
@@ -565,9 +565,7 @@ void BMSpectrogram_transposeImage(const uint8_t *imageInput, uint8_t *imageOutpu
 	// copy the input to the output one row at a time
 	while(i<imageSize){
 		// copy a single row of input to a single column of output
-		//cblas_ccopy((int)inputHeight, in32+i, 1, out32+o, (int)inputWidth);
-		for(size_t j=0; j<inputHeight; j++)
-			out32[o + inputWidth*j] = in32[i+j];
+		cblas_scopy((int)inputHeight, in32+i, 1, out32+o, (int)inputWidth);
 
 		// move the input index to the next column
 		i += inputHeight;
