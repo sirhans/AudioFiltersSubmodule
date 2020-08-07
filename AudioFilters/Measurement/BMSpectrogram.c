@@ -545,40 +545,12 @@ void BMSpectrogram_genColumn(SInt32 i,
 
 
 void BMSpectrogram_transposeImage(const uint8_t *imageInput, uint8_t *imageOutput, size_t inputWidth, size_t inputHeight){
-	// confirm that int32 has the same number of bytes we use for a single pixel
+	// confirm that float32 has the same number of bytes we use for a single pixel
 	// so that we can operate on each pixel as a single int to simplify the operation
-	assert(sizeof(int32_t) == BMSG_BYTES_PER_PIXEL);
+	assert(sizeof(float32_t) == BMSG_BYTES_PER_PIXEL);
 	
-	// cast the input and output pointers to float32 type
-	const int32_t *in32 = (int32_t*)imageInput;
-	int32_t *out32 = (int32_t*)imageOutput;
-	
-	// calculate the number of pixels in the image
-	size_t imageSize = inputHeight * inputWidth;
-	
-	// i is the input index
-	size_t i = 0;
-
-//	// o is the output index
-//	size_t o = 0;
-	
-	// copy the input to the output one row at a time
-	while(i<imageSize){
-		
-		// copy one row to one column
-		size_t k = 0;
-		for(size_t j=0; j<inputHeight; j++){
-			out32[k] = in32[j];
-			k += inputWidth;
-		}
-		
-		// advance pointers to the next column and row
-		out32++;
-		in32 += inputHeight;
-
-		// move the input index to the next column
-		i += inputHeight;
-	}
+	// use floating point matrix transposition
+	vDSP_mtrans((float32_t*)imageInput, 1, (float32_t*)imageOutput, 1, inputHeight, inputWidth);
 }
 
 
