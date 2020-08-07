@@ -14,7 +14,7 @@
 #include <simd/simd.h>
 #include <dispatch/dispatch.h>
 
-#define BMSG_NUM_THREADS 3
+#define BMSG_NUM_THREADS 1
 
 typedef struct BMSpectrogram {
     BMSpectrum spectrum [BMSG_NUM_THREADS];
