@@ -35,7 +35,7 @@ void BMSpectrogram_init(BMSpectrogram *This,
     // we need some extra samples at the end of the fftBin array because the
     // interpolating function that converts from linear scale to bark scale
     // reads beyond the interpolation index
-    This->fftBinInterpolationPadding = 2;
+    This->fftBinInterpolationPadding = 3;
     
     size_t maxFFTOutput = 1 + maxFFTSize/2;
 	for(size_t i=0; i<BMSG_NUM_THREADS; i++){
@@ -510,7 +510,7 @@ void BMSpectrogram_genColumn(SInt32 i,
 													  fftSize);
 	
 	// write some zeros after the end as padding for the interpolation function
-	memset(b1 + fftOutputSize - 1, 0, sizeof(float)*fftBinInterpolationPadding);
+	memset(b1 + fftOutputSize, 0, sizeof(float)*fftBinInterpolationPadding);
 	
 	// convert to dB, scale to [0,1] and clip values outside that range
 	BMSpectrogram_toDbScaleAndClip(b1, b1, fftSize, fftOutputSize);
