@@ -587,6 +587,8 @@ void BMSpectrogram_process(BMSpectrogram *This,
     // will still be an integer but it will vary between two consecutive values.
     float sampleWidth = endSampleIndex - startSampleIndex + 1;
     float fftStride = sampleWidth / (float)(pixelWidth-1);
+	if(pixelWidth == 1)
+		fftStride = 0;
     
 	// if the configuration has changed, update some stuff
 	BMSpectrogram_updateImageHeight(This, fftSize, pixelHeight, minFrequency, maxFrequency);
