@@ -510,7 +510,7 @@ void BMSpectrogram_genColumn(SInt32 i,
 													  fftSize);
 	
 	// write some zeros after the end as padding for the interpolation function
-	memset(b1 + fftOutputSize, 0, sizeof(float)*fftBinInterpolationPadding);
+	memset(b1 + fftOutputSize - 1, 0, sizeof(float)*fftBinInterpolationPadding);
 	
 	// convert to dB, scale to [0,1] and clip values outside that range
 	BMSpectrogram_toDbScaleAndClip(b1, b1, fftSize, fftOutputSize);
