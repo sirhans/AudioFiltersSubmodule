@@ -46,3 +46,31 @@ simd_float3 bHSVToRGB(float h, float s, float v){
 	
 	return ((hueRGB - 1.) * bHSV.y + 1.) * powf(bHSV.z, 1.0 + gamma);
 }
+
+
+/*!
+ *freqToNotein0_1
+ *
+ * Takes a frequency in Hz and converts it to a number on [0,1] % 1 where a
+ * difference of 1 indicates an octave. This is used for colourising frequencies
+ * in a way that assigns the same hue to each note regardless of which octave
+ * it is in.
+ */
+float freqToNoteIn0_1(float freqHz){
+	return fmodf(log2f(freqHz),1.0f);
+}
+
+
+
+
+/*!
+ *freqToRGBColour
+ *
+ * Converts a frequency in Hz to an RGB colour so that notes with the same name
+ * have the same hue, regardless of the octave. This is useful for using colour
+ * to indicate musical pitches.
+ */
+simd_float3 freqToRGBColour(float freqHz){
+	float hue = freqToNoteIn0_1(freqHz);
+	return bHSVToRGB(hue,1.0,0.5);
+}
