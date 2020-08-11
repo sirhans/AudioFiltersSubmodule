@@ -48,6 +48,7 @@ void BMSpectrogram_init(BMSpectrogram *This,
     This->b4 = malloc(sizeof(size_t)*maxImageHeight);
     This->b5 = malloc(sizeof(size_t)*maxImageHeight);
     This->b6 = malloc(sizeof(float)*maxImageHeight);
+	This->colours = malloc(sizeof(simd_float3)*maxImageHeight);
 	
 	// get the global concurrent dispatch queue with highest priority
 	This->globalQueue = dispatch_get_global_queue(QOS_CLASS_USER_INTERACTIVE,0);
@@ -74,10 +75,12 @@ void BMSpectrogram_free(BMSpectrogram *This){
     free(This->b4);
     free(This->b5);
     free(This->b6);
+	free(This->colours);
     This->b3 = NULL;
     This->b4 = NULL;
     This->b5 = NULL;
     This->b6 = NULL;
+	This->colours = NULL;
 }
 
 float hzToBark(float hz){
@@ -217,7 +220,7 @@ void BMSpectrogram_updateImageHeight(BMSpectrogram *This,
             float binsPerPixel_f = fftBinsPerPixel(hz, fftSize, imageHeight, minF, maxF, This->sampleRate);
             
             // calculate the start index for this pixel
-            if(i==0) startIndices[i] = 0;
+            if(i==0) startIndices[i] = hzToFFTBin(minF, fftSize, This->sampleRate);
             else startIndices[i] = startIndices[i-1]+binIntervalLengths[i-1];
             
             // calculate the end index for this pixel
