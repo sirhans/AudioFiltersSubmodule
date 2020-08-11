@@ -10,6 +10,7 @@
 #include "BMIntegerMath.h"
 #include "Constants.h"
 #include <sys/qos.h>
+#include "BMColourFunctions.h"
 
 #define BMSG_BYTES_PER_PIXEL 4
 #define BMSG_FLOATS_PER_COLOUR 3
@@ -48,14 +49,26 @@ void BMSpectrogram_init(BMSpectrogram *This,
     This->b4 = malloc(sizeof(size_t)*maxImageHeight);
     This->b5 = malloc(sizeof(size_t)*maxImageHeight);
     This->b6 = malloc(sizeof(float)*maxImageHeight);
-	This->colours = malloc(sizeof(simd_float3)*maxImageHeight);
+	This->colours = malloc(sizeof(float)*BMSG_FLOATS_PER_COLOUR*maxImageHeight);
 	
 	// get the global concurrent dispatch queue with highest priority
 	This->globalQueue = dispatch_get_global_queue(QOS_CLASS_USER_INTERACTIVE,0);
 	
 	// create a new dispatch group
 	This->dispatchGroup = dispatch_group_create();
+	
+	// test colour functions
+	float test [3];
+	freqToRGBColour(400, test);
+	test[0] *= 1.0f;
+	freqToRGBColour(800, test);
+	test[0] *= 1.0f;
+
 }
+
+
+
+
 
 void BMSpectrogram_free(BMSpectrogram *This){
 	// free per-thread resources
@@ -87,26 +100,6 @@ float hzToBark(float hz){
     // hzToBark[hz_] := 6 ArcSinh[hz/600]
     return 6.0f * asinhf(hz / 600.0f);
 }
-
-
-//void hzToBarkVDSP(const float *hz, float *bark, size_t length){
-//
-//    // hz/600
-//    float div600 = 1.0 / 600.0;
-//    vDSP_vsmul(hz, 1, &div600, bark, 1, length);
-//
-//    // asinf
-//    int length_i = (int)length;
-//    vvasinf(bark, bark, &length_i);
-//
-//    // * 6.0
-//    float six = 6.0f;
-//    vDSP_vsmul(bark, 1, &six, bark, 1, length);
-//}
-
-
-
-
 
 
 
@@ -212,6 +205,9 @@ void BMSpectrogram_updateImageHeight(BMSpectrogram *This,
             
             // convert to Hz
             float hz = barkToHz(bark);
+			
+			// find the colour for this frequency
+			freqToRGBColour(hz, This->colours + i*BMSG_FLOATS_PER_COLOUR);
             
             // convert to FFT bin index (floating point interpolated)
             interpolatedIndices[i] = hzToFFTBin(hz, fftSize, This->sampleRate);
@@ -220,7 +216,7 @@ void BMSpectrogram_updateImageHeight(BMSpectrogram *This,
             float binsPerPixel_f = fftBinsPerPixel(hz, fftSize, imageHeight, minF, maxF, This->sampleRate);
             
             // calculate the start index for this pixel
-            if(i==0) startIndices[i] = hzToFFTBin(minF, fftSize, This->sampleRate);
+			if(i==0) startIndices[i] = hzToFFTBin(minF, fftSize, This->sampleRate);
             else startIndices[i] = startIndices[i-1]+binIntervalLengths[i-1];
             
             // calculate the end index for this pixel
@@ -231,6 +227,9 @@ void BMSpectrogram_updateImageHeight(BMSpectrogram *This,
             
             // don't let the end index go above the limit
             if(endIndex > fftSize-1) binIntervalLengths[i] = fftSize - startIndices[i];
+			
+			// don't let the binIntervalLength be zero or negtive
+			if((int)endIndex - (int)startIndices[i] <= 0) binIntervalLengths[i] = 1;
             
             downsamplingScales[i] = 1.0f / (float)binIntervalLengths[i];
         }
@@ -260,7 +259,8 @@ void BMSpectrogram_fftBinsToBarkScale(const float* fftBins,
 									  const float *b3,
 									  const size_t *b4,
 									  const size_t *b5,
-									  const float *b6){
+									  const float *b6
+									  ){
     // rename buffer 3 and 4 for readablility
     const float* interpolatedIndices = b3;
     const size_t* startIndices = b4;
@@ -353,7 +353,6 @@ simd_float3 BMSpectrum_HSLToRGB(simd_float3 hsl){
 void BMSpectrum_valueToRGBA(float v, uint8_t *output){
     // generate an rgb pixel with 100% saturation
     simd_float3 rgb = {0.0f, 0.433f, 1.0f};
-              //rgb(51, 139, 255)
     
     // find out how much we need to scale down the saturated pixel to apply the
     // saturation and make headroom for the lightness
@@ -377,22 +376,23 @@ void BMSpectrum_valueToRGBA(float v, uint8_t *output){
 
 
 
-void BMSpectrogram_toRGBAColour(float* input, float *temp1, float *temp2, uint8_t *output, size_t pixelWidth, size_t pixelHeight){
+void BMSpectrogram_toRGBAColour(float* input, float *temp1, float *temp2, uint8_t *output, size_t pixelWidth, size_t pixelHeight, const float *colours){
 	
 	// fill the temp buffer with the rgb colour of the 100% saturated pixels
-	float r = 0.0f;
-	float g = 0.433f;
-	float b = 1.0f;
-	vDSP_vfill(&r, temp1, BMSG_FLOATS_PER_COLOUR, pixelHeight);
-	vDSP_vfill(&g, temp1+1, BMSG_FLOATS_PER_COLOUR, pixelHeight);
-	vDSP_vfill(&b, temp1+2, BMSG_FLOATS_PER_COLOUR, pixelHeight);
+//	float r = 0.0f;
+//	float g = 0.433f;
+//	float b = 1.0f;
+//	vDSP_vfill(&r, temp1, BMSG_FLOATS_PER_COLOUR, pixelHeight);
+//	vDSP_vfill(&g, temp1+1, BMSG_FLOATS_PER_COLOUR, pixelHeight);
+//	vDSP_vfill(&b, temp1+2, BMSG_FLOATS_PER_COLOUR, pixelHeight);
+	memcpy(temp1,colours,sizeof(float)*BMSG_FLOATS_PER_COLOUR*pixelHeight);
 	
 	// find out how much we need to scale down the saturated pixel to apply the
 	// saturation and make headroom for the lightness
 	//    float s = 0.5f;
 	//    float c = (fabsf(2.0f * v - 1.0f) - 1.0f) * (-s);
-	float s = 0.5f;
-	float negS = -0.5f;
+	float s = 0.99f;
+	float negS = -s;
 	float negOne = -1.0f;
 	float two = 2.0f;
 	// 2.0f * v - 1.0f
@@ -501,7 +501,8 @@ void BMSpectrogram_genColumn(SInt32 i,
 							 const float *b3,
 							 const size_t *b4,
 							 const size_t *b5,
-							 const float *b6){
+							 const float *b6,
+							 const float *colours){
 	// find the index where the current fft window starts
 	SInt32 fftCurrentWindowStart = (SInt32)roundf((float)i*fftStride + FLT_EPSILON) + fftStartIndex;
 	
@@ -545,7 +546,7 @@ void BMSpectrogram_genColumn(SInt32 i,
 	vDSP_vrvrs(b2, 1, pixelHeight);
 	
 	// convert to RGBA colours and write to output
-	BMSpectrogram_toRGBAColour(b2, t1, t2, &imageOutput[i*BMSG_BYTES_PER_PIXEL*pixelHeight],pixelWidth, pixelHeight);
+	BMSpectrogram_toRGBAColour(b2, t1, t2, &imageOutput[i*BMSG_BYTES_PER_PIXEL*pixelHeight],pixelWidth, pixelHeight, colours);
 }
 
 
@@ -636,7 +637,8 @@ void BMSpectrogram_process(BMSpectrogram *This,
 										This->b3,
 										This->b4,
 										This->b5,
-										This->b6);
+										This->b6,
+										This->colours);
 			}
 		});
 		
@@ -668,7 +670,8 @@ void BMSpectrogram_process(BMSpectrogram *This,
 									This->b3,
 									This->b4,
 									This->b5,
-									This->b6);
+									This->b6,
+									This->colours);
 		}
 	}
 	
