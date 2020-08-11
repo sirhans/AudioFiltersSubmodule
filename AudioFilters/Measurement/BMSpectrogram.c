@@ -103,6 +103,10 @@ float hzToBark(float hz){
 
 
 
+
+
+
+
 float barkToHz(float bark){
     // barkToHz[bk_] := 600 Sinh[bk/6]
     return 600.0f * sinhf(bark / 6.0f);
