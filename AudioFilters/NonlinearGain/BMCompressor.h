@@ -52,5 +52,6 @@ void BMCompressor_SetReleaseTime(BMCompressor* compressor, float releaseTime);
 void BMCompressor_SetSampleRate(BMCompressor* compressor, float sampleRate);
 void BMCompressor_SetKneeWidthInDB(BMCompressor* compressor, float kneeWidth);
 
+void BMCompressor_Free(BMCompressor *This);
 
 #endif /* BMCompressor_h */
