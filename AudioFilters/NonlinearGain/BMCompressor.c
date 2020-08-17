@@ -78,11 +78,13 @@ void BMCompressor_Free(BMCompressor *This){
 
 
 
-
-
-
-void BMCompressor_ProcessBufferMono(BMCompressor *This, const float* input, float* output, float* minGainDb, size_t numSamples){
-    
+void BMCompressor_ProcessBufferMonoWithSideChain(BMCompressor *This,
+												 const float *input,
+												 const float *scInput,
+												 float* output,
+												 float* minGainDb,
+												 size_t numSamples){
+	
     // prepare to track the minimum gain
     float minGainThisChunk;
     float minGainWholeBuffer = FLT_MAX;
@@ -94,7 +96,7 @@ void BMCompressor_ProcessBufferMono(BMCompressor *This, const float* input, floa
         float* buffer1 = This->buffer1;
         
         // rectify the input signal
-        vDSP_vabs(input, 1, buffer1, 1, framesProcessing);
+        vDSP_vabs(scInput, 1, buffer1, 1, framesProcessing);
         
         // convert linear gain to decibel scale
         float one = 1.0f;
@@ -138,6 +140,11 @@ void BMCompressor_ProcessBufferMono(BMCompressor *This, const float* input, floa
     }
     
     *minGainDb = minGainWholeBuffer;
+}
+
+
+void BMCompressor_ProcessBufferMono(BMCompressor *This, const float* input, float* output, float* minGainDb, size_t numSamples){
+	BMCompressor_ProcessBufferMonoWithSideChain(This, input, input, output, minGainDb, numSamples);
 }
 
 
