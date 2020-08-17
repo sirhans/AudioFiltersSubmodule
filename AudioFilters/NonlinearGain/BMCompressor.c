@@ -89,54 +89,54 @@ void BMCompressor_ProcessBufferMonoWithSideChain(BMCompressor *This,
     float minGainThisChunk;
     float minGainWholeBuffer = FLT_MAX;
     
-    while(numSamples > 0){
-        size_t framesProcessing = MIN(numSamples,BM_BUFFER_CHUNK_SIZE);
+    size_t samplesProcessed = 0;
+    size_t samplesProcessing;
+    while(samplesProcessed < numSamples){
+        samplesProcessing = MIN(numSamples,BM_BUFFER_CHUNK_SIZE);
         
         // get a shorter name for the buffer
         float* buffer1 = This->buffer1;
         
         // rectify the input signal
-        vDSP_vabs(scInput, 1, buffer1, 1, framesProcessing);
+        vDSP_vabs(scInput+samplesProcessed, 1, buffer1, 1, samplesProcessing);
         
         // convert linear gain to decibel scale
         float one = 1.0f;
-        vDSP_vdbcon(buffer1,1,&one,buffer1,1,framesProcessing,0);
+        vDSP_vdbcon(buffer1,1,&one,buffer1,1,samplesProcessing,0);
         
         // clip values below the threshold with a soft knee
         BMQuadraticThreshold_lowerBuffer(&This->quadraticThreshold,
                                          buffer1, This->buffer2,
-                                         framesProcessing);
+                                         samplesProcessing);
         
         // shift the values up so that zero is the minimum
         float oppositeThreshold = -This->thresholdInDB;
-        vDSP_vsadd(This->buffer2, 1, &oppositeThreshold, buffer1, 1, framesProcessing);
+        vDSP_vsadd(This->buffer2, 1, &oppositeThreshold, buffer1, 1, samplesProcessing);
         
         // apply the compression ratio
-        vDSP_vsmul(buffer1,1,&This->slope,buffer1,1,framesProcessing);
+        vDSP_vsmul(buffer1,1,&This->slope,buffer1,1,samplesProcessing);
         
         // filter to get a smooth volume change envelope
-        BMEnvelopeFollower_processBuffer(&This->envelopeFollower, buffer1, buffer1, framesProcessing);
+        BMEnvelopeFollower_processBuffer(&This->envelopeFollower, buffer1, buffer1, samplesProcessing);
         
         // negate the signal to get the dB change required to apply the compression
-        vDSP_vneg(buffer1, 1, buffer1, 1, framesProcessing);
+        vDSP_vneg(buffer1, 1, buffer1, 1, samplesProcessing);
         
         // get the minimum gain set by the compressor in this chunk
-        vDSP_minv(buffer1, 1, &minGainThisChunk, framesProcessing);
+        vDSP_minv(buffer1, 1, &minGainThisChunk, samplesProcessing);
         
         // if this chunk min gain is less than the min gain for the whole
         // buffer, update the min gain for the buffer
         minGainWholeBuffer = MIN(minGainThisChunk,minGainWholeBuffer);
         
         // convert to linear gain control signal
-        vector_fastDbToGain(buffer1,buffer1,framesProcessing);
+        vector_fastDbToGain(buffer1,buffer1,samplesProcessing);
 
         // apply the gain adjustment to the audio signal
-        vDSP_vmul(buffer1,1,input,1,output,1,framesProcessing);
+        vDSP_vmul(buffer1,1,input+samplesProcessed,1,output+samplesProcessed,1,samplesProcessing);
         
         // advance pointers to the next chunk
-        numSamples -= framesProcessing;
-        input += framesProcessing;
-        output += framesProcessing;
+        samplesProcessed += samplesProcessing;
     }
     
     *minGainDb = minGainWholeBuffer;
@@ -150,8 +150,9 @@ void BMCompressor_ProcessBufferMono(BMCompressor *This, const float* input, floa
 
 
 
-void BMCompressor_ProcessBufferStereo(BMCompressor *This,
+void BMCompressor_ProcessBufferStereoWithSideChain(BMCompressor *This,
                                       float* inputL, float* inputR,
+                                       float* scInputL, float* scInputR,
                                       float* outputL, float* outputR,
                                       float* minGainDb, size_t numSamples){
     
@@ -159,62 +160,68 @@ void BMCompressor_ProcessBufferStereo(BMCompressor *This,
     float minGainThisChunk;
     float minGainWholeBuffer = FLT_MAX;
     
-    while(numSamples > 0){
-        size_t framesProcessing = MIN(numSamples,BM_BUFFER_CHUNK_SIZE);
+    size_t samplesProcessed = 0;
+    size_t samplesProcessing;
+    
+    while(samplesProcessed<numSamples){
+        samplesProcessing = MIN(numSamples,BM_BUFFER_CHUNK_SIZE);
         
         // get a shorter name for the buffer
         float* buffer1 = This->buffer1;
         
         // take the arithmetic mean of the left and right channels
         float half = 0.5;
-        vDSP_vasm(inputL, 1, inputR, 1, &half, buffer1, 1, framesProcessing);
+        vDSP_vasm(scInputL+samplesProcessed, 1, scInputR+samplesProcessed, 1, &half, buffer1, 1, samplesProcessing);
         
         // rectify the input signal
-        vDSP_vabs(buffer1, 1, buffer1, 1, framesProcessing);
+        vDSP_vabs(buffer1, 1, buffer1, 1, samplesProcessing);
         
         // convert linear gain to decibel scale
         float one = 1.0f;
-        vDSP_vdbcon(buffer1,1,&one,buffer1,1,framesProcessing,0);
+        vDSP_vdbcon(buffer1,1,&one,buffer1,1,samplesProcessing,0);
         
         // clip values below the threshold with a soft knee
-        BMQuadraticThreshold_lowerBuffer(&This->quadraticThreshold, buffer1, This->buffer2, framesProcessing);
+        BMQuadraticThreshold_lowerBuffer(&This->quadraticThreshold, buffer1, This->buffer2, samplesProcessing);
         
         // shift the values up so that zero is the minimum
         float oppositeThreshold = -This->thresholdInDB;
-        vDSP_vsadd(This->buffer2, 1, &oppositeThreshold, buffer1, 1, framesProcessing);
+        vDSP_vsadd(This->buffer2, 1, &oppositeThreshold, buffer1, 1, samplesProcessing);
         
         // apply the compression ratio
-        vDSP_vsmul(buffer1,1,&This->slope,buffer1,1,framesProcessing);
+        vDSP_vsmul(buffer1,1,&This->slope,buffer1,1,samplesProcessing);
         
         // filter to get a smooth volume change envelope
-        BMEnvelopeFollower_processBuffer(&This->envelopeFollower, buffer1, buffer1, framesProcessing);
+        BMEnvelopeFollower_processBuffer(&This->envelopeFollower, buffer1, buffer1, samplesProcessing);
         
         // negate the signal to get the dB change required to apply the compression
-        vDSP_vneg(buffer1, 1, buffer1, 1, framesProcessing);
+        vDSP_vneg(buffer1, 1, buffer1, 1, samplesProcessing);
         
         // get the minimum gain set by the compressor in this chunk
-        vDSP_minv(buffer1, 1, &minGainThisChunk, framesProcessing);
+        vDSP_minv(buffer1, 1, &minGainThisChunk, samplesProcessing);
         
         // if this chunk min gain is less than the min gain for the whole
         // buffer, update the min gain for the buffer
         minGainWholeBuffer = MIN(minGainThisChunk,minGainWholeBuffer);
         
         // convert to linear gain control signal
-        vector_fastDbToGain(buffer1,buffer1,framesProcessing);
+        vector_fastDbToGain(buffer1,buffer1,samplesProcessing);
         
         // apply the gain adjustment to the audio signal
-        vDSP_vmul(buffer1,1,inputL,1,outputL,1,framesProcessing);
-        vDSP_vmul(buffer1,1,inputR,1,outputR,1,framesProcessing);
+        vDSP_vmul(buffer1,1,inputL+samplesProcessed,1,outputL+samplesProcessed,1,samplesProcessing);
+        vDSP_vmul(buffer1,1,inputR+samplesProcessed,1,outputR+samplesProcessed,1,samplesProcessing);
         
         // advance pointers to the next chunk
-        numSamples -= framesProcessing;
-        inputL += framesProcessing;
-        inputR += framesProcessing;
-        outputL += framesProcessing;
-        outputR += framesProcessing;
+        samplesProcessed += samplesProcessing;
     }
     
     *minGainDb = minGainWholeBuffer;
+}
+
+void BMCompressor_ProcessBufferStereo(BMCompressor *This,
+                                        float* inputL, float* inputR,
+                                        float* outputL, float* outputR,
+                                        float* minGainDb, size_t numSamples){
+    BMCompressor_ProcessBufferStereoWithSideChain(This, inputL, inputR, inputL, inputR, outputL, outputR, minGainDb, numSamples);
 }
 
 void updateThreshold(BMCompressor *This){

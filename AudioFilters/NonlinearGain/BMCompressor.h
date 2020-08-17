@@ -54,6 +54,11 @@ void BMCompressor_ProcessBufferMonoWithSideChain(BMCompressor *This,
 
 
 void BMCompressor_ProcessBufferStereo(BMCompressor* compressor, float* inputL, float* inputR, float* outputL, float* outputR, float* minGainDb, size_t frameCount);
+void BMCompressor_ProcessBufferStereoWithSideChain(BMCompressor *This,
+                                                   float* inputL, float* inputR,
+                                                   float* scInputL, float* scInputR,
+                                                   float* outputL, float* outputR,
+                                                   float* minGainDb, size_t numSamples);
 
 void BMCompressor_SetThresholdInDB(BMCompressor* compressor, float threshold);
 void BMCompressor_SetRatio(BMCompressor* compressor, float ratio);
