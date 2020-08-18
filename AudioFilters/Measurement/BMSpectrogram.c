@@ -65,11 +65,6 @@ void BMSpectrogram_init(BMSpectrogram *This,
 	
 	// start out with normal colours
 	This->rainbowColour = FALSE;
-	// create a new dispatch group
-	This->dispatchGroup = dispatch_group_create();
-	
-	// begin with normal colour
-	This->rainbowColour = FALSE;
 }
 
 
@@ -668,7 +663,8 @@ void BMSpectrogram_process(BMSpectrogram *This,
 	}
 	
 	// Don't continue execution of this thread until all blocks have executed.
-	dispatch_group_wait(This->dispatchGroup, DISPATCH_TIME_FOREVER);
+	if(BMSG_NUM_THREADS > 1)
+		dispatch_group_wait(This->dispatchGroup, DISPATCH_TIME_FOREVER);
 }
 
 size_t nearestPowerOfTwo(float x){
