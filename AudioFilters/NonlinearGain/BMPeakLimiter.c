@@ -107,7 +107,7 @@ void BMPeakLimiter_processStereo(BMPeakLimiter *This,
 			// make an alias pointer for code readability
 			float* envelope = This->controlSignal;
 			
-			// take the max of the left and right channels into the envelop buffer
+			// take the max of the left and right channels into the envelope buffer
 			vDSP_vmax(This->bufferL, 1, This->bufferR, 1, envelope, 1, samplesProcessing);
 			
 			// replace values below the threshold with the threshold itself

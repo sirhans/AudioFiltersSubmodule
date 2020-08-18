@@ -196,38 +196,6 @@ void BMPitchShiftDelay_prepareStrideBuffer(BMPitchShiftDelay* This,size_t sample
 //    printf("t %f %f %f %f\n",startIdxL,startIdxR,This->strideBufferL[samplesProcessing-1],This->strideBufferL[samplesProcessing-1]);
 }
 
-void BMPitchShiftDelay_prepareStrideBufferTest(BMPitchShiftDelay* This,size_t samplesProcessed,size_t samplesProcessing){
-        
-    float dr = (This->delayParamL.stopSamples-This->delayParamL.startSamples);
-    Float64 speedL = 1 - dr/This->sampleToReachTarget;
-    float startIdxL = This->delayParamL.lastIdx - 1 + speedL;
-    if(This->currentSample==0)
-        startIdxL = speedL;
-    float rampSpeed = speedL;
-    vDSP_vramp(&startIdxL, &rampSpeed, This->strideBufferL, 1, samplesProcessing);
-    //Get the decimal of realIdx & force to equal the last idx
-    
-    This->delayParamL.sampleToConsume = floorf(This->strideBufferL[samplesProcessing-1]);
-    if(This->currentSample+samplesProcessing==This->sampleToReachTarget)
-        This->delayParamL.sampleToConsume = roundf(This->strideBufferL[samplesProcessing-1]);
-    This->delayParamL.lastIdx = This->strideBufferL[samplesProcessing-1] - This->delayParamL.sampleToConsume;
-    
-    //Right
-    dr = (This->delayParamR.stopSamples-This->delayParamR.startSamples);
-    Float64 speedR = 1 - dr/This->sampleToReachTarget;
-    float startIdxR = This->delayParamR.lastIdx - 1 + speedR;
-    if(This->currentSample==0)
-        startIdxR = speedL;
-    rampSpeed = speedR;
-    vDSP_vramp(&startIdxR, &rampSpeed, This->strideBufferR, 1, samplesProcessing);
-    //Get the decimal of realIdx & force to equal the last idx
-    This->delayParamR.sampleToConsume = floorf(This->strideBufferR[samplesProcessing-1]);
-    if(This->currentSample+samplesProcessing==This->sampleToReachTarget)
-        This->delayParamR.sampleToConsume = roundf(This->strideBufferR[samplesProcessing-1]);
-    This->delayParamR.lastIdx = This->strideBufferR[samplesProcessing-1] - This->delayParamR.sampleToConsume;
-    printf("%f %f %f %f\n",startIdxL,startIdxR,This->strideBufferL[samplesProcessing-1],This->strideBufferL[samplesProcessing-1]);
-}
-
 
 void BMPitchShiftDelay_processResetFilter(BMPitchShiftDelay* This){
     if(BMSmoothSwitch_getState(&This->offSwitchL)==BMSwitchOff){

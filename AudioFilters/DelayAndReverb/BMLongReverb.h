@@ -6,8 +6,8 @@
 //  Copyright © 2020 BlueMangoo. All rights reserved.
 //
 
-#ifndef BMCloudReverb_h
-#define BMCloudReverb_h
+#ifndef BMLongReverb_h
+#define BMLongReverb_h
 
 #include <stdio.h>
 #include "BMVelvetNoiseDecorrelator.h"
@@ -18,7 +18,7 @@
 #include "BMSmoothGain.h"
 #include "BMLongLoopFDN.h"
 #include "BMPanLFO.h"
-#include "BMAllpassNestedFilter.h"
+#include "BMHarmonicityMeasure.h"
 #include "BMFIRFilter.h"
 #include "BMSimpleDelay.h"
 #include "BMSmoothGain.h"
@@ -28,7 +28,7 @@ typedef struct BMStereoBuffer{
     void* bufferR;
 } BMStereoBuffer;
 
-typedef struct BMCloudReverb {
+typedef struct BMLongReverb {
     BMMultiLevelBiquad biquadFilter;
     BMVelvetNoiseDecorrelator* vndArray;
     
@@ -73,19 +73,26 @@ typedef struct BMCloudReverb {
     int initNo;
     
     BMSmoothGain smoothGain;
-} BMCloudReverb;
+    
+    BMHarmonicityMeasure chordMeasure;
+    size_t measureLength;
+    size_t measureFillCount;
+    float* measureInput;
+    float* sfmBuffer;
+    size_t sfmIdx;
+} BMLongReverb;
 
-void BMCloudReverb_init(BMCloudReverb* This,float sr);
-void BMCloudReverb_destroy(BMCloudReverb* This);
-void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t numSamples,bool offlineRendering);
+void BMLongReverb_init(BMLongReverb* This,float sr);
+void BMLongReverb_destroy(BMLongReverb* This);
+void BMLongReverb_processStereo(BMLongReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t numSamples,bool offlineRendering);
 //Set
-void BMCloudReverb_setLoopDecayTime(BMCloudReverb* This,float decayTime);
-void BMCloudReverb_setDelayPitchMixer(BMCloudReverb* This,float wetMix);
-void BMCloudReverb_setOutputMixer(BMCloudReverb* This,float wetMix);
-void BMCloudReverb_setDiffusion(BMCloudReverb* This,float diffusion);
-void BMCloudReverb_setLSGain(BMCloudReverb* This,float gainDb);
-void BMCloudReverb_setHighCutFreq(BMCloudReverb* This,float freq);
-void BMCloudReverb_setFadeInVND(BMCloudReverb* This,float timeInS);
+void BMLongReverb_setLoopDecayTime(BMLongReverb* This,float decayTime);
+void BMLongReverb_setDelayPitchMixer(BMLongReverb* This,float wetMix);
+void BMLongReverb_setOutputMixer(BMLongReverb* This,float wetMix);
+void BMLongReverb_setDiffusion(BMLongReverb* This,float diffusion);
+void BMLongReverb_setLSGain(BMLongReverb* This,float gainDb);
+void BMLongReverb_setHighCutFreq(BMLongReverb* This,float freq);
+void BMLongReverb_setFadeInVND(BMLongReverb* This,float timeInS);
 //Test
-void BMCloudReverb_impulseResponse(BMCloudReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t length);
-#endif /* BMCloudReverb_h */
+void BMLongReverb_impulseResponse(BMLongReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t length);
+#endif /* BMLongReverb_h */

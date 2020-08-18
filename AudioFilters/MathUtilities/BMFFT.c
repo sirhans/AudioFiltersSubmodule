@@ -77,7 +77,7 @@ void BMFFT_free(BMFFT *This){
 
 
 
-void BMFFT_complexFFT(BMFFT *This,
+void BMFFT_FFTComplexOutput(BMFFT *This,
                       const float* input,
                       DSPSplitComplex *output,
                       size_t inputLength){
@@ -98,12 +98,13 @@ void BMFFT_complexFFT(BMFFT *This,
 
 
 
+
 void BMFFT_absFFTCombinedDCNQ(BMFFT *This,
                               const float* input,
                               float* output,
                               size_t inputLength){
     // take the compled-valued fft
-    BMFFT_complexFFT(This, input, &This->fft_output, inputLength);
+    BMFFT_FFTComplexOutput(This, input, &This->fft_output, inputLength);
     
     // scale the combined DC / Nyquist term so that it has the same statistical
     // distribution as the complex terms
@@ -139,7 +140,7 @@ float BMFFT_absFFTReturnNyquist(BMFFT *This,
                                 float* output,
                                 size_t inputLength){
     // calculate the FFT
-    BMFFT_complexFFT(This, input, &This->fft_output, inputLength);
+    BMFFT_FFTComplexOutput(This, input, &This->fft_output, inputLength);
     
     // extract the nyquist term from its place and store it
     float nyquist = This->fft_output.imagp[0];

@@ -155,7 +155,7 @@ void BMSmoothDelay_processBuffer(BMSmoothDelay* This,float* inBuffer, float* out
             This->delaySamples += samplesProcessing - sampleToConsume;
             This->sampleToReachTarget -= sampleToRamp;
         }else{
-            assert(This->speed==1);
+//            assert(This->speed==1);
             //Normal speed
             vDSP_vramp(&This->strideIdx, &This->speed, This->strideBuffer, 1, samplesProcessing);
             sampleToConsume = samplesProcessing;
@@ -242,11 +242,11 @@ void BMSmoothDelay_processBufferByStride(BMSmoothDelay* This,float* inBuffer, fl
     // mark the read bytes as used
     TPCircularBufferConsume(&This->buffer, (uint32_t)BM_MIN(sampleToConsume*sizeof(float),bytesAvailableForRead));
     
-    This->delaySamples += samplesProcessing - sampleToConsume;
-    //Check
-    TPCircularBufferTail(&This->buffer, &bytesAvailableForRead);
-    size_t correctDS = bytesAvailableForRead/sizeof(float);
-    if(This->delaySamples!=correctDS){
-        printf("next %f %lu\n",This->delaySamples,correctDS);
-    }
+//    This->delaySamples += samplesProcessing - sampleToConsume;
+//    //Check
+//    TPCircularBufferTail(&This->buffer, &bytesAvailableForRead);
+//    size_t correctDS = bytesAvailableForRead/sizeof(float);
+//    if(This->delaySamples!=correctDS){
+//        printf("next %f %lu\n",This->delaySamples,correctDS);
+//    }
 }

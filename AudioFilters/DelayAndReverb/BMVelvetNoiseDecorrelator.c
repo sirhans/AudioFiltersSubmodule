@@ -99,6 +99,9 @@ void BMVelvetNoiseDecorrelator_initFullSettings(BMVelvetNoiseDecorrelator *This,
     BMSmoothSwitch_init(&This->offSwitchL, sampleRate);
     BMSmoothSwitch_init(&This->offSwitchR, sampleRate);
     
+    BMSmoothSwitch_initWithRate(&This->offSwitchL, sampleRate,10.0f);
+    BMSmoothSwitch_initWithRate(&This->offSwitchR, sampleRate,10.0f);
+    
 	// init the multi-tap delay in bypass mode
 	size_t maxDelayLenth = ceil(maxDelaySeconds*sampleRate);
 	BMMultiTapDelay_initBypass(&This->multiTapDelay,

@@ -11,10 +11,13 @@
 
 #include <stdio.h>
 #include "BMCepstrum.h"
-
+#include "BMSFM.h"
 
 typedef struct BMHarmonicityMeasure {
     BMCepstrum cepstrum;
+    BMSFM sfm;
+    float* input;
+    float* output;
     size_t length;
     float sampleRate;
 } BMHarmonicityMeasure;
@@ -30,7 +33,11 @@ void BMHarmonicityMeasure_init(BMHarmonicityMeasure *This, size_t bufferLength, 
  */
 void BMHarmonicityMeasure_free(BMHarmonicityMeasure *This);
 
+/*!
+*BMHarmonicityMeasure_processStereoBuffer
+*/
+float BMHarmonicityMeasure_processStereoBuffer(BMHarmonicityMeasure *This,float* inputL,float* inputR,size_t length);
 
-
+float BMHarmonicityMeasure_processMonoBuffer(BMHarmonicityMeasure *This,float* input,size_t length);
 
 #endif /* BMHarmonicityMeasure_h */

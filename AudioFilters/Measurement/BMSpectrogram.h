@@ -12,12 +12,23 @@
 #include <stdio.h>
 #include "BMSpectrum.h"
 #include <simd/simd.h>
+#include <dispatch/dispatch.h>
+
+#define BMSG_NUM_THREADS 1
 
 typedef struct BMSpectrogram {
-	BMSpectrum spectrum;
-	float *b1, *b2, *b3;
-	float prevMinF, prevMaxF, sampleRate;
-	size_t prevImageHeight, prevFFTSize, maxImageHeight, maxFFTSize, fftBinInterpolationPadding;
+    BMSpectrum spectrum [BMSG_NUM_THREADS];
+	float *b1 [BMSG_NUM_THREADS];
+	float *b2 [BMSG_NUM_THREADS];
+	float *t1 [BMSG_NUM_THREADS];
+	float *t2 [BMSG_NUM_THREADS];
+	float *b3, *b6;
+    size_t *b4, *b5;
+	simd_float3 *colours;
+    float prevMinF, prevMaxF, sampleRate, pixelBinParityFrequency;
+    size_t prevImageHeight, prevFFTSize, maxImageHeight, maxFFTSize, fftBinInterpolationPadding, upsampledPixels;
+	dispatch_queue_global_t globalQueue;
+	dispatch_group_t dispatchGroup;
 } BMSpectrogram;
 
 
@@ -40,9 +51,11 @@ typedef struct BMRGBPixel {
  * @param maxImageHeight the height of the output image is not linked to the fft size. This setting exists so that we can allocate memory for internal buffers. the process function may use any image height <= maxImageHeight
  */
 void BMSpectrogram_init(BMSpectrogram *This,
-						size_t maxFFTSize,
-						size_t maxImageHeight,
-						float sampleRate);
+                        size_t maxFFTSize,
+                        size_t maxImageHeight,
+                        float sampleRate);
+
+void BMSpectrogram_free(BMSpectrogram *This);
 
 
 /*!
@@ -82,15 +95,28 @@ float BMSpectrogram_getPaddingRight(size_t fftSize);
  * @param pixelHeight height of image outptu in pixels. the output is in bark scale frequency, interpolated fromt the FFT output so the pixelHeight does not correspond to the fft length or the frequency resolution.
  */
 void BMSpectrogram_process(BMSpectrogram *This,
-						   const float* inputAudio,
-						   SInt32 inputLength,
-						   SInt32 startSampleIndex,
-						   SInt32 endSampleIndex,
-						   SInt32 fftSize,
-						   uint8_t *imageOutput,
-						   SInt32 pixelWidth,
-						   SInt32 pixelHeight,
-						   float minFrequency,
-						   float maxFrequency);
+                           const float* inputAudio,
+                           SInt32 inputLength,
+                           SInt32 startSampleIndex,
+                           SInt32 endSampleIndex,
+                           SInt32 fftSize,
+                           uint8_t *imageOutput,
+                           SInt32 pixelWidth,
+                           SInt32 pixelHeight,
+                           float minFrequency,
+                           float maxFrequency);
+
+
+
+/*!
+ *BMSpectrogram_transposeImage
+ *
+ * Converts an image array from column major to row major order
+ */
+void BMSpectrogram_transposeImage(const uint8_t *imageInput, uint8_t *imageOutput, size_t inputWidth, size_t inputHeight);
+
+
+
+size_t BMSpectrogram_GetFFTSizeFor(BMSpectrogram *This, size_t pixelWidth, size_t sampleWidth);
 
 #endif /* BMSpectrogram_h */

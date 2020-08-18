@@ -14,9 +14,8 @@
 #define BMSINC_MAX_KERNEL_LENGTH
 
 typedef struct BMSincUpsampler {
-	size_t upsampleFactor, kernelLength, inputPaddingLeft, inputPaddingRight, numKernels;
-	float **filterKernels;
-	float *buffer;
+    size_t upsampleFactor, kernelLength, inputPaddingLeft, inputPaddingRight, numKernels;
+    float **filterKernels;
 } BMSincUpsampler;
 
 
@@ -31,8 +30,8 @@ typedef struct BMSincUpsampler {
  * @param upsampleFactor if upsampleFactor = N then you get N points out from every 1 point in, minus the padding at the left and right ends of the input
  */
 void BMSincUpsampler_init(BMSincUpsampler *This,
-						  size_t interpolationPoints,
-						  size_t upsampleFactor);
+                          size_t interpolationPoints,
+                          size_t upsampleFactor);
 
 
 
@@ -85,9 +84,9 @@ size_t BMSincUpsampler_outputLength(BMSincUpsampler *This, size_t inputLength);
  * @returns the number of output points
  */
 size_t BMSincUpsampler_process(BMSincUpsampler *This,
-							 const float* input,
-							 float* output,
-							 size_t inputLength);
+                             const float* input,
+                             float* output,
+                             size_t inputLength);
 
 
 #endif /* BMSincUpsampler_h */

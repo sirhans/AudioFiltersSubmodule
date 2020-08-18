@@ -43,7 +43,22 @@ void BMCompressor_initWithSettings(BMCompressor* compressor, float sampleRate, f
  */
 void BMCompressor_ProcessBufferMono(BMCompressor *This, const float* input, float* output, float* minGainDb, size_t numSamples);
 
+
+void BMCompressor_ProcessBufferMonoWithSideChain(BMCompressor *This,
+												 const float *input,
+												 const float *scInput,
+												 float* output,
+												 float* minGainDb,
+												 size_t numSamples);
+
+
+
 void BMCompressor_ProcessBufferStereo(BMCompressor* compressor, float* inputL, float* inputR, float* outputL, float* outputR, float* minGainDb, size_t frameCount);
+void BMCompressor_ProcessBufferStereoWithSideChain(BMCompressor *This,
+                                                   float* inputL, float* inputR,
+                                                   float* scInputL, float* scInputR,
+                                                   float* outputL, float* outputR,
+                                                   float* minGainDb, size_t numSamples);
 
 void BMCompressor_SetThresholdInDB(BMCompressor* compressor, float threshold);
 void BMCompressor_SetRatio(BMCompressor* compressor, float ratio);
@@ -52,5 +67,6 @@ void BMCompressor_SetReleaseTime(BMCompressor* compressor, float releaseTime);
 void BMCompressor_SetSampleRate(BMCompressor* compressor, float sampleRate);
 void BMCompressor_SetKneeWidthInDB(BMCompressor* compressor, float kneeWidth);
 
+void BMCompressor_Free(BMCompressor *This);
 
 #endif /* BMCompressor_h */

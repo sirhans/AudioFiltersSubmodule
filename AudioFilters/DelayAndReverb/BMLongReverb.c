@@ -6,7 +6,7 @@
 //  Copyright © 2020 BlueMangoo. All rights reserved.
 //
 
-#include "BMCloudReverb.h"
+#include "BMLongReverb.h"
 #include "BMReverb.h"
 #include "BMFastHadamard.h"
 
@@ -26,37 +26,28 @@
 #define ReadyNo 98573
 #define FDN_BaseMaxDelaySecond 0.800f
 #define VND_BaseLength 0.2f
+#define SFMCount 30
 
-void BMCloudReverb_updateDiffusion(BMCloudReverb* This);
-void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This);
-void BMCloudReverb_updateLoopGain(BMCloudReverb* This,size_t* delayTimeL,size_t* delayTimeR,float* gainL,float* gainR);
-float calculateScaleVol(BMCloudReverb* This);
-void BMCloudReverb_updateVND(BMCloudReverb* This);
+void BMLongReverb_updateDiffusion(BMLongReverb* This);
+void BMLongReverb_prepareLoopDelay(BMLongReverb* This);
+void BMLongReverb_updateLoopGain(BMLongReverb* This,size_t* delayTimeL,size_t* delayTimeR,float* gainL,float* gainR);
+float BMLongReverb_calculateScaleVol(BMLongReverb* This);
+void BMLongReverb_updateVND(BMLongReverb* This);
 
-float getVNDLength(float numTaps,float length){
-    float vndLength = ((numTaps*numTaps)*length)/(1 + numTaps + numTaps*numTaps);
-    return vndLength;
-}
 
-float randomAround1(int percent){
-    int rdPercent = percent - 1 - (arc4random()%(percent*2 - 1)) + 100;
-    float rand = rdPercent/100.0f;
-    return rand;
-}
-
-void BMCloudReverb_init(BMCloudReverb* This,float sr){
+void BMLongReverb_init(BMLongReverb* This,float sr){
     This->sampleRate = sr;
     //BIQUAD FILTER
     BMMultiLevelBiquad_init(&This->biquadFilter, Filter_TotalLevel, sr, true, false, true);
     //Highpass 1st order 100Hz
     BMMultiLevelBiquad_setHighPass12db(&This->biquadFilter, 60, Filter_Level_HP100Hz);
     //Tone control - use 6db
-	BMCloudReverb_setHighCutFreq(This, 1200.0f);
+	BMLongReverb_setHighCutFreq(This, 1200.0f);
     //lowpass 36db
 	BMMultiLevelBiquad_setHighOrderBWLP(&This->biquadFilter, 9300, Filter_Level_Lowpass10k, Filter_Level_TotalLP);
     //Low shelf
     This->lsGain = 0;
-	BMCloudReverb_setLSGain(This, This->lsGain);
+	BMLongReverb_setLSGain(This, This->lsGain);
     
     //VND
     This->updateVND = false;
@@ -116,12 +107,12 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     This->wetBuffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     
     //Loop delay
-    BMCloudReverb_prepareLoopDelay(This);
+    BMLongReverb_prepareLoopDelay(This);
     
-    BMCloudReverb_setLoopDecayTime(This, 10);
-    BMCloudReverb_setDelayPitchMixer(This, 0.5f);
+    BMLongReverb_setLoopDecayTime(This, 10);
+    BMLongReverb_setDelayPitchMixer(This, 0.5f);
     BMWetDryMixer_init(&This->reverbMixer, sr);
-    BMCloudReverb_setOutputMixer(This, 0.5f);
+    BMLongReverb_setOutputMixer(This, 0.5f);
     
     BMSmoothGain_init(&This->smoothGain, sr);
     
@@ -129,18 +120,25 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     BMPanLFO_init(&This->inputPan, 0.412f, 0.6f, sr,true);
     BMPanLFO_init(&This->outputPan, 1.1f, 0.3f, sr,true);
     
+    This->measureLength = 4096;
+    BMHarmonicityMeasure_init(&This->chordMeasure, This->measureLength, sr);
+    This->measureFillCount = 0;
+    This->measureInput = malloc(sizeof(float)*This->measureLength);
+    This->sfmBuffer = calloc(SFMCount, sizeof(float));
+    This->sfmIdx = 0;
+    
     This->initNo = ReadyNo;
 }
 
-void BMCloudReverb_prepareLoopDelay(BMCloudReverb* This){
+void BMLongReverb_prepareLoopDelay(BMLongReverb* This){
     size_t numDelays = 24;
     float maxDT = FDN_BaseMaxDelaySecond;
     float minDT = 0.020f;
 	bool zeroTaps = false;
-    BMLongLoopFDN_init(&This->loopFDN, numDelays, minDT, maxDT, zeroTaps, 8, 1,100,false, This->sampleRate);
+    BMLongLoopFDN_init(&This->loopFDN, numDelays, minDT, maxDT, zeroTaps, 8, 1,100,true, This->sampleRate);
 }
 
-void BMCloudReverb_destroy(BMCloudReverb* This){
+void BMLongReverb_destroy(BMLongReverb* This){
     BMMultiLevelBiquad_free(&This->biquadFilter);
     
     for(int i=0;i<This->numVND;i++){
@@ -188,12 +186,47 @@ void BMCloudReverb_destroy(BMCloudReverb* This){
     This->wetBuffer.bufferR = nil;
 }
 
-void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t numSamples,bool offlineRendering){
+static inline float BMLongReverb_storeSFM(BMLongReverb* This,float sfm){
+    This->sfmBuffer[This->sfmIdx] = sfm;
+    This->sfmIdx++;
+    if(This->sfmIdx>=SFMCount)
+        This->sfmIdx = 0;
+    float sum;
+    vDSP_sve(This->sfmBuffer, 1, &sum, SFMCount);
+    return sum/SFMCount;
+}
+
+void BMLongReverb_measureFlatness(BMLongReverb* This,float* inputL,float* inputR,size_t numSamples){
+    //Measure the flatness of wetbuffer
+    if(This->measureFillCount>=This->measureLength){
+        This->measureFillCount = 0;
+        float sfm = BMHarmonicityMeasure_processMonoBuffer(&This->chordMeasure, This->measureInput, This->measureLength);
+        if(sfm<1){
+            //Store into sfmBuffer
+            float meanSFM = BMLongReverb_storeSFM(This, sfm);
+            
+            if(sfm>0.035f){
+                //Flatness too high -> set decay time to fast end
+                BMLongLoopFDN_setRT60DecaySmooth(&This->loopFDN, 1.0f,false);
+            }else{
+                //Set sound to long
+                BMLongLoopFDN_setRT60DecaySmooth(&This->loopFDN, 100.0f,false);
+            }
+            printf("sfm %f\n",sfm);
+        }
+    }else{
+        //Mix to mono input to calculate
+        vDSP_vadd(inputL, 1, inputR, 1, This->measureInput+This->measureFillCount, 1, numSamples);
+        This->measureFillCount += numSamples;
+    }
+}
+
+void BMLongReverb_processStereo(BMLongReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t numSamples,bool offlineRendering){
     if(This->initNo==ReadyNo){
         assert(numSamples<=BM_BUFFER_CHUNK_SIZE);
         
-        BMCloudReverb_updateVND(This);
-        BMCloudReverb_updateDiffusion(This);
+        BMLongReverb_updateVND(This);
+        BMLongReverb_updateDiffusion(This);
         
         //1st layer VND
         for(int i=0;i<This->numInput;i++){
@@ -232,6 +265,9 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
         //Normalize vol
         BMSmoothGain_processBuffer(&This->smoothGain, This->wetBuffer.bufferL, This->wetBuffer.bufferR, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
         
+        //Flatness
+        BMLongReverb_measureFlatness(This, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
+        
         //LFO pan
         // Input pan LFO
         BMPanLFO_process(&This->inputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
@@ -254,24 +290,28 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
     }
 }
 
-float calculateScaleVol(BMCloudReverb* This){
+
+
+float BMLongReverb_calculateScaleVol(BMLongReverb* This){
     float factor = log2f(This->decayTime);
     float scaleDB = (-3. * (factor)) + (1.2f-This->diffusion)*10.0f;
 //    printf("%f\n",scaleDB);
     return scaleDB;
 }
 
+
+
 #pragma mark - Set
-void BMCloudReverb_setLoopDecayTime(BMCloudReverb* This,float decayTime){
+void BMLongReverb_setLoopDecayTime(BMLongReverb* This,float decayTime){
     This->decayTime = decayTime;
-    BMLongLoopFDN_setRT60Decay(&This->loopFDN, decayTime);
+    BMLongLoopFDN_setRT60DecaySmooth(&This->loopFDN, decayTime,false);
     
-    float gainDB = calculateScaleVol(This);
+    float gainDB = BMLongReverb_calculateScaleVol(This);
     BMSmoothGain_setGainDb(&This->smoothGain, gainDB);
 }
 
 #define DepthMax 0.90f
-float BMCloudReverb_getMixBaseOnMode(BMCloudReverb* This,float mode){
+float BMLongReverb_getMixBaseOnMode(BMLongReverb* This,float mode){
     float mix = 0;
     if(mode==0){
         mix = 0.1f;
@@ -289,7 +329,7 @@ float BMCloudReverb_getMixBaseOnMode(BMCloudReverb* This,float mode){
     return mix;
 }
 
-float BMCloudReverb_getDelayRangeBaseOnMode(BMCloudReverb* This,float mode){
+float BMLongReverb_getDelayRangeBaseOnMode(BMLongReverb* This,float mode){
     float range = 0;
     if(mode==5){
         //Mode 6
@@ -307,7 +347,7 @@ float BMCloudReverb_getDelayRangeBaseOnMode(BMCloudReverb* This,float mode){
 #define DC_Duration_Max 10.5f
 #define DC_Duration_Min 3.5f
 
-float BMCloudReverb_getDurationBaseOnMode(BMCloudReverb* This,float mode){
+float BMLongReverb_getDurationBaseOnMode(BMLongReverb* This,float mode){
     float duration = (DC_Duration_Max-DC_Duration_Min)*(1 - mode/(S_ChorusMode_Max-S_ChorusMode_Min)) + DC_Duration_Min;
     if(mode==5){
         duration = duration * 1.6f;
@@ -317,17 +357,17 @@ float BMCloudReverb_getDurationBaseOnMode(BMCloudReverb* This,float mode){
     return duration;
 }
 
-void BMCloudReverb_setDelayPitchMixer(BMCloudReverb* This,float wetMix){
+void BMLongReverb_setDelayPitchMixer(BMLongReverb* This,float wetMix){
     //Set delayrange of pitch shift to control speed of pitch shift
     //0 to 5
     float mode = BM_MIN(roundf((wetMix*5.0f)/0.75f),5);
     
     //mix from 0.1 to 0.5
-    float mix = BMCloudReverb_getMixBaseOnMode(This,mode);
+    float mix = BMLongReverb_getMixBaseOnMode(This,mode);
     //Speed from 1/30 -> 1/10
-    float duration = BMCloudReverb_getDurationBaseOnMode(This,mode);
+    float duration = BMLongReverb_getDurationBaseOnMode(This,mode);
     
-    float delayRange = BMCloudReverb_getDelayRangeBaseOnMode(This,mode);
+    float delayRange = BMLongReverb_getDelayRangeBaseOnMode(This,mode);
 //    printf("pitch %f %f %f\n",mix,duration,delayRange);
     
     BMPitchShiftDelay_setWetGain(&This->pitchShiftDelay, mix);
@@ -341,11 +381,11 @@ void BMCloudReverb_setDelayPitchMixer(BMCloudReverb* This,float wetMix){
 
 
 
-void BMCloudReverb_setOutputMixer(BMCloudReverb* This,float wetMix){
+void BMLongReverb_setOutputMixer(BMLongReverb* This,float wetMix){
     BMWetDryMixer_setMix(&This->reverbMixer, wetMix*wetMix);
 }
 
-void BMCloudReverb_setDiffusion(BMCloudReverb* This,float diffusion){
+void BMLongReverb_setDiffusion(BMLongReverb* This,float diffusion){
     if(This->diffusion!=diffusion){
         This->diffusion = diffusion;
         This->updateDiffusion = true;
@@ -356,12 +396,12 @@ void BMCloudReverb_setDiffusion(BMCloudReverb* This,float diffusion){
 //        BMLongLoopFDN_setMaxDelay(&This->loopFDN, maxDelayS);
         
         //update wet vol
-        float gainDb = calculateScaleVol(This);
+        float gainDb = BMLongReverb_calculateScaleVol(This);
         BMSmoothGain_setGainDb(&This->smoothGain, gainDb);
     }
 }
 
-void BMCloudReverb_updateDiffusion(BMCloudReverb* This){
+void BMLongReverb_updateDiffusion(BMLongReverb* This){
     if(This->updateDiffusion){
         This->updateDiffusion = false;
         float numTaps = floorf(This->maxTapsEachVND * This->diffusion);
@@ -371,16 +411,16 @@ void BMCloudReverb_updateDiffusion(BMCloudReverb* This){
     }
 }
 
-void BMCloudReverb_setLSGain(BMCloudReverb* This,float gainDb){
+void BMLongReverb_setLSGain(BMLongReverb* This,float gainDb){
     BMMultiLevelBiquad_setLowShelfFirstOrder(&This->biquadFilter, Filter_LS_FC, gainDb, Filter_Level_Lowshelf);
 }
 
-void BMCloudReverb_setHighCutFreq(BMCloudReverb* This,float freq){
+void BMLongReverb_setHighCutFreq(BMLongReverb* This,float freq){
     BMMultiLevelBiquad_setLowPass6db(&This->biquadFilter, freq, Filter_Level_Tone);
 }
 
 #pragma mark - VND
-void BMCloudReverb_setFadeInVND(BMCloudReverb* This,float timeInS){
+void BMLongReverb_setFadeInVND(BMLongReverb* This,float timeInS){
     This->desiredVNDLength = VND_BaseLength;
     if(timeInS>VND_BaseLength){
         //If fadein time is bigger than vndlength -> need to reset vnd length
@@ -392,7 +432,7 @@ void BMCloudReverb_setFadeInVND(BMCloudReverb* This,float timeInS){
     
 }
 
-void BMCloudReverb_updateVND(BMCloudReverb* This){
+void BMLongReverb_updateVND(BMLongReverb* This){
     if(This->updateVND){
         This->updateVND = false;
         if(This->desiredVNDLength!=This->vndLength){
@@ -408,7 +448,7 @@ void BMCloudReverb_updateVND(BMCloudReverb* This){
                 BMVelvetNoiseDecorrelator_setFadeIn(&This->vndArray[i], This->fadeInS);
             }
 
-            BMCloudReverb_setDiffusion(This, This->diffusion);
+            BMLongReverb_setDiffusion(This, This->diffusion);
         }else{
             for(int i=0;i<This->numVND;i++){
                 //Update fade in
@@ -419,14 +459,14 @@ void BMCloudReverb_updateVND(BMCloudReverb* This){
 }
 
 #pragma mark - Test
-void BMCloudReverb_impulseResponse(BMCloudReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t length){
+void BMLongReverb_impulseResponse(BMLongReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t length){
     size_t sampleProcessed = 0;
     size_t sampleProcessing = 0;
     This->biquadFilter.useSmoothUpdate = false;
     while(sampleProcessed<length){
         sampleProcessing = BM_MIN(BM_BUFFER_CHUNK_SIZE, length - sampleProcessed);
         
-        BMCloudReverb_processStereo(This, inputL+sampleProcessed, inputR+sampleProcessed, outputL+sampleProcessed, outputR+sampleProcessed, sampleProcessing,true);
+        BMLongReverb_processStereo(This, inputL+sampleProcessed, inputR+sampleProcessed, outputL+sampleProcessed, outputR+sampleProcessed, sampleProcessing,true);
         if(outputL[sampleProcessed]>1.0f)
             printf("error\n");
         sampleProcessed += sampleProcessing;

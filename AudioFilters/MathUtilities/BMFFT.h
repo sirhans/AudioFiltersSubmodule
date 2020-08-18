@@ -59,7 +59,7 @@ void BMFFT_free(BMFFT *This);
  * @param output a complex-valued array of length inputLength / 2
  * @param inputLength a power of 2 such that 0 < inputLength <= This->maxInputLength
  */
-void BMFFT_complexFFT(BMFFT *This,
+void BMFFT_FFTComplexOutput(BMFFT *This,
                       const float* input,
                       DSPSplitComplex *output,
                       size_t inputLength);
