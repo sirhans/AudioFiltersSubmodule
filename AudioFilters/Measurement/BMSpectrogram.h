@@ -29,6 +29,7 @@ typedef struct BMSpectrogram {
     size_t prevImageHeight, prevFFTSize, maxImageHeight, maxFFTSize, fftBinInterpolationPadding, upsampledPixels;
 	dispatch_queue_global_t globalQueue;
 	dispatch_group_t dispatchGroup;
+	bool rainbowColour;
 } BMSpectrogram;
 
 
@@ -104,7 +105,8 @@ void BMSpectrogram_process(BMSpectrogram *This,
                            SInt32 pixelWidth,
                            SInt32 pixelHeight,
                            float minFrequency,
-                           float maxFrequency);
+                           float maxFrequency,
+						   bool enableRainbowColour);
 
 
 
