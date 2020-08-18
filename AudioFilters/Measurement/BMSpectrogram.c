@@ -373,7 +373,7 @@ void BMSpectrogram_toRGBAColour(float* input, float *temp1, float *temp2, uint8_
 	//    float s = 0.5f;
 	//    float c = (fabsf(2.0f * v - 1.0f) - 1.0f) * (-s);
 	float s;
-	if(rainbowColour) s = 0.7f;
+	if(rainbowColour) s = 0.6f;
 	else s = 0.5f;
 	float negS = -s;
 	float negOne = -1.0f;
