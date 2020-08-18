@@ -16,6 +16,9 @@
 #define BMSG_FLOATS_PER_COLOUR 3
 #define SG_MIN(a,b) (((a)<(b))?(a):(b))
 #define SG_MAX(a,b) (((a)>(b))?(a):(b))
+#define BMSG_BLUE_R 0.0f
+#define BMSG_BLUE_G 0.433f
+#define BMSG_BLUE_B 1.0f
 
 void BMSpectrogram_init(BMSpectrogram *This,
                         size_t maxFFTSize,
@@ -57,13 +60,8 @@ void BMSpectrogram_init(BMSpectrogram *This,
 	// create a new dispatch group
 	This->dispatchGroup = dispatch_group_create();
 	
-	// test colour functions
-	float test [3];
-	freqToRGBColour(400, test);
-	test[0] *= 1.0f;
-	freqToRGBColour(800, test);
-	test[0] *= 1.0f;
-
+	// begin with normal colour
+	This->rainbowColour = FALSE;
 }
 
 
@@ -174,7 +172,8 @@ void BMSpectrogram_updateImageHeight(BMSpectrogram *This,
 									 size_t fftSize,
 									 size_t imageHeight,
 									 float minF,
-									 float maxF){
+									 float maxF,
+									 bool rainbowColour){
     // rename buffer 3 and 4 for readablility
     float* interpolatedIndices = This->b3;
     size_t* startIndices = This->b4;
@@ -187,11 +186,13 @@ void BMSpectrogram_updateImageHeight(BMSpectrogram *This,
     if(minF != This->prevMinF ||
        maxF != This->prevMaxF ||
        imageHeight != This->prevImageHeight ||
-       fftSize != This->prevFFTSize){
+       fftSize != This->prevFFTSize ||
+	   rainbowColour != This->rainbowColour){
         This->prevMinF = minF;
         This->prevMaxF = maxF;
         This->prevImageHeight = imageHeight;
         This->prevFFTSize = fftSize;
+		This->rainbowColour = rainbowColour;
         
         // find the min and max frequency in barks
         float minBark = hzToBark(minF);
@@ -207,7 +208,14 @@ void BMSpectrogram_updateImageHeight(BMSpectrogram *This,
             float hz = barkToHz(bark);
 			
 			// find the colour for this frequency
-			freqToRGBColour(hz, This->colours + i*BMSG_FLOATS_PER_COLOUR);
+			size_t j = (imageHeight - i - 1)*BMSG_FLOATS_PER_COLOUR;
+			if(This->rainbowColour)
+				freqToRGBColour(hz, This->colours + j);
+			else {
+				This->colours[j+0] = BMSG_BLUE_R;
+				This->colours[j+1] = BMSG_BLUE_G;
+				This->colours[j+2] = BMSG_BLUE_B;
+			}
             
             // convert to FFT bin index (floating point interpolated)
             interpolatedIndices[i] = hzToFFTBin(hz, fftSize, This->sampleRate);
@@ -299,84 +307,7 @@ void BMSpectrogram_fftBinsToBarkScale(const float* fftBins,
 
 
 
-
-void BMSpectrogram_toHSBColour(float* input, BMHSBPixel* output, size_t length){
-    // toHSBColourFunction[x_] := {7/12, 1 - x, x}
-    float h = 7.0/12.0;
-    for(size_t i=0; i<length; i++)
-        output[i] = simd_make_float3(h,1-input[i],input[i]);
-}
-
-
-
-// http://www.chilliant.com/rgb2hsv.html
-/*
- float3 HUEtoRGB(in float H)
-  {
-    float R = abs(H * 6 - 3) - 1;
-    float G = 2 - abs(H * 6 - 2);
-    float B = 2 - abs(H * 6 - 4);
-    return saturate(float3(R,G,B));
-  }
- */
-simd_float3 BMSpectrum_HUEtoRGB(float h) {
-    simd_float3 a = {-1.0f, 2.0f, 2.0f};
-    simd_float3 b = {-3.0f, -2.0f, -4.0f};
-    simd_float3 c = {1.0f, -1.0f, -1.0f};
-    simd_float3 rgb = simd_abs(6.0f * h + b) * c;
-    return simd_clamp(rgb+a,0.0f, 1.0f);
-}
-
-
-
-// http://www.chilliant.com/rgb2hsv.html
-simd_float3 BMSpectrum_HSLToRGB(simd_float3 hsl){
-    // generate an rgb pixel with 100% saturation
-    simd_float3 rgb = BMSpectrum_HUEtoRGB(hsl.x);
-    
-    // find out how much we need to scale down the saturated pixel to apply the
-    // saturation and make headroom for the lightness
-    float c = (1.0f - fabsf(2.0f * hsl.z - 1.0f)) * hsl.y;
-    
-    // scale the rgb pixel and mix with the lightness
-    return (rgb - 0.5f) * c + hsl.z;
-}
-
-
-
-/*!
- *BMSpectrum_valueToRGBA
- *
- * let the value, v, be the lightness of a pixel in HSL space. We then create
- * a pixel in HSL and convert to RGBA.
- */
-void BMSpectrum_valueToRGBA(float v, uint8_t *output){
-    // generate an rgb pixel with 100% saturation
-    simd_float3 rgb = {0.0f, 0.433f, 1.0f};
-    
-    // find out how much we need to scale down the saturated pixel to apply the
-    // saturation and make headroom for the lightness
-    float s = 0.5f;
-    float c = (1.0f - fabsf(2.0f * v - 1.0f)) * s;
-
-    // scale the rgb pixel and mix with the lightness
-    rgb = (rgb - 0.5f) * c + v;
-    
-    // convert to 8 bit RGBA and return
-    rgb *= 255.0;
-    output[0] = round(rgb.x);
-    output[1] = round(rgb.y);
-    output[2] = round(rgb.z);
-    output[3] = 255;
-}
-
-//float h1 = 214.0/360.0;
-//float s1 = 80.0/100.0;
-//float b1 = 100.0/100.0;
-
-
-
-void BMSpectrogram_toRGBAColour(float* input, float *temp1, float *temp2, uint8_t *output, size_t pixelWidth, size_t pixelHeight, const float *colours){
+void BMSpectrogram_toRGBAColour(float* input, float *temp1, float *temp2, uint8_t *output, size_t pixelWidth, size_t pixelHeight, const float *colours, bool rainbowColour){
 	
 	// fill the temp buffer with the rgb colour of the 100% saturated pixels
 //	float r = 0.0f;
@@ -391,7 +322,9 @@ void BMSpectrogram_toRGBAColour(float* input, float *temp1, float *temp2, uint8_
 	// saturation and make headroom for the lightness
 	//    float s = 0.5f;
 	//    float c = (fabsf(2.0f * v - 1.0f) - 1.0f) * (-s);
-	float s = 0.99f;
+	float s;
+	if(rainbowColour) s = 0.7f;
+	else s = 0.5f;
 	float negS = -s;
 	float negOne = -1.0f;
 	float two = 2.0f;
@@ -502,7 +435,8 @@ void BMSpectrogram_genColumn(SInt32 i,
 							 const size_t *b4,
 							 const size_t *b5,
 							 const float *b6,
-							 const float *colours){
+							 const float *colours,
+							 bool rainbowColour){
 	// find the index where the current fft window starts
 	SInt32 fftCurrentWindowStart = (SInt32)roundf((float)i*fftStride + FLT_EPSILON) + fftStartIndex;
 	
@@ -546,7 +480,7 @@ void BMSpectrogram_genColumn(SInt32 i,
 	vDSP_vrvrs(b2, 1, pixelHeight);
 	
 	// convert to RGBA colours and write to output
-	BMSpectrogram_toRGBAColour(b2, t1, t2, &imageOutput[i*BMSG_BYTES_PER_PIXEL*pixelHeight],pixelWidth, pixelHeight, colours);
+	BMSpectrogram_toRGBAColour(b2, t1, t2, &imageOutput[i*BMSG_BYTES_PER_PIXEL*pixelHeight],pixelWidth, pixelHeight, colours, rainbowColour);
 }
 
 
@@ -574,7 +508,8 @@ void BMSpectrogram_process(BMSpectrogram *This,
                            SInt32 pixelWidth,
                            SInt32 pixelHeight,
                            float minFrequency,
-                           float maxFrequency){
+                           float maxFrequency,
+						   bool rainbowColour){
     assert(4 <= fftSize && fftSize <= This->maxFFTSize);
     assert(isPowerOfTwo((size_t)fftSize));
     assert(2 <= pixelHeight && pixelHeight < This->maxImageHeight);
@@ -599,7 +534,7 @@ void BMSpectrogram_process(BMSpectrogram *This,
 		fftStride = 0;
     
 	// if the configuration has changed, update some stuff
-	BMSpectrogram_updateImageHeight(This, fftSize, pixelHeight, minFrequency, maxFrequency);
+	BMSpectrogram_updateImageHeight(This, fftSize, pixelHeight, minFrequency, maxFrequency, rainbowColour);
 	
 	if(BMSG_NUM_THREADS > 1){
 	// create threads for parallel processing of spectrogram
@@ -638,7 +573,8 @@ void BMSpectrogram_process(BMSpectrogram *This,
 										This->b4,
 										This->b5,
 										This->b6,
-										This->colours);
+										This->colours,
+										This->rainbowColour);
 			}
 		});
 		
@@ -671,7 +607,8 @@ void BMSpectrogram_process(BMSpectrogram *This,
 									This->b4,
 									This->b5,
 									This->b6,
-									This->colours);
+									This->colours,
+									This->rainbowColour);
 		}
 	}
 	
