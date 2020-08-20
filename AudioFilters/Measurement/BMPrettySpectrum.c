@@ -9,7 +9,7 @@
 #include "BMPrettySpectrum.h"
 
 #define BMPS_FFT_INPUT_LENGTH 4096
-#define BMPS_BUFFER_LENGTH BMPS_FFT_LENGTH * 2
+#define BMPS_BUFFER_LENGTH BMPS_FFT_INPUT_LENGTH * 2
 #define BMPS_FFT_OUTPUT_LENGTH 1 + BMPS_FFT_INPUT_LENGTH/2
 
 
@@ -128,5 +128,5 @@ void BMPrettySpectrum_getOutput(BMPrettySpectrum *This,
 	vDSP_vmax(This->b2, 1, This->b1, 1, This->b2, 1, BMPS_FFT_OUTPUT_LENGTH);
 	
 	// convert to decibels
-	vDSP_vdbcon(<#const float * _Nonnull __A#>, <#vDSP_Stride __IA#>, <#const float * _Nonnull __B#>, <#float * _Nonnull __C#>, <#vDSP_Stride __IC#>, <#vDSP_Length __N#>, <#unsigned int __F#>);
+	//vDSP_vdbcon(<#const float * _Nonnull __A#>, <#vDSP_Stride __IA#>, <#const float * _Nonnull __B#>, <#float * _Nonnull __C#>, <#vDSP_Stride __IC#>, <#vDSP_Length __N#>, <#unsigned int __F#>);
 }
