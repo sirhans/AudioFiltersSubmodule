@@ -236,7 +236,7 @@ void BMCompressor_SetThresholdInDB(BMCompressor *This, float threshold){
 }
 
 void BMCompressor_SetKneeWidthInDB(BMCompressor *This, float knee){
-    assert(knee >= 0.0f);
+    assert(knee > 0.0f);
     
     This->kneeWidthInDB = knee;
     updateThreshold(This);

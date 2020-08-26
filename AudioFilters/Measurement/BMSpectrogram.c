@@ -483,10 +483,10 @@ void BMSpectrogram_genColumn(SInt32 i,
 void BMSpectrogram_transposeImage(const uint8_t *imageInput, uint8_t *imageOutput, size_t inputWidth, size_t inputHeight){
 	// confirm that float32 has the same number of bytes we use for a single pixel
 	// so that we can operate on each pixel as a single int to simplify the operation
-	assert(sizeof(float32_t) == BMSG_BYTES_PER_PIXEL);
+	assert(sizeof(Float32) == BMSG_BYTES_PER_PIXEL);
 	
 	// use floating point matrix transposition
-	vDSP_mtrans((float32_t*)imageInput, 1, (float32_t*)imageOutput, 1, inputHeight, inputWidth);
+	vDSP_mtrans((Float32*)imageInput, 1, (Float32*)imageOutput, 1, inputHeight, inputWidth);
 }
 
 

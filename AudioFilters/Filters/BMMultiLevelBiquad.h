@@ -25,7 +25,7 @@ typedef struct BMMultiLevelBiquad {
     vDSP_biquad_Setup singleChannelFilterSetup;
     float* monoDelays;
     double* coefficients_d;
-    float* coefficients_f;
+    // float* coefficients_f;
     
     // static memory
     //float currentGain;

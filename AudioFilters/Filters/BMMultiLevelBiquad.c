@@ -181,7 +181,7 @@ void BMMultiLevelBiquad_init(BMMultiLevelBiquad *This,
     This->multiChannelFilterSetup = NULL;
     This->singleChannelFilterSetup = NULL;
     This->coefficients_d = NULL;
-    This->coefficients_f = NULL;
+    // This->coefficients_f = NULL;
     This->monoDelays = NULL;
     
     This->needsUpdate = false;
@@ -211,7 +211,7 @@ void BMMultiLevelBiquad_init(BMMultiLevelBiquad *This,
     
     // repeat the allocation for floating point coefficients. We need
     // both double and float to support realtime updates
-    This->coefficients_f = malloc(numLevels*5*This->numChannels*sizeof(float));
+    // This->coefficients_f = malloc(numLevels*5*This->numChannels*sizeof(float));
     
     // Allocate 2*numLevels + 2 floats for mono delay memory
     if(!This->useBiquadm)
@@ -256,8 +256,8 @@ void BMMultiLevelBiquad_init4(BMMultiLevelBiquad *This,
     
     // repeat the allocation for floating point coefficients. We need
     // both double and float to support realtime updates
-    free(This->coefficients_f);
-    This->coefficients_f = malloc(numLevels*5*This->numChannels*sizeof(float));
+    // free(This->coefficients_f);
+    // This->coefficients_f = malloc(numLevels*5*This->numChannels*sizeof(float));
     
     
     // start with all levels on bypass
@@ -299,17 +299,16 @@ inline void BMMultiLevelBiquad_updateNow(BMMultiLevelBiquad *This){
     
     // using realtime updates
     if(This->useRealTimeUpdate){
-        // convert the coefficients to floating point
-        for(size_t i=0; i<This->numLevels*This->numChannels*5; i++){
-            This->coefficients_f[i] = This->coefficients_d[i];
-        }
+//        // convert the coefficients to floating point
+//        for(size_t i=0; i<This->numLevels*This->numChannels*5; i++){
+//            This->coefficients_f[i] = This->coefficients_d[i];
+//        }
         if(This->useSmoothUpdate){
             //rate close to 1 mean it's change more slowly
-            vDSP_biquadm_SetTargetsSingle(This->multiChannelFilterSetup, This->coefficients_f, 0.995, 0.05, 0, 0, This->numLevels, This->numChannels);
-            //                printf("%f %f %f\n",This->coefficients_f[0],This->coefficients_f[1],This->coefficients_f[2]);
+            vDSP_biquadm_SetTargetsDouble(This->multiChannelFilterSetup, This->coefficients_d, 0.995, 0.05, 0, 0, This->numLevels, This->numChannels);
         }else{
             // update the coefficients
-            vDSP_biquadm_SetCoefficientsSingle(This->multiChannelFilterSetup, This->coefficients_f, 0, 0, This->numLevels, This->numChannels);
+            vDSP_biquadm_SetCoefficientsDouble(This->multiChannelFilterSetup, This->coefficients_d, 0, 0, This->numLevels, This->numChannels);
         }
     }
 	// not using realtime updates
@@ -371,10 +370,10 @@ void BMMultiLevelBiquad_free(BMMultiLevelBiquad* This){
 
 void BMMultiLevelBiquad_destroy(BMMultiLevelBiquad *This){
     if(This->coefficients_d) free(This->coefficients_d);
-    if(This->coefficients_f) free(This->coefficients_f);
+    // if(This->coefficients_f) free(This->coefficients_f);
     if(This->monoDelays) free(This->monoDelays);
     This->coefficients_d = NULL;
-    This->coefficients_f = NULL;
+    // This->coefficients_f = NULL;
     This->monoDelays = NULL;
     
     if(This->numChannels > 1)
