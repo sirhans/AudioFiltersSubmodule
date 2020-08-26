@@ -23,10 +23,10 @@ enum BMPSScale {BMPSLINEAR, BMPSBARK, BMPSLOG};
 typedef struct BMPrettySpectrum {
 	BMSpectrum spectrum;
 	TPCircularBuffer buffer;
-	float sampleRate, decayRate, minFreq, maxFreq;
-	size_t outputLength;
+	float sampleRate, decayRateDbPerSecond, minFreq, maxFreq, timeSinceLastUpdate;
+	size_t fftInputLength, fftOutputLength, outputLength, bufferLength;
 	enum BMPSScale scale;
-	float *b1, *b2;
+	float *fftb1, *fftb2, *ob1, *ob2;
 } BMPrettySpectrum;
 
 
