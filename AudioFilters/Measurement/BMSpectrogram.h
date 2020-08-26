@@ -116,7 +116,26 @@ void BMSpectrogram_process(BMSpectrogram *This,
 void BMSpectrogram_transposeImage(const uint8_t *imageInput, uint8_t *imageOutput, size_t inputWidth, size_t inputHeight);
 
 
-
+/*!
+ *BMSpectrogram_GetFFTSizeFor
+ */
 size_t BMSpectrogram_GetFFTSizeFor(BMSpectrogram *This, size_t pixelWidth, size_t sampleWidth);
+
+
+/*!
+ *BMSpectrogram_fftBinsToBarkScale
+ */
+void BMSpectrogram_fftBinsToBarkScale(const float* fftBins,
+									  float *output,
+									  size_t fftSize,
+									  size_t outputLength,
+									  float minFrequency,
+									  float maxFrequency,
+									  size_t fftBinInterpolationPadding,
+									  size_t upsampledPixels,
+									  const float *b3,
+									  const size_t *b4,
+									  const size_t *b5,
+									  const float *b6);
 
 #endif /* BMSpectrogram_h */

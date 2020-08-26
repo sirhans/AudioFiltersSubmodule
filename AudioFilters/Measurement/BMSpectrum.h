@@ -60,7 +60,7 @@ bool BMSpectrum_processData(BMSpectrum* This,
  * @param This pointer to an initialised struct
  * @param input array of real-valued time-series data of length inputLength
  * @param output real-valued output
- * @param applyWindow set true to apply a hamming window before doing the fft
+ * @param applyWindow set true to apply a blackman-harris window before doing the fft
  *
  * @returns abs(fft[nyquist])
  */float BMSpectrum_processDataBasic(BMSpectrum* This,
