@@ -49,8 +49,8 @@ void BMSpectrum_initWithLength(BMSpectrum* This, size_t maxInputLength){
 bool BMSpectrum_processData(BMSpectrum* This,
                             const float* input,
                             float* output,
-                            int inputLength,
-                            int *outputLength,
+                            size_t inputLength,
+                            size_t *outputLength,
                             float* nyquist){
     if(inputLength > 0){
         *outputLength = inputLength / 2;
