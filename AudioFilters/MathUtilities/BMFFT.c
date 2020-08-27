@@ -222,7 +222,7 @@ void BMFFT_kaiserWindow(BMFFT *This,
 						size_t numSamples){
 	assert(numSamples <= This->maxInputLength);
     
-    // if the window cached in the buffer does not have the specified length, or isn't a blackman-harris window recompute it.
+    // if the window cached in the buffer does not have the specified length, or isn't a kaiser window recompute it.
     if(This->windowCurrentLength != numSamples || This->windowType != BMFFT_KAISER){
         BMFFT_generateKaiserCoefficients(This->window, numSamples);
         This->windowCurrentLength = numSamples;
