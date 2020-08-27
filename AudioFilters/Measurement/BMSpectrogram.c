@@ -627,7 +627,7 @@ size_t BMSpectrogram_GetFFTSizeFor(BMSpectrogram *This, size_t pixelWidth, size_
     // don't allow it to be longer than the max or shorter
     // than the min
     fftSize = SG_MIN(fftSize, This->maxFFTSize);
-    fftSize = SG_MAX(fftSize, 128);
+    fftSize = SG_MAX(fftSize, 512);
     return fftSize;
 }
 
