@@ -481,32 +481,31 @@ void BMSpectrogram_genColumn(SInt32 i,
 
 
 void BMSpectrogram_shiftColumns(const uint8_t *imageInput, uint8_t *imageOutput, size_t width, size_t height, int shift){
-	if(abs(shift) < width) {
+	if(abs(shift) < width && shift != 0) {
 		size_t columnsToMove = width - abs(shift);
 		size_t bytesToMove = columnsToMove * height * BMSG_BYTES_PER_PIXEL;
-		size_t bytesToShift = shift * height * BMSG_BYTES_PER_PIXEL;
+		size_t bytesOffset = shift * height * BMSG_BYTES_PER_PIXEL;
 		const uint8_t *src = NULL;
 		uint8_t *dest = NULL;
 		
-		// right shift
+		// left shift
 		if (shift > 0){
 			// copy from offset position
-			src = imageInput + bytesToShift;
+			src = imageInput + bytesOffset;
 			// write to the beginning of the output
 			dest = imageOutput;
 		}
 		
-		// left shift
+		// right shift
 		else if (shift < 0) {
 			// copy from beginning of input
 			src = imageInput;
 			// write to the output with offset
-			dest = imageOutput + bytesToShift;
+			dest = imageOutput + bytesOffset;
 		}
 		
 		// do the shift
-		if (shift != 0)
-			memmove(dest, src, bytesToMove);
+		memmove(dest, src, bytesToMove);
 	}
 }
 
@@ -703,7 +702,7 @@ double BMSpectrogram_firstMultipleAbove(double x, double y){
 
 int32_t BMSpectrogram_inputFirstColumnTime(int32_t inputStartTime, double samplesPerColumn, int32_t cacheFirstColumnTime){
 	int32_t inputStartOffset = inputStartTime - cacheFirstColumnTime;
-	int32_t inputFirstColumnOffset = (int32_t)BMSpectrogram_firstMultipleAbove(inputStartOffset, samplesPerColumn);
+	int32_t inputFirstColumnOffset = (int32_t)BMSpectrogram_firstMultipleAbove(samplesPerColumn,inputStartOffset);
 	return cacheFirstColumnTime + inputFirstColumnOffset;
 }
 
@@ -712,7 +711,7 @@ int32_t BMSpectrogram_inputFirstColumnTime(int32_t inputStartTime, double sample
 
 int32_t BMSpectrogram_inputLastColumnTime(int32_t inputEndTime, double samplesPerColumn, int32_t cacheFirstColumnTime){
 	int32_t inputEndOffset = inputEndTime - cacheFirstColumnTime;
-	int32_t inputLastColumnOffset = (int32_t)BMSpectrogram_lastMultipleBelow(inputEndOffset, samplesPerColumn);
+	int32_t inputLastColumnOffset = (int32_t)BMSpectrogram_lastMultipleBelow(samplesPerColumn, inputEndOffset);
 	return cacheFirstColumnTime + inputLastColumnOffset;
 }
 
@@ -739,6 +738,21 @@ int32_t BMSpectrogram_positionInCache(int32_t inputTime, int32_t cacheFirstColum
 }
 
 
+int32_t stochasticRound(double x){
+	// generate a random double in [0,1]
+	double random01 = (double)arc4random() / (double)INT32_MAX;
+	
+	// get the fractional part of x
+	double intPart, fracPart;
+	fracPart = modf(x, &intPart);
+
+	// the larger the fractional part, the more likley that we round up
+	if(fracPart > random01) return ceil(x);
+	
+	// otherwise we round down
+	return floor(x);
+}
+
 
 
 int32_t BMSpectrogram_firstNewColumnTime(int32_t cacheFirstColumnTime,
@@ -756,10 +770,16 @@ int32_t BMSpectrogram_firstNewColumnTime(int32_t cacheFirstColumnTime,
 	if (inputFirstColumnTime > cacheLastColumnTime)
 		return inputFirstColumnTime;
 	
-	// if the first input column is within the cache then we only need
-	// to draw spectrogram columns for part of the input beginning one
-	// column after the last column in the cache
-	return cacheLastColumnTime + (int32_t)round(samplesPerColumn);
+	// if the first input column is within the cache and the last input column is
+	// right of the cache then we only need to draw spectrogram columns for part
+	// of the input beginning one column after the last column in the cache
+	if (cacheFirstColumnTime <= inputFirstColumnTime &&
+		inputFirstColumnTime <= cacheLastColumnTime &&
+		inputLastColumnTime > cacheLastColumnTime)
+		return cacheLastColumnTime + (int32_t)stochasticRound(samplesPerColumn);
+	
+	// if none of the three cases above were satisfied, return an error
+	return -1;
 }
 
 
@@ -773,17 +793,23 @@ int32_t BMSpectrogram_lastNewColumnTime(int32_t cacheFirstColumnTime,
 	// if the new columns are on the right of the cache then the last
 	// input column is the last new column
 	if(inputLastColumnTime > cacheLastColumnTime)
-		return inputFirstColumnTime;
+		return inputLastColumnTime;
 	
 	// if the last input column is before the cache starts then the
 	// last input column is the last new column
 	if (inputLastColumnTime < cacheFirstColumnTime)
 		return inputLastColumnTime;
 	
-	// if the last input column is within the cache then we only need
-	// to draw spectrogram columns for part of the input ending one
-	// column before the start of the cache
-	return cacheFirstColumnTime - (int32_t)round(samplesPerColumn);
+	// if the last input column is within the cache and the first input column
+	// is left of the cache then we only need to draw the spectrogram for
+	// columns beginning one position to the left of the cache start column
+	if (cacheFirstColumnTime <= inputLastColumnTime &&
+		inputLastColumnTime  <= cacheLastColumnTime &&
+		inputFirstColumnTime < cacheFirstColumnTime)
+		return cacheFirstColumnTime - (int32_t)stochasticRound(samplesPerColumn);
+	
+	// if we get here, return an error
+	return -1;
 }
 
 
@@ -834,9 +860,10 @@ void BMSpectrogram_prepareAlignment(int32_t widthPixels,
 	/* Careful! Is audioBufferEndTime correct? */
 	
 	// Calculate the time of the last sample in the input
-	int32_t inputEndTime = BMSpectrogram_inputTime(startPointer+widthSamples, audioBuffer, *audioBufferTimeInSamples);
+	int32_t inputEndTime = BMSpectrogram_inputTime(startPointer+widthSamples-1, audioBuffer, *audioBufferTimeInSamples);
 	
-	// by default we use the entire input to draw the spectrogram
+	// calculate settings for drawing the entire image
+	// if(drawEntireImage);
 	int32_t inputFirstColumnTime = inputStartTime;
 	int32_t inputLastColumnTime = inputEndTime;
 	int32_t firstNewColumnTime = inputFirstColumnTime;
@@ -875,7 +902,7 @@ void BMSpectrogram_prepareAlignment(int32_t widthPixels,
 		oldColumns = widthPixels - *newColumns;
 		
 		// calculate the number of audio samples to generate the new columns
-		newSamples = (int32_t)round(*newColumns * samplesPerColumn);
+		newSamples = lastNewColumnTime - firstNewColumnTime + 1;
 	}
 	
 	// calculate the offset in samples from the start of the input buffer to the first column
@@ -904,9 +931,13 @@ void BMSpectrogram_prepareAlignment(int32_t widthPixels,
 	BMSpectrogram_shiftColumns(cache->cache, cache->cache, widthPixels, heightPixels, shift);
 	
 	// get the cache ready for the next time
-	cache->firstColumnTime = inputFirstColumnTime;
-	cache->lastColumnTime = inputLastColumnTime;
-	//	}
+	if(drawEntireImage){
+		cache->firstColumnTime = inputFirstColumnTime;
+		cache->lastColumnTime = inputLastColumnTime;
+	} else {
+		cache->firstColumnTime += shift; //inputFirstColumnTime;
+		cache->lastColumnTime += shift; //inputLastColumnTime;
+	}
 	
 	// update settings
 	cache->prevWidthPixels = widthPixels;
