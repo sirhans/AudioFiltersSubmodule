@@ -13,6 +13,8 @@
 #include "BMSpectrum.h"
 #include <simd/simd.h>
 #include <dispatch/dispatch.h>
+#include "TPCircularBuffer.h"
+#include "OscilloscopeSpectrogramCache.h"
 
 #define BMSG_NUM_THREADS 1
 
@@ -137,5 +139,44 @@ void BMSpectrogram_fftBinsToBarkScale(const float* fftBins,
 									  const size_t *b4,
 									  const size_t *b5,
 									  const float *b6);
+
+
+/*!
+ *BMSpectrogram_shiftColumns
+ *
+ * Shift the columns of an image to the left or right to make space for adding
+ * new columns to the image.
+ *
+ * @param imageInput pointer to the input in column major order. 4 bytes per RGBA pixel
+ * @param imageOutput pointer to the output in column major order. 4 bytes per RGBA pixel
+ * @param width width in pixels
+ * @param height height in pixels
+ * @param shift number of columns to shift left (-) or right (+)
+ */
+void BMSpectrogram_shiftColumns(const uint8_t *imageInput,
+								uint8_t *imageOutput,
+								size_t width,
+								size_t height,
+								int shift);
+
+/*!
+ *BMSpectrogram_prepareAlignment
+ */
+void BMSpectrogram_prepareAlignment(int32_t widthPixels,
+									int32_t heightPixels,
+									int32_t widthSamples,
+									float * const startPointer,
+									size_t slotIndex,
+									int32_t fftSize,
+									TPCircularBuffer *audioBuffer,
+									OscilloScopeSpectrogramCache *cache,
+									int32_t *audioBufferTimeInSamples,
+									float **sgInputPtr,
+									uint8_t **imageCachePtr,
+									int32_t *sgInputLengthWithPadding,
+									int32_t *sgFirstColumnIndexInSamples,
+									int32_t *sgLastColumnIndexInSamples,
+									int32_t *newColumns);
+
 
 #endif /* BMSpectrogram_h */

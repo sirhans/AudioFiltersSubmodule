@@ -17,37 +17,37 @@
 #define SG_MAX(a,b) (((a)>(b))?(a):(b))
 
 void BMSpectrogram_init(BMSpectrogram *This,
-                        size_t maxFFTSize,
-                        size_t maxImageHeight,
-                        float sampleRate){
-    
-    This->sampleRate = sampleRate;
-    This->prevMinF = This->prevMaxF = 0.0f;
-    This->prevImageHeight = This->prevFFTSize = 0;
-    
+						size_t maxFFTSize,
+						size_t maxImageHeight,
+						float sampleRate){
+	
+	This->sampleRate = sampleRate;
+	This->prevMinF = This->prevMaxF = 0.0f;
+	This->prevImageHeight = This->prevFFTSize = 0;
+	
 	// init one spectrum object per thread
 	for(size_t i=0; i<BMSG_NUM_THREADS; i++)
 		BMSpectrum_initWithLength(&This->spectrum[i], maxFFTSize);
 	
-    This->maxFFTSize = maxFFTSize;
-    This->maxImageHeight = maxImageHeight;
-    
-    // we need some extra samples at the end of the fftBin array because the
-    // interpolating function that converts from linear scale to bark scale
-    // reads beyond the interpolation index
-    This->fftBinInterpolationPadding = 3;
-    
-    size_t maxFFTOutput = 1 + maxFFTSize/2;
+	This->maxFFTSize = maxFFTSize;
+	This->maxImageHeight = maxImageHeight;
+	
+	// we need some extra samples at the end of the fftBin array because the
+	// interpolating function that converts from linear scale to bark scale
+	// reads beyond the interpolation index
+	This->fftBinInterpolationPadding = 3;
+	
+	size_t maxFFTOutput = 1 + maxFFTSize/2;
 	for(size_t i=0; i<BMSG_NUM_THREADS; i++){
 		This->b1[i] = malloc(sizeof(float)*(maxFFTOutput+This->fftBinInterpolationPadding));
 		This->b2[i] = malloc(sizeof(float)*maxImageHeight);
 		This->t1[i] = malloc(sizeof(float)*maxImageHeight*BMSG_FLOATS_PER_COLOUR);
 		This->t2[i] = malloc(sizeof(float)*maxImageHeight);
 	}
-    This->b3 = malloc(sizeof(float)*maxImageHeight);
-    This->b4 = malloc(sizeof(size_t)*maxImageHeight);
-    This->b5 = malloc(sizeof(size_t)*maxImageHeight);
-    This->b6 = malloc(sizeof(float)*maxImageHeight);
+	This->b3 = malloc(sizeof(float)*maxImageHeight);
+	This->b4 = malloc(sizeof(size_t)*maxImageHeight);
+	This->b5 = malloc(sizeof(size_t)*maxImageHeight);
+	This->b6 = malloc(sizeof(float)*maxImageHeight);
 	This->colours = malloc(sizeof(simd_float3)*maxImageHeight);
 	
 	if(BMSG_NUM_THREADS > 1){
@@ -77,21 +77,21 @@ void BMSpectrogram_free(BMSpectrogram *This){
 		dispatch_release(This->dispatchGroup);
 	}
 	
-    free(This->b3);
-    free(This->b4);
-    free(This->b5);
-    free(This->b6);
+	free(This->b3);
+	free(This->b4);
+	free(This->b5);
+	free(This->b6);
 	free(This->colours);
-    This->b3 = NULL;
-    This->b4 = NULL;
-    This->b5 = NULL;
-    This->b6 = NULL;
+	This->b3 = NULL;
+	This->b4 = NULL;
+	This->b5 = NULL;
+	This->b6 = NULL;
 	This->colours = NULL;
 }
 
 float hzToBark(float hz){
-    // hzToBark[hz_] := 6 ArcSinh[hz/600]
-    return 6.0f * asinhf(hz / 600.0f);
+	// hzToBark[hz_] := 6 ArcSinh[hz/600]
+	return 6.0f * asinhf(hz / 600.0f);
 }
 
 
@@ -117,69 +117,69 @@ float hzToBark(float hz){
 
 
 float barkToHz(float bark){
-    // barkToHz[bk_] := 600 Sinh[bk/6]
-    return 600.0f * sinhf(bark / 6.0f);
+	// barkToHz[bk_] := 600 Sinh[bk/6]
+	return 600.0f * sinhf(bark / 6.0f);
 }
 
 
 
 float hzToFFTBin(float hz, float fftSize, float sampleRate){
-    // fftBinZeroDC[f_, fftLength_, sampleRate_] := f/(sampleRate/fftLength)
-    return hz * (fftSize / sampleRate);
+	// fftBinZeroDC[f_, fftLength_, sampleRate_] := f/(sampleRate/fftLength)
+	return hz * (fftSize / sampleRate);
 }
 
 
 // how many fft bins are represented by a single pixel at freqHz?
 float fftBinsPerPixel(float freqHz,
-                      float fftSize,
-                      float pixelHeight,
-                      float minFrequency,
-                      float maxFrequency,
-                      float sampleRate){
-    
-    // what bark frequency range does 1 pixel represent?
-    float windowHeightInBarks = hzToBark(maxFrequency) - hzToBark(minFrequency);
-    float pixelHeightInBarks = windowHeightInBarks / pixelHeight;
-    
-    // what frequency is one pixel above freqHz?
-    float upperPixelFreq = barkToHz(hzToBark(freqHz)+pixelHeightInBarks);
-    
-    // return the height of one pixel in FFT bins
-    return hzToFFTBin(upperPixelFreq, fftSize, sampleRate) - hzToFFTBin(freqHz, fftSize, sampleRate);
+					  float fftSize,
+					  float pixelHeight,
+					  float minFrequency,
+					  float maxFrequency,
+					  float sampleRate){
+	
+	// what bark frequency range does 1 pixel represent?
+	float windowHeightInBarks = hzToBark(maxFrequency) - hzToBark(minFrequency);
+	float pixelHeightInBarks = windowHeightInBarks / pixelHeight;
+	
+	// what frequency is one pixel above freqHz?
+	float upperPixelFreq = barkToHz(hzToBark(freqHz)+pixelHeightInBarks);
+	
+	// return the height of one pixel in FFT bins
+	return hzToFFTBin(upperPixelFreq, fftSize, sampleRate) - hzToFFTBin(freqHz, fftSize, sampleRate);
 }
 
 
 
 // returns the frequency at which one pixel is equal to two FFT bins.
 float pixelBinParityFrequency(float fftSize, float pixelHeight,
-                              float minFrequency, float maxFrequency,
-                              float sampleRate){
-    // initial guess
-    float f = sampleRate / 4.0;
-    
-    // numerical search for a value of f where binsPerPixel is near 1.0
-    while(true){
-        // find out how many bins per pixel at frequency f
-        float binsPerPixel = fftBinsPerPixel(f, fftSize, pixelHeight, minFrequency, maxFrequency, sampleRate);
-        
-        // this is the number of bins per pixel we are looking for
-        float targetParity = 2.0f;
-        
-        // if binsPerPixel < targetParity, increase f. else decrease f
-        f /= (binsPerPixel / targetParity);
-        
-        // if binsPerPixel is close to 2, return
-        if (fabsf(binsPerPixel - targetParity) < 0.001) return f;
-        
-        // if f is below half of minFrequency, stop
-        if (f < minFrequency * 0.5f) return minFrequency;
-        
-        // if f is above 2x maxFrequency, stop
-        if (f > maxFrequency * 2.0f) return maxFrequency;
-    }
-    
-    // satisfy the compiler
-    return f;
+							  float minFrequency, float maxFrequency,
+							  float sampleRate){
+	// initial guess
+	float f = sampleRate / 4.0;
+	
+	// numerical search for a value of f where binsPerPixel is near 1.0
+	while(true){
+		// find out how many bins per pixel at frequency f
+		float binsPerPixel = fftBinsPerPixel(f, fftSize, pixelHeight, minFrequency, maxFrequency, sampleRate);
+		
+		// this is the number of bins per pixel we are looking for
+		float targetParity = 2.0f;
+		
+		// if binsPerPixel < targetParity, increase f. else decrease f
+		f /= (binsPerPixel / targetParity);
+		
+		// if binsPerPixel is close to 2, return
+		if (fabsf(binsPerPixel - targetParity) < 0.001) return f;
+		
+		// if f is below half of minFrequency, stop
+		if (f < minFrequency * 0.5f) return minFrequency;
+		
+		// if f is above 2x maxFrequency, stop
+		if (f > maxFrequency * 2.0f) return maxFrequency;
+	}
+	
+	// satisfy the compiler
+	return f;
 }
 
 
@@ -188,118 +188,118 @@ void BMSpectrogram_updateImageHeight(BMSpectrogram *This,
 									 size_t imageHeight,
 									 float minF,
 									 float maxF){
-    // rename buffer 3 and 4 for readablility
-    float* interpolatedIndices = This->b3;
-    size_t* startIndices = This->b4;
-    size_t* binIntervalLengths = This->b5;
-    float* downsamplingScales = This->b6;
+	// rename buffer 3 and 4 for readablility
+	float* interpolatedIndices = This->b3;
+	size_t* startIndices = This->b4;
+	size_t* binIntervalLengths = This->b5;
+	float* downsamplingScales = This->b6;
 	
 	// if the settings have changed since last time we did this, recompute
-    // the floating point array indices for interpolated reading of bark scale
-    // frequency spectrum
-    if(minF != This->prevMinF ||
-       maxF != This->prevMaxF ||
-       imageHeight != This->prevImageHeight ||
-       fftSize != This->prevFFTSize){
-        This->prevMinF = minF;
-        This->prevMaxF = maxF;
-        This->prevImageHeight = imageHeight;
-        This->prevFFTSize = fftSize;
-        
-        // find the min and max frequency in barks
-        float minBark = hzToBark(minF);
-        float maxBark = hzToBark(maxF);
-        
-        
-        for(size_t i=0; i<imageHeight; i++){
-            // create evenly spaced values in bark scale
-            float zeroToOne = (float)i / (float)(imageHeight-1);
-            float bark = minBark + (maxBark-minBark)*zeroToOne;
-            
-            // convert to Hz
-            float hz = barkToHz(bark);
-            
-            // convert to FFT bin index (floating point interpolated)
-            interpolatedIndices[i] = hzToFFTBin(hz, fftSize, This->sampleRate);
-            
-            // calculate bins per pixel at this index
-            float binsPerPixel_f = fftBinsPerPixel(hz, fftSize, imageHeight, minF, maxF, This->sampleRate);
-            
-            // calculate the start index for this pixel
-            if(i==0) startIndices[i] = hzToFFTBin(minF, fftSize, This->sampleRate);
-            else startIndices[i] = startIndices[i-1]+binIntervalLengths[i-1];
-            
-            // calculate the end index for this pixel
-            size_t endIndex = (size_t)roundf(interpolatedIndices[i] + binsPerPixel_f*0.5f);
-            
-            // calculate the number of pixels in [startIndices[i],endIndex]
-            binIntervalLengths[i] = endIndex - startIndices[i];
-            
-            // don't let the end index go above the limit
-            if(endIndex > fftSize-1) binIntervalLengths[i] = fftSize - startIndices[i];
-            
-            downsamplingScales[i] = 1.0f / (float)binIntervalLengths[i];
-        }
-        
-        // find the frequency at which 2 fft bins = 1 screen pixel
-        This->pixelBinParityFrequency = pixelBinParityFrequency(fftSize, imageHeight, minF, maxF, This->sampleRate);
-        
-        // find the number of pixels we can interpolate by upsampling
-        float parityFrequencyBark = hzToBark(This->pixelBinParityFrequency);
-        float upsampledPixelsFraction = (parityFrequencyBark - minBark) / (maxBark - minBark);
-        This->upsampledPixels = 1 + round(1.0 * upsampledPixelsFraction * imageHeight);
-        if(This->upsampledPixels > imageHeight) This->upsampledPixels = imageHeight;
-    }
+	// the floating point array indices for interpolated reading of bark scale
+	// frequency spectrum
+	if(minF != This->prevMinF ||
+	   maxF != This->prevMaxF ||
+	   imageHeight != This->prevImageHeight ||
+	   fftSize != This->prevFFTSize){
+		This->prevMinF = minF;
+		This->prevMaxF = maxF;
+		This->prevImageHeight = imageHeight;
+		This->prevFFTSize = fftSize;
+		
+		// find the min and max frequency in barks
+		float minBark = hzToBark(minF);
+		float maxBark = hzToBark(maxF);
+		
+		
+		for(size_t i=0; i<imageHeight; i++){
+			// create evenly spaced values in bark scale
+			float zeroToOne = (float)i / (float)(imageHeight-1);
+			float bark = minBark + (maxBark-minBark)*zeroToOne;
+			
+			// convert to Hz
+			float hz = barkToHz(bark);
+			
+			// convert to FFT bin index (floating point interpolated)
+			interpolatedIndices[i] = hzToFFTBin(hz, fftSize, This->sampleRate);
+			
+			// calculate bins per pixel at this index
+			float binsPerPixel_f = fftBinsPerPixel(hz, fftSize, imageHeight, minF, maxF, This->sampleRate);
+			
+			// calculate the start index for this pixel
+			if(i==0) startIndices[i] = hzToFFTBin(minF, fftSize, This->sampleRate);
+			else startIndices[i] = startIndices[i-1]+binIntervalLengths[i-1];
+			
+			// calculate the end index for this pixel
+			size_t endIndex = (size_t)roundf(interpolatedIndices[i] + binsPerPixel_f*0.5f);
+			
+			// calculate the number of pixels in [startIndices[i],endIndex]
+			binIntervalLengths[i] = endIndex - startIndices[i];
+			
+			// don't let the end index go above the limit
+			if(endIndex > fftSize-1) binIntervalLengths[i] = fftSize - startIndices[i];
+			
+			downsamplingScales[i] = 1.0f / (float)binIntervalLengths[i];
+		}
+		
+		// find the frequency at which 2 fft bins = 1 screen pixel
+		This->pixelBinParityFrequency = pixelBinParityFrequency(fftSize, imageHeight, minF, maxF, This->sampleRate);
+		
+		// find the number of pixels we can interpolate by upsampling
+		float parityFrequencyBark = hzToBark(This->pixelBinParityFrequency);
+		float upsampledPixelsFraction = (parityFrequencyBark - minBark) / (maxBark - minBark);
+		This->upsampledPixels = 1 + round(1.0 * upsampledPixelsFraction * imageHeight);
+		if(This->upsampledPixels > imageHeight) This->upsampledPixels = imageHeight;
+	}
 }
 
 
 
 
 void BMSpectrogram_fftBinsToBarkScale(const float* fftBins,
-                                      float *output,
-                                      size_t fftSize,
-                                      size_t outputLength,
-                                      float minFrequency,
-                                      float maxFrequency,
+									  float *output,
+									  size_t fftSize,
+									  size_t outputLength,
+									  float minFrequency,
+									  float maxFrequency,
 									  size_t fftBinInterpolationPadding,
 									  size_t upsampledPixels,
 									  const float *b3,
 									  const size_t *b4,
 									  const size_t *b5,
 									  const float *b6){
-    // rename buffer 3 and 4 for readablility
-    const float* interpolatedIndices = b3;
-    const size_t* startIndices = b4;
-    const size_t* binIntervalLengths = b5;
-    const float* downsamplingScales = b6;
-    
-    /*************************************
-     * now that we have the fft bin indices we can interpolate and get the results
-     *************************************/
-    size_t numFFTBins = 1 + fftSize/2;
-    assert(numFFTBins + fftBinInterpolationPadding - 2 >= floor(interpolatedIndices[outputLength-1])); // requirement of vDSP_vqint. can be ignored if there is extra space at the end of the fftBins array and zeros are written there.
-    
-    // upsample the lower part of the image
-    vDSP_vqint(fftBins, interpolatedIndices, 1, output, 1, upsampledPixels, numFFTBins);
-    
-    // if we didn't get it all, downsample the upper half
-    if (upsampledPixels < outputLength){
-        // get the sum of squares of all the bins represented by the ith pixel
-        for(size_t i=upsampledPixels; i<outputLength; i++){
-            vDSP_svesq(fftBins + startIndices[i], 1, output + i, binIntervalLengths[i]);
-        }
-        
-        // scale and square root to get L2 norm of downsampled pixels
-        float *downsampledOutput = output + upsampledPixels;
-        int numDownsampledPixels_i = (int)(outputLength - upsampledPixels);
-        size_t numDownsampledPixels_ui = numDownsampledPixels_i;
-        vDSP_vmul(downsampledOutput, 1,
-                  downsamplingScales + upsampledPixels, 1,
-                  downsampledOutput, 1, numDownsampledPixels_ui);
-        vvsqrtf(downsampledOutput,
-                downsampledOutput,
-                &numDownsampledPixels_i);
-    }
+	// rename buffer 3 and 4 for readablility
+	const float* interpolatedIndices = b3;
+	const size_t* startIndices = b4;
+	const size_t* binIntervalLengths = b5;
+	const float* downsamplingScales = b6;
+	
+	/*************************************
+	 * now that we have the fft bin indices we can interpolate and get the results
+	 *************************************/
+	size_t numFFTBins = 1 + fftSize/2;
+	assert(numFFTBins + fftBinInterpolationPadding - 2 >= floor(interpolatedIndices[outputLength-1])); // requirement of vDSP_vqint. can be ignored if there is extra space at the end of the fftBins array and zeros are written there.
+	
+	// upsample the lower part of the image
+	vDSP_vqint(fftBins, interpolatedIndices, 1, output, 1, upsampledPixels, numFFTBins);
+	
+	// if we didn't get it all, downsample the upper half
+	if (upsampledPixels < outputLength){
+		// get the sum of squares of all the bins represented by the ith pixel
+		for(size_t i=upsampledPixels; i<outputLength; i++){
+			vDSP_svesq(fftBins + startIndices[i], 1, output + i, binIntervalLengths[i]);
+		}
+		
+		// scale and square root to get L2 norm of downsampled pixels
+		float *downsampledOutput = output + upsampledPixels;
+		int numDownsampledPixels_i = (int)(outputLength - upsampledPixels);
+		size_t numDownsampledPixels_ui = numDownsampledPixels_i;
+		vDSP_vmul(downsampledOutput, 1,
+				  downsamplingScales + upsampledPixels, 1,
+				  downsampledOutput, 1, numDownsampledPixels_ui);
+		vvsqrtf(downsampledOutput,
+				downsampledOutput,
+				&numDownsampledPixels_i);
+	}
 }
 
 
@@ -361,48 +361,48 @@ void BMSpectrogram_toRGBAColour(float* input, float *temp1, float *temp2, uint8_
 
 
 void BMSpectrogram_toDbScaleAndClip(const float* input, float* output, size_t fftSize, size_t length){
-    // compensate for the scaling of the vDSP FFT
-    float scale = 32.0f / (float)fftSize;
-    vDSP_vsmul(input, 1, &scale, output, 1, length);
-    
-    // eliminate zeros and negative values
-    float threshold = BM_DB_TO_GAIN(-110);
-    vDSP_vthr(output, 1, &threshold, output, 1, length);
-    
-    // convert to db
-    float zeroDb = sqrt((float)fftSize)/2.0f;
-    uint32_t use20not10 = 1;
-    vDSP_vdbcon(output, 1, &zeroDb, output, 1, length, use20not10);
-    
-    // clip to [-100,0]
-    float min = -100.0f;
-    float max = 0.0f;
-    vDSP_vclip(output, 1, &min, &max, output, 1, length);
-    
-    // shift and scale to [0,1]
-    scale = 1.0f/100.0f;
-    float shift = 1.0f;
-    vDSP_vsmsa(output, 1, &scale, &shift, output, 1, length);
+	// compensate for the scaling of the vDSP FFT
+	float scale = 32.0f / (float)fftSize;
+	vDSP_vsmul(input, 1, &scale, output, 1, length);
+	
+	// eliminate zeros and negative values
+	float threshold = BM_DB_TO_GAIN(-110);
+	vDSP_vthr(output, 1, &threshold, output, 1, length);
+	
+	// convert to db
+	float zeroDb = sqrt((float)fftSize)/2.0f;
+	uint32_t use20not10 = 1;
+	vDSP_vdbcon(output, 1, &zeroDb, output, 1, length, use20not10);
+	
+	// clip to [-100,0]
+	float min = -100.0f;
+	float max = 0.0f;
+	vDSP_vclip(output, 1, &min, &max, output, 1, length);
+	
+	// shift and scale to [0,1]
+	scale = 1.0f/100.0f;
+	float shift = 1.0f;
+	vDSP_vsmsa(output, 1, &scale, &shift, output, 1, length);
 }
 
 
 
 
 float BMSpectrogram_getPaddingLeft(size_t fftSize){
-    if(4 > fftSize)
-        printf("[BMSpectrogram] WARNING: fftSize must be >=4\n");
-    if(!isPowerOfTwo((size_t)fftSize))
-        printf("[BMSpectrogram] WARNING: fftSize must be a power of two\n");
-    return (fftSize/2) - 1;
+	if(4 > fftSize)
+		printf("[BMSpectrogram] WARNING: fftSize must be >=4\n");
+	if(!isPowerOfTwo((size_t)fftSize))
+		printf("[BMSpectrogram] WARNING: fftSize must be a power of two\n");
+	return (fftSize/2) - 1;
 }
 
 
 float BMSpectrogram_getPaddingRight(size_t fftSize){
-    if(4 > fftSize)
-        printf("[BMSpectrogram] WARNING: fftSize must be >=4\n");
-    if(!isPowerOfTwo((size_t)fftSize))
-        printf("[BMSpectrogram] WARNING: fftSize must be a power of two\n");
-    return fftSize/2;
+	if(4 > fftSize)
+		printf("[BMSpectrogram] WARNING: fftSize must be >=4\n");
+	if(!isPowerOfTwo((size_t)fftSize))
+		printf("[BMSpectrogram] WARNING: fftSize must be a power of two\n");
+	return fftSize/2;
 }
 
 
@@ -480,6 +480,40 @@ void BMSpectrogram_genColumn(SInt32 i,
 
 
 
+void BMSpectrogram_shiftColumns(const uint8_t *imageInput, uint8_t *imageOutput, size_t width, size_t height, int shift){
+	if(abs(shift) < width) {
+		size_t columnsToMove = width - abs(shift);
+		size_t bytesToMove = columnsToMove * height * BMSG_BYTES_PER_PIXEL;
+		size_t bytesToShift = shift * height * BMSG_BYTES_PER_PIXEL;
+		const uint8_t *src = NULL;
+		uint8_t *dest = NULL;
+		
+		// right shift
+		if (shift > 0){
+			// copy from offset position
+			src = imageInput + bytesToShift;
+			// write to the beginning of the output
+			dest = imageOutput;
+		}
+		
+		// left shift
+		else if (shift < 0) {
+			// copy from beginning of input
+			src = imageInput;
+			// write to the output with offset
+			dest = imageOutput + bytesToShift;
+		}
+		
+		// do the shift
+		if (shift != 0)
+			memmove(dest, src, bytesToMove);
+	}
+}
+
+
+
+
+
 void BMSpectrogram_transposeImage(const uint8_t *imageInput, uint8_t *imageOutput, size_t inputWidth, size_t inputHeight){
 	// confirm that float32 has the same number of bytes we use for a single pixel
 	// so that we can operate on each pixel as a single int to simplify the operation
@@ -493,86 +527,86 @@ void BMSpectrogram_transposeImage(const uint8_t *imageInput, uint8_t *imageOutpu
 
 
 void BMSpectrogram_process(BMSpectrogram *This,
-                           const float* inputAudio,
-                           SInt32 inputLength,
-                           SInt32 startSampleIndex,
-                           SInt32 endSampleIndex,
-                           SInt32 fftSize,
-                           uint8_t *imageOutput,
-                           SInt32 pixelWidth,
-                           SInt32 pixelHeight,
-                           float minFrequency,
-                           float maxFrequency){
-    assert(4 <= fftSize && fftSize <= This->maxFFTSize);
-    assert(isPowerOfTwo((size_t)fftSize));
-    assert(2 <= pixelHeight && pixelHeight < This->maxImageHeight);
-    
-    // we will need this later
-    SInt32 fftOutputSize = 1 + fftSize / 2;
-    
-    // check that the fft start and end indices are within the bounds of the input array
-    // note that we define the fft centred at sample n to mean that the fft is
-    // calculated on samples in the interval [n-(fftSize/2)+1, n+(fftSize/2)]
-    SInt32 fftStartIndex = startSampleIndex - (fftSize/2) + 1;
-    SInt32 fftEndIndex = endSampleIndex + (fftSize/2);
-    assert(fftStartIndex >= 0 && fftEndIndex < inputLength);
-    
-    // calculate the FFT stride to get the pixelWidth. this is the number of
-    // samples we shift the fft window each time we compute it. It may take a
-    // non-integer value. If stride is a non-integer then the actual stride used
-    // will still be an integer but it will vary between two consecutive values.
-    float sampleWidth = endSampleIndex - startSampleIndex + 1;
-    float fftStride = sampleWidth / (float)(pixelWidth-1);
+						   const float* inputAudio,
+						   SInt32 inputLength,
+						   SInt32 startSampleIndex,
+						   SInt32 endSampleIndex,
+						   SInt32 fftSize,
+						   uint8_t *imageOutput,
+						   SInt32 pixelWidth,
+						   SInt32 pixelHeight,
+						   float minFrequency,
+						   float maxFrequency){
+	assert(4 <= fftSize && fftSize <= This->maxFFTSize);
+	assert(isPowerOfTwo((size_t)fftSize));
+	assert(2 <= pixelHeight && pixelHeight < This->maxImageHeight);
+	
+	// we will need this later
+	SInt32 fftOutputSize = 1 + fftSize / 2;
+	
+	// check that the fft start and end indices are within the bounds of the input array
+	// note that we define the fft centred at sample n to mean that the fft is
+	// calculated on samples in the interval [n-(fftSize/2)+1, n+(fftSize/2)]
+	SInt32 fftStartIndex = startSampleIndex - (fftSize/2) + 1;
+	SInt32 fftEndIndex = endSampleIndex + (fftSize/2);
+	assert(fftStartIndex >= 0 && (fftEndIndex-fftStartIndex+1) <= inputLength);
+	
+	// calculate the FFT stride to get the pixelWidth. this is the number of
+	// samples we shift the fft window each time we compute it. It may take a
+	// non-integer value. If stride is a non-integer then the actual stride used
+	// will still be an integer but it will vary between two consecutive values.
+	float sampleWidth = endSampleIndex - startSampleIndex + 1;
+	float fftStride = sampleWidth / (float)(pixelWidth-1);
 	if(pixelWidth == 1)
 		fftStride = 0;
-    
+	
 	// if the configuration has changed, update some stuff
 	BMSpectrogram_updateImageHeight(This, fftSize, pixelHeight, minFrequency, maxFrequency);
 	
 	if(BMSG_NUM_THREADS > 1){
-	// create threads for parallel processing of spectrogram
-	SInt32 blockStartIndex = 0;
-	for(size_t j=0; j<BMSG_NUM_THREADS; j++){
-		// divide into BMSG_NUM_THREADS blocks with roughly equal size.
-		SInt32 nextBlockStartIndex = (pixelWidth * (SInt32)(j + 1)) / BMSG_NUM_THREADS;
-		
-		// ensure that the last block doesn't exceed the width of the image
-		if(nextBlockStartIndex > pixelWidth)
-			nextBlockStartIndex = pixelWidth;
-		
-		// add a block to the group and start processing
-		dispatch_group_async(This->dispatchGroup, This->globalQueue, ^{
-			for(SInt32 i=blockStartIndex; i<nextBlockStartIndex; i++){
-				BMSpectrogram_genColumn(i,
-										imageOutput,
-										fftStride,
-										fftStartIndex,
-										pixelWidth,
-										pixelHeight,
-										fftEndIndex,
-										fftSize,
-										fftOutputSize,
-										This->fftBinInterpolationPadding,
-										minFrequency,
-										maxFrequency,
-										This->upsampledPixels,
-										&This->spectrum[j],
-										inputAudio,
-										This->b1[j],
-										This->b2[j],
-										This->t1[j],
-										This->t2[j],
-										This->b3,
-										This->b4,
-										This->b5,
-										This->b6);
-			}
-		});
-		
-		// advance to the next block
-		blockStartIndex = nextBlockStartIndex;
-	}
-	// if there is only one thread then don't use the dispatch queue
+		// create threads for parallel processing of spectrogram
+		SInt32 blockStartIndex = 0;
+		for(size_t j=0; j<BMSG_NUM_THREADS; j++){
+			// divide into BMSG_NUM_THREADS blocks with roughly equal size.
+			SInt32 nextBlockStartIndex = (pixelWidth * (SInt32)(j + 1)) / BMSG_NUM_THREADS;
+			
+			// ensure that the last block doesn't exceed the width of the image
+			if(nextBlockStartIndex > pixelWidth)
+				nextBlockStartIndex = pixelWidth;
+			
+			// add a block to the group and start processing
+			dispatch_group_async(This->dispatchGroup, This->globalQueue, ^{
+				for(SInt32 i=blockStartIndex; i<nextBlockStartIndex; i++){
+					BMSpectrogram_genColumn(i,
+											imageOutput,
+											fftStride,
+											fftStartIndex,
+											pixelWidth,
+											pixelHeight,
+											fftEndIndex,
+											fftSize,
+											fftOutputSize,
+											This->fftBinInterpolationPadding,
+											minFrequency,
+											maxFrequency,
+											This->upsampledPixels,
+											&This->spectrum[j],
+											inputAudio,
+											This->b1[j],
+											This->b2[j],
+											This->t1[j],
+											This->t2[j],
+											This->b3,
+											This->b4,
+											This->b5,
+											This->b6);
+				}
+			});
+			
+			// advance to the next block
+			blockStartIndex = nextBlockStartIndex;
+		}
+		// if there is only one thread then don't use the dispatch queue
 	} else {
 		for(SInt32 i=0; i<pixelWidth; i++){
 			BMSpectrogram_genColumn(i,
@@ -608,27 +642,280 @@ void BMSpectrogram_process(BMSpectrogram *This,
 }
 
 size_t nearestPowerOfTwo(float x){
-    float lower = pow(2.0f,floor(log2(x)));
-    float upper = pow(2.0f,ceil(log2(x)));
-    return x-lower<upper-x? lower:upper;
+	float lower = pow(2.0f,floor(log2(x)));
+	float upper = pow(2.0f,ceil(log2(x)));
+	return x-lower<upper-x? lower:upper;
 }
 
 size_t BMSpectrogram_GetFFTSizeFor(BMSpectrogram *This, size_t pixelWidth, size_t sampleWidth){
-    // set this to the fft size we want
-    // when pixelWidth = sampleWidth
-    float k = 128.0;
+	// set this to the fft size we want
+	// when pixelWidth = sampleWidth
+	float k = 128.0;
+	
+	// estimate the ideal fft size
+	float fftSizeFloat = k * (float)sampleWidth / (float)pixelWidth;
+	
+	// round to the nearest size we can use (power of two)
+	size_t fftSize = nearestPowerOfTwo(fftSizeFloat);
+	
+	// don't allow it to be longer than the max or shorter
+	// than the min
+	fftSize = SG_MIN(fftSize, This->maxFFTSize);
+	fftSize = SG_MAX(fftSize, 512);
+	return fftSize;
+}
 
-    // estimate the ideal fft size
-    float fftSizeFloat = k * (float)sampleWidth / (float)pixelWidth;
 
-    // round to the nearest size we can use (power of two)
-    size_t fftSize = nearestPowerOfTwo(fftSizeFloat);
 
-    // don't allow it to be longer than the max or shorter
-    // than the min
-    fftSize = SG_MIN(fftSize, This->maxFFTSize);
-    fftSize = SG_MAX(fftSize, 512);
-    return fftSize;
+
+double BMSpectrogram_getColumnWidthSamples(size_t pixelWidth, size_t sampleWidth){
+	return (double)sampleWidth / (double)pixelWidth;
+}
+
+
+
+
+
+int32_t BMSpectrogram_inputTime(float * const inputPointer, TPCircularBuffer *audioBuffer, int32_t audioBufferEndTime){
+	uint32_t bytesAvailable;
+	float *readPointer = TPCircularBufferTail(audioBuffer, &bytesAvailable);
+	return audioBufferEndTime + (int)(inputPointer - readPointer);
+}
+
+
+
+
+// returns z, the largest integer multiple of x such that z <= y
+double BMSpectrogram_lastMultipleBelow(double x, double y){
+	return x * floor(y/x);
+}
+
+
+
+
+// returns z, the smallest integer multiple of x such that z >= y
+double BMSpectrogram_firstMultipleAbove(double x, double y){
+	return x * ceil(y/x);
+}
+
+
+
+
+int32_t BMSpectrogram_inputFirstColumnTime(int32_t inputStartTime, double samplesPerColumn, int32_t cacheFirstColumnTime){
+	int32_t inputStartOffset = inputStartTime - cacheFirstColumnTime;
+	int32_t inputFirstColumnOffset = (int32_t)BMSpectrogram_firstMultipleAbove(inputStartOffset, samplesPerColumn);
+	return cacheFirstColumnTime + inputFirstColumnOffset;
+}
+
+
+
+
+int32_t BMSpectrogram_inputLastColumnTime(int32_t inputEndTime, double samplesPerColumn, int32_t cacheFirstColumnTime){
+	int32_t inputEndOffset = inputEndTime - cacheFirstColumnTime;
+	int32_t inputLastColumnOffset = (int32_t)BMSpectrogram_lastMultipleBelow(inputEndOffset, samplesPerColumn);
+	return cacheFirstColumnTime + inputLastColumnOffset;
+}
+
+
+
+
+/*!
+ * columnsInInterval
+ *
+ * @param firstColumnTime the exact time index of the first column
+ * @param lastColumnTime the exact time index of the last column
+ * @param samplesPerColumn non-integer width of each column in samples
+ */
+int32_t BMSpectrogram_columnsInInterval(int32_t firstColumnTime, int32_t lastColumnTime, double samplesPerColumn){
+	return (int32_t)round((lastColumnTime - firstColumnTime) / samplesPerColumn);
+}
+
+
+
+
+int32_t BMSpectrogram_positionInCache(int32_t inputTime, int32_t cacheFirstColumnTime, double samplesPerColumn){
+	int32_t inputOffset = inputTime - cacheFirstColumnTime;
+	return (int32_t)round(inputOffset / samplesPerColumn);
+}
+
+
+
+
+int32_t BMSpectrogram_firstNewColumnTime(int32_t cacheFirstColumnTime,
+										 int32_t cacheLastColumnTime,
+										 int32_t inputFirstColumnTime,
+										 int32_t inputLastColumnTime,
+										 double samplesPerColumn){
+	// if the new columns are on the left of the cache then the first
+	// input column is the first new column
+	if(inputFirstColumnTime < cacheFirstColumnTime)
+		return inputFirstColumnTime;
+	
+	// if the first input column comes after the last cache column then
+	// it is the first new column
+	if (inputFirstColumnTime > cacheLastColumnTime)
+		return inputFirstColumnTime;
+	
+	// if the first input column is within the cache then we only need
+	// to draw spectrogram columns for part of the input beginning one
+	// column after the last column in the cache
+	return cacheLastColumnTime + (int32_t)round(samplesPerColumn);
+}
+
+
+
+
+int32_t BMSpectrogram_lastNewColumnTime(int32_t cacheFirstColumnTime,
+										int32_t cacheLastColumnTime,
+										int32_t inputFirstColumnTime,
+										int32_t inputLastColumnTime,
+										double samplesPerColumn){
+	// if the new columns are on the right of the cache then the last
+	// input column is the last new column
+	if(inputLastColumnTime > cacheLastColumnTime)
+		return inputFirstColumnTime;
+	
+	// if the last input column is before the cache starts then the
+	// last input column is the last new column
+	if (inputLastColumnTime < cacheFirstColumnTime)
+		return inputLastColumnTime;
+	
+	// if the last input column is within the cache then we only need
+	// to draw spectrogram columns for part of the input ending one
+	// column before the start of the cache
+	return cacheFirstColumnTime - (int32_t)round(samplesPerColumn);
+}
+
+
+
+
+void BMSpectrogram_prepareAlignment(int32_t widthPixels,
+									int32_t heightPixels,
+									int32_t widthSamples,
+									float * const startPointer,
+									size_t slotIndex,
+									int32_t fftSize,
+									TPCircularBuffer *audioBuffer,
+									OscilloScopeSpectrogramCache *cache,
+									int32_t *audioBufferTimeInSamples,
+									float **sgInputPtr,
+									uint8_t **imageCachePtr,
+									int32_t *sgInputLengthWithPadding,
+									int32_t *sgFirstColumnIndexInSamples,
+									int32_t *sgLastColumnIndexInSamples,
+									int32_t *newColumns){
+	
+	// find out how much padding we need
+	SInt32 paddingLeft = BMSpectrogram_getPaddingLeft(fftSize);
+	SInt32 paddingRight = BMSpectrogram_getPaddingRight(fftSize);
+	
+	
+	
+	// if settings have changed, redraw the entire image
+	bool drawEntireImage = true;
+	if(cache->prevFFTSize == fftSize &&
+	   cache->prevHeightPixels == heightPixels &&
+	   cache->prevWidthPixels == widthPixels &&
+	   cache->prevWidthSamples == widthSamples){
+		drawEntireImage = false;
+	}
+	
+	//	if(drawEntireImage) {
+	//
+	//	}
+	//
+	//	else {
+	
+	// Calculate samplesPerColumn
+	double samplesPerColumn = BMSpectrogram_getColumnWidthSamples(widthPixels, widthSamples);
+	
+	// Calculate the time of the first sample in the input
+	int32_t inputStartTime = BMSpectrogram_inputTime(startPointer, audioBuffer, *audioBufferTimeInSamples);
+	/* Careful! Is audioBufferEndTime correct? */
+	
+	// Calculate the time of the last sample in the input
+	int32_t inputEndTime = BMSpectrogram_inputTime(startPointer+widthSamples, audioBuffer, *audioBufferTimeInSamples);
+	
+	// by default we use the entire input to draw the spectrogram
+	int32_t inputFirstColumnTime = inputStartTime;
+	int32_t inputLastColumnTime = inputEndTime;
+	int32_t firstNewColumnTime = inputFirstColumnTime;
+	int32_t lastNewColumnTime = inputLastColumnTime;
+	*newColumns = widthPixels;
+	int32_t oldColumns = 0;
+	int32_t newSamples = widthSamples;
+	
+	// if we aren't drawing the entire image then we draw a subset of the
+	// columns in the spectrogram
+	if (!drawEntireImage) {
+		// Calculate the time of the first column we can get from the input
+		inputFirstColumnTime = BMSpectrogram_inputFirstColumnTime(inputStartTime, samplesPerColumn, cache->firstColumnTime);
+		
+		// Calculate the time of the last column we can get from the input
+		inputLastColumnTime = BMSpectrogram_inputLastColumnTime(inputEndTime, samplesPerColumn, cache->firstColumnTime);
+		
+		// Calculate the time of the first new column
+		firstNewColumnTime = BMSpectrogram_firstNewColumnTime(cache->firstColumnTime,
+															  cache->lastColumnTime,
+															  inputFirstColumnTime,
+															  inputLastColumnTime,
+															  samplesPerColumn);
+		
+		// Calculate the time of the last new column
+		lastNewColumnTime = BMSpectrogram_lastNewColumnTime(cache->firstColumnTime,
+															cache->lastColumnTime,
+															inputFirstColumnTime,
+															inputLastColumnTime,
+															samplesPerColumn);
+		
+		// calculate the number of new columns
+		*newColumns = BMSpectrogram_columnsInInterval(firstNewColumnTime, lastNewColumnTime, samplesPerColumn);
+		
+		// calculate the number of old columns
+		oldColumns = widthPixels - *newColumns;
+		
+		// calculate the number of audio samples to generate the new columns
+		newSamples = (int32_t)round(*newColumns * samplesPerColumn);
+	}
+	
+	// calculate the offset in samples from the start of the input buffer to the first column
+	int32_t firstNewColumnOffset = firstNewColumnTime - inputStartTime;
+	
+	// calculate the offset in samples from the start of the input buffer to the last column
+	int32_t lastNewColumnOffset = lastNewColumnTime - inputStartTime;
+	
+	// are we adding new columns to the left or right of the old columns?
+	bool newOnRight = firstNewColumnTime > cache->firstColumnTime;
+	
+	// calculate the address in the image cache where we start writing the new columns
+	if(newOnRight)
+		*imageCachePtr = cache->cache + (oldColumns * heightPixels * BMSG_BYTES_PER_PIXEL);
+	else
+		*imageCachePtr = cache->cache;
+	
+	// set outputs
+	*sgInputPtr = startPointer - paddingLeft;
+	*sgInputLengthWithPadding = (SInt32)(newSamples + paddingLeft + paddingRight);
+	*sgFirstColumnIndexInSamples = (SInt32)paddingLeft + firstNewColumnOffset;
+	*sgLastColumnIndexInSamples = (SInt32)(paddingLeft + lastNewColumnOffset);
+	
+	// shift the image in the cache to make room for the new data
+	int shift = newOnRight ? -*newColumns : *newColumns;
+	BMSpectrogram_shiftColumns(cache->cache, cache->cache, widthPixels, heightPixels, shift);
+	
+	// get the cache ready for the next time
+	cache->firstColumnTime = inputFirstColumnTime;
+	cache->lastColumnTime = inputLastColumnTime;
+	//	}
+	
+	// update settings
+	cache->prevWidthPixels = widthPixels;
+	cache->prevHeightPixels = heightPixels;
+	cache->prevFFTSize = fftSize;
+	cache->prevWidthSamples = widthSamples;
+	
+	// NOTE: some of these operations must be done atomically because if
+	// the audio thread is writing while we operate then the audioBufferEndTime and the audioBufferTail will change
 }
 
 
