@@ -147,14 +147,12 @@ void BMSpectrogram_fftBinsToBarkScale(const float* fftBins,
  * Shift the columns of an image to the left or right to make space for adding
  * new columns to the image.
  *
- * @param imageInput pointer to the input in column major order. 4 bytes per RGBA pixel
- * @param imageOutput pointer to the output in column major order. 4 bytes per RGBA pixel
+ * @param cache the cache where the image is stored
  * @param width width in pixels
  * @param height height in pixels
  * @param shift number of columns to shift left (-) or right (+)
  */
-void BMSpectrogram_shiftColumns(const uint8_t *imageInput,
-								uint8_t *imageOutput,
+void BMSpectrogram_shiftColumns(OscilloscopeSpectrogramCache *cache,
 								size_t width,
 								size_t height,
 								int shift);
@@ -169,7 +167,7 @@ void BMSpectrogram_prepareAlignment(int32_t widthPixels,
 									size_t slotIndex,
 									int32_t fftSize,
 									TPCircularBuffer *audioBuffer,
-									OscilloScopeSpectrogramCache *cache,
+									OscilloscopeSpectrogramCache *cache,
 									int32_t *audioBufferTimeInSamples,
 									float **sgInputPtr,
 									uint8_t **imageCachePtr,

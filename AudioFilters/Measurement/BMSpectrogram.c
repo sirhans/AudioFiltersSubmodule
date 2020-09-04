@@ -480,7 +480,7 @@ void BMSpectrogram_genColumn(SInt32 i,
 
 
 
-void BMSpectrogram_shiftColumns(const uint8_t *imageInput, uint8_t *imageOutput, size_t width, size_t height, int shift){
+void BMSpectrogram_shiftColumns(OscilloscopeSpectrogramCache *cache, size_t width, size_t height, int shift){
 	if(abs(shift) < width && shift != 0) {
 		size_t columnsToMove = width - abs(shift);
 		size_t bytesToMove = columnsToMove * height * BMSG_BYTES_PER_PIXEL;
@@ -488,24 +488,25 @@ void BMSpectrogram_shiftColumns(const uint8_t *imageInput, uint8_t *imageOutput,
 		const uint8_t *src = NULL;
 		uint8_t *dest = NULL;
 		
+		uint32_t bytes;
+		uint8_t *imageCache = TPCircularBufferTail(&cache->cBuffer, &bytes);
+		
 		// left shift
 		if (shift > 0){
-			// copy from offset position
-			src = imageInput + bytesOffset;
-			// write to the beginning of the output
-			dest = imageOutput;
+			TPCircularBufferConsume(&cache->cBuffer, (uint32_t)bytesOffset);
+			TPCircularBufferProduce(&cache->cBuffer, (uint32_t)bytesOffset);
 		}
 		
 		// right shift
 		else if (shift < 0) {
 			// copy from beginning of input
-			src = imageInput;
+			src = imageCache;
 			// write to the output with offset
-			dest = imageOutput + bytesOffset;
+			dest = imageCache + bytesOffset;
+			
+			// do the shift
+			memmove(dest, src, bytesToMove);
 		}
-		
-		// do the shift
-		memmove(dest, src, bytesToMove);
 	}
 }
 
@@ -816,7 +817,7 @@ void BMSpectrogram_prepareAlignment(int32_t widthPixels,
 									size_t slotIndex,
 									int32_t fftSize,
 									TPCircularBuffer *audioBuffer,
-									OscilloScopeSpectrogramCache *cache,
+									OscilloscopeSpectrogramCache *cache,
 									int32_t *audioBufferTimeInSamples,
 									float **sgInputPtr,
 									uint8_t **imageCachePtr,
@@ -920,11 +921,12 @@ void BMSpectrogram_prepareAlignment(int32_t widthPixels,
 	if (!drawEntireImage){
 		// shift the image in the cache to make room for the new data
 		int shift = newOnRight ? *newColumns : -*newColumns;
-		BMSpectrogram_shiftColumns(cache->cache, cache->cache, widthPixels, heightPixels, shift);
+		BMSpectrogram_shiftColumns(cache, widthPixels, heightPixels, shift);
 	}
 	
 	// calculate the address in the image cache where we start writing the new columns
-	*imageCachePtr = cache->cache;
+	uint32_t bytes;
+	*imageCachePtr = TPCircularBufferTail(&cache->cBuffer, &bytes);
 	if(newOnRight) *imageCachePtr += oldColumns * heightPixels * BMSG_BYTES_PER_PIXEL;
 	
 	// output the result
