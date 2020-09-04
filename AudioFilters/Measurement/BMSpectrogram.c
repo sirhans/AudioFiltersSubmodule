@@ -726,16 +726,10 @@ int32_t BMSpectrogram_inputLastColumnTime(int32_t inputEndTime, double samplesPe
  * @param samplesPerColumn non-integer width of each column in samples
  */
 int32_t BMSpectrogram_columnsInInterval(int32_t firstColumnTime, int32_t lastColumnTime, double samplesPerColumn){
-	return (int32_t)round((lastColumnTime - firstColumnTime) / samplesPerColumn);
+	int32_t length = lastColumnTime - firstColumnTime + 1;
+	return 1 + (int32_t)round(length / samplesPerColumn);
 }
 
-
-
-
-int32_t BMSpectrogram_positionInCache(int32_t inputTime, int32_t cacheFirstColumnTime, double samplesPerColumn){
-	int32_t inputOffset = inputTime - cacheFirstColumnTime;
-	return (int32_t)round(inputOffset / samplesPerColumn);
-}
 
 
 int32_t stochasticRound(double x){
@@ -836,8 +830,7 @@ void BMSpectrogram_prepareAlignment(int32_t widthPixels,
 	SInt32 paddingRight = BMSpectrogram_getPaddingRight(fftSize);
 	
 	
-	
-	// if settings have changed, redraw the entire image
+	// if settings have not changed, don't redraw the entire image
 	bool drawEntireImage = true;
 	if(cache->prevFFTSize == fftSize &&
 	   cache->prevHeightPixels == heightPixels &&
@@ -845,12 +838,6 @@ void BMSpectrogram_prepareAlignment(int32_t widthPixels,
 	   cache->prevWidthSamples == widthSamples){
 		drawEntireImage = false;
 	}
-	
-	//	if(drawEntireImage) {
-	//
-	//	}
-	//
-	//	else {
 	
 	// Calculate samplesPerColumn
 	double samplesPerColumn = BMSpectrogram_getColumnWidthSamples(widthPixels, widthSamples);
@@ -862,19 +849,26 @@ void BMSpectrogram_prepareAlignment(int32_t widthPixels,
 	// Calculate the time of the last sample in the input
 	int32_t inputEndTime = BMSpectrogram_inputTime(startPointer+widthSamples-1, audioBuffer, *audioBufferTimeInSamples);
 	
-	// calculate settings for drawing the entire image
-	// if(drawEntireImage);
-	int32_t inputFirstColumnTime = inputStartTime;
-	int32_t inputLastColumnTime = inputEndTime;
-	int32_t firstNewColumnTime = inputFirstColumnTime;
-	int32_t lastNewColumnTime = inputLastColumnTime;
-	*newColumns = widthPixels;
-	int32_t oldColumns = 0;
-	int32_t newSamples = widthSamples;
+	int32_t inputFirstColumnTime;
+	int32_t inputLastColumnTime;
+	int32_t firstNewColumnTime;
+	int32_t lastNewColumnTime;
+	int32_t oldColumns;
+	int32_t newSamples;
 	
+	// calculate settings for drawing the whole image
+	if(drawEntireImage){
+		inputFirstColumnTime = inputStartTime;
+		inputLastColumnTime = inputEndTime;
+		firstNewColumnTime = inputFirstColumnTime;
+		lastNewColumnTime = inputLastColumnTime;
+		*newColumns = widthPixels;
+		oldColumns = 0;
+		newSamples = widthSamples;
+	}
 	// if we aren't drawing the entire image then we draw a subset of the
 	// columns in the spectrogram
-	if (!drawEntireImage) {
+	else {
 		// Calculate the time of the first column we can get from the input
 		inputFirstColumnTime = BMSpectrogram_inputFirstColumnTime(inputStartTime, samplesPerColumn, cache->firstColumnTime);
 		
@@ -895,6 +889,10 @@ void BMSpectrogram_prepareAlignment(int32_t widthPixels,
 															inputLastColumnTime,
 															samplesPerColumn);
 		
+		// if these numbers are negative then we don't have new columns
+		bool hasNewColumns = (firstNewColumnTime >= 0 && lastNewColumnTime >= 0);
+		
+		if(hasNewColumns){
 		// calculate the number of new columns
 		*newColumns = BMSpectrogram_columnsInInterval(firstNewColumnTime, lastNewColumnTime, samplesPerColumn);
 		
@@ -903,6 +901,11 @@ void BMSpectrogram_prepareAlignment(int32_t widthPixels,
 		
 		// calculate the number of audio samples to generate the new columns
 		newSamples = lastNewColumnTime - firstNewColumnTime + 1;
+		} else {
+			*newColumns = 0;
+			oldColumns = widthPixels;
+			newSamples = 0;
+		}
 	}
 	
 	// calculate the offset in samples from the start of the input buffer to the first column
@@ -915,10 +918,11 @@ void BMSpectrogram_prepareAlignment(int32_t widthPixels,
 	bool newOnRight = firstNewColumnTime > cache->firstColumnTime;
 	
 	// calculate the address in the image cache where we start writing the new columns
-	if(newOnRight)
+	if(newOnRight){
 		*imageCachePtr = cache->cache + (oldColumns * heightPixels * BMSG_BYTES_PER_PIXEL);
-	else
+	} else {
 		*imageCachePtr = cache->cache;
+	}
 	
 	// set outputs
 	*sgInputPtr = startPointer - paddingLeft;
@@ -926,18 +930,15 @@ void BMSpectrogram_prepareAlignment(int32_t widthPixels,
 	*sgFirstColumnIndexInSamples = (SInt32)paddingLeft + firstNewColumnOffset;
 	*sgLastColumnIndexInSamples = (SInt32)(paddingLeft + lastNewColumnOffset);
 	
-	// shift the image in the cache to make room for the new data
-	int shift = newOnRight ? -*newColumns : *newColumns;
-	BMSpectrogram_shiftColumns(cache->cache, cache->cache, widthPixels, heightPixels, shift);
+	if (!drawEntireImage){
+		// shift the image in the cache to make room for the new data
+		int shift = newOnRight ? *newColumns : -*newColumns;
+		BMSpectrogram_shiftColumns(cache->cache, cache->cache, widthPixels, heightPixels, shift);
+	}
 	
 	// get the cache ready for the next time
-	if(drawEntireImage){
-		cache->firstColumnTime = inputFirstColumnTime;
-		cache->lastColumnTime = inputLastColumnTime;
-	} else {
-		cache->firstColumnTime += shift; //inputFirstColumnTime;
-		cache->lastColumnTime += shift; //inputLastColumnTime;
-	}
+	cache->firstColumnTime = inputFirstColumnTime;
+	cache->lastColumnTime = inputLastColumnTime;
 	
 	// update settings
 	cache->prevWidthPixels = widthPixels;
@@ -945,8 +946,9 @@ void BMSpectrogram_prepareAlignment(int32_t widthPixels,
 	cache->prevFFTSize = fftSize;
 	cache->prevWidthSamples = widthSamples;
 	
-	// NOTE: some of these operations must be done atomically because if
-	// the audio thread is writing while we operate then the audioBufferEndTime and the audioBufferTail will change
+	// NOTE: some of the operations above must be done atomically because if the
+	// audio thread is writing while we operate then the audioBufferEndTime and
+	// the audioBufferTail will change
 }
 
 
