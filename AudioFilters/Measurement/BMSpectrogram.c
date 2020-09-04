@@ -484,7 +484,7 @@ void BMSpectrogram_shiftColumns(const uint8_t *imageInput, uint8_t *imageOutput,
 	if(abs(shift) < width && shift != 0) {
 		size_t columnsToMove = width - abs(shift);
 		size_t bytesToMove = columnsToMove * height * BMSG_BYTES_PER_PIXEL;
-		size_t bytesOffset = shift * height * BMSG_BYTES_PER_PIXEL;
+		size_t bytesOffset = abs(shift) * height * BMSG_BYTES_PER_PIXEL;
 		const uint8_t *src = NULL;
 		uint8_t *dest = NULL;
 		
@@ -917,30 +917,25 @@ void BMSpectrogram_prepareAlignment(int32_t widthPixels,
 	// are we adding new columns to the left or right of the old columns?
 	bool newOnRight = firstNewColumnTime > cache->firstColumnTime;
 	
-	// calculate the address in the image cache where we start writing the new columns
-	if(newOnRight){
-		*imageCachePtr = cache->cache + (oldColumns * heightPixels * BMSG_BYTES_PER_PIXEL);
-	} else {
-		*imageCachePtr = cache->cache;
-	}
-	
-	// set outputs
-	*sgInputPtr = startPointer - paddingLeft;
-	*sgInputLengthWithPadding = (SInt32)(newSamples + paddingLeft + paddingRight);
-	*sgFirstColumnIndexInSamples = (SInt32)paddingLeft + firstNewColumnOffset;
-	*sgLastColumnIndexInSamples = (SInt32)(paddingLeft + lastNewColumnOffset);
-	
 	if (!drawEntireImage){
 		// shift the image in the cache to make room for the new data
 		int shift = newOnRight ? *newColumns : -*newColumns;
 		BMSpectrogram_shiftColumns(cache->cache, cache->cache, widthPixels, heightPixels, shift);
 	}
 	
+	// calculate the address in the image cache where we start writing the new columns
+	*imageCachePtr = cache->cache;
+	if(newOnRight) *imageCachePtr += oldColumns * heightPixels * BMSG_BYTES_PER_PIXEL;
+	
+	// output the result
+	*sgInputPtr = startPointer - paddingLeft;
+	*sgInputLengthWithPadding = newSamples + paddingLeft + paddingRight;
+	*sgFirstColumnIndexInSamples = paddingLeft + firstNewColumnOffset;
+	*sgLastColumnIndexInSamples = paddingLeft + lastNewColumnOffset;
+	
 	// get the cache ready for the next time
 	cache->firstColumnTime = inputFirstColumnTime;
 	cache->lastColumnTime = inputLastColumnTime;
-	
-	// update settings
 	cache->prevWidthPixels = widthPixels;
 	cache->prevHeightPixels = heightPixels;
 	cache->prevFFTSize = fftSize;
