@@ -14,7 +14,6 @@
 #include <simd/simd.h>
 #include <dispatch/dispatch.h>
 #include "TPCircularBuffer.h"
-#include "OscilloscopeSpectrogramCache.h"
 
 #define BMSG_NUM_THREADS 1
 
@@ -33,6 +32,17 @@ typedef struct BMSpectrogram {
 	dispatch_group_t dispatchGroup;
 } BMSpectrogram;
 
+typedef struct {
+    size_t prevWidthSamples;
+    size_t prevWidthPixels;
+    size_t prevHeightPixels;
+	SInt32 prevFFTSize;
+    uint8_t* transposeOut;
+    //uint8_t* cache;
+	TPCircularBuffer cBuffer;
+	//	int32_t nextStartColumnIndex;
+	int32_t firstColumnTime, lastColumnTime;
+} BMSpectrogramCache;
 
 
 typedef simd_float3 BMHSBPixel;
@@ -152,7 +162,7 @@ void BMSpectrogram_fftBinsToBarkScale(const float* fftBins,
  * @param height height in pixels
  * @param shift number of columns to shift left (-) or right (+)
  */
-void BMSpectrogram_shiftColumns(OscilloscopeSpectrogramCache *cache,
+void BMSpectrogram_shiftColumns(BMSpectrogramCache *cache,
 								size_t width,
 								size_t height,
 								int shift);
@@ -167,7 +177,7 @@ void BMSpectrogram_prepareAlignment(int32_t widthPixels,
 									size_t slotIndex,
 									int32_t fftSize,
 									TPCircularBuffer *audioBuffer,
-									OscilloscopeSpectrogramCache *cache,
+									BMSpectrogramCache *cache,
 									int32_t *audioBufferTimeInSamples,
 									float **sgInputPtr,
 									uint8_t **imageCachePtr,

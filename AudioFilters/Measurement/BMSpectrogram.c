@@ -480,7 +480,7 @@ void BMSpectrogram_genColumn(SInt32 i,
 
 
 
-void BMSpectrogram_shiftColumns(OscilloscopeSpectrogramCache *cache, size_t width, size_t height, int shift){
+void BMSpectrogram_shiftColumns(BMSpectrogramCache *cache, size_t width, size_t height, int shift){
 	if(abs(shift) < width && shift != 0) {
 		size_t columnsToMove = width - abs(shift);
 		size_t bytesToMove = columnsToMove * height * BMSG_BYTES_PER_PIXEL;
@@ -817,7 +817,7 @@ void BMSpectrogram_prepareAlignment(int32_t widthPixels,
 									size_t slotIndex,
 									int32_t fftSize,
 									TPCircularBuffer *audioBuffer,
-									OscilloscopeSpectrogramCache *cache,
+									BMSpectrogramCache *cache,
 									int32_t *audioBufferTimeInSamples,
 									float **sgInputPtr,
 									uint8_t **imageCachePtr,
