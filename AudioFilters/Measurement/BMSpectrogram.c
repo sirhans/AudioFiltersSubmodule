@@ -480,33 +480,35 @@ void BMSpectrogram_genColumn(SInt32 i,
 
 
 
-void BMSpectrogram_shiftColumns(BMSpectrogramCache *cache, size_t width, size_t height, int shift){
+void BMSpectrogram_shiftColumns(BMSpectrogramCache *cache, int width, int height, int shift){
 	if(abs(shift) < width && shift != 0) {
-		size_t columnsToMove = width - abs(shift);
-		size_t bytesToMove = columnsToMove * height * BMSG_BYTES_PER_PIXEL;
-		size_t bytesOffset = abs(shift) * height * BMSG_BYTES_PER_PIXEL;
-		const uint8_t *src = NULL;
-		uint8_t *dest = NULL;
+		int32_t bytesOffset = shift * height * BMSG_BYTES_PER_PIXEL;
+		TPCircularBufferShift(&cache->cBuffer, bytesOffset);
 		
-		uint32_t bytes;
-		uint8_t *imageCache = TPCircularBufferTail(&cache->cBuffer, &bytes);
+//		size_t columnsToMove = width - abs(shift);
+//		size_t bytesToMove = columnsToMove * height * BMSG_BYTES_PER_PIXEL;
+//		const uint8_t *src = NULL;
+//		uint8_t *dest = NULL;
+//
+//		uint32_t bytes;
+//		uint8_t *imageCache = TPCircularBufferTail(&cache->cBuffer, &bytes);
 		
 		// left shift
-		if (shift > 0){
-			TPCircularBufferConsume(&cache->cBuffer, (uint32_t)bytesOffset);
-			TPCircularBufferProduce(&cache->cBuffer, (uint32_t)bytesOffset);
-		}
-		
+//		if (shift > 0){
+//			TPCircularBufferConsume(&cache->cBuffer, (uint32_t)bytesOffset);
+//			TPCircularBufferProduce(&cache->cBuffer, (uint32_t)bytesOffset);
+//		}
+
 		// right shift
-		else if (shift < 0) {
-			// copy from beginning of input
-			src = imageCache;
-			// write to the output with offset
-			dest = imageCache + bytesOffset;
-			
-			// do the shift
-			memmove(dest, src, bytesToMove);
-		}
+//		else if (shift < 0) {
+			//			// copy from beginning of input
+//			src = imageCache;
+//			// write to the output with offset
+//			dest = imageCache + bytesOffset;
+//
+//			// do the shift
+//			memmove(dest, src, bytesToMove);
+//		}
 	}
 }
 

@@ -163,8 +163,8 @@ void BMSpectrogram_fftBinsToBarkScale(const float* fftBins,
  * @param shift number of columns to shift left (-) or right (+)
  */
 void BMSpectrogram_shiftColumns(BMSpectrogramCache *cache,
-								size_t width,
-								size_t height,
+								int width,
+								int height,
 								int shift);
 
 /*!
