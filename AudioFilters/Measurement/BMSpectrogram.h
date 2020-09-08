@@ -145,10 +145,10 @@ void BMSpectrogram_fftBinsToBarkScale(const float* fftBins,
 									  float maxFrequency,
 									  size_t fftBinInterpolationPadding,
 									  size_t upsampledPixels,
-									  const float *b3,
-									  const size_t *b4,
-									  const size_t *b5,
-									  const float *b6);
+									  const float *interpolatedIndices,
+									  const size_t *startIndices,
+									  const size_t *binIntervalLengths,
+									  const float *downsamplingScales);
 
 
 /*!

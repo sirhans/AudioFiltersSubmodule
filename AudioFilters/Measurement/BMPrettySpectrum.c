@@ -9,6 +9,7 @@
 #include "BMPrettySpectrum.h"
 #include "Constants.h"
 #include "BMSpectrogram.h"
+#include "BMUnitConversion.h"
 
 #define BMPS_FFT_INPUT_LENGTH_48KHZ 8192
 #define BMPS_DECAY_RATE_DB_PER_SECOND 24
@@ -137,6 +138,69 @@ void BMPrettySpectrum_inputBuffer(BMPrettySpectrum *This, const float *input, si
 
 
 
+void BMPrettySpectrum_updateOutputLength(BMPrettySpectrum *This,
+										 enum BMPSScale scale,
+										 size_t outputLength,
+										 float minF,
+										 float maxF){
+	
+	// if the settings have changed since last time we did this, recompute
+	// the floating point array indices for interpolated reading of bark scale
+	// frequency spectrum
+	if(minF != This->minFreq ||
+	   maxF != This->maxFreq ||
+	   outputLength != This->outputLength){
+		This->minFreq = minF;
+		This->maxFreq = maxF;
+		This->outputLength = outputLength;
+		
+		// find the min and max frequency in barks
+		float minBark = BMConv_hzToBark(minF);
+		float maxBark = BMConv_hzToBark(maxF);
+		
+		
+		for(size_t i=0; i<outputLength; i++){
+			// create evenly spaced values in bark scale
+			float zeroToOne = (float)i / (float)(outputLength-1);
+			float bark = minBark + (maxBark-minBark)*zeroToOne;
+			
+			// convert to Hz
+			float hz = BMConv_barkToHz(bark);
+			
+			// convert to FFT bin index (floating point interpolated)
+			This->interpolatedIndices[i] = BMConv_hzToFFTBin(hz, This->fftInputLength, This->sampleRate);
+			
+			// calculate bins per pixel at this index
+			float binsPerPixel_f = BMConv_fftBinsPerPixel(hz, This->fftInputLength, outputLength, minF, maxF, This->sampleRate);
+			
+			// calculate the start index for this pixel
+			if(i==0) startIndices[i] = BMConv_hzToFFTBin(minF, This->fftInputLength, This->sampleRate);
+			else startIndices[i] = startIndices[i-1]+This->binIntervalLengths[i-1];
+			
+			// calculate the end index for this pixel
+			size_t endIndex = (size_t)roundf(This->interpolatedIndices[i] + binsPerPixel_f*0.5f);
+			
+			// calculate the number of pixels in [startIndices[i],endIndex]
+			This->binIntervalLengths[i] = endIndex - This->startIndices[i];
+			
+			// don't let the end index go above the limit
+			if(endIndex > fftSize-1) This->binIntervalLengths[i] = This->fftInputLength - This->startIndices[i];
+			
+			downsamplingScales[i] = 1.0f / (float)This->binIntervalLengths[i];
+		}
+		
+		// find the frequency at which 2 fft bins = 1 screen pixel
+		This->pixelBinParityFrequency = pixelBinParityFrequency(fftSize, imageHeight, minF, maxF, This->sampleRate);
+		
+		// find the number of pixels we can interpolate by upsampling
+		float parityFrequencyBark = hzToBark(This->pixelBinParityFrequency);
+		float upsampledPixelsFraction = (parityFrequencyBark - minBark) / (maxBark - minBark);
+		This->upsampledPixels = 1 + round(1.0 * upsampledPixelsFraction * imageHeight);
+		if(This->upsampledPixels > imageHeight) This->upsampledPixels = imageHeight;
+	}
+}
+
+
 
 /*!
  * BMPrettySpectrum_getOutput
@@ -187,5 +251,5 @@ void BMPrettySpectrum_getOutput(BMPrettySpectrum *This,
 	vDSP_vdbcon(This->fftb2, 1, &one, This->fftb1, 1, This->fftOutputLength, 0);
 	
 	// convert to bark scale and interpolate into the output buffer
-//	BMSpectrogram_fftBinsToBarkScale(This->fftb1, This->ob1, This->fftInputLength, outputLength, This->minFreq, This->maxFreq, <#size_t fftBinInterpolationPadding#>, <#size_t upsampledPixels#>, <#const float *b3#>, <#const size_t *b4#>, <#const size_t *b5#>, <#const float *b6#>);
+	BMSpectrogram_fftBinsToBarkScale(This->fftb1, This->ob1, This->fftInputLength, outputLength, This->minFreq, This->maxFreq, <#size_t fftBinInterpolationPadding#>, <#size_t upsampledPixels#>, <#const float *interpolatedIndices#>, <#const size_t *startIndices#>, <#const size_t *binIntervalLengths#>, <#const float *downsamplingScales#>);
 }

@@ -30,6 +30,7 @@ typedef struct BMPrettySpectrum {
 } BMPrettySpectrum;
 
 
+
 /*!
  *BMPrettySpectrum_init
  */

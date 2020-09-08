@@ -9,6 +9,7 @@
 #include "BMSpectrogram.h"
 #include "BMIntegerMath.h"
 #include "Constants.h"
+#include "BMUnitConversion.h"
 #include <sys/qos.h>
 
 #define BMSG_BYTES_PER_PIXEL 4
@@ -89,64 +90,6 @@ void BMSpectrogram_free(BMSpectrogram *This){
 	This->colours = NULL;
 }
 
-float hzToBark(float hz){
-	// hzToBark[hz_] := 6 ArcSinh[hz/600]
-	return 6.0f * asinhf(hz / 600.0f);
-}
-
-
-//void hzToBarkVDSP(const float *hz, float *bark, size_t length){
-//
-//    // hz/600
-//    float div600 = 1.0 / 600.0;
-//    vDSP_vsmul(hz, 1, &div600, bark, 1, length);
-//
-//    // asinf
-//    int length_i = (int)length;
-//    vvasinf(bark, bark, &length_i);
-//
-//    // * 6.0
-//    float six = 6.0f;
-//    vDSP_vsmul(bark, 1, &six, bark, 1, length);
-//}
-
-
-
-
-
-
-
-float barkToHz(float bark){
-	// barkToHz[bk_] := 600 Sinh[bk/6]
-	return 600.0f * sinhf(bark / 6.0f);
-}
-
-
-
-float hzToFFTBin(float hz, float fftSize, float sampleRate){
-	// fftBinZeroDC[f_, fftLength_, sampleRate_] := f/(sampleRate/fftLength)
-	return hz * (fftSize / sampleRate);
-}
-
-
-// how many fft bins are represented by a single pixel at freqHz?
-float fftBinsPerPixel(float freqHz,
-					  float fftSize,
-					  float pixelHeight,
-					  float minFrequency,
-					  float maxFrequency,
-					  float sampleRate){
-	
-	// what bark frequency range does 1 pixel represent?
-	float windowHeightInBarks = hzToBark(maxFrequency) - hzToBark(minFrequency);
-	float pixelHeightInBarks = windowHeightInBarks / pixelHeight;
-	
-	// what frequency is one pixel above freqHz?
-	float upperPixelFreq = barkToHz(hzToBark(freqHz)+pixelHeightInBarks);
-	
-	// return the height of one pixel in FFT bins
-	return hzToFFTBin(upperPixelFreq, fftSize, sampleRate) - hzToFFTBin(freqHz, fftSize, sampleRate);
-}
 
 
 
@@ -160,7 +103,7 @@ float pixelBinParityFrequency(float fftSize, float pixelHeight,
 	// numerical search for a value of f where binsPerPixel is near 1.0
 	while(true){
 		// find out how many bins per pixel at frequency f
-		float binsPerPixel = fftBinsPerPixel(f, fftSize, pixelHeight, minFrequency, maxFrequency, sampleRate);
+		float binsPerPixel = BMConv_fftBinsPerPixel(f, fftSize, pixelHeight, minFrequency, maxFrequency, sampleRate);
 		
 		// this is the number of bins per pixel we are looking for
 		float targetParity = 2.0f;
@@ -207,8 +150,8 @@ void BMSpectrogram_updateImageHeight(BMSpectrogram *This,
 		This->prevFFTSize = fftSize;
 		
 		// find the min and max frequency in barks
-		float minBark = hzToBark(minF);
-		float maxBark = hzToBark(maxF);
+		float minBark = BMConv_hzToBark(minF);
+		float maxBark = BMConv_hzToBark(maxF);
 		
 		
 		for(size_t i=0; i<imageHeight; i++){
@@ -217,16 +160,16 @@ void BMSpectrogram_updateImageHeight(BMSpectrogram *This,
 			float bark = minBark + (maxBark-minBark)*zeroToOne;
 			
 			// convert to Hz
-			float hz = barkToHz(bark);
+			float hz = BMConv_barkToHz(bark);
 			
 			// convert to FFT bin index (floating point interpolated)
-			interpolatedIndices[i] = hzToFFTBin(hz, fftSize, This->sampleRate);
+			interpolatedIndices[i] = BMConv_hzToFFTBin(hz, fftSize, This->sampleRate);
 			
 			// calculate bins per pixel at this index
-			float binsPerPixel_f = fftBinsPerPixel(hz, fftSize, imageHeight, minF, maxF, This->sampleRate);
+			float binsPerPixel_f = BMConv_fftBinsPerPixel(hz, fftSize, imageHeight, minF, maxF, This->sampleRate);
 			
 			// calculate the start index for this pixel
-			if(i==0) startIndices[i] = hzToFFTBin(minF, fftSize, This->sampleRate);
+			if(i==0) startIndices[i] = BMConv_hzToFFTBin(minF, fftSize, This->sampleRate);
 			else startIndices[i] = startIndices[i-1]+binIntervalLengths[i-1];
 			
 			// calculate the end index for this pixel
@@ -245,7 +188,7 @@ void BMSpectrogram_updateImageHeight(BMSpectrogram *This,
 		This->pixelBinParityFrequency = pixelBinParityFrequency(fftSize, imageHeight, minF, maxF, This->sampleRate);
 		
 		// find the number of pixels we can interpolate by upsampling
-		float parityFrequencyBark = hzToBark(This->pixelBinParityFrequency);
+		float parityFrequencyBark = BMConv_hzToBark(This->pixelBinParityFrequency);
 		float upsampledPixelsFraction = (parityFrequencyBark - minBark) / (maxBark - minBark);
 		This->upsampledPixels = 1 + round(1.0 * upsampledPixelsFraction * imageHeight);
 		if(This->upsampledPixels > imageHeight) This->upsampledPixels = imageHeight;
@@ -263,15 +206,10 @@ void BMSpectrogram_fftBinsToBarkScale(const float* fftBins,
 									  float maxFrequency,
 									  size_t fftBinInterpolationPadding,
 									  size_t upsampledPixels,
-									  const float *b3,
-									  const size_t *b4,
-									  const size_t *b5,
-									  const float *b6){
-	// rename buffer 3 and 4 for readablility
-	const float* interpolatedIndices = b3;
-	const size_t* startIndices = b4;
-	const size_t* binIntervalLengths = b5;
-	const float* downsamplingScales = b6;
+									  const float *interpolatedIndices,
+									  const size_t *startIndices,
+									  const size_t *binIntervalLengths,
+									  const float *downsamplingScales){
 	
 	/*************************************
 	 * now that we have the fft bin indices we can interpolate and get the results
