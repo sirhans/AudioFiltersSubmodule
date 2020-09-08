@@ -15,24 +15,24 @@
 enum BMFFTWindowType {BMFFT_NONE,BMFFT_BLACKMANHARRIS,BMFFT_HAMMING,BMFFT_KAISER};
 
 typedef struct BMFFT {
-    size_t maxInputLength;
-    
-    FFTSetup setup;
-    DSPSplitComplex fft_input;
-    DSPSplitComplex fft_output;
-    DSPSplitComplex fft_buffer;
-    
-    void* fft_input_buffer_i;
-    void* fft_input_buffer_r;
-    void* fft_output_buffer_i;
-    void* fft_output_buffer_r;
-    void* fft_buffer_buffer_i;
-    void* fft_buffer_buffer_r;
-    
-    size_t recursionLevels;
-    
-    float* window;
-    size_t windowCurrentLength;
+	size_t maxInputLength;
+	
+	FFTSetup setup;
+	DSPSplitComplex fft_input;
+	DSPSplitComplex fft_output;
+	DSPSplitComplex fft_buffer;
+	
+	void* fft_input_buffer_i;
+	void* fft_input_buffer_r;
+	void* fft_output_buffer_i;
+	void* fft_output_buffer_r;
+	void* fft_buffer_buffer_i;
+	void* fft_buffer_buffer_r;
+	
+	size_t recursionLevels;
+	
+	float* window;
+	size_t windowCurrentLength;
 	
 	enum BMFFTWindowType windowType;
 } BMFFT;
@@ -60,9 +60,9 @@ void BMFFT_free(BMFFT *This);
  * @param inputLength a power of 2 such that 0 < inputLength <= This->maxInputLength
  */
 void BMFFT_FFTComplexOutput(BMFFT *This,
-                      const float* input,
-                      DSPSplitComplex *output,
-                      size_t inputLength);
+							const float* input,
+							DSPSplitComplex *output,
+							size_t inputLength);
 
 
 
@@ -77,9 +77,9 @@ void BMFFT_FFTComplexOutput(BMFFT *This,
  * @param inputLength MUST BE <= THE maxInputLength GIVEN WHEN *This was initialised
  */
 void BMFFT_absFFTCombinedDCNQ(BMFFT *This,
-                              const float* input,
-                              float* output,
-                              size_t inputLength);
+							  const float* input,
+							  float* output,
+							  size_t inputLength);
 
 
 
@@ -95,9 +95,9 @@ void BMFFT_absFFTCombinedDCNQ(BMFFT *This,
  * @param inputLength MUST BE EQUAL TO THE LENGTH USED WHEN *This was initialised
  */
 void BMFFT_absFFT(BMFFT *This,
-                  const float* input,
-                  float* output,
-                  size_t inputLength);
+				  const float* input,
+				  float* output,
+				  size_t inputLength);
 
 
 
@@ -114,9 +114,9 @@ void BMFFT_absFFT(BMFFT *This,
  * @returns the absolute value of the nyquist term
  */
 float BMFFT_absFFTReturnNyquist(BMFFT *This,
-                                const float* input,
-                                float* output,
-                                size_t inputLength);
+								const float* input,
+								float* output,
+								size_t inputLength);
 
 
 
@@ -134,9 +134,9 @@ float BMFFT_absFFTReturnNyquist(BMFFT *This,
  * @param numSamples must be <= This->maxLength
  */
 void BMFFT_hammingWindow(BMFFT *This,
-                         const float* input,
-                         float* output,
-                         size_t numSamples);
+						 const float* input,
+						 float* output,
+						 size_t numSamples);
 
 
 
@@ -179,27 +179,33 @@ void BMFFT_generateBlackmanHarrisCoefficients(float* window, size_t length);
  * @param This    pointer to an initialized BMFFT struct
  * @param input   an array of real valued inputs with length = numSamples
  * @param output  an array of real valued output with length = numSamples
+ * @param beta the Beta parameter for the kaiser window
  * @param numSamples must be <= This->maxLength
  */
 void BMFFT_kaiserWindow(BMFFT *This,
-								const float* input,
-								float* output,
-								size_t numSamples);
+						const float* input,
+						float* output,
+						double beta,
+						size_t numSamples);
 
 
 
 
 /*!
-*BMFFT_generateKaiserCoefficients
-*
-* This function generates the blackman-harris window coefficients with the
-* window centred at length/2.
-* If you need to apply this window in realtime you should use
-* BMFFT_blackmanKaiserWindow instead because it automatically caches previous
-* calculations and reuses them the next time you call the function for a
-* significant improvement in performance.
-*/
-void BMFFT_generateKaiserCoefficients(float* window, size_t length);
+ *BMFFT_generateKaiserCoefficients
+ *
+ * This function generates the blackman-harris window coefficients with the
+ * window centred at length/2.
+ * If you need to apply this window in realtime you should use
+ * BMFFT_blackmanKaiserWindow instead because it automatically caches previous
+ * calculations and reuses them the next time you call the function for a
+ * significant improvement in performance.
+ *
+ * @param window output array with length=length
+ * @param beta the Kaiser window beta parameter. Recommended default = 15
+ * @param length length of window
+ */
+void BMFFT_generateKaiserCoefficients(float* window, double beta, size_t length);
 
 
 

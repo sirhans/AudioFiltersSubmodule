@@ -186,7 +186,7 @@ double Bessel(double x)
 	{
 		XtoIpower = pow(x/2.0, (double)i);
 		Factorial = 1;
-		for(j=1; j<=i; j++)Factorial *= j;
+		for(j=1; j<=i; j++) Factorial *= j;
 		Sum += pow(XtoIpower / (double)Factorial, 2.0);
 	}
 	return(1.0 + Sum);
@@ -196,20 +196,14 @@ double Bessel(double x)
 
 
 
-void BMFFT_generateKaiserCoefficients(float* window, size_t length){
-	for(size_t i=0; i<length; i++){
-		// the function is defined on [-1/2,1/2]
-		double x = -0.5 + ( (double)i / (double)(length-1) );
-		
-		// this formula is from http://www.iowahills.com/Example%20Code/WindowedFIRFilterWebCode.txt
-		double arg;
-		double Beta = 3.2; // this should be adjusted as needed
-		double dM = length + 1.0;
-		for(size_t j=0; j<length; j++)
-		 {
-		  arg = Beta * sqrt(1.0 - pow( ((double)(2*j+2) - dM) / dM, 2.0) );
-		  window[j] = Bessel(arg) / Bessel(Beta);
-		 }
+void BMFFT_generateKaiserCoefficients(float* window, double beta, size_t length){
+	// this formula is from http://www.iowahills.com/Example%20Code/WindowedFIRFilterWebCode.txt
+	double arg;
+	double dM = length + 1.0;
+	for(size_t j=0; j<length; j++)
+	{
+		arg = beta * sqrt(1.0 - pow( ((double)(2*j+2) - dM) / dM, 2.0) );
+		window[j] = Bessel(arg) / Bessel(beta);
 	}
 }
 
@@ -219,12 +213,13 @@ void BMFFT_generateKaiserCoefficients(float* window, size_t length){
 void BMFFT_kaiserWindow(BMFFT *This,
 						const float* input,
 						float* output,
+						double beta,
 						size_t numSamples){
 	assert(numSamples <= This->maxInputLength);
     
     // if the window cached in the buffer does not have the specified length, or isn't a kaiser window recompute it.
     if(This->windowCurrentLength != numSamples || This->windowType != BMFFT_KAISER){
-        BMFFT_generateKaiserCoefficients(This->window, numSamples);
+        BMFFT_generateKaiserCoefficients(This->window, beta, numSamples);
         This->windowCurrentLength = numSamples;
 		This->windowType = BMFFT_KAISER;
     }
