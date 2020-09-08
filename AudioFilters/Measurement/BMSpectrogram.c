@@ -374,13 +374,13 @@ void BMSpectrogram_toDbScaleAndClip(const float* input, float* output, size_t ff
 	uint32_t use20not10 = 1;
 	vDSP_vdbcon(output, 1, &zeroDb, output, 1, length, use20not10);
 	
-	// clip to [-100,0]
-	float min = -100.0f;
+	// clip to [-105,0]
+	float min = -105.0f;
 	float max = 0.0f;
 	vDSP_vclip(output, 1, &min, &max, output, 1, length);
 	
 	// shift and scale to [0,1]
-	scale = 1.0f/100.0f;
+	scale = 1.0f/fabsf(min);
 	float shift = 1.0f;
 	vDSP_vsmsa(output, 1, &scale, &shift, output, 1, length);
 }
