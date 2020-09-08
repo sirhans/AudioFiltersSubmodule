@@ -216,6 +216,37 @@ static __inline__ __attribute__((always_inline)) bool TPCircularBufferProduceByt
     return true;
 }
 
+
+// positive modulo operation
+static __inline__ __attribute__((always_inline)) uint32_t modulo( int64_t value, uint32_t m) {
+    int64_t mod = value % (int64_t)m;
+    if (mod < 0) {
+        mod += m;
+    }
+    return (uint32_t)mod;
+}
+
+
+
+/*!
+ *TPCircularBufferShift
+ *
+ * Shift the head and tail by amount bytes
+ */
+static __inline__ __attribute__((always_inline)) void TPCircularBufferShift(TPCircularBuffer *buffer, int32_t amount) {
+	if(amount > 0){
+		buffer->head = (buffer->head + amount) % buffer->length;
+		buffer->tail = (buffer->tail + amount) % buffer->length;
+	}
+	
+	else {
+		buffer->head = modulo((int64_t)buffer->head + (int64_t)amount, buffer->length);
+		buffer->tail = modulo((int64_t)buffer->tail + (int64_t)amount, buffer->length);
+	}
+}
+
+
+
 /*!
  * Deprecated method
  */
