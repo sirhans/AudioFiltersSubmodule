@@ -50,6 +50,12 @@ void BMPrettySpectrum_init(BMPrettySpectrum *This, size_t maxOutputLength, float
 	This->ob1 = malloc(sizeof(float)*maxOutputLength);
 	This->ob2 = malloc(sizeof(float)*maxOutputLength);
 	
+	// allocate space for the arrays used to resample the fft output to bark scale or log scale
+	This->binIntervalLengths = malloc(sizeof(size_t)*maxOutputLength);
+	This->startIndices = malloc(sizeof(size_t)*maxOutputLength);
+	This->downsamplingScales = malloc(sizeof(float)*maxOutputLength);
+	This->interpolatedIndices = malloc(sizeof(float)*maxOutputLength);
+	
 	// set the decay rate for the spectrum graph to fall
 	This->decayRateDbPerSecond = BMPS_DECAY_RATE_DB_PER_SECOND;
 }
@@ -72,6 +78,14 @@ void BMPrettySpectrum_free(BMPrettySpectrum *This){
 	This->ob1 = NULL;
 	free(This->ob2);
 	This->ob2 = NULL;
+	free(This->downsamplingScales);
+	This->downsamplingScales = NULL;
+	free(This->binIntervalLengths);
+	This->binIntervalLengths = NULL;
+	free(This->startIndices);
+	This->startIndices = NULL;
+	free(This->interpolatedIndices);
+	This->interpolatedIndices = NULL;
 }
 
 
@@ -154,49 +168,30 @@ void BMPrettySpectrum_updateOutputLength(BMPrettySpectrum *This,
 		This->maxFreq = maxF;
 		This->outputLength = outputLength;
 		
-		// find the min and max frequency in barks
-		float minBark = BMConv_hzToBark(minF);
-		float maxBark = BMConv_hzToBark(maxF);
 		
+		// find the floating point fft bin indices to be used for interpolated
+		// copy of the fft output to bark scale frequency spectrogram output
+		BMSpectrum_barkScaleFFTBinIndices(This->interpolatedIndices,
+										  This->fftInputLength,
+										  minF,
+										  maxF,
+										  This->sampleRate,
+										  outputLength);
 		
+		// find the start and end indices for the region of the output in which
+		// we are downsampling from the fft bins to the output image
+		BMSpectrum_fftDownsamplingIndices(This->startIndices, This->binIntervalLengths, This->interpolatedIndices, minF, maxF, This->sampleRate, This->fftInputLength, outputLength);
+		
+		// when downsampling we divide each group sum of squares by the number of
+		// elements in the group so that the spectrogram has the same brightness
+		// in both the downsampled and upsampled regions
 		for(size_t i=0; i<outputLength; i++){
-			// create evenly spaced values in bark scale
-			float zeroToOne = (float)i / (float)(outputLength-1);
-			float bark = minBark + (maxBark-minBark)*zeroToOne;
-			
-			// convert to Hz
-			float hz = BMConv_barkToHz(bark);
-			
-			// convert to FFT bin index (floating point interpolated)
-			This->interpolatedIndices[i] = BMConv_hzToFFTBin(hz, This->fftInputLength, This->sampleRate);
-			
-			// calculate bins per pixel at this index
-			float binsPerPixel_f = BMConv_fftBinsPerPixel(hz, This->fftInputLength, outputLength, minF, maxF, This->sampleRate);
-			
-			// calculate the start index for this pixel
-			if(i==0) startIndices[i] = BMConv_hzToFFTBin(minF, This->fftInputLength, This->sampleRate);
-			else startIndices[i] = startIndices[i-1]+This->binIntervalLengths[i-1];
-			
-			// calculate the end index for this pixel
-			size_t endIndex = (size_t)roundf(This->interpolatedIndices[i] + binsPerPixel_f*0.5f);
-			
-			// calculate the number of pixels in [startIndices[i],endIndex]
-			This->binIntervalLengths[i] = endIndex - This->startIndices[i];
-			
-			// don't let the end index go above the limit
-			if(endIndex > fftSize-1) This->binIntervalLengths[i] = This->fftInputLength - This->startIndices[i];
-			
-			downsamplingScales[i] = 1.0f / (float)This->binIntervalLengths[i];
+			This->downsamplingScales[i] = 1.0f / (float)This->binIntervalLengths[i];
 		}
 		
-		// find the frequency at which 2 fft bins = 1 screen pixel
-		This->pixelBinParityFrequency = pixelBinParityFrequency(fftSize, imageHeight, minF, maxF, This->sampleRate);
-		
-		// find the number of pixels we can interpolate by upsampling
-		float parityFrequencyBark = hzToBark(This->pixelBinParityFrequency);
-		float upsampledPixelsFraction = (parityFrequencyBark - minBark) / (maxBark - minBark);
-		This->upsampledPixels = 1 + round(1.0 * upsampledPixelsFraction * imageHeight);
-		if(This->upsampledPixels > imageHeight) This->upsampledPixels = imageHeight;
+		// find the number of output pixels that are upsampled. The remaining
+		// pixels will be downsampled.
+		This->upsampledPixels = BMSpectrum_numUpsampledPixels(This->fftInputLength, minF, maxF, This->sampleRate, outputLength);
 	}
 }
 
@@ -208,7 +203,6 @@ void BMPrettySpectrum_updateOutputLength(BMPrettySpectrum *This,
 void BMPrettySpectrum_getOutput(BMPrettySpectrum *This,
 								float *output,
 								float minFreq, float maxFreq,
-								enum BMPSScale scale,
 								size_t outputLength){
 	// how many bytes to compute the fft?
 	uint32_t bytesRequiredForSpectrum = (uint32_t)This->fftInputLength*sizeof(float);
@@ -243,7 +237,7 @@ void BMPrettySpectrum_getOutput(BMPrettySpectrum *This,
 	
 	// apply a threshold to the data so that zeros will not come out as -inf when we
 	// convert to dB
-	float minValue = BM_DB_TO_GAIN(-170.0f);
+	float minValue = BM_DB_TO_GAIN(-150.0f);
 	vDSP_vthr(This->fftb2, 1, &minValue, This->fftb2, 1, This->fftOutputLength);
 	
 	// convert to decibels. buffer to b1
@@ -251,5 +245,6 @@ void BMPrettySpectrum_getOutput(BMPrettySpectrum *This,
 	vDSP_vdbcon(This->fftb2, 1, &one, This->fftb1, 1, This->fftOutputLength, 0);
 	
 	// convert to bark scale and interpolate into the output buffer
-	BMSpectrogram_fftBinsToBarkScale(This->fftb1, This->ob1, This->fftInputLength, outputLength, This->minFreq, This->maxFreq, <#size_t fftBinInterpolationPadding#>, <#size_t upsampledPixels#>, <#const float *interpolatedIndices#>, <#const size_t *startIndices#>, <#const size_t *binIntervalLengths#>, <#const float *downsamplingScales#>);
+	size_t interpolationPadding = 3;
+	BMSpectrogram_fftBinsToBarkScale(This->fftb1, This->ob1, This->fftInputLength, outputLength, This->minFreq, This->maxFreq, interpolationPadding, This->upsampledPixels, This->interpolatedIndices, This->startIndices, This->binIntervalLengths, This->downsamplingScales);
 }

@@ -18,15 +18,17 @@
 #include "BMSpectrum.h"
 #include "TPCircularBuffer.h"
 
-enum BMPSScale {BMPSLINEAR, BMPSBARK, BMPSLOG};
+//enum BMPSScale {BMPSLINEAR, BMPSBARK, BMPSLOG};
 
 typedef struct BMPrettySpectrum {
 	BMSpectrum spectrum;
 	TPCircularBuffer buffer;
 	float sampleRate, decayRateDbPerSecond, minFreq, maxFreq, timeSinceLastUpdate;
-	size_t fftInputLength, fftOutputLength, outputLength, bufferLength;
+	size_t fftInputLength, fftOutputLength, outputLength, bufferLength, upsampledPixels;
 	enum BMPSScale scale;
 	float *fftb1, *fftb2, *ob1, *ob2;
+	float *interpolatedIndices, *downsamplingScales;
+	size_t *binIntervalLengths, *startIndices;
 } BMPrettySpectrum;
 
 
@@ -57,7 +59,6 @@ void BMPrettySpectrum_inputBuffer(BMPrettySpectrum *This, const float *input, si
 void BMPrettySpectrum_getOutput(BMPrettySpectrum *This,
 								float *output,
 								float minFreq, float maxFreq,
-								enum BMPSScale scale,
 								size_t outputLength);
 
 #endif /* BMPrettySpectrum_h */

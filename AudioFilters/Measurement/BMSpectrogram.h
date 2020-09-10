@@ -26,7 +26,7 @@ typedef struct BMSpectrogram {
 	float *b3, *b6;
     size_t *b4, *b5;
 	simd_float3 *colours;
-    float prevMinF, prevMaxF, sampleRate, pixelBinParityFrequency;
+    float prevMinF, prevMaxF, sampleRate;
     size_t prevImageHeight, prevFFTSize, maxImageHeight, maxFFTSize, fftBinInterpolationPadding, upsampledPixels;
 	dispatch_queue_global_t globalQueue;
 	dispatch_group_t dispatchGroup;
