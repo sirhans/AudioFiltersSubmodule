@@ -23,7 +23,7 @@ typedef struct BMSpectrogram {
 	float *b2 [BMSG_NUM_THREADS];
 	float *t1 [BMSG_NUM_THREADS];
 	float *t2 [BMSG_NUM_THREADS];
-	float *b3, *b6;
+	float *b3;
     size_t *b4, *b5;
 	simd_float3 *colours;
     float prevMinF, prevMaxF, sampleRate;
@@ -147,8 +147,7 @@ void BMSpectrogram_fftBinsToBarkScale(const float* fftBins,
 									  size_t upsampledPixels,
 									  const float *interpolatedIndices,
 									  const size_t *startIndices,
-									  const size_t *binIntervalLengths,
-									  const float *downsamplingScales);
+									  const size_t *binIntervalLengths);
 
 
 /*!

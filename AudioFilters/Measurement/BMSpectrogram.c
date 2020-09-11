@@ -48,7 +48,6 @@ void BMSpectrogram_init(BMSpectrogram *This,
 	This->b3 = malloc(sizeof(float)*maxImageHeight);
 	This->b4 = malloc(sizeof(size_t)*maxImageHeight);
 	This->b5 = malloc(sizeof(size_t)*maxImageHeight);
-	This->b6 = malloc(sizeof(float)*maxImageHeight);
 	This->colours = malloc(sizeof(simd_float3)*maxImageHeight);
 	
 	if(BMSG_NUM_THREADS > 1){
@@ -81,12 +80,10 @@ void BMSpectrogram_free(BMSpectrogram *This){
 	free(This->b3);
 	free(This->b4);
 	free(This->b5);
-	free(This->b6);
 	free(This->colours);
 	This->b3 = NULL;
 	This->b4 = NULL;
 	This->b5 = NULL;
-	This->b6 = NULL;
 	This->colours = NULL;
 }
 
@@ -102,7 +99,6 @@ void BMSpectrogram_updateImageHeight(BMSpectrogram *This,
 	float* interpolatedIndices = This->b3;
 	size_t* startIndices = This->b4;
 	size_t* binIntervalLengths = This->b5;
-	float* downsamplingScales = This->b6;
 	
 	// if the settings have changed since last time we did this, recompute
 	// the floating point array indices for interpolated reading of bark scale
@@ -124,13 +120,6 @@ void BMSpectrogram_updateImageHeight(BMSpectrogram *This,
 		// we are downsampling from the fft bins to the output image
 		BMSpectrum_fftDownsamplingIndices(startIndices, binIntervalLengths, interpolatedIndices, minF, maxF, This->sampleRate, fftSize, imageHeight);
 		
-		// when downsampling we divide each group sum of squares by the number of
-		// elements in the group so that the spectrogram has the same brightness
-		// in both the downsampled and upsampled regions
-		for(size_t i=0; i<imageHeight; i++){
-			downsamplingScales[i] = 1.0f / (float)binIntervalLengths[i];
-		}
-		
 		// find the number of output pixels that are upsampled. The remaining
 		// pixels will be downsampled.
 		This->upsampledPixels = BMSpectrum_numUpsampledPixels(fftSize, minF, maxF, This->sampleRate, imageHeight);
@@ -150,8 +139,7 @@ void BMSpectrogram_fftBinsToBarkScale(const float* fftBins,
 									  size_t upsampledPixels,
 									  const float *interpolatedIndices,
 									  const size_t *startIndices,
-									  const size_t *binIntervalLengths,
-									  const float *downsamplingScales){
+									  const size_t *binIntervalLengths){
 	
 	/*************************************
 	 * now that we have the fft bin indices we can interpolate and get the results
@@ -166,19 +154,21 @@ void BMSpectrogram_fftBinsToBarkScale(const float* fftBins,
 	if (upsampledPixels < outputLength){
 		// get the sum of squares of all the bins represented by the ith pixel
 		for(size_t i=upsampledPixels; i<outputLength; i++){
-			vDSP_svesq(fftBins + startIndices[i], 1, output + i, binIntervalLengths[i]);
+//			vDSP_svesq(fftBins + startIndices[i], 1, output + i, binIntervalLengths[i]);
+//            vDSP_sve(fftBins + startIndices[i], 1, output + i, binIntervalLengths[i]);
+            vDSP_maxv(fftBins + startIndices[i], 1, output + i, binIntervalLengths[i]);
 		}
-		
-		// scale and square root to get a scaled norm of downsampled pixels
-		float *downsampledOutput = output + upsampledPixels;
-		int numDownsampledPixels_i = (int)(outputLength - upsampledPixels);
-		size_t numDownsampledPixels_ui = numDownsampledPixels_i;
-		vDSP_vmul(downsampledOutput, 1,
-				  downsamplingScales + upsampledPixels, 1,
-				  downsampledOutput, 1, numDownsampledPixels_ui);
-		vvsqrtf(downsampledOutput,
-				downsampledOutput,
-				&numDownsampledPixels_i);
+//
+//		// scale and square root to get a scaled norm of downsampled pixels
+//		float *downsampledOutput = output + upsampledPixels;
+//		int numDownsampledPixels_i = (int)(outputLength - upsampledPixels);
+//		size_t numDownsampledPixels_ui = numDownsampledPixels_i;
+//		vDSP_vmul(downsampledOutput, 1,
+//				  downsamplingScales + upsampledPixels, 1,
+//				  downsampledOutput, 1, numDownsampledPixels_ui);
+//		vvsqrtf(downsampledOutput,
+//				downsampledOutput,
+//                &numDownsampledPixels_i);
 	}
 }
 
@@ -309,8 +299,7 @@ void BMSpectrogram_genColumn(SInt32 i,
 							 float *t2,
 							 const float *b3,
 							 const size_t *b4,
-							 const size_t *b5,
-							 const float *b6){
+							 const size_t *b5){
 	// find the index where the current fft window starts
 	SInt32 fftCurrentWindowStart = (SInt32)roundf((float)i*fftStride + FLT_EPSILON) + fftStartIndex;
 	
@@ -342,8 +331,7 @@ void BMSpectrogram_genColumn(SInt32 i,
 									 upsampledPixels,
 									 b3,
 									 b4,
-									 b5,
-									 b6);
+									 b5);
 	
 	// clamp the outputs to [0,1]
 	float lowerLimit = 0;
@@ -480,8 +468,7 @@ void BMSpectrogram_process(BMSpectrogram *This,
 											This->t2[j],
 											This->b3,
 											This->b4,
-											This->b5,
-											This->b6);
+											This->b5);
 				}
 			});
 			
@@ -512,8 +499,7 @@ void BMSpectrogram_process(BMSpectrogram *This,
 									This->t2[0],
 									This->b3,
 									This->b4,
-									This->b5,
-									This->b6);
+									This->b5);
 		}
 	}
 	
