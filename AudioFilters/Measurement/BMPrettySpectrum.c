@@ -12,7 +12,7 @@
 #include "BMUnitConversion.h"
 
 #define BMPS_FFT_INPUT_LENGTH_48KHZ 8192
-#define BMPS_DECAY_RATE_DB_PER_SECOND 24
+#define BMPS_DECAY_RATE_DB_PER_SECOND -24
 
 
 
@@ -28,6 +28,10 @@ void BMPrettySpectrum_init(BMPrettySpectrum *This, size_t maxOutputLength, float
 	// double the fft length if the sample rate is greater than 48 Khz
 	if(sampleRate > 50000)
 		This->fftInputLength *= 2;
+	
+	// we allow the graph to update whenever at least 1/2 FFT buffer of new samples
+	// is available
+	This->updateInterval = (This->fftInputLength/sampleRate) * 0.5f;
 
 	// add extra space in the circular buffer to avoid writing and reading the
 	// same data at the same time
@@ -44,11 +48,11 @@ void BMPrettySpectrum_init(BMPrettySpectrum *This, size_t maxOutputLength, float
 	
 	// allocate space for the fft output buffers
 	This->fftb1 = malloc(sizeof(float)*This->fftOutputLength);
-	This->fftb2 = malloc(sizeof(float)*This->fftOutputLength);
+//	This->fftb2 = malloc(sizeof(float)*This->fftOutputLength);
 	
 	// allocate space for the final output buffers
-	This->ob1 = malloc(sizeof(float)*maxOutputLength);
-	This->ob2 = malloc(sizeof(float)*maxOutputLength);
+//	This->ob1 = calloc(maxOutputLength,sizeof(float));
+	This->ob2 = calloc(maxOutputLength,sizeof(float));
 	
 	// allocate space for the arrays used to resample the fft output to bark scale or log scale
 	This->binIntervalLengths = malloc(sizeof(size_t)*maxOutputLength);
@@ -58,6 +62,10 @@ void BMPrettySpectrum_init(BMPrettySpectrum *This, size_t maxOutputLength, float
 	
 	// set the decay rate for the spectrum graph to fall
 	This->decayRateDbPerSecond = BMPS_DECAY_RATE_DB_PER_SECOND;
+	
+	// we only output the spectum when there is new data to plot. At startup
+	// we have nothing yet.
+	This->hasEnoughDataToDraw = false;
 }
 
 
@@ -72,10 +80,10 @@ void BMPrettySpectrum_free(BMPrettySpectrum *This){
 	
 	free(This->fftb1);
 	This->fftb1 = NULL;
-	free(This->fftb2);
-	This->fftb2 = NULL;
-	free(This->ob1);
-	This->ob1 = NULL;
+//	free(This->fftb2);
+//	This->fftb2 = NULL;
+//	free(This->ob1);
+//	This->ob1 = NULL;
 	free(This->ob2);
 	This->ob2 = NULL;
 	free(This->downsamplingScales);
@@ -141,19 +149,22 @@ void BMPrettySpectrum_inputBuffer(BMPrettySpectrum *This, const float *input, si
 	// confirm that there is space available for writing
 	uint32_t bytesAvailableForWriting;
 	TPCircularBufferHead(&This->buffer, &bytesAvailableForWriting);
-	assert(bytesAvailableForReading >= bytesToInsert);
+	assert(bytesAvailableForWriting >= bytesToInsert);
 		
 	// insert new data to the circular buffer
 	TPCircularBufferProduceBytes(&This->buffer, (void*)input, bytesToInsert);
 	
 	// count time represented by the samples we have inserted
 	This->timeSinceLastUpdate += (float)length / This->sampleRate;
+	
+	// if sufficient time has elapsed, allow the graph to be updated
+	if(This->timeSinceLastUpdate >= This->updateInterval)
+		This->hasEnoughDataToDraw = true;
 }
 
 
 
-void BMPrettySpectrum_updateOutputLength(BMPrettySpectrum *This,
-										 enum BMPSScale scale,
+void BMPrettySpectrum_updateOutputConfig(BMPrettySpectrum *This,
 										 size_t outputLength,
 										 float minF,
 										 float maxF){
@@ -192,6 +203,9 @@ void BMPrettySpectrum_updateOutputLength(BMPrettySpectrum *This,
 		// find the number of output pixels that are upsampled. The remaining
 		// pixels will be downsampled.
 		This->upsampledPixels = BMSpectrum_numUpsampledPixels(This->fftInputLength, minF, maxF, This->sampleRate, outputLength);
+		
+		// clear the output buffer
+		memset(This->ob2,0,sizeof(float)*outputLength);
 	}
 }
 
@@ -204,47 +218,62 @@ void BMPrettySpectrum_getOutput(BMPrettySpectrum *This,
 								float *output,
 								float minFreq, float maxFreq,
 								size_t outputLength){
-	// how many bytes to compute the fft?
-	uint32_t bytesRequiredForSpectrum = (uint32_t)This->fftInputLength*sizeof(float);
 	
-	// how much data is available for reading?
-	uint32_t bytesAvailableForReading;
-	float *readPointer = TPCircularBufferTail(&This->buffer, &bytesAvailableForReading);
-	
-	// if there is enough audio data in the buffer
-	if(bytesAvailableForReading >= bytesRequiredForSpectrum){
-		// compute the spectrum. Buffer into b1
-		float nyquist;
-		bool applyWindow = true;
-		nyquist = BMSpectrum_processDataBasic(&This->spectrum, readPointer, This->fftb1, applyWindow, This->fftInputLength);
-		This->fftb1[This->fftOutputLength - 1] = nyquist;
+	// don't do anything unless there is enough new data to graph
+	if(This->hasEnoughDataToDraw){
+		
+		// don't allow drawing again until we have buffered more new audio
+		This->hasEnoughDataToDraw = false;
+		
+		// update the output interpolation configuration
+		// (function does nothing if config has not changed since last time)
+		BMPrettySpectrum_updateOutputConfig(This, outputLength, minFreq, maxFreq);
+		
+		// how many bytes to compute the fft?
+		uint32_t bytesRequiredForSpectrum = (uint32_t)This->fftInputLength*sizeof(float);
+		
+		// how much data is available for reading?
+		uint32_t bytesAvailableForReading;
+		float *readPointer = TPCircularBufferTail(&This->buffer, &bytesAvailableForReading);
+		
+		// if there is enough audio data in the buffer
+		if(bytesAvailableForReading >= bytesRequiredForSpectrum){
+			// compute the spectrum. Buffer into b1
+			float nyquist;
+			bool applyWindow = true;
+			nyquist = BMSpectrum_processDataBasic(&This->spectrum, readPointer, This->fftb1, applyWindow, This->fftInputLength);
+			This->fftb1[This->fftOutputLength - 1] = nyquist;
+		}
+		// if there is not enough data in the buffer, just write zeros to the output
+		else
+			memset(&This->fftb1,0,sizeof(float) * This->fftOutputLength);
+		
+		// apply a threshold to the data so that zeros will not come out as -inf when we
+		// convert to dB
+		float minValue = BM_DB_TO_GAIN(-150.0f);
+		vDSP_vthr(This->fftb1, 1, &minValue, This->fftb1, 1, This->fftOutputLength);
+		
+		// convert to decibels.
+		float one = 1.0f;
+		vDSP_vdbcon(This->fftb1, 1, &one, This->fftb1, 1, This->fftOutputLength, 0);
+		
+		// convert to bark scale and interpolate into the output buffer
+		size_t interpolationPadding = 3;
+		BMSpectrogram_fftBinsToBarkScale(This->fftb1, output, This->fftInputLength, outputLength, This->minFreq, This->maxFreq, interpolationPadding, This->upsampledPixels, This->interpolatedIndices, This->startIndices, This->binIntervalLengths, This->downsamplingScales);
+		
+		// find the decay for the rising & falling spectrum graph effect
+		float decay = BM_DB_TO_GAIN(This->decayRateDbPerSecond * This->timeSinceLastUpdate);
+		
+		// reset the decay timer
+		This->timeSinceLastUpdate = 0.0f;
+		
+		// allow the old buffered data to decay in volume
+		vDSP_vsmul(This->ob2, 1, &decay, This->ob2, 1, outputLength);
+		
+		// if the new data is greater than the old data, replace the old with the new
+		vDSP_vmax(This->ob2, 1, output, 1, This->ob2, 1, outputLength);
 	}
-	// if there is not enough data in the buffer, just write zeros to the output
-	else
-		memset(&This->fftb1,0,sizeof(float) * This->fftOutputLength);
 	
-	// find the decay rate for the FFT output
-	float decay = BM_DB_TO_GAIN(This->decayRateDbPerSecond * This->timeSinceLastUpdate);
-	
-	// reset the decay timer
-	This->timeSinceLastUpdate = 0.0f;
-	
-	// allow the old buffered data to decay in volume
-	vDSP_vsmul(This->fftb2, 1, &decay, This->fftb2, 1, This->fftOutputLength);
-	
-	// if the new data is greater than the old data, replace the old with the new
-	vDSP_vmax(This->fftb2, 1, This->fftb1, 1, This->fftb2, 1, This->fftOutputLength);
-	
-	// apply a threshold to the data so that zeros will not come out as -inf when we
-	// convert to dB
-	float minValue = BM_DB_TO_GAIN(-150.0f);
-	vDSP_vthr(This->fftb2, 1, &minValue, This->fftb2, 1, This->fftOutputLength);
-	
-	// convert to decibels. buffer to b1
-	float one = 1.0f;
-	vDSP_vdbcon(This->fftb2, 1, &one, This->fftb1, 1, This->fftOutputLength, 0);
-	
-	// convert to bark scale and interpolate into the output buffer
-	size_t interpolationPadding = 3;
-	BMSpectrogram_fftBinsToBarkScale(This->fftb1, This->ob1, This->fftInputLength, outputLength, This->minFreq, This->maxFreq, interpolationPadding, This->upsampledPixels, This->interpolatedIndices, This->startIndices, This->binIntervalLengths, This->downsamplingScales);
+	// copy from the buffer to output
+	memcpy(output, This->ob2, outputLength*sizeof(float));
 }

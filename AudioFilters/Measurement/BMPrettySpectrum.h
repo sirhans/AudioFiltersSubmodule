@@ -24,11 +24,11 @@ typedef struct BMPrettySpectrum {
 	BMSpectrum spectrum;
 	TPCircularBuffer buffer;
 	float sampleRate, decayRateDbPerSecond, minFreq, maxFreq, timeSinceLastUpdate;
-	size_t fftInputLength, fftOutputLength, outputLength, bufferLength, upsampledPixels;
-	enum BMPSScale scale;
-	float *fftb1, *fftb2, *ob1, *ob2;
+	size_t fftInputLength, fftOutputLength, outputLength, bufferLength, upsampledPixels, updateInterval;
+	float *fftb1, *ob2;
 	float *interpolatedIndices, *downsamplingScales;
 	size_t *binIntervalLengths, *startIndices;
+	bool hasEnoughDataToDraw;
 } BMPrettySpectrum;
 
 
