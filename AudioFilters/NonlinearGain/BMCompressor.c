@@ -192,7 +192,7 @@ void BMCompressor_ProcessBufferStereoWithSideChain(BMCompressor *This,
         
         // filter to get a smooth volume change envelope
         BMEnvelopeFollower_processBuffer(&This->envelopeFollower, buffer1, buffer1, samplesProcessing);
-        
+
         // negate the signal to get the dB change required to apply the compression
         vDSP_vneg(buffer1, 1, buffer1, 1, samplesProcessing);
         
