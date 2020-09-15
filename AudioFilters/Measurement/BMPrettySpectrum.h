@@ -26,7 +26,7 @@ typedef struct BMPrettySpectrum {
 	float sampleRate, decayRateDbPerSecond, minFreq, maxFreq, timeSinceLastUpdate;
 	size_t fftInputLength, fftOutputLength, outputLength, bufferLength, upsampledPixels, updateInterval;
 	float *fftb1, *ob2;
-	float *interpolatedIndices, *downsamplingScales;
+	float *interpolatedIndices;
 	size_t *binIntervalLengths, *startIndices;
 	bool hasEnoughDataToDraw;
 } BMPrettySpectrum;

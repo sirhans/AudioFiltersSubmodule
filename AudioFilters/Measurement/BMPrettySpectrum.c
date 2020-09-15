@@ -246,20 +246,22 @@ void BMPrettySpectrum_getOutput(BMPrettySpectrum *This,
 		
 		// convert to decibels.
 		float one = 1.0f;
-		vDSP_vdbcon(This->fftb1, 1, &one, This->fftb1, 1, This->fftOutputLength, 0);
+		uint32_t use20dBRule = 1;
+		vDSP_vdbcon(This->fftb1, 1, &one, This->fftb1, 1, This->fftOutputLength, use20dBRule);
 		
 		// convert to bark scale and interpolate into the output buffer
 		size_t interpolationPadding = 3;
-		BMSpectrogram_fftBinsToBarkScale(This->fftb1, output, This->fftInputLength, outputLength, This->minFreq, This->maxFreq, interpolationPadding, This->upsampledPixels, This->interpolatedIndices, This->startIndices, This->binIntervalLengths, This->downsamplingScales);
+		BMSpectrogram_fftBinsToBarkScale(This->fftb1, output, This->fftInputLength, outputLength, This->minFreq, This->maxFreq, interpolationPadding, This->upsampledPixels, This->interpolatedIndices, This->startIndices, This->binIntervalLengths);
 		
 		// find the decay for the rising & falling spectrum graph effect
-		float decay = BM_DB_TO_GAIN(This->decayRateDbPerSecond * This->timeSinceLastUpdate);
+//		float decay = BM_DB_TO_GAIN(This->decayRateDbPerSecond * This->timeSinceLastUpdate);
+		float decay = This->decayRateDbPerSecond * This->timeSinceLastUpdate;
 		
 		// reset the decay timer
 		This->timeSinceLastUpdate = 0.0f;
 		
 		// allow the old buffered data to decay in volume
-		vDSP_vsmul(This->ob2, 1, &decay, This->ob2, 1, outputLength);
+		vDSP_vsadd(This->ob2, 1, &decay, This->ob2, 1, outputLength);
 		
 		// if the new data is greater than the old data, replace the old with the new
 		vDSP_vmax(This->ob2, 1, output, 1, This->ob2, 1, outputLength);
