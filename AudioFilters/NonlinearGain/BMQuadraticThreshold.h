@@ -23,7 +23,7 @@ typedef struct BMQuadraticThreshold {
  *BMQuadraticThreshold_initLower
  *
  * @param threshold   the output will not go below this value
- * @prarm width       the output will be curved between threshold - width and threshold + width
+ * @param width       the output will be curved between threshold - width and threshold + width
  */
 void BMQuadraticThreshold_initLower(BMQuadraticThreshold *This, float threshold, float width);
 
@@ -32,7 +32,7 @@ void BMQuadraticThreshold_initLower(BMQuadraticThreshold *This, float threshold,
  *BMQuadraticThreshold_initUpper
  *
  * @param threshold   the output will not go above this value
- * @prarm width       the output will be curved between threshold - width and threshold + width
+ * @param width       the output will be curved between threshold - width and threshold + width
  */
 void BMQuadraticThreshold_initUpper(BMQuadraticThreshold *This, float threshold, float width);
 

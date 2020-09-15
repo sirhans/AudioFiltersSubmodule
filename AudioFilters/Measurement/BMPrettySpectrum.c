@@ -57,7 +57,6 @@ void BMPrettySpectrum_init(BMPrettySpectrum *This, size_t maxOutputLength, float
 	// allocate space for the arrays used to resample the fft output to bark scale or log scale
 	This->binIntervalLengths = malloc(sizeof(size_t)*maxOutputLength);
 	This->startIndices = malloc(sizeof(size_t)*maxOutputLength);
-	This->downsamplingScales = malloc(sizeof(float)*maxOutputLength);
 	This->interpolatedIndices = malloc(sizeof(float)*maxOutputLength);
 	
 	// set the decay rate for the spectrum graph to fall
@@ -86,8 +85,6 @@ void BMPrettySpectrum_free(BMPrettySpectrum *This){
 //	This->ob1 = NULL;
 	free(This->ob2);
 	This->ob2 = NULL;
-	free(This->downsamplingScales);
-	This->downsamplingScales = NULL;
 	free(This->binIntervalLengths);
 	This->binIntervalLengths = NULL;
 	free(This->startIndices);
@@ -193,12 +190,6 @@ void BMPrettySpectrum_updateOutputConfig(BMPrettySpectrum *This,
 		// we are downsampling from the fft bins to the output image
 		BMSpectrum_fftDownsamplingIndices(This->startIndices, This->binIntervalLengths, This->interpolatedIndices, minF, maxF, This->sampleRate, This->fftInputLength, outputLength);
 		
-		// when downsampling we divide each group sum of squares by the number of
-		// elements in the group so that the spectrogram has the same brightness
-		// in both the downsampled and upsampled regions
-		for(size_t i=0; i<outputLength; i++){
-			This->downsamplingScales[i] = 1.0f / (float)This->binIntervalLengths[i];
-		}
 		
 		// find the number of output pixels that are upsampled. The remaining
 		// pixels will be downsampled.
