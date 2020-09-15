@@ -102,7 +102,8 @@ void BMCompressor_ProcessBufferMonoWithSideChain(BMCompressor *This,
         
         // convert linear gain to decibel scale
         float one = 1.0f;
-        vDSP_vdbcon(buffer1,1,&one,buffer1,1,samplesProcessing,0);
+		uint32_t use20dBRule = 1;
+        vDSP_vdbcon(buffer1,1,&one,buffer1,1,samplesProcessing,use20dBRule);
         
         // clip values below the threshold with a soft knee
         BMQuadraticThreshold_lowerBuffer(&This->quadraticThreshold,
@@ -178,7 +179,8 @@ void BMCompressor_ProcessBufferStereoWithSideChain(BMCompressor *This,
         
         // convert linear gain to decibel scale
         float one = 1.0f;
-        vDSP_vdbcon(buffer1,1,&one,buffer1,1,samplesProcessing,0);
+		uint32_t use20dBRule = 1;
+        vDSP_vdbcon(buffer1,1,&one,buffer1,1,samplesProcessing,use20dBRule);
         
         // clip values below the threshold with a soft knee
         BMQuadraticThreshold_lowerBuffer(&This->quadraticThreshold, buffer1, This->buffer2, samplesProcessing);
