@@ -21,6 +21,8 @@ extern "C" {
     typedef struct BMSpectrumManager {
         TPCircularBuffer dataBuffer;
         int storeSize;
+        float refreshRate;
+        float decay;
         float* magSpectrum;
         float* indices;
         float* yValue;
@@ -31,7 +33,7 @@ extern "C" {
         bool audioReady;
     } BMSpectrumManager;
     
-    void BMSpectrumManager_init(BMSpectrumManager* this);
+    void BMSpectrumManager_init(BMSpectrumManager* this,float decay,float rate);
     
     void BMSpectrumManager_destroy(BMSpectrumManager* this);
     

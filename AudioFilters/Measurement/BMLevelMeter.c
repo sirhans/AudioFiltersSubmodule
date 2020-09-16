@@ -24,7 +24,7 @@ extern "C" {
 #define BM_LEVEL_METER_DEFAULT_SLOW_RELEASE_TIME 5.0
     
 	
-	typedef enum bmMetreType {metreTypeRms, metreTypePeak, metreTypeCombined} bmMetreType;
+	
     
     /*!
      *BMLevelMeter_setBufferSize
@@ -310,7 +310,7 @@ extern "C" {
                                    fastReleaseL_dB, fastReleaseR_dB,
                                    slowReleaseL_dB, slowReleaseR_dB,
                                    bufferLength,
-                                   false);
+                                   metreTypePeak);
     }
     
     
@@ -327,7 +327,7 @@ extern "C" {
                                    fastReleaseL_dB, fastReleaseR_dB,
                                    slowReleaseL_dB, slowReleaseR_dB,
                                    bufferLength,
-                                   true);
+                                   metreTypeRms);
     }
 	
 	

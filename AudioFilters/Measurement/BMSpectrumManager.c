@@ -18,9 +18,11 @@
 
 void BMSpectrumManager_prepareIndices(BMSpectrumManager* this, size_t n);
 
-void BMSpectrumManager_init(BMSpectrumManager* this){
+void BMSpectrumManager_init(BMSpectrumManager* this,float decay,float rate){
     this->audioReady = false;
     this->storeSize = StoreSize;
+    this->refreshRate = rate;
+    this->decay = decay;
     BMSpectrum_initWithLength(&this->spectrum,StoreSize);
     this->magSpectrum = malloc(sizeof(float)*StoreSize);
     this->indices = malloc(sizeof(float)*GRAP_NUMPOINT);
@@ -167,7 +169,7 @@ void BMSpectrumManager_processPeakDataSpectrumY(BMSpectrumManager* this,float* s
     //spectrumPeakData = MAX(-halfHeight,spectrumPeakData - sHeight * 0.03);
     //Decay spectrum peak data overtime
 //    float halfHeight = sHeight* .5;
-    float decayV = sHeight * 0.015;
+    float decayV = (sHeight * this->decay)/this->refreshRate;//0.015
     vDSP_vsadd(spectrumPeakDataY, 1, &decayV, spectrumPeakDataY, 1, spectrumSize);
     //Clip it to -Halfheight
     float clipMin = 0;

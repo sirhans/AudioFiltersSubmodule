@@ -177,6 +177,10 @@ void BMCompressor_ProcessBufferStereoWithSideChain(BMCompressor *This,
         // rectify the input signal
         vDSP_vabs(buffer1, 1, buffer1, 1, samplesProcessing);
         
+        // move zero values up to near-zero min value
+        float lowerLimit = BM_DB_TO_GAIN(-140.0f);
+        vDSP_vthr(buffer1, 1, &lowerLimit, buffer1, 1, samplesProcessing);
+        
         // convert linear gain to decibel scale
         float one = 1.0f;
 		uint32_t use20dBRule = 1;
