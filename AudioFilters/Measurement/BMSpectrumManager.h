@@ -30,14 +30,12 @@ extern "C" {
         BMSpectrum spectrum;
         
         
-        bool audioReady;
+        bool isInit;
     } BMSpectrumManager;
     
     void BMSpectrumManager_init(BMSpectrumManager* this,float decay,float rate);
     
     void BMSpectrumManager_destroy(BMSpectrumManager* this);
-    
-    void BMSpectrumManager_setAudioReady(BMSpectrumManager* this,bool ready);
     
     void BMSpectrumManager_storeData(BMSpectrumManager* this,float* outData ,UInt32 frameCount);
     

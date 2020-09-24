@@ -19,7 +19,6 @@
 void BMSpectrumManager_prepareIndices(BMSpectrumManager* this, size_t n);
 
 void BMSpectrumManager_init(BMSpectrumManager* this,float decay,float rate){
-    this->audioReady = false;
     this->storeSize = StoreSize;
     this->refreshRate = rate;
     this->decay = decay;
@@ -45,7 +44,8 @@ void BMSpectrumManager_init(BMSpectrumManager* this,float decay,float rate){
     // mark the bytes as written
     TPCircularBufferProduce(&this->dataBuffer,
                             sizeof(float)*(this->storeSize));
-    
+ 
+    this->isInit = true;
 }
 
 void BMSpectrumManager_prepareIndices(BMSpectrumManager* this, size_t n){
@@ -59,11 +59,10 @@ void BMSpectrumManager_prepareIndices(BMSpectrumManager* this, size_t n){
     }
 }
 
-void BMSpectrumManager_setAudioReady(BMSpectrumManager* this,bool ready){
-    this->audioReady = ready;
-}
+
 
 void BMSpectrumManager_destroy(BMSpectrumManager* this){
+    this->isInit = false;
     TPCircularBufferCleanup(&this->dataBuffer);
     
     free(this->magSpectrum);
@@ -118,7 +117,7 @@ void BMSpectrumManager_storeData(BMSpectrumManager* this,float* inData ,UInt32 f
 
 #pragma mark - Data Delegate
 bool BMSpectrumManager_processDataSpectrumY(BMSpectrumManager* this,float* spectrumDataY,size_t spectrumSize,float sHeight){
-    if(this->audioReady){
+    if(this->isInit){
         //get data
         uint32_t bytesAvailable;
         float* tail = TPCircularBufferTail(&this->dataBuffer, &bytesAvailable);
@@ -180,14 +179,16 @@ void BMSpectrumManager_processPeakDataSpectrumY(BMSpectrumManager* this,float* s
 }
 
 void BMSpectrumManager_prepareXSpectrumData(BMSpectrumManager* this,float* spectrumDataX,float* spectrumDataY,float* spectrumPeakDataY,size_t spectrumSize,float sWidth,float sHeight,float sampleRate){
-    float defaultV = sHeight;
-    vDSP_vfill(&defaultV, spectrumDataY, 1, spectrumSize);
-    vDSP_vfill(&defaultV, spectrumPeakDataY, 1, spectrumSize);
-    
-    int inputSize = this->storeSize;
-    for(int i =0;i<inputSize;i++){
-        this->magSpectrum[i] = i * sampleRate/this->storeSize;
-//        printf("mag %f\n",this->magSpectrum[i]);
+    if(this->isInit){
+        float defaultV = sHeight;
+        vDSP_vfill(&defaultV, spectrumDataY, 1, spectrumSize);
+        vDSP_vfill(&defaultV, spectrumPeakDataY, 1, spectrumSize);
+        
+        int inputSize = this->storeSize;
+        for(int i =0;i<inputSize;i++){
+            this->magSpectrum[i] = i * sampleRate/this->storeSize;
+    //        printf("mag %f\n",this->magSpectrum[i]);
+        }
+        vDSP_vqint(this->magSpectrum, this->indices, 1, spectrumDataX, 1, spectrumSize, inputSize);
     }
-    vDSP_vqint(this->magSpectrum, this->indices, 1, spectrumDataX, 1, spectrumSize, inputSize);
 }
