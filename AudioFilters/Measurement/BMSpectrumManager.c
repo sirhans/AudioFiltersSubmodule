@@ -15,6 +15,7 @@
 #define spectrumMinDB 25.0
 #define spectrumMaxDB spectrumMinDB + (maxDB - minDB)*1.2
 #define StoreSize 4096
+#define GRAP_NUMPOINT 500
 
 void BMSpectrumManager_prepareIndices(BMSpectrumManager* this, size_t n);
 
