@@ -7,7 +7,7 @@
 //
 
 #include "BMPanMixer.h"
-#import "Math.h"
+#import <math.h>
 
 void BMPanMixer_init(BMPanMixer* This, float sampleRate){
     This->panMix = 0.5;
