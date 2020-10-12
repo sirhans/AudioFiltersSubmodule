@@ -268,3 +268,21 @@ void BMFFT_blackmanHarrisWindow(BMFFT *This,
     
     vDSP_vmul(input,1,This->window,1,output,1,numSamples);
 }
+
+
+void BMFFT_hannWindow(BMFFT *This,
+					  const float* input,
+					  float* output,
+					  size_t numSamples){
+	assert(numSamples <= This->maxInputLength);
+	
+	// if the window cached in the buffer does not have the specified length, or isn't a blackman-harris window recompute it.
+	if(This->windowCurrentLength != numSamples || This->windowType != BMFFT_HANN){
+		bool normalise = false;
+		vDSP_hann_window(This->window, numSamples, normalise);
+		This->windowCurrentLength = numSamples;
+		This->windowType = BMFFT_HANN;
+	}
+	
+	vDSP_vmul(input,1,This->window,1,output,1,numSamples);
+}

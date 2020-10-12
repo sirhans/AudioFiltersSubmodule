@@ -12,7 +12,7 @@
 #include <stdio.h>
 #import <Accelerate/Accelerate.h>
 
-enum BMFFTWindowType {BMFFT_NONE,BMFFT_BLACKMANHARRIS,BMFFT_HAMMING,BMFFT_KAISER};
+enum BMFFTWindowType {BMFFT_NONE,BMFFT_BLACKMANHARRIS,BMFFT_HAMMING,BMFFT_KAISER,BMFFT_HANN};
 
 typedef struct BMFFT {
 	size_t maxInputLength;
