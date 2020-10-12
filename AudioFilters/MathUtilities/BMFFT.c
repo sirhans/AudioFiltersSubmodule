@@ -177,8 +177,9 @@ void BMFFT_hammingWindow(BMFFT *This,
 
 
 // Bessel function from http://www.iowahills.com/Example%20Code/WindowedFIRFilterWebCode.txt
+// This is the Modified Bessel Function of the first kind. The Mathematica function is BesselI[0,x]
 // Used to calculate Kaiser window
-double Bessel(double x)
+double besselI_0(double x)
 {
 	double Sum=0.0, XtoIpower;
 	int i, j, Factorial;
@@ -203,7 +204,7 @@ void BMFFT_generateKaiserCoefficients(float* window, double beta, size_t length)
 	for(size_t j=0; j<length; j++)
 	{
 		arg = beta * sqrt(1.0 - pow( ((double)(2*j+2) - dM) / dM, 2.0) );
-		window[j] = Bessel(arg) / Bessel(beta);
+		window[j] = besselI_0(arg) / besselI_0(beta);
 	}
 }
 
