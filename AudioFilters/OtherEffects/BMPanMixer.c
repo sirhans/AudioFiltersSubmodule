@@ -8,10 +8,11 @@
 
 #include "BMPanMixer.h"
 #import <math.h>
+#include <Accelerate/Accelerate.h>
 
-void BMPanMixer_init(BMPanMixer* This, float sampleRate){
+void BMPanMixer_init(BMPanMixer* This,PanMode mode, float sampleRate){
     This->panMix = 0.5;
-    This->panMode = PM_Mode1;
+    This->panMode = mode;
     This->reachTarget = true;
     
     // set the per sample difference to fade from 0 to 1 in *time*
@@ -32,4 +33,9 @@ void BMPanMixer_setPanMix(BMPanMixer* This,float mix){
     }else{
         //Mode 3
     }
+}
+
+void BMPanMixer_processStereo(BMPanMixer* This,float* inL,float* inR,float* outL,float* outR,size_t frameCount){
+    vDSP_vsmul(inL, 1, &This->panLeft, outL, 1, frameCount);
+    vDSP_vsmul(inR, 1, &This->panRight, outR, 1, frameCount);
 }
