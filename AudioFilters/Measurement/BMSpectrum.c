@@ -11,7 +11,7 @@
 #include "Constants.h"
 #include "BMUnitConversion.h"
 
-#define BM_SPECTRUM_DEFAULT_BUFFER_LENGTH 1024
+#define BM_SPECTRUM_DEFAULT_BUFFER_LENGTH 4096
 
 void BMSpectrum_setupFFT(BMSpectrum* This,size_t n);
 
@@ -92,7 +92,7 @@ float BMSpectrum_processDataBasic(BMSpectrum* This,
 		windowedInput = This->buffer;
 	}
 	
-	// compute abs(fft(input)) and drop the nyquist term
+	// compute abs(fft(input)) and save the nyquist term
 	float absNyquist = BMFFT_absFFTReturnNyquist(&This->fft, windowedInput, output, inputLength);
 	
 	return absNyquist;
