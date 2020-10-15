@@ -13,8 +13,10 @@
 
 
 
-void BMSpectralCentroid_init(BMSpectralCentroid *This, size_t maxInputLength){
+void BMSpectralCentroid_init(BMSpectralCentroid *This, float sampleRate, size_t maxInputLength){
 	BMSpectrum_initWithLength(&This->spectrum, maxInputLength);
+	
+	This->sampleRate = sampleRate;
 	
 	size_t maxOutputLength = 1 + (maxInputLength / 2);
 	This->buffer = malloc(sizeof(float)*maxOutputLength);
@@ -39,15 +41,6 @@ void BMSpectralCentroid_free(BMSpectralCentroid *This){
 
 
 
-/*!
- *BMSpectralCentroid_process
- *
- * @param This pointer to an initialised struct
- * @param input pointer to a buffer of audio samples. Do not apply an FFT analysis window function to the buffer. That is done automatically by this function.
- * @param inputLength length of input buffer
- *
- * @returns the spectral centroid in [0,1] where 0 is DC and 1 is nyquist
- */
 float BMSpectralCentroid_process(BMSpectralCentroid *This, float* input, size_t inputLength){
 	size_t outputLength = 1 + (inputLength / 2);
 	
@@ -74,10 +67,14 @@ float BMSpectralCentroid_process(BMSpectralCentroid *This, float* input, size_t 
 	vDSP_vmul(This->buffer, 1, This->weights, 1, This->buffer, 1, outputLength);
 	vDSP_sve(This->buffer, 1, &weightedSum, outputLength);
 	
-	// if the sum is non-zero, return the spectral centroid
+	// if the sum is non-zero, calculate the spectral centroid as usual
+	float centroidIn01;
 	if (sum > 0.0f)
-		return (weightedSum / sum);
+		centroidIn01 = weightedSum / sum;
 	
 	// if the volume is zero, we define the spectrum to be balanced in the middle
-	return 0.5;
+	else centroidIn01 = 0.5f;
+	
+	// convert the centroid to Hz and return
+	return centroidIn01 * This->sampleRate * 0.5f;
 }

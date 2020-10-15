@@ -15,10 +15,11 @@
 typedef struct BMSpectralCentroid {
 	BMSpectrum spectrum;
 	float *buffer, *weights;
+	float sampleRate;
 	size_t previousOutputLength;
 } BMSpectralCentroid;
 
-void BMSpectralCentroid_init(BMSpectralCentroid *This, size_t maxInputLength);
+void BMSpectralCentroid_init(BMSpectralCentroid *This, float sampleRate, size_t maxInputLength);
 
 void BMSpectralCentroid_free(BMSpectralCentroid *This);
 
@@ -29,7 +30,7 @@ void BMSpectralCentroid_free(BMSpectralCentroid *This);
  * @param input pointer to a buffer of audio samples. Do not apply an FFT analysis window function to the buffer. That is done automatically by this function.
  * @param inputLength length of input buffer
  *
- * @returns the spectral centroid in [0,1] where 0 is DC and 1 is nyquist
+ * @returns the spectral centroid frequency in Hz
  */
 float BMSpectralCentroid_process(BMSpectralCentroid *This, float* input, size_t inputLength);
 
