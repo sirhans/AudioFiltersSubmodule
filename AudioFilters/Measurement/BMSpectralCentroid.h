@@ -33,5 +33,6 @@ void BMSpectralCentroid_free(BMSpectralCentroid *This);
  * @returns the spectral centroid frequency in Hz
  */
 float BMSpectralCentroid_process(BMSpectralCentroid *This, float* input, size_t inputLength);
+float BMSpectralCentroid_processBufferAtPeak(BMSpectralCentroid *This, float* input, size_t inputLength);
 
 #endif /* BMSpectralCentroid_h */
