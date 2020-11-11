@@ -32,7 +32,7 @@ enum BMDPWOscillatorType {BMDPWO_SAW};
 typedef struct BMDPWOscillator {
 	float sampleRate, nextStartPhase, rawPolyWavelength;
 	size_t differentiationOrder, integrationOrder;
-	float *b1;
+	float *b1, *b2;
 } BMDPWOscillator;
 
 void BMDPWOscillator_init(BMDPWOscillator *This,

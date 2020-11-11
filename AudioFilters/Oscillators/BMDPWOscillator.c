@@ -28,6 +28,7 @@ void BMDPWOscillator_init(BMDPWOscillator *This,
 	This->rawPolyWavelength = 2.0f;
 	
 	This->b1 = malloc(BM_BUFFER_CHUNK_SIZE * sizeof(float));
+	This->b2 = malloc(BM_BUFFER_CHUNK_SIZE * sizeof(float));
 }
 
 
@@ -36,6 +37,8 @@ void BMDPWOscillator_init(BMDPWOscillator *This,
 void BMDPWOscillator_free(BMDPWOscillator *This){
 	free(This->b1);
 	This->b1 = NULL;
+	free(This->b2);
+	This->b2 = NULL;
 }
 
 
@@ -81,7 +84,7 @@ float BMDPWOscillator_valimakiScalingFunction(size_t N, double f, double sr){
  * amplitude. To get the correct amplitude we need to multiply the differentiated
  * output by the result of this scaling function.
  */
-void BMDPWOscillator_scalingFunction(BMDPWOscillator *This, const float *frequencies, float *scales, size_t length){
+void BMDPWOscillator_ampScales(BMDPWOscillator *This, const float *frequencies, float *scales, size_t length){
 	// TODO: should this be integration order or differentiation order?
 	float N = This->integrationOrder;
 	float sr = This->sampleRate;
@@ -143,6 +146,129 @@ void BMDPWOscillator_freqsToPhases(BMDPWOscillator *This, const float *frequenci
 
 
 
-void BMDPWOscillator_integratedWaveform(BMDPWOscillator *This, const float *frequencies, float *output, size_t length){
+
+void BMDPWOscillator_sawWaveInt10(BMDPWOscillator *This, const float *phases, float *output, size_t length){
+	// x^2 (381 + x^2 (-310 + x^2 (98 + x^2 (-15 + x^2))))
 	
+	// x^2
+	float *x2 = This->b1;
+	vDSP_vsq(phases, 1, x2, 1, length);
+	
+	// t = (-15 + x^2)
+	float neg15 = -15.0f;
+	float *t = This->b2;
+	vDSP_vsadd(x2, 1, &neg15, t, 1, length);
+	
+	// t = 98 + x^2 (t)
+	float ninetyEight = 98.0f;
+	vDSP_vmsa(t, 1, x2, 1, &ninetyEight, t, 1, length);
+	
+	// t = -310 + x^2 (t)
+	float negThreeTen = -310.0;
+	vDSP_vmsa(t, 1, x2, 1, &negThreeTen, t, 1, length);
+	
+	// t = 381 + x^2 (t)
+	float threeEightyOne = 381.0f;
+	vDSP_vmsa(t, 1, x2, 1, &threeEightyOne, t, 1, length);
+	
+	// output = x^2 (t)
+	vDSP_vmul(x2, 1, t, 1, output, 1, length);
+}
+
+
+
+
+void BMDPWOscillator_sawWaveInt8(BMDPWOscillator *This, const float *phases, float *output, size_t length){
+	// x^2 (-(124/3) + x^2 (98/3 + x^2 (-(28/3) + x^2)))
+	
+	// x^2
+	float *x2 = This->b1;
+	vDSP_vsq(phases, 1, x2, 1, length);
+	
+	// t = (-(28/3) + x^2)
+	float fn28_3 = -28.0f / 3.0f;
+	float *t = This->b2;
+	vDSP_vsadd(x2, 1, &fn28_3, t, 1, length);
+	
+	// t = 98/3 + x^2 (t)
+	float f98_3 = 98.0f / 3.0f;
+	vDSP_vmsa(t, 1, x2, 1, &f98_3, t, 1, length);
+	
+	// t = -(124/3) + x^2 (t)
+	float fn124_3 = -124.0f / 3.0f;
+	vDSP_vmsa(t, 1, x2, 1, &fn124_3, t, 1, length);
+	
+	// output = x^2 (t)
+	vDSP_vmul(x2, 1, t, 1, output, 1, length);
+}
+
+
+
+
+void BMDPWOscillator_sawWaveInt6(BMDPWOscillator *This, const float *phases, float *output, size_t length){
+	// x^2 (7 + x^2 (-5 + x^2))
+	
+	// x^2
+	float *x2 = This->b1;
+	vDSP_vsq(phases, 1, x2, 1, length);
+	
+	// t = (-5 + x^2)
+	float neg5 = -5.0f;
+	float *t = This->b2;
+	vDSP_vsadd(x2, 1, &neg5, t, 1, length);
+	
+	// t = 7 + x^2 (t)
+	float seven = 7.0f;
+	vDSP_vmsa(t, 1, x2, 1, &seven, t, 1, length);
+	
+	// output = x^2 (t)
+	vDSP_vmul(x2, 1, t, 1, output, 1, length);
+}
+
+
+
+
+
+void BMDPWOscillator_integratedWaveform(BMDPWOscillator *This, const float *frequencies, float *output, size_t length){
+	// compute the phases
+	BMDPWOscillator_freqsToPhases(This, frequencies, This->b1, length);
+	
+	if(This->integrationOrder == 10){
+		BMDPWOscillator_sawWaveInt10(This, This->b1,output,length);
+		return;
+	}
+	if(This->integrationOrder == 8){
+		BMDPWOscillator_sawWaveInt10(This, This->b1,output,length);
+		return;
+	}
+	if(This->integrationOrder == 6){
+		BMDPWOscillator_sawWaveInt10(This, This->b1,output,length);
+		return;
+	}
+	
+	// if we get here then the integration order isn't supported.
+	assert(false);
+}
+
+
+
+
+void BMDPWOscillator_differentiate(BMDPWOscillator *This, const float *input, float *output, size_t length){
+	BMAsymmetricConvolution
+}
+
+
+
+
+
+void BMDPWOscillator_process(BMDPWOscillator *This, const float *frequencies, float *output, size_t length){
+	// generate the integrated waveform
+	BMDPWOscillator_integratedWaveform(This, frequencies, This->b1, length);
+	
+	// scale the volume
+	BMDPWOscillator_ampScales(This, frequencies, This->b2, length);
+	vDSP_vmul(This->b1, 1, This->b2, 1, This->b1, 1, length);
+	
+	// differentiate
+	BMDPWOscillator_differentiate(This, This->b1, output, length);
 }
