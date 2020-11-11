@@ -8,7 +8,7 @@
 
 #include "BMSpectralCentroid.h"
 #include <Accelerate/Accelerate.h>
-
+#include "Constants.h"
 
 
 
@@ -38,7 +38,19 @@ void BMSpectralCentroid_free(BMSpectralCentroid *This){
 }
 
 
-
+float BMSpectralCentroid_processBufferAtPeak(BMSpectralCentroid *This, float* input, size_t inputLength){
+    //Get the idx of the peak value
+    vDSP_Length maxIdx;
+    float maxV;
+    vDSP_maxmgvi(input, 1, &maxV, &maxIdx, inputLength);
+    
+    size_t windowSize = 4096;
+    size_t halfWS = windowSize/2;
+    size_t startIdx = BM_MAX(0, maxIdx-halfWS);
+    startIdx = BM_MIN(startIdx, inputLength-windowSize);
+    
+    return BMSpectralCentroid_process(This, input+startIdx, windowSize);
+}
 
 
 float BMSpectralCentroid_process(BMSpectralCentroid *This, float* input, size_t inputLength){

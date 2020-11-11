@@ -316,6 +316,7 @@ extern "C" {
 		
         // if this is a legitimate gain change, set the gain immediately and exit the transition state
 		This->gain = gain;
+        This->gainTarget = gain;
 		This->nextGainTarget = gain;
 		This->inTransition = false;
 	}

@@ -515,6 +515,12 @@ size_t nearestPowerOfTwo(float x){
 	return x-lower<upper-x? lower:upper;
 }
 
+size_t nearestUpperPowerOfTwo(float x){
+    float lower = pow(2.0f,floor(log2(x)));
+    float upper = pow(2.0f,ceil(log2(x)));
+    return x-lower<upper-x? lower:upper;
+}
+
 size_t BMSpectrogram_GetFFTSizeFor(BMSpectrogram *This, size_t pixelWidth, size_t sampleWidth){
 	// set this to the fft size we want
 	// when pixelWidth = sampleWidth
