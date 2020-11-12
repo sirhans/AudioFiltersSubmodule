@@ -26,18 +26,23 @@
 #define BMDPWOscillator_h
 
 #include <stdio.h>
+#include "BMFIRFilter.h"
+#include "BMDownsampler.h"
 
 enum BMDPWOscillatorType {BMDPWO_SAW};
 
 typedef struct BMDPWOscillator {
+	BMFIRFilter differentiator;
+	BMDownsampler downsampler;
 	float sampleRate, nextStartPhase, rawPolyWavelength;
-	size_t differentiationOrder, integrationOrder;
+	size_t differentiationOrder, integrationOrder, oversampleFactor;
 	float *b1, *b2;
 } BMDPWOscillator;
 
 void BMDPWOscillator_init(BMDPWOscillator *This,
 						  enum BMDPWOscillatorType oscillatorType,
 						  size_t integrationOrder,
+						  size_t oversampleFactor,
 						  float sampleRate);
 
 void BMDPWOscillator_free(BMDPWOscillator *This);

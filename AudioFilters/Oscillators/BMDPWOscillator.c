@@ -11,35 +11,128 @@
 #include <math.h>
 #include <Accelerate/Accelerate.h>
 #include "Constants.h"
+#include "BMIntegerMath.h"
 
-
+void BMDPWOscillator_initDifferentiator(BMDPWOscillator *This);
 
 void BMDPWOscillator_init(BMDPWOscillator *This,
 						  enum BMDPWOscillatorType oscillatorType,
 						  size_t integrationOrder,
+						  size_t oversampleFactor,
 						  float sampleRate){
+	// make sure the integration order is supported
+	assert(integrationOrder == 10 ||
+		   integrationOrder == 8 ||
+		   integrationOrder == 6);
+	
 	This->sampleRate = sampleRate;
 	This->integrationOrder = integrationOrder;
 	This->differentiationOrder = integrationOrder - 1;
+	This->oversampleFactor = oversampleFactor;
 	This->nextStartPhase = 0.0f;
 	
 	// this is the wavelength of the polynomial we use to generate the
 	// integrated waveform.
 	This->rawPolyWavelength = 2.0f;
 	
-	This->b1 = malloc(BM_BUFFER_CHUNK_SIZE * sizeof(float));
-	This->b2 = malloc(BM_BUFFER_CHUNK_SIZE * sizeof(float));
+	// allocate memory for two buffers
+	This->b1 = malloc(oversampleFactor * BM_BUFFER_CHUNK_SIZE * sizeof(float));
+	This->b2 = malloc(oversampleFactor * BM_BUFFER_CHUNK_SIZE * sizeof(float));
+	
+	// init the downsampler for oversampled processing
+	bool stereo = false;
+	assert(isPowerOfTwo(oversampleFactor) && oversampleFactor > 0);
+	BMDownsampler_init(&This->downsampler, stereo, oversampleFactor, BMRESAMPLER_FULL_SPECTRUM);
+	
+	// init the finite-difference differentiator
+	BMDPWOscillator_initDifferentiator(This);
 }
+
 
 
 
 
 void BMDPWOscillator_free(BMDPWOscillator *This){
+	BMDownsampler_free(&This->downsampler);
+	BMFIRFilter_free(&This->differentiator);
+	
 	free(This->b1);
 	This->b1 = NULL;
 	free(This->b2);
 	This->b2 = NULL;
 }
+
+
+
+
+
+void BMDPWOscillator_initDifferentiator(BMDPWOscillator *This){
+	
+	// allocate an array on the stack for temporary storage of the kernel
+	assert(This->differentiationOrder < 16);
+	float finiteDifferenceKernel [16];
+	size_t kernelLength = 16;
+	
+	/**************************************************************************
+	 *         HOW WE CALCULATE FINITE-DIFFERENCE KERNEL COEFFICIENTS
+	 *
+	 * Mathematica:
+	 *
+	 * UFDWeights[m_, n_, s_] := CoefficientList[Normal[Series[x^s Log[x]^m, {x, 1, n}]/h^m], x]
+	 *
+	 * FiniteDifferenceCoefficientList[differentialOrder_, kernelLength_] :=
+	 *            UFDWeights[differentialOrder,
+	 *                       kernelLength,
+	 *                       If[OddQ[differentialOrder],
+	 *                          (kernelLength - 1)/2,
+	 *                          kernelLength/2]
+	 *                       ] /. h -> 1
+	 *
+	 *
+	 *    9TH ORDER 16 POINT FINITE DIFFERENCE DERIVATIVE:
+	 * kernel = N[FiniteDifferenceCoefficientList[9, 16], 16]
+	 *
+	 **************************************************************************/
+	
+	if (This->differentiationOrder == 9){
+		
+		float k [16] = {0.02641679067460317, -0.5009393601190476, 4.509700520833333,
+			-25.31026475694444, 95.62454427083333, -252.0561848958333,
+			474.6988498263889, -648.8857979910714, 648.8857979910714,
+			-474.6988498263889, 252.0561848958333, -95.62454427083333,
+			25.31026475694444, -4.509700520833333, 0.5009393601190476,
+			-0.02641679067460317};
+		
+		memcpy(finiteDifferenceKernel,k,kernelLength*sizeof(float));
+	}
+	
+	if (This->differentiationOrder == 7){
+		float k [16] = {-0.003472870249807099, 0.06771081995081019, -0.6369531702112269,
+			3.851987560884452, -16.64204485857928, 50.52541969581887,
+			-105.8411557044512, 152.9011318630642, -152.9011318630642,
+			105.8411557044512, -50.52541969581887, 16.64204485857928,
+			-3.851987560884452, 0.6369531702112269, -0.06771081995081019,
+			0.003472870249807099};
+		
+		memcpy(finiteDifferenceKernel,k,kernelLength*sizeof(float));
+	}
+	
+	if (This->differentiationOrder == 5){
+		float k [16] = {0.0003442369682977051, -0.006817176675727701, 0.06575932248158200,
+			-0.4156998407680815, 1.964794636736012, -7.482530006529793,
+			19.33192750682977, -31.23528918311709, 31.23528918311709,
+			-19.33192750682977, 7.482530006529793, -1.964794636736012,
+			0.4156998407680815, -0.06575932248158200, 0.006817176675727701,
+			-0.0003442369682977051};
+		
+		memcpy(finiteDifferenceKernel,k,kernelLength*sizeof(float));
+	}
+	
+	// init the FIR filter that will process the differentiation
+	BMFIRFilter_init(&This->differentiator, finiteDifferenceKernel, kernelLength);
+}
+
+
 
 
 
@@ -253,22 +346,22 @@ void BMDPWOscillator_integratedWaveform(BMDPWOscillator *This, const float *freq
 
 
 
-void BMDPWOscillator_differentiate(BMDPWOscillator *This, const float *input, float *output, size_t length){
-	BMAsymmetricConvolution
-}
-
-
-
-
 
 void BMDPWOscillator_process(BMDPWOscillator *This, const float *frequencies, float *output, size_t length){
+	size_t lengthOS = length * This->oversampleFactor;
+	
 	// generate the integrated waveform
-	BMDPWOscillator_integratedWaveform(This, frequencies, This->b1, length);
+	BMDPWOscillator_integratedWaveform(This, frequencies, This->b1, lengthOS);
 	
 	// scale the volume
-	BMDPWOscillator_ampScales(This, frequencies, This->b2, length);
-	vDSP_vmul(This->b1, 1, This->b2, 1, This->b1, 1, length);
+	BMDPWOscillator_ampScales(This, frequencies, This->b2, lengthOS);
+	vDSP_vmul(This->b1, 1, This->b2, 1, This->b1, 1, lengthOS);
+	
+	// smooth the volume scaling with a lowpass filter
 	
 	// differentiate
-	BMDPWOscillator_differentiate(This, This->b1, output, length);
+	BMFIRFilter_process(&This->differentiator, This->b1, This->b1, lengthOS);
+	
+	// downsample
+	BMDownsampler_processBufferMono(&This->downsampler, This->b1, output, lengthOS);
 }
