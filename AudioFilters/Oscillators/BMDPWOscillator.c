@@ -25,7 +25,8 @@ void BMDPWOscillator_init(BMDPWOscillator *This,
 		   integrationOrder == 8 ||
 		   integrationOrder == 6);
 	
-	This->sampleRate = sampleRate;
+	This->outputSampleRate = sampleRate;
+	This->oversampledSampleRate = sampleRate * oversampleFactor;
 	This->integrationOrder = integrationOrder;
 	This->differentiationOrder = integrationOrder - 1;
 	This->oversampleFactor = oversampleFactor;
@@ -46,6 +47,22 @@ void BMDPWOscillator_init(BMDPWOscillator *This,
 	
 	// init the finite-difference differentiator
 	BMDPWOscillator_initDifferentiator(This);
+	
+	// init a smoothing filter to avoid abrupt changes in volume during frequency sweeps
+	size_t filterLevels = 2;
+	BMMultiLevelBiquad_init(&This->smoothingFilter, filterLevels, This->oversampledSampleRate, stereo, false, false);
+	
+	// don't allow volume discontinuities to contribute frequencies above 100 Hz.
+	float fc = 100.0f;
+	BMMultiLevelBiquad_setCriticallyDampedLP(&This->smoothingFilter, fc, 0, filterLevels);
+	
+	// compute the group delay of the smoothing filter at fc/2 and round to the nearest sample
+	float groupDelay = BMMultiLevelBiquad_groupDelay(&This->smoothingFilter, fc/2);
+	groupDelay = roundf(groupDelay);
+	
+	// configure a short delay to compensate for the group delay
+	size_t numChannels = 1;
+	BMShortSimpleDelay_init(&This->groupDelayCompensator, numChannels, (size_t)groupDelay);
 }
 
 
@@ -55,6 +72,8 @@ void BMDPWOscillator_init(BMDPWOscillator *This,
 void BMDPWOscillator_free(BMDPWOscillator *This){
 	BMDownsampler_free(&This->downsampler);
 	BMFIRFilter_free(&This->differentiator);
+	BMMultiLevelBiquad_free(&This->smoothingFilter);
+	BMShortSimpleDelay_free(&This->groupDelayCompensator);
 	
 	free(This->b1);
 	This->b1 = NULL;
@@ -180,7 +199,7 @@ float BMDPWOscillator_valimakiScalingFunction(size_t N, double f, double sr){
 void BMDPWOscillator_ampScales(BMDPWOscillator *This, const float *frequencies, float *scales, size_t length){
 	// TODO: should this be integration order or differentiation order?
 	float N = This->integrationOrder;
-	float sr = This->sampleRate;
+	float sr = This->oversampledSampleRate;
 	
 	// the scaling functions given in the valimaki paper can be closely
 	// approximated by the function c/f(N-1), where c is a scaling constant
@@ -196,6 +215,8 @@ void BMDPWOscillator_ampScales(BMDPWOscillator *This, const float *frequencies, 
 	
 	// scale and output
 	vDSP_vsmul(scales, 1, &scalingConstant, scales, 1, length);
+	
+	vDSP_vramp(
 }
 
 
@@ -208,7 +229,7 @@ void BMDPWOscillator_freqsToPhases(BMDPWOscillator *This, const float *frequenci
 	// We are generating waveforms on the interval from -1 to 1.
 	// Therefore a freqeuency of f implies a phase increment of (f * rawPolyWavelength / sampleRate)
 	// for each sample.
-	float scalingFactor = This->rawPolyWavelength / This->sampleRate;
+	float scalingFactor = This->rawPolyWavelength / This->oversampledSampleRate;
 	
 	// Here we want to running sum the phase increments into the phase buffer to
 	// get the phases.
@@ -353,11 +374,20 @@ void BMDPWOscillator_process(BMDPWOscillator *This, const float *frequencies, fl
 	// generate the integrated waveform
 	BMDPWOscillator_integratedWaveform(This, frequencies, This->b1, lengthOS);
 	
-	// scale the volume
+	// get the volume scaling signal
 	BMDPWOscillator_ampScales(This, frequencies, This->b2, lengthOS);
-	vDSP_vmul(This->b1, 1, This->b2, 1, This->b1, 1, lengthOS);
 	
 	// smooth the volume scaling with a lowpass filter
+	BMMultiLevelBiquad_processBufferMono(&This->smoothingFilter, This->b2, This->b2, lengthOS);
+	
+	// delay the integrated waveform signal to compensate for group delay of the smoothing filter
+	const float* delayInput [1] = {This->b1};
+	float* delayOutput [1] = {This->b1};
+	size_t numChannels = 1;
+	BMShortSimpleDelay_process(&This->groupDelayCompensator, delayInput, delayOutput, numChannels, lengthOS);
+	
+	// apply the volume scaling to the integrated waveform signal
+	vDSP_vmul(This->b1, 1, This->b2, 1, This->b1, 1, lengthOS);
 	
 	// differentiate
 	BMFIRFilter_process(&This->differentiator, This->b1, This->b1, lengthOS);
