@@ -34,10 +34,8 @@
 enum BMDPWOscillatorType {BMDPWO_SAW};
 
 typedef struct BMDPWOscillator {
-	BMFIRFilter differentiator;
+	BMFIRFilter differentiator, scalingFilter;
 	BMDownsampler downsampler;
-	BMMultiLevelBiquad smoothingFilter;
-	BMShortSimpleDelay groupDelayCompensator;
 	
 	float outputSampleRate, oversampledSampleRate, nextStartPhase, rawPolyWavelength;
 	size_t differentiationOrder, integrationOrder, oversampleFactor;

@@ -47,22 +47,6 @@ void BMDPWOscillator_init(BMDPWOscillator *This,
 	
 	// init the finite-difference differentiator
 	BMDPWOscillator_initDifferentiator(This);
-	
-	// init a smoothing filter to avoid abrupt changes in volume during frequency sweeps
-	size_t filterLevels = 2;
-	BMMultiLevelBiquad_init(&This->smoothingFilter, filterLevels, This->oversampledSampleRate, stereo, false, false);
-	
-	// don't allow volume discontinuities to contribute frequencies above 100 Hz.
-	float fc = 100.0f;
-	BMMultiLevelBiquad_setCriticallyDampedLP(&This->smoothingFilter, fc, 0, filterLevels);
-	
-	// compute the group delay of the smoothing filter at fc/2 and round to the nearest sample
-	float groupDelay = BMMultiLevelBiquad_groupDelay(&This->smoothingFilter, fc/2);
-	groupDelay = roundf(groupDelay);
-	
-	// configure a short delay to compensate for the group delay
-	size_t numChannels = 1;
-	BMShortSimpleDelay_init(&This->groupDelayCompensator, numChannels, (size_t)groupDelay);
 }
 
 
@@ -72,8 +56,7 @@ void BMDPWOscillator_init(BMDPWOscillator *This,
 void BMDPWOscillator_free(BMDPWOscillator *This){
 	BMDownsampler_free(&This->downsampler);
 	BMFIRFilter_free(&This->differentiator);
-	BMMultiLevelBiquad_free(&This->smoothingFilter);
-	BMShortSimpleDelay_free(&This->groupDelayCompensator);
+    BMFIRFilter_free(&This->scalingFilter);
 	
 	free(This->b1);
 	This->b1 = NULL;
@@ -149,6 +132,14 @@ void BMDPWOscillator_initDifferentiator(BMDPWOscillator *This){
 	
 	// init the FIR filter that will process the differentiation
 	BMFIRFilter_init(&This->differentiator, finiteDifferenceKernel, kernelLength);
+    
+    // repurpose the difference kernel to be used as a smoothing filter
+    vDSP_vabs(finiteDifferenceKernel, 1, finiteDifferenceKernel, 1, kernelLength);
+    float m,s;
+    vDSP_normalize(finiteDifferenceKernel, 1, finiteDifferenceKernel, 1, &m, &s, kernelLength);
+    
+    // init the smoothing filter
+    BMFIRFilter_init(&This->scalingFilter, finiteDifferenceKernel, kernelLength);
 }
 
 
@@ -215,8 +206,6 @@ void BMDPWOscillator_ampScales(BMDPWOscillator *This, const float *frequencies, 
 	
 	// scale and output
 	vDSP_vsmul(scales, 1, &scalingConstant, scales, 1, length);
-	
-	vDSP_vramp(
 }
 
 
@@ -377,20 +366,14 @@ void BMDPWOscillator_process(BMDPWOscillator *This, const float *frequencies, fl
 	// get the volume scaling signal
 	BMDPWOscillator_ampScales(This, frequencies, This->b2, lengthOS);
 	
-	// smooth the volume scaling with a lowpass filter
-	BMMultiLevelBiquad_processBufferMono(&This->smoothingFilter, This->b2, This->b2, lengthOS);
-	
-	// delay the integrated waveform signal to compensate for group delay of the smoothing filter
-	const float* delayInput [1] = {This->b1};
-	float* delayOutput [1] = {This->b1};
-	size_t numChannels = 1;
-	BMShortSimpleDelay_process(&This->groupDelayCompensator, delayInput, delayOutput, numChannels, lengthOS);
-	
-	// apply the volume scaling to the integrated waveform signal
-	vDSP_vmul(This->b1, 1, This->b2, 1, This->b1, 1, lengthOS);
+    // apply a smoothing filter to the scaling signal
+    BMFIRFilter_process(&This->scalingFilter, This->b2, This->b2, lengthOS);
 	
 	// differentiate
 	BMFIRFilter_process(&This->differentiator, This->b1, This->b1, lengthOS);
+    
+    // apply the volume scaling to the integrated waveform signal
+    vDSP_vmul(This->b1, 1, This->b2, 1, This->b1, 1, lengthOS);
 	
 	// downsample
 	BMDownsampler_processBufferMono(&This->downsampler, This->b1, output, lengthOS);
