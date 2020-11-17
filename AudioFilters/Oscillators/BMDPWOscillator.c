@@ -32,18 +32,26 @@ void BMDPWOscillator_init(BMDPWOscillator *This,
 	This->oversampleFactor = oversampleFactor;
 	This->nextStartPhase = 0.0f;
 	
-	// this is the wavelength of the polynomial we use to generate the
-	// integrated waveform.
-	This->rawPolyWavelength = 2.0f;
+
+    
+    This->bufferLength = BM_BUFFER_CHUNK_SIZE * oversampleFactor;
 	
 	// allocate memory for two buffers
-	This->b1 = malloc(oversampleFactor * BM_BUFFER_CHUNK_SIZE * sizeof(float));
-	This->b2 = malloc(oversampleFactor * BM_BUFFER_CHUNK_SIZE * sizeof(float));
+	This->b1 = malloc(This->bufferLength * sizeof(float));
+	This->b2 = malloc(This->bufferLength * sizeof(float));
+    This->b3 = malloc(This->bufferLength * sizeof(float));
+    This->rawPolyWavelength = malloc(This->bufferLength * sizeof(float));
+    
+    // this is the wavelength of the polynomial we use to generate the
+    // integrated waveform.
+    float two = 2.0f;
+    vDSP_vfill(&two, This->rawPolyWavelength, 1, This->bufferLength);
 	
 	// init the downsampler for oversampled processing
 	bool stereo = false;
 	assert(isPowerOfTwo(oversampleFactor) && oversampleFactor > 0);
 	BMDownsampler_init(&This->downsampler, stereo, oversampleFactor, BMRESAMPLER_FULL_SPECTRUM);
+    BMUpsampler_init(&This->upsampler, stereo, oversampleFactor, BMRESAMPLER_INPUT_96KHZ);
 	
 	// init the finite-difference differentiator
 	BMDPWOscillator_initDifferentiator(This);
@@ -54,6 +62,7 @@ void BMDPWOscillator_init(BMDPWOscillator *This,
 
 
 void BMDPWOscillator_free(BMDPWOscillator *This){
+    BMUpsampler_free(&This->upsampler);
 	BMDownsampler_free(&This->downsampler);
 	BMFIRFilter_free(&This->differentiator);
     BMFIRFilter_free(&This->scalingFilter);
@@ -62,6 +71,11 @@ void BMDPWOscillator_free(BMDPWOscillator *This){
 	This->b1 = NULL;
 	free(This->b2);
 	This->b2 = NULL;
+    free(This->b3);
+    This->b3 = NULL;
+    
+    free(This->rawPolyWavelength);
+    This->rawPolyWavelength = NULL;
 }
 
 
@@ -218,7 +232,7 @@ void BMDPWOscillator_freqsToPhases(BMDPWOscillator *This, const float *frequenci
 	// We are generating waveforms on the interval from -1 to 1.
 	// Therefore a freqeuency of f implies a phase increment of (f * rawPolyWavelength / sampleRate)
 	// for each sample.
-	float scalingFactor = This->rawPolyWavelength / This->oversampledSampleRate;
+	float scalingFactor = This->rawPolyWavelength[0] / This->oversampledSampleRate;
 	
 	// Here we want to running sum the phase increments into the phase buffer to
 	// get the phases.
@@ -229,21 +243,21 @@ void BMDPWOscillator_freqsToPhases(BMDPWOscillator *This, const float *frequenci
 	vDSP_vrsum(frequencies, 1, &scalingFactor, phases, 1, length);
 	
 	// To ensure phase continuity between buffers we adjust the start phase to
-	// match the end phase
-	vDSP_vsadd(This->b1, 1, &This->nextStartPhase, phases, 1, length);
+	// align with the end phase of the previous buffer
+	vDSP_vsadd(phases, 1, &This->nextStartPhase, phases, 1, length);
 	
 	// compute the start phase of the next buffer.
 	// note that we shift the phase to centre on zero after this. The formula
 	// below takes into account that the shift has not yet occured at this point.
 	This->nextStartPhase = phases[length-1] + frequencies[length-1]*scalingFactor;
-	This->nextStartPhase = fmodf(This->nextStartPhase, This->rawPolyWavelength);
+	This->nextStartPhase = fmodf(This->nextStartPhase, This->rawPolyWavelength[0]);
 	
 	// use floating point mod to wrap the phases into [0,rawPolyWavelength]
 	int length_i = (int)length;
-	vvfmodf(phases, phases, &This->rawPolyWavelength, &length_i);
+	vvfmodf(phases, phases, This->rawPolyWavelength, &length_i);
 	
 	// subtract to shift the phases into [-rawPolyWavelength/2,rawPolyWavelength]
-	float negHalfWavelength = This->rawPolyWavelength * -0.5f;
+	float negHalfWavelength = This->rawPolyWavelength[0] * -0.5f;
 	vDSP_vsadd(phases, 1, &negHalfWavelength, phases, 1, length);
 }
 
@@ -358,23 +372,39 @@ void BMDPWOscillator_integratedWaveform(BMDPWOscillator *This, const float *freq
 
 
 void BMDPWOscillator_process(BMDPWOscillator *This, const float *frequencies, float *output, size_t length){
-	size_t lengthOS = length * This->oversampleFactor;
-	
-	// generate the integrated waveform
-	BMDPWOscillator_integratedWaveform(This, frequencies, This->b1, lengthOS);
-	
-	// get the volume scaling signal
-	BMDPWOscillator_ampScales(This, frequencies, This->b2, lengthOS);
-	
-    // apply a smoothing filter to the scaling signal
-    BMFIRFilter_process(&This->scalingFilter, This->b2, This->b2, lengthOS);
-	
-	// differentiate
-	BMFIRFilter_process(&This->differentiator, This->b1, This->b1, lengthOS);
     
-    // apply the volume scaling to the integrated waveform signal
-    vDSP_vmul(This->b1, 1, This->b2, 1, This->b1, 1, lengthOS);
-	
-	// downsample
-	BMDownsampler_processBufferMono(&This->downsampler, This->b1, output, lengthOS);
+    size_t samplesRemainingOS = length * This->oversampleFactor;
+    size_t i=0;
+    //size_t iOS=0;
+    
+    // process in limited-length chunks
+    while(samplesRemainingOS > 0){
+        size_t samplesProcessingOS = BM_MIN(samplesRemainingOS,This->bufferLength);
+        size_t samplesProcessing = samplesProcessingOS / This->oversampleFactor;
+        
+        // upsample the frequency data
+        BMUpsampler_processBufferMono(&This->upsampler, frequencies+i, This->b3, samplesProcessing);
+        
+        // generate the integrated waveform
+        BMDPWOscillator_integratedWaveform(This, This->b3, This->b1, samplesProcessingOS);
+        
+        // get the volume scaling signal
+        BMDPWOscillator_ampScales(This, This->b3, This->b2, samplesProcessingOS);
+        
+        // apply a smoothing filter to the scaling signal
+        BMFIRFilter_process(&This->scalingFilter, This->b2, This->b2, samplesProcessingOS);
+        
+        // differentiate
+        BMFIRFilter_process(&This->differentiator, This->b1, This->b1, samplesProcessingOS);
+        
+        // apply the volume scaling to the integrated waveform signal
+        vDSP_vmul(This->b1, 1, This->b2, 1, This->b1, 1, samplesProcessingOS);
+        
+        // downsample
+        BMDownsampler_processBufferMono(&This->downsampler, This->b1, output+i, samplesProcessingOS);
+        
+        // advance pointers
+        samplesRemainingOS -= samplesProcessingOS;
+        i += samplesProcessing;
+    }
 }

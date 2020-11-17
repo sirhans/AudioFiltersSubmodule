@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include "BMFIRFilter.h"
 #include "BMDownsampler.h"
+#include "BMUpsampler.h"
 #include "BMMultiLevelBiquad.h"
 #include "BMShortSimpleDelay.h"
 
@@ -36,10 +37,12 @@ enum BMDPWOscillatorType {BMDPWO_SAW};
 typedef struct BMDPWOscillator {
 	BMFIRFilter differentiator, scalingFilter;
 	BMDownsampler downsampler;
+    BMUpsampler upsampler;
+    BMMultiLevelBiquad upsamplingLPFilter;
 	
-	float outputSampleRate, oversampledSampleRate, nextStartPhase, rawPolyWavelength;
-	size_t differentiationOrder, integrationOrder, oversampleFactor;
-	float *b1, *b2;
+	float outputSampleRate, oversampledSampleRate, nextStartPhase;
+	size_t differentiationOrder, integrationOrder, oversampleFactor, bufferLength;
+	float *b1, *b2, *b3, *rawPolyWavelength;
 } BMDPWOscillator;
 
 void BMDPWOscillator_init(BMDPWOscillator *This,
@@ -49,5 +52,7 @@ void BMDPWOscillator_init(BMDPWOscillator *This,
 						  float sampleRate);
 
 void BMDPWOscillator_free(BMDPWOscillator *This);
+
+void BMDPWOscillator_process(BMDPWOscillator *This, const float *frequencies, float *output, size_t length);
 
 #endif /* BMDPWOscillator_h */
