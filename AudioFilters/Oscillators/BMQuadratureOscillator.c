@@ -42,7 +42,7 @@ extern "C" {
     void BMQuadratureOscillator_init(BMQuadratureOscillator *This,
                                      float fHz,
                                      float sampleRate){
-        //This->sampleRate = sampleRate;
+        This->sampleRate = sampleRate;
         
         BMQuadratureOscillator_initMatrix(&This->m, fHz, sampleRate);
         
