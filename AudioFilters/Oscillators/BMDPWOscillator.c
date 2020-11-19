@@ -51,7 +51,11 @@ void BMDPWOscillator_init(BMDPWOscillator *This,
 	bool stereo = false;
 	assert(isPowerOfTwo(oversampleFactor) && oversampleFactor > 0);
 	BMDownsampler_init(&This->downsampler, stereo, oversampleFactor, BMRESAMPLER_FULL_SPECTRUM);
-    BMUpsampler_init(&This->upsampler, stereo, oversampleFactor, BMRESAMPLER_INPUT_96KHZ);
+	
+	// init the upsampler for matching the sample rate of the input to the internal
+	// oversampled rate of the oscillators
+	size_t numLevels = 3;
+	BMGaussianUpsampler_init(&This->upsampler, oversampleFactor,numLevels);
 	
 	// init the finite-difference differentiator
 	BMDPWOscillator_initDifferentiator(This);
@@ -62,7 +66,7 @@ void BMDPWOscillator_init(BMDPWOscillator *This,
 
 
 void BMDPWOscillator_free(BMDPWOscillator *This){
-    BMUpsampler_free(&This->upsampler);
+	BMGaussianUpsampler_free(&This->upsampler);
 	BMDownsampler_free(&This->downsampler);
 	BMFIRFilter_free(&This->differentiator);
     BMFIRFilter_free(&This->scalingFilter);
@@ -256,7 +260,7 @@ void BMDPWOscillator_freqsToPhases(BMDPWOscillator *This, const float *frequenci
 	int length_i = (int)length;
 	vvfmodf(phases, phases, This->rawPolyWavelength, &length_i);
 	
-	// subtract to shift the phases into [-rawPolyWavelength/2,rawPolyWavelength]
+	// subtract to shift the phases into [-rawPolyWavelength/2,rawPolyWavelength/2]
 	float negHalfWavelength = This->rawPolyWavelength[0] * -0.5f;
 	vDSP_vsadd(phases, 1, &negHalfWavelength, phases, 1, length);
 }
@@ -383,7 +387,7 @@ void BMDPWOscillator_process(BMDPWOscillator *This, const float *frequencies, fl
         size_t samplesProcessing = samplesProcessingOS / This->oversampleFactor;
         
         // upsample the frequency data
-        BMUpsampler_processBufferMono(&This->upsampler, frequencies+i, This->b3, samplesProcessing);
+        BMGaussianUpsampler_processMono(&This->upsampler, frequencies+i, This->b3, samplesProcessing);
         
         // generate the integrated waveform
         BMDPWOscillator_integratedWaveform(This, This->b3, This->b1, samplesProcessingOS);

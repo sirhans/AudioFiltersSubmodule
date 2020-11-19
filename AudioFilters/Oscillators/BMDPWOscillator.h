@@ -28,16 +28,16 @@
 #include <stdio.h>
 #include "BMFIRFilter.h"
 #include "BMDownsampler.h"
-#include "BMUpsampler.h"
 #include "BMMultiLevelBiquad.h"
 #include "BMShortSimpleDelay.h"
+#include "BMGaussianUpsampler.h"
 
 enum BMDPWOscillatorType {BMDPWO_SAW};
 
 typedef struct BMDPWOscillator {
 	BMFIRFilter differentiator, scalingFilter;
 	BMDownsampler downsampler;
-    BMUpsampler upsampler;
+	BMGaussianUpsampler upsampler;
     BMMultiLevelBiquad upsamplingLPFilter;
 	
 	float outputSampleRate, oversampledSampleRate, nextStartPhase;
