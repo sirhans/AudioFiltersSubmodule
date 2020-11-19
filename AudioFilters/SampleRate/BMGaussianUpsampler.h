@@ -13,9 +13,12 @@
 
 #include <stdio.h>
 #include "BMSlidingWindowSum.h"
+#include "BMFIRFilter.h"
 
 typedef struct BMGaussianUpsampler {
 	BMSlidingWindowSum *swSum;
+	// BMFIRFilter *aaFilter;
+	
 	size_t upsampleFactor, numLevels;
 } BMGaussianUpsampler;
 
