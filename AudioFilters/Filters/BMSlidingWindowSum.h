@@ -12,10 +12,10 @@
 
 #include <stdio.h>
 #include "Constants.h"
+#include "TPCircularBuffer.h"
 
 typedef struct BMSlidingWindowSum {
-	float *buffer;
-	float prevSum;
+	TPCircularBuffer buffer;
 	size_t windowSize;
 } BMSlidingWindowSum;
 

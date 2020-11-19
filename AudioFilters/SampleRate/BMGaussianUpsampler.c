@@ -43,12 +43,12 @@ void BMGaussianUpsampler_processMono(BMGaussianUpsampler *This, const float *inp
     // set output to zero
     memset(output,0,sizeof(float)*outputLength);
     
-    // copy the input samples to the output with scaling factor
-    float scale = powf(This->upsampleFactor,This->numLevels-1);
+    // copy the input samples to the output with scaling factor and stride for upsampling
+    float scale = 1.0f / powf(This->upsampleFactor,This->numLevels-1);
     vDSP_vsmul(input, 1, &scale, output, This->upsampleFactor, inputLength);
     
 	// gaussian kernel antialias filter implemented by a series of sliding
 	// window sum operations
 	for(size_t i=0; i<This->numLevels; i++)
-		BMSlidingWindowSum_processMono(&This->swSum[i], output, output, inputLength);
+		BMSlidingWindowSum_processMono(&This->swSum[i], output, output, inputLength*This->upsampleFactor);
 }
