@@ -17,7 +17,7 @@
 #include "BMInterleaver.h"
 #include "Constants.h"
 
-#define BM_UPSAMPLER_CHUNK_SIZE BM_BUFFER_CHUNK_SIZE * 4
+#define BM_UPSAMPLER_CHUNK_SIZE BM_BUFFER_CHUNK_SIZE * 8
 
 
 
@@ -50,8 +50,8 @@ size_t BMIIRUpsampler2x_init (BMIIRUpsampler2x *This,
     
     // set up the filters
     float sampleRate = 48000.0f; // the filters will ignore this, but we have to set it to some dummy value.
-    BMMultiLevelBiquad_init(&This->even, This->numBiquadStages, sampleRate, stereo, false, false);
-    BMMultiLevelBiquad_init(&This->odd, This->numBiquadStages, sampleRate, stereo, false, false);
+    BMMultiLevelBiquad_init(&This->even, This->numBiquadStages, sampleRate, stereo, true, false);
+    BMMultiLevelBiquad_init(&This->odd, This->numBiquadStages, sampleRate, stereo, true, false);
     BMIIRUpsampler2x_setCoefs(This, coefficientArray);
     
     
@@ -90,9 +90,9 @@ double* BMIIRUpsampler2x_genCoefficients(BMIIRUpsampler2x *This, float minStopba
     
     printf("BMUpsampler: numCoefficients before rounding: %zu\n",This->numCoefficients);
     
-//    // if numCoefficients is not divisible by four, increase to the nearest multiple of four
-//    if(This->numCoefficients % 4 != 0)
-//        This->numCoefficients += (4 - This->numCoefficients%4);
+    //    // if numCoefficients is not divisible by four, increase to the nearest multiple of four
+    //    if(This->numCoefficients % 4 != 0)
+    //        This->numCoefficients += (4 - This->numCoefficients%4);
     
     // if numCoefficients is not divisible by two, increase to the nearest multiple of two
     if(This->numCoefficients % 2 != 0)
@@ -114,8 +114,8 @@ double* BMIIRUpsampler2x_genCoefficients(BMIIRUpsampler2x *This, float minStopba
 
 void BMIIRUpsampler2x_free (BMIIRUpsampler2x *This){
     
-    BMMultiLevelBiquad_destroy(&This->even);
-    BMMultiLevelBiquad_destroy(&This->odd);
+    BMMultiLevelBiquad_free(&This->even);
+    BMMultiLevelBiquad_free(&This->odd);
     
     free(This->b1L);
     free(This->b2L);
@@ -135,7 +135,7 @@ void BMIIRUpsampler2x_free (BMIIRUpsampler2x *This){
 
 void BMIIRUpsampler2x_setCoefs (BMIIRUpsampler2x *This, const double* coef_arr){
     assert (coef_arr != 0);
-
+    
     /*
      * In theory, the ordering of the filters is irrelevant. We simply need
      * to put all the allpass filters with even numbered coefficients into

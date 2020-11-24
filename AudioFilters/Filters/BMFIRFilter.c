@@ -126,7 +126,7 @@ extern "C" {
             
             // for non-symmetric kernel, do it this way:
             else
-                vDSP_conv(tail, 1, This->coefficients, -1, output, 2, samplesProcessing, This->length);
+                vDSP_conv(tail, 1, This->coefficients+This->length-1, -1, output, 1, samplesProcessing, This->length);
             
             
             // advance the read pointer

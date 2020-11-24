@@ -24,7 +24,7 @@ extern "C" {
 #define BM_LEVEL_METER_DEFAULT_SLOW_RELEASE_TIME 5.0
     
 	
-	typedef enum bmMetreType {metreTypeRms, metreTypePeak, metreTypeCombined} bmMetreType;
+	
     
     /*!
      *BMLevelMeter_setBufferSize
@@ -79,9 +79,9 @@ extern "C" {
      *BMLevelMeter_processStereo
      */
     void BMLevelMeter_processStereo(BMLevelMeter *This,
-                                    const float* inputL, const float* inputR,
-                                    float* fastPeakL, float* fastPeakR,
-                                    float* slowPeakL, float* slowPeakR,
+                                    const float *inputL, const float* inputR,
+                                    float *fastPeakL, float *fastPeakR,
+                                    float *slowPeakL, float *slowPeakR,
                                     size_t bufferLength,
                                     bmMetreType metreType){
         
@@ -136,7 +136,7 @@ extern "C" {
 			BMReleaseFilter_processBuffer(&slowR[0], &maxMagnitudeR, slowPeakR, 1);
 			for(size_t i=1; i<BM_PEAK_METER_NUM_SLOW_RELEASE_FILTERS; i++){
 				BMReleaseFilter_processBuffer(&slowL[i], slowPeakL, slowPeakL, 1);
-				BMReleaseFilter_processBuffer(&slowR[i], slowPeakL, slowPeakR, 1);
+				BMReleaseFilter_processBuffer(&slowR[i], slowPeakR, slowPeakR, 1);
 			}
 		}
 		// process the combined metre type
@@ -310,7 +310,7 @@ extern "C" {
                                    fastReleaseL_dB, fastReleaseR_dB,
                                    slowReleaseL_dB, slowReleaseR_dB,
                                    bufferLength,
-                                   false);
+                                   metreTypePeak);
     }
     
     
@@ -327,7 +327,7 @@ extern "C" {
                                    fastReleaseL_dB, fastReleaseR_dB,
                                    slowReleaseL_dB, slowReleaseR_dB,
                                    bufferLength,
-                                   true);
+                                   metreTypeRms);
     }
 	
 	

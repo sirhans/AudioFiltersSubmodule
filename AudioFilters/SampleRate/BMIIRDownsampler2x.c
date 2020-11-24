@@ -17,7 +17,7 @@
 #include "BMInterleaver.h"
 #include "Constants.h"
 
-#define BM_DOWNSAMPLER_CHUNK_SIZE BM_BUFFER_CHUNK_SIZE * 4
+#define BM_DOWNSAMPLER_CHUNK_SIZE BM_BUFFER_CHUNK_SIZE * 8
 
 // forward declaration of internal function
 double* BMIIRDownsampler2x_genCoefficients(BMIIRDownsampler2x *This, float minStopbandAttenuationDb, float maxTransitionBandwidth);
@@ -40,8 +40,8 @@ size_t BMIIRDownsampler2x_init (BMIIRDownsampler2x *This,
     
     // set up the filters
     float sampleRate = 48000.0f; // the filters will ignore this, but we have to set it to some dummy value.
-    BMMultiLevelBiquad_init(&This->even, This->numBiquadStages, sampleRate, stereo, false, false);
-    BMMultiLevelBiquad_init(&This->odd, This->numBiquadStages, sampleRate, stereo, false, false);
+    BMMultiLevelBiquad_init(&This->even, This->numBiquadStages, sampleRate, stereo, true, false);
+    BMMultiLevelBiquad_init(&This->odd, This->numBiquadStages, sampleRate, stereo, true, false);
     BMIIRDownsampler2x_setCoefs(This, coefficientArray);
     
     free(coefficientArray);
@@ -115,8 +115,8 @@ double* BMIIRDownsampler2x_genCoefficients(BMIIRDownsampler2x *This, float minSt
 
 void BMIIRDownsampler2x_free (BMIIRDownsampler2x *This){
     
-    BMMultiLevelBiquad_destroy(&This->even);
-    BMMultiLevelBiquad_destroy(&This->odd);
+    BMMultiLevelBiquad_free(&This->even);
+    BMMultiLevelBiquad_free(&This->odd);
     
     free(This->b1L);
     free(This->b2L);

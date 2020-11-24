@@ -18,6 +18,8 @@
 #include "Constants.h"
 #include <simd/simd.h>
 #include "BMFastHadamard.h"
+#include <mactypes.h>
+#include "BMSorting.h"
 
 
 #ifdef __cplusplus
@@ -39,9 +41,11 @@ extern "C" {
     void BMReverbProcessWetSample(struct BMReverb *This, float inputL, float inputR, float* outputL, float* outputR);
     void BMReverbUpdateNumDelayUnits(struct BMReverb *This);
     void BMReverbPointersToNull(struct BMReverb *This);
-    void BMReverbRandomiseOrder(float* list, size_t seed, size_t stride, size_t length);
+    void BMReverbRandomiseOrderST(size_t* list, size_t seed, size_t stride, size_t length);
+	void BMReverbRandomiseOrderF(float* list, size_t seed, size_t stride, size_t length);
     void BMReverbInitDelayOutputSigns(struct BMReverb *This);
     void BMReverbUpdateSettings(struct BMReverb *This);
+	void BMReverbSetMidScoopGain(struct BMReverb *This, float gainDb);
     
     
     
@@ -54,7 +58,7 @@ extern "C" {
         BMReverbPointersToNull(This);
         
         // initialize the main filter setup
-        BMMultiLevelBiquad_init(&This->mainFilter, 2, sampleRate, true, true, false);
+        BMMultiLevelBiquad_init(&This->mainFilter, 3, sampleRate, true, true, false);
 		
 		// initialize the wet/dry mixer
 		BMWetDryMixer_init(&This->wetDryMixer,sampleRate);
@@ -75,6 +79,7 @@ extern "C" {
         This->newNumDelayUnits = BMREVERB_NUMDELAYUNITS;
         This->preDelayUpdate = false;
         BMReverbSetHighPassFC(This, BMREVERB_HIGHPASS_FC);
+		BMReverbSetMidScoopGain(This,BMREVERB_MID_SCOOP_GAIN);
         BMReverbSetLowPassFC(This, BMREVERB_LOWPASS_FC);
         BMReverbSetWetMix(This, BMREVERB_WETMIX);
         BMReverbSetStereoWidth(This, BMREVERB_STEREOWIDTH);
@@ -194,9 +199,9 @@ extern "C" {
         // randomise the order of the signs for each channel
         unsigned int seed = 17;
         // left
-        BMReverbRandomiseOrder(((float*)&This->delayOutputSigns), seed, 2, This->halfNumDelays);
+        BMReverbRandomiseOrderF(((float*)&This->delayOutputSigns), seed, 2, This->halfNumDelays);
         //right
-        BMReverbRandomiseOrder(((float*)&This->delayOutputSigns)+1, seed+1, 2,  This->halfNumDelays);
+        BMReverbRandomiseOrderF(((float*)&This->delayOutputSigns)+1, seed+1, 2,  This->halfNumDelays);
     }
     
     
@@ -205,7 +210,7 @@ extern "C" {
     void BMReverbUpdateRT60DecayTime(struct BMReverb *This){
         for (size_t i=0; i<This->numDelays; i++){
             // set gain for normal operation
-            This->decayGainAttenuation[i/4][i%4] = BMReverbDelayGainFromRT60(This->rt60, This->delayTimes[i]);
+            This->decayGainAttenuation[i/4][i%4] = BMReverbDelayGainFromRT60(This->rt60, (float)This->bufferLengths[i]/(float)This->sampleRate);
         }
     }
     
@@ -218,10 +223,8 @@ extern "C" {
         This->settingsQueuedForUpdate = true;
     }
     
-    
-    
-    
-    
+
+	
     
     
     // sets the cutoff frequency of the high shelf filters that increase
@@ -273,7 +276,7 @@ extern "C" {
     
     // updates the high shelf filters after a change in FC or gain
     void BMReverbUpdateDecayHighShelfFilters(struct BMReverb *This){
-        BMFirstOrderArray4x4_setHighDecayFDN(&This->HSFArray, This->delayTimes, This->highShelfFC, This->rt60, This->rt60/This->hfDecayMultiplier, This->numDelays);
+        BMFirstOrderArray4x4_setHighDecayFDN(&This->HSFArray, This->bufferLengths, This->highShelfFC, This->rt60, This->rt60/This->hfDecayMultiplier, This->numDelays);
     }
     
     
@@ -281,7 +284,7 @@ extern "C" {
     
     // updates the low shelf filters after a change in FC or gain
     void BMReverbUpdateDecayLowShelfFilters(struct BMReverb *This){
-        BMFirstOrderArray4x4_setLowDecayFDN(&This->LSFArray, This->delayTimes, This->lowShelfFC, This->rt60, This->rt60/This->lfDecayMultiplier, This->numDelays);
+        BMFirstOrderArray4x4_setLowDecayFDN(&This->LSFArray, This->bufferLengths, This->lowShelfFC, This->rt60, This->rt60/This->lfDecayMultiplier, This->numDelays);
     }
     
     
@@ -345,140 +348,173 @@ extern "C" {
             }
         }
     }
-    
-    
-    
-    
-    float BMReverbRandomInRange(float min, float max){
-        double random = (double)arc4random() / (double)UINT32_MAX;
-        return min + fmod(random, max - min);
-    }
-    
-    
-    
-    
-    
-    /*!
-     *BMReverbRandomsInRange
-     *
-     * @abstract generate length random floats between min and max, ensuring that the average is (max-min)/2 and that there will be a value equal to min
-     */
-    void BMReverbRandomsInRange(float min, float max, float* randomOutput, size_t length){
-		// set the first value equal to min
-		randomOutput[0] = min;
-		
-		// set the target mean half way between the two limits
-        float targetMean = (max-min)/2.0f;
-        float actualMean = min;
-		
-        size_t i;
-        for(i=1; i<length-1; i++){
-            float tempMin = min;
-            float tempMax = max;
-			
-			// how much does the mean have to shift?
-			float meanShift = targetMean - actualMean;
-			// how much will the next random number influence the mean?
-			float influence = 1.0f / ((float)i+1.0f);
-			// how much does the mean of the next number have to shift, taking into account the influence of that number?
-			meanShift /= influence;
-			
-            // if the actual mean is below the target mean, increase the min boundary
-            if(actualMean < targetMean){
-                // how much does the min have to shift in order to affect the desired mean shift on the next number?
-                float minShift = meanShift * 2.0f;
-                // set the min for the next random number
-                tempMin = min + minShift;
-            }
-            else{
-                // how much does the min have to shift in order to affect the desired mean shift on the next number?
-                float maxShift = meanShift * 2.0f;
-                // set the min for the next random number
-                tempMax = max + maxShift;
-				// prevent the max from exceeding the min
-				if(tempMax < min)
-					tempMax = min + 0.05 * (max - min);
-            }
-            
-            // generate the next random number
-            randomOutput[i] = BMReverbRandomInRange(tempMin, tempMax);
-            
-            // get the mean value of the numbers we have so far
-            vDSP_meanv(randomOutput, 1, &actualMean, i+1);
-        }
-        
-        // set the last number deterministically so that the actual mean is exactly equal to the target mean
-        randomOutput[i] = targetMean + (targetMean - actualMean);
-    }
-    
 
-    
-    
-    
-    // https://rosettacode.org/wiki/Category:C
-    void BMReverbInsertionSort(float* a, int n){
-        for(size_t i = 1; i < n; ++i) {
-            float tmp = a[i];
-            size_t j = i;
-            while(j > 0 && tmp < a[j - 1]) {
-                a[j] = a[j - 1];
-                --j;
-            }
-            a[j] = tmp;
-        }
+	
+	
+	
+	
+		
+	/*!
+	 *BMReverbRandomInRangeUI
+	 *
+	 * @returns a random number in [min,max]
+	 */
+    size_t BMReverbRandomInRangeUI(size_t min, size_t max){
+        //size_t output = min + (size_t)arc4random_uniform(1+(UInt32)max-(UInt32)min);
+		size_t output = min + (int)rand() % (1 + (int)max - (int)min);
+		assert(output >= min && output <=max);
+		return output;
     }
-    
+	
+	
+	
 	
 	/*!
 	 *BMReverbContains
 	 *
-	 * @returns true if x is found in the  first length elements of A
+	 * @returns true if x is in the first length elements of A
 	 */
-	bool BMReverbContains(size_t *A, size_t x, size_t length){
+	bool BMReverbContains(size_t *A, int64_t x, size_t length){
 		for(size_t i=0; i<length; i++)
-			if(A[i]==x) return true;
+			if((int64_t)A[i]==x) return true;
 		return false;
 	}
+    
 	
+	double BMReverbDelayGainFromRT30(double rt30, double delayTime){
+		return pow(10.0, (-2.0 * delayTime) / rt30 );
+	}
+	
+	
+	double BMReverbDelayGainFromRT60(double rt60, double delayTime){
+		return pow(10.0, (-3.0 * delayTime) / rt60 );
+	}
 	
     
 	
 	/*!
-	 *BMReverbEliminateDuplicates
+	 *BMReverbRandomsInRange
 	 *
-	 * @abstract eliminates duplicates by incrementing until there are none left
+	 * @abstract generate length random floats between min and max, ensuring that the average is (max-min)/2 and that there will be values equal to min and max
 	 */
-	void BMReverbEliminateDuplicates(size_t *A, size_t length){
-		for(size_t i=1; i<length; i++)
-			while(BMReverbContains(A,A[i],i))
-				A[i]++;
+	void BMReverbRandomsInRange(size_t min, size_t max, size_t *randomOutput, size_t length){
+		// assert that it is possible to generate length unique values
+		assert(max - min >= length);
+		
+		// assign the first value to min and asssign innerLength to reflect the
+		// number of values still left to generate
+		randomOutput[0] = min;
+		size_t innerLength = length - 1;
+		
+		// if length is more than one, assign the last value to max and decrement innerLength
+		if(length > 1){
+			randomOutput[length-1] = max;
+			innerLength--;
+		}
+		
+		// we will not touch the first and last values from now on so we compute
+		// new bounds to ensure that we don't modify the values already computed
+		size_t innerMin = min+1;
+		size_t innerMax = max-1;
+		size_t* innerOutput = randomOutput + 1;
+		
+		// set the remaining values equal to the midpoint
+		size_t midPoint = (innerMax + innerMin) / 2;
+		for(size_t i=0; i<innerLength; i++)
+			innerOutput[i] = midPoint;
+		
+		// Randomise the positions of the remaining values. The method below
+		// maintains the mean delay time because it always shifts values in
+		// pairs such that one value decreases by n samples while the other
+		// increases by the same amount.
+		// We start the count from i=1 so that no shifts occur when there are
+		// only three delay lines because with three delays no randomisation is
+		// possible without affecting the mean, since we have already fixed the
+		// min and max values.
+		size_t spread = innerMax - innerMin;
+		for(size_t i=1; i<innerLength; i++){
+			// continue attempting random shifts until we find a shift that
+			// stays in bounds and doesn't duplicate any delay lengths
+			bool didShift = false;
+			while(!didShift){
+				// select an element at random
+				//int64_t randomIndex = arc4random_uniform((uint32_t)innerLength);
+				int64_t randomIndex = rand() % (int64_t)innerLength;
+				// generate a random shift in [-spread, spread]
+				//int randomShift = (int)arc4random_uniform((uint32_t)spread*2) - (int)spread;
+				int randomShift = ((int)rand() % (int)spread*2) - (int)spread;
+				
+				// check the validity of the proposed shift on the pair {i,randomIndex}
+				//
+				// can we shift the ith element like this?
+				int64_t newLengthForI = innerOutput[i] + randomShift;
+				int64_t newLengthForRandomIndex = innerOutput[randomIndex] - randomShift;
+				bool canShift = true;
+				// can't shift if randomIndex == i or randomShift == 0
+				if(randomIndex == i || randomShift == 0)
+					canShift = false;
+				// can't shift the ith element out of bounds
+				if(newLengthForI <= innerMin || newLengthForI >= innerMax)
+					canShift = false;
+				// can't shift the ith element if it would cause duplicate delay times
+				if(BMReverbContains(innerOutput,newLengthForI,length))
+					canShift = false;
+				// can we shift the element at randomIndex like this?
+				// can't shift it out of bounds
+				if(newLengthForRandomIndex <= innerMin ||
+				   newLengthForRandomIndex >= innerMax)
+					canShift = false;
+				// can't shift if it would cause duplicate delay times
+				if(BMReverbContains(innerOutput,newLengthForRandomIndex,length))
+					canShift = false;
+				
+				// if the pair of shifts is valid, do it
+				if(canShift){
+					innerOutput[i] = newLengthForI;
+					innerOutput[randomIndex] = newLengthForRandomIndex;
+					didShift = true;
+				}
+			}
+		}
+        
+        // sort the output
+        BMInsertionSort_size_t(randomOutput, length);
+		
+//		bool sorted = true;
+//		for(size_t i=1; i<length; i++)
+//			if(randomOutput[i]<randomOutput[i-1]) sorted = false;
+//		if(!sorted)
+//			printf("not sorted\n");
+//		assert(sorted)
 	}
+    
 	
 	
     
     
     
-    // generate an evenly spaced but randomly jittered list of times between min and max
+    // generate a random list of times between min and max
     void BMReverbUpdateDelayTimes(struct BMReverb *This){
+		
+		// convert the min and max delay times to sample indices
+		size_t minDelay = This->minDelay_seconds * This->sampleRate;
+		size_t maxDelay = This->maxDelay_seconds * This->sampleRate;
         
 		// generate random delay times int the specified range
-        BMReverbRandomsInRange(This->minDelay_seconds, This->maxDelay_seconds,This->delayTimes,This->numDelays);
+        BMReverbRandomsInRange(minDelay, maxDelay,This->bufferLengths,This->numDelays);
         
 		// sort so that we can ensure that the left and right channels get approximately equal average delay time
-        BMReverbInsertionSort(This->delayTimes, (int)This->numDelays);
+        BMInsertionSort_size_t(This->bufferLengths, This->numDelays);
         
         // randomise the order of the list of delay times
         // left channel
-        BMReverbRandomiseOrder(&This->delayTimes[0], 1, 2, This->halfNumDelays);
+        BMReverbRandomiseOrderST(&This->bufferLengths[0], 1, 2, This->halfNumDelays);
         // right channel
-        BMReverbRandomiseOrder(&This->delayTimes[1], 17, 2, This->halfNumDelays);
-        
-        // convert times from milliseconds to samples
-        for (size_t i = 0; i < This->numDelays; i++)
-            This->bufferLengths[i] = (size_t)round(This->sampleRate*This->delayTimes[i]);
+        BMReverbRandomiseOrderST(&This->bufferLengths[1], 17, 2, This->halfNumDelays);
 		
-		// ensure that no two delays have the same length
-		BMReverbEliminateDuplicates(This->bufferLengths,This->numDelays);
+		// double-check the bounds
+		for(size_t i=0; i<This->numDelays; i++)
+			assert(This->bufferLengths[i] >= minDelay && This->bufferLengths[i] <= maxDelay);
 		
 		// count the total number of samples in all delays
 		This->totalSamples = 0;
@@ -548,8 +584,26 @@ extern "C" {
     
     
     
-    // randomise the order of a list of floats
-    void BMReverbRandomiseOrder(float* list, size_t seed, size_t stride, size_t length){
+    // randomise the order of a list of size_t uints
+    void BMReverbRandomiseOrderST(size_t* list, size_t seed, size_t stride, size_t length){
+        // seed the random number generator so we get the same result every time
+        srand((int)seed);
+        
+        for (int i = 0; i<length; i++) {
+            int j = (int)stride*(rand() % (int)(length/stride));
+            
+            // swap i with j
+            size_t temp = list[i*stride];
+            list[i*stride] = list[j];
+            list[j] = temp;
+        }
+    }
+	
+	
+	
+	
+	// randomise the order of a list of floats
+	void BMReverbRandomiseOrderF(float* list, size_t seed, size_t stride, size_t length){
         // seed the random number generator so we get the same result every time
         srand((int)seed);
         
@@ -563,6 +617,8 @@ extern "C" {
         }
     }
     
+	
+	
     
     
     void BMReverbInitIndices(struct BMReverb *This){
@@ -600,6 +656,12 @@ extern "C" {
     void BMReverbSetLowPassFC(struct BMReverb *This, float fc){
         BMMultiLevelBiquad_setLowPass6db(&This->mainFilter, fc, 1);
     }
+	
+	
+	
+	void BMReverbSetMidScoopGain(struct BMReverb *This, float gainDb){
+		BMMultiLevelBiquad_setBellQ(&This->mainFilter, BMREVERB_MID_SCOOP_FC, BMREVERB_MID_SCOOP_Q, gainDb, 2);
+	}
     
     
     
@@ -618,7 +680,7 @@ extern "C" {
         free(This->leftOutputTemp);
         free(This->dryL);
         free(This->dryR);
-        BMMultiLevelBiquad_destroy(&This->mainFilter);
+        BMMultiLevelBiquad_free(&This->mainFilter);
         
         BMReverbPointersToNull(This);
     }

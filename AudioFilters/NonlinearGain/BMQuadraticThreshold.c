@@ -93,8 +93,12 @@ void BMQuadraticThreshold_lowerBuffer(BMQuadraticThreshold *This,
     vDSP_vpoly(This->coefficients, 1, output, 1, output, 1, numFrames, 2);
     
     // where the input is greater than the polynomial output, return the input
-    // ** *This works because the output has been clipped ***
+    // ***This works because the output has been clipped ***
     vDSP_vmax(input,1,output,1,output,1,numFrames);
+//    for(int i=0;i<numFrames;i++){
+//        if(input[i]>This->lPlusW)
+//            output[i] = input[i];
+//    }
 }
 
 

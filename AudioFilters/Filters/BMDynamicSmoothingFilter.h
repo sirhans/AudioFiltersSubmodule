@@ -26,25 +26,72 @@ extern "C" {
 #define BMDynamicSmoothingFilter_h
 
 #include <stdio.h>
-    
-    typedef struct BMDynamicSmoothingFilter {
-        float low1z, low2z, g0, sensitivity;
-    } BMDynamicSmoothingFilter;
-    
-    void BMDynamicSmoothingFilter_processBuffer(BMDynamicSmoothingFilter *This,
-                                               const float* input,
-                                               float* output,
-                                               size_t numSamples);
-    
-    /*
-     * Use this if you don't know what settings are approrpriate
-     */
-    void BMDynamicSmoothingFilter_initDefault(BMDynamicSmoothingFilter *This,
-                                              float sampleRate);
-    
-    void BMDynamicSmoothingFilter_init(BMDynamicSmoothingFilter *This,
-                                        float sensitivity,
-                                        float minFc,
-                                        float sampleRate);
+
+typedef struct BMDynamicSmoothingFilter {
+	float low1z, low2z, g, gMin, gMax, sensitivity, sampleRate;
+} BMDynamicSmoothingFilter;
+
+
+
+/*!
+ *BMDynamicSmoothingFilter_processBuffer
+ */
+void BMDynamicSmoothingFilter_processBuffer(BMDynamicSmoothingFilter *This,
+											const float* input,
+											float* output,
+											size_t numSamples);
+
+/*!
+ *BMDynamicSmoothingFilter_processBufferWithFastDescent
+ */
+void BMDynamicSmoothingFilter_processBufferWithFastDescent(BMDynamicSmoothingFilter *This,
+														   const float* input,
+														   float* output,
+														   size_t numSamples);
+
+/*!
+ *BMDynamicSmoothingFilter_processBufferWithFastDescent2
+ */
+void BMDynamicSmoothingFilter_processBufferWithFastDescent2(BMDynamicSmoothingFilter *This,
+															const float* input,
+															float* output,
+															size_t numSamples);
+
+
+/*!
+ *BMDynamicSmoothingFilter_initDefault
+ *
+ * Use this if you don't know what settings are approrpriate
+ */
+void BMDynamicSmoothingFilter_initDefault(BMDynamicSmoothingFilter *This,
+										  float sampleRate);
+
+
+/*!
+ *BMDynamicSmoothingFilter_init
+ *
+ * @param This pointer
+ * @param sensitivity default: 1
+ * @param minFc the cutoff frequency of the filter when the input is constant
+ * @param maxFc the cutoff frequency of the filter when the input is quickly changing
+ * @param sampleRate audio buffer sample rate
+ */
+void BMDynamicSmoothingFilter_init(BMDynamicSmoothingFilter *This,
+								   float sensitivity,
+								   float minFc,
+								   float maxFc,
+								   float sampleRate);
+
+
+/*!
+ *BMDynamicSmoothingFilter_setMinFc
+ */
+void BMDynamicSmoothingFilter_setMinFc(BMDynamicSmoothingFilter *This, float minFC);
+
+
+/*!
+*BMDynamicSmoothingFilter_setMaxFc
+*/
+void BMDynamicSmoothingFilter_setMaxFc(BMDynamicSmoothingFilter *This, float maxFC);
 
 #endif /* BMDynamicSmoothingFilter_h */

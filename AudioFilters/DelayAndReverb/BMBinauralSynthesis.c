@@ -55,7 +55,7 @@ void BMBinauralSynthesis_destroy(BMBinauralSynthesis *This){
     free(This->coefficient_normD);
     free(This->coefficient_f);
     
-    BMMultiLevelBiquad_destroy(&This->filter);
+    BMMultiLevelBiquad_free(&This->filter);
 }
 
 void BMBinauralSynthesis_processMono(BMBinauralSynthesis *This,float* in,float* out, size_t numSamples){

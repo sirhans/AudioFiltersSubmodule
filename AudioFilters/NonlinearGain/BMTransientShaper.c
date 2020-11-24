@@ -45,6 +45,7 @@ void BMTransientEnveloper_init(BMTransientEnveloper *This, float sampleRate){
     BMDynamicSmoothingFilter_init(&This->attackDSF,
                                   BMTRANS_DYNAMIC_SMOOTHING_SENSITIVITY,
                                   BMTRANS_DYNAMIC_SMOOTHING_MIN_FC,
+								  BMTRANS_DYNAMIC_SMOOTHING_MIN_FC*20.0f,
                                   sampleRate);
     
     /*
@@ -59,6 +60,7 @@ void BMTransientEnveloper_init(BMTransientEnveloper *This, float sampleRate){
     BMDynamicSmoothingFilter_init(&This->attackDSF,
                                   BMTRANS_DYNAMIC_SMOOTHING_SENSITIVITY,
                                   BMTRANS_DYNAMIC_SMOOTHING_MIN_FC,
+								  BMTRANS_DYNAMIC_SMOOTHING_MIN_FC*20.0f,
                                   sampleRate);
 }
 
@@ -97,9 +99,9 @@ void BMTransientEnveloper_setReleaseDuration(BMTransientEnveloper *This, float s
 void BMTransientEnveloper_setAttackOnsetTime(BMTransientEnveloper *This, float seconds){
     if(seconds > 0){
         float attackOnsetFc = ARTimeToCutoffFrequency(seconds, BMENV_NUM_STAGES);
-    
+        
         for(size_t i=0; i<BMENV_NUM_STAGES; i++)
-        BMAttackFilter_setCutoff(&This->attackAF2[i],attackOnsetFc);
+            BMAttackFilter_setCutoff(&This->attackAF2[i],attackOnsetFc);
     }
     
     else This->filterAttackOnset = false;

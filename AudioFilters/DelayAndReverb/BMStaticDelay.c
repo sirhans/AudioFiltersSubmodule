@@ -43,8 +43,8 @@ bool hasWriteBytesAvailable(BMStaticDelay *This){
 
 void BMStaticDelay_init(BMStaticDelay *This,
                         size_t numChannelsIn, size_t numChannelsOut,
-                        float delayTime,
-                        float decayTime,
+                        float delayTimeSeconds,
+                        float decayTimeSeconds,
                         float wetGainDb,
                         float crossMixAmount,
                         float lowpassFC,
@@ -67,10 +67,10 @@ void BMStaticDelay_init(BMStaticDelay *This,
     assert(numChannelsIn <= numChannelsOut);
     This->numChannelsIn = numChannelsIn;
     
-    This->delayTimeInSeconds = delayTime;
+    This->delayTimeInSeconds = delayTimeSeconds;
     
     // get the length of the buffer in samples
-    This->delayTimeSamples = (int)(round(delayTime*sampleRate));
+    This->delayTimeSamples = (int)(round(delayTimeSeconds*sampleRate));
     
     // the delay time must be non-zero
     assert(This->delayTimeSamples > 0);
@@ -113,6 +113,7 @@ void BMStaticDelay_init(BMStaticDelay *This,
     if(This->numChannelsOut == 2){
         head = TPCircularBufferHead(&This->bufferR, &bytesAvailableForWrite);
         assert(bytesAvailableForWrite > bytesWriting);
+        
         // write zeros
         memset(head, 0, bytesWriting);
         
@@ -133,7 +134,7 @@ void BMStaticDelay_init(BMStaticDelay *This,
     BMStaticDelay_setFeedbackCrossMix(This, crossMixAmount);
     
     // set RT60 decay time
-    BMStaticDelay_setRT60DecayTime(This, decayTime);
+    BMStaticDelay_setRT60DecayTime(This, decayTimeSeconds);
     
     // set dry and wet gain
     BMSmoothGain_init(&This->wetGain, sampleRate);
@@ -143,14 +144,13 @@ void BMStaticDelay_init(BMStaticDelay *This,
     /*
      * allocate memory for the feedback buffers
      */
-    This->feedbackBufferL = malloc(sizeof(float)*This->delayTimeSamples);
+    This->feedbackBufferL = calloc(This->delayTimeSamples,sizeof(float));
     This->tempBufferL = malloc(sizeof(float)*This->delayTimeSamples);
     memset(This->feedbackBufferL,0,sizeof(float)*This->delayTimeSamples);
     if(numChannelsOut == 2){
-        This->feedbackBufferR = malloc(sizeof(float)*This->delayTimeSamples);
+        This->feedbackBufferR = calloc(This->delayTimeSamples,sizeof(float));
         This->LFOBufferL = malloc(sizeof(float)*This->delayTimeSamples);
         This->LFOBufferR = malloc(sizeof(float)*This->delayTimeSamples);
-        memset(This->feedbackBufferR,0,sizeof(float)*This->delayTimeSamples);
         BMQuadratureOscillator_init(&This->qosc, 0.5, sampleRate);
         if(numChannelsIn == 2){
             This->tempBufferR = malloc(sizeof(float)*This->delayTimeSamples);
@@ -179,7 +179,7 @@ void BMStaticDelay_init(BMStaticDelay *This,
 
 
 void BMStaticDelay_setDelayTime(BMStaticDelay *This, float timeInSeconds){
-    if(This->delayTimeInSeconds!=timeInSeconds){
+    if(This->delayTimeInSeconds != timeInSeconds){
         This->delayTimeInSeconds = timeInSeconds;
         This->delayTimeNeedsUpdate = true;
     }
@@ -214,17 +214,19 @@ void BMStaticDelay_setRT60DecayTime(BMStaticDelay *This, float rt60DecayTime){
  * @param amount in [0,1]. 1 is full crossover
  */
 void BMStaticDelay_setFeedbackCrossMix(BMStaticDelay *This, float amount){
+    // set the matrix rotation rate for the feedback
     This->crossMixAmount = amount;
     This->crossMixAngle = amount * M_PI_2;
     BMStaticDelay_setFeedbackMatrix(This);
     
+    // The lfo frequency is not adjustable. If on, it is 0.1 hz, otherwise it
+    // is off.
     if(amount>0.01){
-        This->lfoFreq = 0.1;//amount/(This->delayTimeInSeconds*4.);
+        This->lfoFreq = 0.1;
     }else{
         This->lfoFreq = 0;
     }
     This->updateLFO = true;
-    //        printf("lfo freq %f %f %f\n",This->lfoFreq,amount,This->delayTimeInSeconds);
 }
 
 
@@ -286,7 +288,7 @@ void BMStaticDelay_destroy(BMStaticDelay *This){
     }
     
     // free the filter resources
-    BMMultiLevelBiquad_destroy(&This->filter);
+    BMMultiLevelBiquad_free(&This->filter);
 }
 
 
@@ -376,10 +378,6 @@ void static inline stereoBufferHelper(BMStaticDelay *This,
               framesProcessing);
     
     // process the delay to the outputs
-    uint32_t available;
-    TPCircularBufferHead(&This->bufferL, &available);
-    TPCircularBufferHead(&This->bufferR, &available);
-    
     processOneChannel(&This->bufferL,
                       mixBufferL,
                       outL,
@@ -440,13 +438,14 @@ void BMStaticDelay_processBufferStereo(BMStaticDelay *This,
     
     BMStaticDelay_updateLFO(This);
     
+    size_t i = 0;
     while(numFrames > 0){
         
         // what is the largest chunk we can process at one time?
         int framesProcessing = min(numFrames, This->delayTimeSamples);
         
         // mix both channels to one
-        vDSP_vadd(inL, 1, inR, 1, This->tempBufferL, 1, framesProcessing);
+        vDSP_vadd(&inL[i], 1, &inR[i], 1, This->tempBufferL, 1, framesProcessing);
         
         // scale down so that the energy per channel after mixing is equal
         float scale = M_SQRT1_2;
@@ -491,21 +490,17 @@ void BMStaticDelay_processBufferStereo(BMStaticDelay *This,
         
         // process gain of dry signal, buffering into the output
         BMSmoothGain_processBuffer(&This->dryGain,
-                                   inL, inR,
-                                   outL, outR,
+                                   &inL[i], &inR[i],
+                                   &outL[i], &outR[i],
                                    framesProcessing);
         
         // mix wet and dry signals
-        vDSP_vadd(This->tempBufferL,1,outL,1,outL,1,framesProcessing);
-        vDSP_vadd(This->tempBufferR,1,outR,1,outR,1,framesProcessing);
+        vDSP_vadd(This->tempBufferL,1,&outL[i],1,&outL[i],1,framesProcessing);
+        vDSP_vadd(This->tempBufferR,1,&outR[i],1,&outR[i],1,framesProcessing);
         
         
         // advance pointers
-        inL += framesProcessing;
-        inR += framesProcessing;
-        outL += framesProcessing;
-        outR += framesProcessing;
-        
+        i += framesProcessing;
         numFrames -= framesProcessing;
     }
     

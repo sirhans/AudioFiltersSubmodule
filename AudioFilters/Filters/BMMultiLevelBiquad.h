@@ -25,7 +25,7 @@ typedef struct BMMultiLevelBiquad {
     vDSP_biquad_Setup singleChannelFilterSetup;
     float* monoDelays;
     double* coefficients_d;
-    float* coefficients_f;
+    // float* coefficients_f;
     
     // static memory
     //float currentGain;
@@ -68,8 +68,7 @@ void BMMultiLevelBiquad_processBufferMono(BMMultiLevelBiquad* This, const float*
  * @param numLevels the number of biquad filters in the cascade
  * @param sampleRate audio sample rate
  * @param isStereo set true for stereo, false for mono
- * @param monoRealTimeUpdate If you are updating coefficients of a MONO filter in realtime, set this to true. Processing of audio is slightly slower, but updates can happen in realtime. This setting has no effect on stereo filters. This setting has no effect if the OS does not support realtime updates of vDSP_biquadm filter coefficients.
- *
+ * @param monoRealTimeUpdate Require the ability to update filters without re-initialising.
  * @param smoothUpdate :    When BMMultilevelBiquad is init with smooth updates on, the update function will call setTargetsDouble to enable smooth update; and when it's off it will call setCoefficientsDouble.
  *
  */
@@ -97,13 +96,37 @@ void BMMultiLevelBiquad_init4(BMMultiLevelBiquad* This,
                               bool smoothUpdate);
 
 
-// free up memory objects
+/*!
+ *BMMultiLevelBiquad_free
+ *
+ * free memory objects
+ */
+void BMMultiLevelBiquad_free(BMMultiLevelBiquad* This);
+
+
+/*!
+ *BMMultiLevelBiquad_destroy
+ */
+__attribute__((deprecated("please call BMMultiLevelBiquad_free instead")))
 void BMMultiLevelBiquad_destroy(BMMultiLevelBiquad* This);
 
 
-// set a bell-shape filter at on the specified level in both channels
-// and update filter settings
+/*!
+ *BMMultiLevelBiquad_setBell
+ *
+ * @abstract sets a bell filter with frequency, bandwidth (Hz) and gain
+ */
 void BMMultiLevelBiquad_setBell(BMMultiLevelBiquad* This, float fc, float bandwidth, float gain_db, size_t level);
+
+
+/*!
+ *BMMultiLevelBiquad_setBellQ
+ *
+ * @abstract sets a bell filter with frequency, Q, and gain
+ */
+void BMMultiLevelBiquad_setBellQ(BMMultiLevelBiquad *This, float fc, float Q, float gain_db, size_t level);
+
+
 
 
 /*!
@@ -162,6 +185,19 @@ void BMMultiLevelBiquad_setHighShelfFirstOrder(BMMultiLevelBiquad* This, float f
  *BMMultiLevelBiquad_setLowShelfFirstOrder
  */
 void BMMultiLevelBiquad_setLowShelfFirstOrder(BMMultiLevelBiquad* This, float fc, float gain_db, size_t level);
+
+/*!
+ *BMMultiLevelBiquad_setLowShelfAdjustableSlope
+ *
+ * @abstract adjustable high shelf filter from Robert Bristow-Johnson cookbook
+ *
+ * @param This pointer to an initialized filter struct
+ * @param fc   filter cutoff frequency
+ * @param gain_db shelf gain in decibels
+ * @param slope in [0.3,1], where 0.5 is equivalent to first order shelf slope and 1 is equivalent to second order shelf slope
+ * @param level the index of the filter in the biquad cascade
+ */
+void BMMultiLevelBiquad_setLowShelfAdjustableSlope(BMMultiLevelBiquad *This, float fc, float gain_db, float slope, size_t level);
 
 // set a low shelf filter at on the specified level in both
 // channels and update filter settings
@@ -243,13 +279,37 @@ void BMMultiLevelBiquad_setCriticallyDampedLP(BMMultiLevelBiquad* This, double f
  */
 void BMMultiLevelBiquad_setBesselLP(BMMultiLevelBiquad* This, double fc, size_t firstLevel, size_t numLevels);
 
+/*!
+ *BMMultiLevelBiquad_setLowPass6db
+ */
 void BMMultiLevelBiquad_setLowPass6db(BMMultiLevelBiquad* This, double fc, size_t level);
 
+/*!
+*BMMultiLevelBiquad_setHighPass6db
+*/
 void BMMultiLevelBiquad_setHighPass6db(BMMultiLevelBiquad* This, double fc, size_t level);
 
 
+/*!
+ *BMMultiLevelBiquad_setHighPassLowPass
+ *
+ * This packs a first order highpass and a first order lowpass filter into a single biquad section.
+ *
+ * @param This pointer
+ * @param highPassFc cutoff frequency of 6dB highpass filter
+ * @param lowPassFc cutoff frequency of 6dB lowpass filter
+ */
+void BMMultiLevelBiquad_setHighPassLowPass(BMMultiLevelBiquad *This, double highPassFc, double lowPassFc, size_t level);
+
+
+/*!
+*BMMultiLevelBiquad_setLinkwitzRileyLP
+*/
 void BMMultiLevelBiquad_setLinkwitzRileyLP(BMMultiLevelBiquad* This, double fc, size_t level);
 
+/*!
+*BMMultiLevelBiquad_setLinkwitzRileyHP
+*/
 void BMMultiLevelBiquad_setLinkwitzRileyHP(BMMultiLevelBiquad* This, double fc, size_t level);
 
 /*!
@@ -299,7 +359,7 @@ void BMMultiLevelBiquad_setBypass(BMMultiLevelBiquad* This, size_t level);
 // set gain in db
 void BMMultiLevelBiquad_setGain(BMMultiLevelBiquad* This, float gain_db);
 
-
+void BMMultiLevelBiquad_setGainInstant(BMMultiLevelBiquad *This, float gain_db);
 /*!
  * BMMultiLevelBiquad_tfMagVector
  *

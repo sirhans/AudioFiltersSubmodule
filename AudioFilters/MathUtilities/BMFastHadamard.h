@@ -22,7 +22,7 @@ extern "C" {
 #include <stdbool.h>
 #include <string.h>
 #include <simd/simd.h>
-
+#include <Accelerate/Accelerate.h>
 
 // forward declarations
 static void BMFastHadamard16(const float* input, float* output, float* temp16);
@@ -40,6 +40,59 @@ static inline bool BMPowerOfTwoQ (size_t x)
 	return ((x != 0) && ((x & (~x + 1)) == x));
 }
 
+
+static __inline__ __attribute__((always_inline)) void BMFastHadamardTransformProcessBlock(float** input,
+                                                                                    float** output,
+                                                                                    size_t inputSize,
+                                                                                    size_t numSamples){
+    size_t halfSize = inputSize/2;
+    //block 1
+    for(int i=0;i<halfSize;i++){
+        vDSP_vadd(input[i], 1, output[i], 1, output[i], 1, numSamples);
+        vDSP_vadd(input[i], 1, output[i+halfSize], 1, output[i+halfSize], 1, numSamples);
+    }
+    //block 2
+    for(int i=0;i<halfSize;i++){
+        vDSP_vadd(input[i+halfSize], 1, output[i], 1, output[i], 1, numSamples);
+        vDSP_vsub(output[i+halfSize], 1, input[i+halfSize], 1, output[i+halfSize], 1, numSamples);
+    }
+    
+}
+
+static __inline__ __attribute__((always_inline)) void BMFastHadamardTransformBuffer(float** input,
+                                                                            float** output,
+                                                                            size_t inputSize,
+                                                                            size_t numSamples){
+    assert(input!=output);
+
+    
+    //Step1
+    size_t blockSize = inputSize;
+    while (blockSize>1) {
+        //Set output = 0
+        for(int i=0;i<inputSize;i++){
+            vDSP_vclr(output[i], 1, numSamples);
+        }
+        
+        for(int shift=0;shift<inputSize;shift+=blockSize){
+            BMFastHadamardTransformProcessBlock(input+shift, output+shift, blockSize,numSamples);
+        }
+        
+        //Copy output into input
+        size_t bufferSize = sizeof(float)*numSamples;
+        for(int i=0;i<inputSize;i++){
+            memcpy(input[i], output[i], bufferSize);
+        }
+        
+        //take half of the block size
+        blockSize /= 2;
+    }
+    
+    float normalizeVol = 1/sqrtf(inputSize);
+    for(int i=0;i<inputSize;i++){
+        vDSP_vsmul(output[i], 1, &normalizeVol, output[i], 1, numSamples);
+    }
+}
 
 
 

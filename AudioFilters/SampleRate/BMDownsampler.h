@@ -74,6 +74,14 @@ void BMDownsampler_free(BMDownsampler* This);
 void BMDownsampler_impulseResponse(BMDownsampler* This, float* IR, size_t IRLength);
 
 
+/*!
+ *BMDownsampler_getLatencyInSamples
+ *
+ * @returns the estimated latency of the downsampler in samples
+ */
+float BMDownsampler_getLatencyInSamples(BMDownsampler *This);
+
+
 #endif /* BMDownsampler_h */
 
 #ifdef __cplusplus

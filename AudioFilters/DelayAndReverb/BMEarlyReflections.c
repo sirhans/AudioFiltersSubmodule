@@ -138,7 +138,7 @@ extern "C" {
      * function directly.
      */
     void BMEarlyReflections_processBuffer(BMEarlyReflections *This,
-                                          float* inputL, float* inputR,
+                                          const float* inputL, const float* inputR,
                                           float* outputL, float* outputR,
                                           size_t numSamples){
         
@@ -147,7 +147,6 @@ extern "C" {
                                                 inputL, inputR,
                                                 outputL, outputR,
                                                 numSamples);
-            
     }
     
     

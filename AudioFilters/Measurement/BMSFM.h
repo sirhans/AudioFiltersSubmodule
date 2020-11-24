@@ -15,7 +15,7 @@
 
 typedef struct BMSFM {
     BMFFT fft;
-    float* buffer;
+    float *b1, *b2;
 } BMSFM;
 
 
@@ -57,9 +57,23 @@ float BMSFM_process(BMSFM *This, float* input, size_t inputLength);
  * @abstract returns the geometric mean of the elements in the array input
  *
  * @param input array of inputs with length inputLength
- * @param inputLength length of input array
+ * @param temp temp storage array
+ * @param length length of input array
  */
-float BMGeometricMean(float* input, size_t inputLength);
+float BMGeometricMean(const float *input, float *temp, size_t length);
+
+
+/*!
+ *BMGeometricArithmeticMean
+ *
+ * @param X input array of length length. MUST BE ALL POSITIVE VALUES. Negative values will be replaced with small near-zero positive values
+ * @param temp temp array of length length
+ *
+ * @returns (geometric mean) / (arithmetic mean) of X
+ *
+ */
+float BMGeometricArithmeticMean(const float *X, float *temp, size_t length);
+
 
 
 /*!

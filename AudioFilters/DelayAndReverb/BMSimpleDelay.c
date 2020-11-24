@@ -17,7 +17,7 @@
 
 void BMSimpleDelayMono_init(BMSimpleDelayMono *This, size_t delayTimeInSamples){
     uint32_t dt = (uint32_t)delayTimeInSamples;
-    TPCircularBufferInit(&This->buffer, dt + BM_BUFFER_CHUNK_SIZE);
+    TPCircularBufferInit(&This->buffer, sizeof(float)*(dt + BM_BUFFER_CHUNK_SIZE));
     TPCircularBufferClear(&This->buffer);
     TPCircularBufferProduce(&This->buffer, sizeof(float)*dt);
 }
@@ -118,11 +118,20 @@ void BMSimpleDelayStereo_process(BMSimpleDelayStereo *This,
     }
 }
 
-void BMSimpleDelayMono_destroy(BMSimpleDelayMono *This){
+void BMSimpleDelayMono_free(BMSimpleDelayMono *This){
     TPCircularBufferCleanup(&This->buffer);
 }
 
-void BMSimpleDelayStereo_destroy(BMSimpleDelayStereo *This){
+void BMSimpleDelayStereo_free(BMSimpleDelayStereo *This){
     TPCircularBufferCleanup(&This->bufferL);
     TPCircularBufferCleanup(&This->bufferR);
+}
+
+
+void BMSimpleDelayMono_destroy(BMSimpleDelayMono *This){
+	BMSimpleDelayMono_free(This);
+}
+
+void BMSimpleDelayStereo_destroy(BMSimpleDelayStereo *This){
+	BMSimpleDelayStereo_free(This);
 }

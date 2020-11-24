@@ -19,13 +19,14 @@ typedef struct BMMonoToStereo {
     BMCrossover3way crossover;
     BMVelvetNoiseDecorrelator vnd;
 	float *lowL, *lowR, *midL, *midR, *highL, *highR;
+	bool stereoInput;
 } BMMonoToStereo;
 
 
 /*!
  *BMMonoToStereo_init
  */
-void BMMonoToStereo_init(BMMonoToStereo *This, float sampleRate);
+void BMMonoToStereo_init(BMMonoToStereo *This, float sampleRate, bool stereoInput);
 
 
 /*!
@@ -40,6 +41,16 @@ void BMMonoToStereo_processBuffer(BMMonoToStereo *This,
  *BMMonoToStereo_free
  */
 void BMMonoToStereo_free(BMMonoToStereo *This);
+
+
+
+/*!
+ *BMMonoToStereo_setWetMix
+ *
+ * @param This pointer to an initialised struct
+ * @param wetMix01 linear scale mix in [0,1]
+ */
+void BMMonoToStereo_setWetMix(BMMonoToStereo *This, float wetMix01);
 
 
 #endif /* BMMonoToStereo_h */

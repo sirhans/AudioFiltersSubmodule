@@ -66,7 +66,7 @@ extern "C" {
 	
 	
 	void BMNoiseGate_free(BMNoiseGate *This){
-		BMMultiLevelBiquad_destroy(&This->sidechainFilter);
+		BMMultiLevelBiquad_free(&This->sidechainFilter);
 		BMShortSimpleDelay_free(&This->delay);
 	}
 	
@@ -211,7 +211,7 @@ extern "C" {
 								   float* outputL, float* outputR,
 								   size_t numSamples){
 		if(This->ratio > 1.0f){
-			assert(This->sidechainFilter.numChannels == 2);
+			assert(This->sidechainFilter.numChannels == 1);
 			
 			// begin chunked processing
 			while (numSamples > 0){

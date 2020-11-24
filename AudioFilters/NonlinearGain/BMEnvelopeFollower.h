@@ -18,8 +18,7 @@
 
 
 /*
- * These smoothing filters are based on the design by Andrew Simper:
- * https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf
+ * These smoothing filters are based on the dBMAttackFilter_setCutoffs://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf
  *
  * We have modified his design so that the attack and release portions of
  * the smoothing operation are done with separate filters that can be configured
@@ -93,12 +92,12 @@ void BMEnvelopeFollower_initWithCustomNumStages(BMEnvelopeFollower *This, size_t
 /*!
  * BMEnvelopeFollower_setAttackTime
  */
-void BMEnvelopeFollower_setAttackTime(BMEnvelopeFollower *This, float attackTime);
+void BMEnvelopeFollower_setAttackTime(BMEnvelopeFollower *This, float attackTimeSeconds);
 
 /*!
  * BMEnvelopeFollower_setReleaseTime
  */
-void BMEnvelopeFollower_setReleaseTime(BMEnvelopeFollower *This, float releaseTime);
+void BMEnvelopeFollower_setReleaseTime(BMEnvelopeFollower *This, float releaseTimeSeconds);
 
 /*!
  * BMAttackFilter_init

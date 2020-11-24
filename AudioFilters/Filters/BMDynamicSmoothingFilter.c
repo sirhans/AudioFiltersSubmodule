@@ -24,42 +24,122 @@
 
 #define BM_DSF_SENSITIVITY 0.125f
 #define BM_DSF_MIN_FC 1.0f
+#define BM_DSF_MAX_FC 500.0f
 
-// this softens the way the filter changes its own cutoff frequency
-static inline float DSControlCurve(float x){
-    // Mathematica: DSControlCurve[x_]:=1-(x-1)^2
-    float xMinus1 = x - 1.0f;
-    return 1.0f - xMinus1 * xMinus1;
-}
+
 
 
 void BMDynamicSmoothingFilter_initDefault(BMDynamicSmoothingFilter *This,
-                                          float sampleRate){
-    BMDynamicSmoothingFilter_init(This,
-                                  BM_DSF_SENSITIVITY,
-                                  BM_DSF_MIN_FC,
-                                  sampleRate);
+										  float sampleRate){
+	BMDynamicSmoothingFilter_init(This,
+								  BM_DSF_SENSITIVITY,
+								  BM_DSF_MIN_FC,
+								  BM_DSF_MAX_FC,
+								  sampleRate);
 }
 
 
 void BMDynamicSmoothingFilter_init(BMDynamicSmoothingFilter *This,
-                                    float sensitivity,
-                                    float minFc,
-                                    float sampleRate){
-    This->sensitivity = sensitivity;
-    This->g0 = tanf(M_PI * minFc / sampleRate);
+								   float sensitivity,
+								   float minFc,
+								   float maxFc,
+								   float sampleRate){
+	This->sampleRate = sampleRate;
+	This->sensitivity = sensitivity;
+	This->gMin = tanf(M_PI * minFc / sampleRate);
+	This->gMax = tanf(M_PI * maxFc / sampleRate);
+	This->low1z = 0.0f;
+	This->low2z = 0.0f;
+	This->g = This->gMin;
 }
 
 
+
+/*!
+ *BMDynamicSmoothingFilter_setMinFc
+ */
+void BMDynamicSmoothingFilter_setMinFc(BMDynamicSmoothingFilter *This, float minFc){
+	This->gMin = tanf(M_PI * minFc / This->sampleRate);
+}
+
+
+/*!
+*BMDynamicSmoothingFilter_setMaxFc
+*/
+void BMDynamicSmoothingFilter_setMaxFc(BMDynamicSmoothingFilter *This, float maxFc){
+	This->gMax = tanf(M_PI * maxFc / This->sampleRate);
+}
+
+
+
 void BMDynamicSmoothingFilter_processBuffer(BMDynamicSmoothingFilter *This,
-                                           const float* input,
-                                           float* output,
-                                           size_t numSamples){
-    for(size_t i=0; i<numSamples; i++){
-        float bandz = This->low2z - This->low1z;
-        float g = This->g0 + This->sensitivity * fabs(bandz);
-        g = MIN(DSControlCurve(g), 1.0f);
-        This->low2z += g * (This->low1z - This->low2z);
-        This->low1z += g * (input[i] - This->low1z);
-    }
+											const float* input,
+											float* output,
+											size_t numSamples){
+	for(size_t i=0; i<numSamples; i++){
+		float bandz = This->low1z - This->low2z;
+		float g = This->gMin + This->sensitivity * fabs(bandz);
+		g = MIN(g, This->gMax);
+		This->low2z += g * (bandz);
+		This->low1z += g * (input[i] - This->low1z);
+		output[i] = This->low2z;
+	}
+}
+
+
+float BMDSF_positiveOnly(float x){
+	return 0.5 * (x + fabsf(x));
+}
+
+float BMDSF_negativeOnly(float x){
+	return 0.5 * (x - fabsf(x));
+}
+
+
+void BMDynamicSmoothingFilter_processBufferWithFastDescent(BMDynamicSmoothingFilter *This,
+														   const float* input,
+														   float* output,
+														   size_t numSamples){
+	for(size_t i=0; i<numSamples; i++){
+		float bandz = This->low2z - This->low1z;
+		float g = This->gMin + This->sensitivity * BMDSF_positiveOnly(bandz);
+		g = MIN(g, This->gMax);
+		This->low2z += g * (-bandz);
+		This->low1z += g * (input[i] - This->low1z);
+		output[i] = This->low2z;
+	}
+}
+
+
+void BMDynamicSmoothingFilter_processBufferWithFastDescent2(BMDynamicSmoothingFilter *This,
+														   const float* input,
+														   float* output,
+														   size_t numSamples){
+	for(size_t i=0; i<numSamples; i++){
+		float bandz = This->low2z - This->low1z;
+		
+		// adjust cutoff frequency depending on the direction of motion
+		// if descending
+		if(input[i] < This->low2z){
+			// update g if it isn't already at the right value
+			if(This->g != This->gMax){
+				// this keeps the gradient continuous when changing g
+				This->low1z = ((This->gMax * This->low2z) - (This->g * bandz)) / This->gMax;
+				This->g = This->gMax;
+			}
+		}
+		// if ascending
+		else{
+			if(This->g != This->gMin){
+				// this sets the gradient to zero to avoid sharp discontinuity
+				This->low1z = This->low2z;
+				This->g = This->gMin;
+			}
+		}
+		
+		// lowpass filter
+		This->low2z += This->g * (-bandz);
+		This->low1z += This->g * (input[i] - This->low1z);
+		output[i] = This->low2z;
+	}
 }

@@ -13,51 +13,105 @@
 #include "BMVelvetNoise.h"
 #include "BMReverb.h"
 #include "BMVectorOps.h"
+#include "BMReverb.h"
+#include "BMSorting.h"
 
 
 #define BM_VND_WET_MIX 0.40f
 
+void BMVelvetNoiseDecorrelator_genRandGains(BMVelvetNoiseDecorrelator *This);
 
+void BMVelvetNoiseDecorrelator_initFullSettings(BMVelvetNoiseDecorrelator *This,
+												float maxDelaySeconds,
+												size_t numTaps,
+												float rt60DecayTimeSeconds,
+												bool hasDryTap,
+												float sampleRate,
+												bool evenTapDensity);
 
-
+void BMVelvetNoiseDecorrelator_initMultiChannelInput(BMVelvetNoiseDecorrelator *This,
+                                                float maxDelaySeconds,
+                                                size_t numTaps,
+                                                float rt60DecayTimeSeconds,
+                                                bool hasDryTap,
+                                                size_t numInput,
+                                                float sampleRate,
+                                                bool evenTapDensity);
 /*!
  *BMVelvetNoiseDecorrelator_init
  */
 void BMVelvetNoiseDecorrelator_init(BMVelvetNoiseDecorrelator *This,
                                     float maxDelaySeconds,
-                                    size_t numWetTaps,
+                                    size_t numTaps,
                                     float rt60DecayTimeSeconds,
 									bool hasDryTap,
 									float sampleRate){
+	BMVelvetNoiseDecorrelator_initFullSettings(This, maxDelaySeconds, numTaps, rt60DecayTimeSeconds, hasDryTap, sampleRate, false);
+}
+
+
+
+
+/*!
+ *BMVelvetNoiseDecorrelator_initWithEvenTapDensity
+ */
+void BMVelvetNoiseDecorrelator_initWithEvenTapDensity(BMVelvetNoiseDecorrelator *This,
+                                    float maxDelaySeconds,
+                                    size_t numTaps,
+                                    float rt60DecayTimeSeconds,
+									bool hasDryTap,
+									float sampleRate){
+	BMVelvetNoiseDecorrelator_initFullSettings(This, maxDelaySeconds, numTaps, rt60DecayTimeSeconds, hasDryTap, sampleRate, true);
+}
+
+
+/*!
+ *BMVelvetNoiseDecorrelator_initFullSettings
+ */
+void BMVelvetNoiseDecorrelator_initFullSettings(BMVelvetNoiseDecorrelator *This,
+												float maxDelaySeconds,
+												size_t numTaps,
+												float rt60DecayTimeSeconds,
+												bool hasDryTap,
+												float sampleRate,
+												bool evenTapDensity){
 	This->sampleRate = sampleRate;
-	This->hasDryTap	= true;
+	This->hasDryTap	= hasDryTap;
 	This->wetMix = BM_VND_WET_MIX;
 	This->rt60 = rt60DecayTimeSeconds;
 	This->maxDelayTimeS = maxDelaySeconds;
-	This->numWetTaps = numWetTaps;
-	
-	size_t tapsPerChannel = numWetTaps;
-	if (hasDryTap) tapsPerChannel++;
+	This->numWetTaps = numTaps;
+	This->evenTapDensity = evenTapDensity;
+    This->resetNumTaps = false;
+    This->resetRT60DecayTime = false;
+    This->fadeInSamples = 0;
+	if (hasDryTap) This->numWetTaps--;
 	
 	// allocate memory for calculating delay setups
-	This->delayLengthsL = calloc(tapsPerChannel, sizeof(size_t));
-	This->delayLengthsR = calloc(tapsPerChannel, sizeof(size_t));
-	This->gainsL = calloc(tapsPerChannel, sizeof(float));
-	This->gainsR = calloc(tapsPerChannel, sizeof(float));
-	
+	This->delayLengthsL = calloc(numTaps, sizeof(size_t));
+	This->delayLengthsR = calloc(numTaps, sizeof(size_t));
+	This->gainsL = calloc(numTaps, sizeof(float));
+	This->gainsR = calloc(numTaps, sizeof(float));
+    This->tempBuffer = calloc(BM_BUFFER_CHUNK_SIZE, sizeof(float));
+	This->numInput = 0;
+    
+    //Off Switch
+    BMSmoothSwitch_init(&This->offSwitchL, sampleRate);
+    BMSmoothSwitch_init(&This->offSwitchR, sampleRate);
+    
+    BMSmoothSwitch_initWithRate(&This->offSwitchL, sampleRate,10.0f);
+    BMSmoothSwitch_initWithRate(&This->offSwitchR, sampleRate,10.0f);
+    
 	// init the multi-tap delay in bypass mode
 	size_t maxDelayLenth = ceil(maxDelaySeconds*sampleRate);
 	BMMultiTapDelay_initBypass(&This->multiTapDelay,
 							   true,
 							   maxDelayLenth,
-							   tapsPerChannel);
+							   numTaps);
 	
 	// setup the delay for processing
 	BMVelvetNoiseDecorrelator_randomiseAll(This);
 }
-
-
-
 
 
 /*!
@@ -65,6 +119,7 @@ void BMVelvetNoiseDecorrelator_init(BMVelvetNoiseDecorrelator *This,
  *
  * @abstract generates random gains and normalises them and updates the delay
  */
+#define VND_StartFadeInDB -60
 void BMVelvetNoiseDecorrelator_genRandGains(BMVelvetNoiseDecorrelator *This){
 	// prepare to skip an array index if there is a dry tap at the beginning
 	size_t shift = This->hasDryTap ? 1 : 0;
@@ -75,17 +130,31 @@ void BMVelvetNoiseDecorrelator_genRandGains(BMVelvetNoiseDecorrelator *This){
 	
 	
 	// apply an exponential decay envelope to the gains
+    float startGain = 0;//BM_DB_TO_GAIN(VND_StartFadeInDB);
 	for(size_t i=shift; i<This->numWetTaps+shift; i++){
 		// left channel
 		float delayTimeInSeconds = This->delayLengthsL[i] / This->sampleRate;
 		float rt60Gain = BMReverbDelayGainFromRT60(This->rt60, delayTimeInSeconds);
-		This->gainsL[i] *= rt60Gain;
+        float fadeIn = 1;
+        if(This->fadeInSamples>0){
+            float fade0To1 = MIN(This->delayLengthsL[i], This->fadeInSamples)/This->fadeInSamples;
+            fadeIn = fade0To1*(1.0f-startGain) + startGain;
+        }
+		This->gainsL[i] *= rt60Gain * fadeIn;
 		
 		// right channel
 		delayTimeInSeconds = This->delayLengthsR[i] / This->sampleRate;
 		rt60Gain = BMReverbDelayGainFromRT60(This->rt60, delayTimeInSeconds);
-		This->gainsR[i] *= rt60Gain;
+        if(This->fadeInSamples>0){
+            float fade0To1 = MIN(This->delayLengthsR[i], This->fadeInSamples)/This->fadeInSamples;
+            fadeIn = fade0To1*(1.0f-startGain) + startGain;
+        }
+		This->gainsR[i] *= rt60Gain * fadeIn;
 	}
+    
+    //Last tap gain
+    This->lastTapGainL = This->gainsL[This->numWetTaps+shift-1];
+    This->lastTapGainR = This->gainsR[This->numWetTaps+shift-1];
 	
 	// if there is is a dry tap,
 	// set the balance between all of the wet taps against the single dry tap.
@@ -120,18 +189,39 @@ void BMVelvetNoiseDecorrelator_genRandTapTimes(BMVelvetNoiseDecorrelator *This){
 		This->delayLengthsR[0] = 0;
 	}
 	
-	// find out how many milliseconds in one sample
-	float oneSampleMs = 1000.0f / This->sampleRate;
-	
-	// use the velvet noise algorithm to set the delay tap times
-	BMVelvetNoise_setTapIndices(oneSampleMs,
-								This->maxDelayTimeS * 1000.0f,
-								This->delayLengthsL + shift,
-								This->sampleRate, This->numWetTaps);
-	BMVelvetNoise_setTapIndices(oneSampleMs,
-								This->maxDelayTimeS * 1000.0f,
-								This->delayLengthsR + shift,
-								This->sampleRate, This->numWetTaps);
+	// even tap density uses the velvet noise algorithm. The frequency response may be less even but it won't leave large gaps in the time domain
+	if(This->evenTapDensity){
+		// set the min delay time, depending on whether there is a dry tap
+		float minDelayTimeS;
+		if(This->hasDryTap) minDelayTimeS = This->maxDelayTimeS / (float)This->numWetTaps;
+		else minDelayTimeS = 0.0f;
+		
+		// set the randomised tap indices
+		BMVelvetNoise_setTapIndices(minDelayTimeS * 1000.0f,
+									This->maxDelayTimeS * 1000.0f,
+									This->delayLengthsL + shift,
+									This->sampleRate, This->numWetTaps);
+		BMVelvetNoise_setTapIndices(minDelayTimeS * 1000.0f,
+									This->maxDelayTimeS * 1000.0f,
+									This->delayLengthsR + shift,
+									This->sampleRate, This->numWetTaps);
+	}
+	// uneven tap density may have more natural frequency response
+	else {
+		// set the min delay index depending on whether there is a dry tap
+		size_t min;
+		if(This->hasDryTap)
+			min = ceil((This->maxDelayTimeS * This->sampleRate) / (float)This->numWetTaps);
+		else
+			min = 0;
+		
+		// set max delay index
+		size_t max = ceil(This->maxDelayTimeS * This->sampleRate);
+		
+		// set the random delay times
+		BMReverbRandomsInRange(min, max, This->delayLengthsL + shift, This->numWetTaps);
+		BMReverbRandomsInRange(min, max, This->delayLengthsR + shift, This->numWetTaps);
+	}
 	
 	BMMultiTapDelay_setDelayTimes(&This->multiTapDelay, This->delayLengthsL, This->delayLengthsR);
 }
@@ -157,33 +247,108 @@ void BMVelvetNoiseDecorrelator_randomiseAll(BMVelvetNoiseDecorrelator *This){
  * @abstract sets the wet/dry mix and issues the command to update the multitap delay
  */
 void BMVelvetNoiseDecorrelator_setWetMix(BMVelvetNoiseDecorrelator *This, float wetMix01){
-	This->wetMix = wetMix01;
-	
-	// we need a dry tap to set the mix; otherwise it's fiixed at 100% wet
+	// we need a dry tap to set the mix; otherwise it's fixed at 100% wet
+	// beacuse the wet/dry mix setting is meaningless
 	assert(This->hasDryTap);
 	
 	// keep the wet mix in bounds
 	assert(0.0f <= wetMix01 & wetMix01 <= 1.0f);
 	
+	This->wetMix = wetMix01;
+
+	// what is the minimum gain we can set for the dry tap? It would not make
+	// sense for the dry tap to have less gain than the wet taps, so the minimum
+	// is not simply zero.
+	float minDryGain = sqrtf(1.0f / (This->numWetTaps + 1.0f));
+	
+	// find the corrected dry mix, which is in [minDryGain,1] instead of [0,1]
+	float dryGainUncorrected = sqrt(1.0f - wetMix01*wetMix01);
+	float dryGainCorrected = minDryGain + dryGainUncorrected * (1.0f - minDryGain);
+	
+	// find the corrected wet gain
+	float wetGainCorrected = sqrt(1.0f - dryGainCorrected*dryGainCorrected);
+	
 	// set the dry bypass tap gains
-	float dryGain = sqrt(1.0f - wetMix01*wetMix01);
-	This->gainsL[0] = dryGain;
-	This->gainsR[0] = dryGain;
+	This->gainsL[0] = dryGainCorrected;
+	This->gainsR[0] = dryGainCorrected;
 	
 	// normalize so the norm of the vector of all wet taps is 1.0
 	BMVectorNormalise(This->gainsL+1, This->numWetTaps);
 	BMVectorNormalise(This->gainsR+1, This->numWetTaps);
 	
 	// scale the wet taps to get the wet gain as desired
-	vDSP_vsmul(This->gainsL+1, 1, &wetMix01, This->gainsL+1, 1, This->numWetTaps);
-	vDSP_vsmul(This->gainsR+1, 1, &wetMix01, This->gainsR+1, 1, This->numWetTaps);
+	vDSP_vsmul(This->gainsL+1, 1, &wetGainCorrected, This->gainsL+1, 1, This->numWetTaps);
+	vDSP_vsmul(This->gainsR+1, 1, &wetGainCorrected, This->gainsR+1, 1, This->numWetTaps);
 
 	// set the gains to the multitap delay
 	BMMultiTapDelay_setGains(&This->multiTapDelay, This->gainsL, This->gainsR);
 }
 
 
+void BMVelvetNoiseDecorrelator_setNumTaps(BMVelvetNoiseDecorrelator *This, size_t numTaps){
+    //Start off switch
+    BMSmoothSwitch_setState(&This->offSwitchL, false);
+    BMSmoothSwitch_setState(&This->offSwitchR, false);
+    
+    This->numWetTaps = numTaps;
+    This->resetNumTaps = true;
+    
+}
 
+void BMVelvetNoiseDecorrelator_resetNumTaps(BMVelvetNoiseDecorrelator *This){
+    if(BMSmoothSwitch_getState(&This->offSwitchL)==BMSwitchOff){
+        if(This->resetNumTaps){
+            This->resetNumTaps = false;
+            
+            //Free it first
+            BMMultiTapDelay_free(&This->multiTapDelay);
+            // init the multi-tap delay in bypass mode
+            size_t maxDelayLenth = ceil(This->maxDelayTimeS*This->sampleRate);
+            BMMultiTapDelay_initBypass(&This->multiTapDelay,
+                                       true,
+                                       maxDelayLenth,
+                                       This->numWetTaps);
+            // setup the delay for processing
+            BMVelvetNoiseDecorrelator_randomiseAll(This);
+            
+            //Enable off switch
+            BMSmoothSwitch_setState(&This->offSwitchL, true);
+            BMSmoothSwitch_setState(&This->offSwitchR, true);
+        }
+    }
+}
+
+void BMVelvetNoiseDecorrelator_setRT60DecayTime(BMVelvetNoiseDecorrelator *This, float rt60DT){
+    This->rt60 = rt60DT;
+    This->resetRT60DecayTime = true;
+}
+
+void BMVelvetNoiseDecorrelator_resetRT60DecayTime(BMVelvetNoiseDecorrelator *This){
+    if(This->resetRT60DecayTime){
+        This->resetRT60DecayTime = false;
+        BMVelvetNoiseDecorrelator_genRandGains(This);
+    }
+}
+
+void BMVelvetNoiseDecorrelator_setFadeIn(BMVelvetNoiseDecorrelator *This,float fadeInS){
+    //Start off switch
+    BMSmoothSwitch_setState(&This->offSwitchL, false);
+    BMSmoothSwitch_setState(&This->offSwitchR, false);
+    This->fadeInSamples = fadeInS * This->sampleRate;
+    This->resetFadeIn = true;
+}
+
+void BMVelvetNoiseDecorrelator_resetFadeIn(BMVelvetNoiseDecorrelator *This){
+    if(BMSmoothSwitch_getState(&This->offSwitchL)==BMSwitchOff){
+        if(This->resetFadeIn){
+            This->resetFadeIn = false;
+            BMVelvetNoiseDecorrelator_genRandGains(This);
+            
+            BMSmoothSwitch_setState(&This->offSwitchL, true);
+            BMSmoothSwitch_setState(&This->offSwitchR, true);
+        }
+    }
+}
 
 /*!
  *BMVelvetNoiseDecorrelator_free
@@ -199,9 +364,9 @@ void BMVelvetNoiseDecorrelator_free(BMVelvetNoiseDecorrelator *This){
 	This->gainsL = NULL;
 	free(This->gainsR);
 	This->gainsR = NULL;
+    free(This->tempBuffer);
+    This->tempBuffer = NULL;
 }
-
-
 
 
 /*!
@@ -213,9 +378,70 @@ void BMVelvetNoiseDecorrelator_processBufferStereo(BMVelvetNoiseDecorrelator *Th
                                                    float* outputL,
                                                    float* outputR,
                                                    size_t length){
+    //Reset numtap if needed
+    BMVelvetNoiseDecorrelator_resetNumTaps(This);
+    BMVelvetNoiseDecorrelator_resetRT60DecayTime(This);
+    BMVelvetNoiseDecorrelator_resetFadeIn(This);
 	// all processing is done by the multi-tap delay class
     BMMultiTapDelay_processBufferStereo(&This->multiTapDelay,
 										inputL, inputR,
 										outputL, outputR,
 										length);
+    //Off switch
+    if(BMSmoothSwitch_getState(&This->offSwitchL)!=BMSwitchOn){
+        BMSmoothSwitch_processBufferMono(&This->offSwitchL, outputL, outputL, length);
+        BMSmoothSwitch_processBufferMono(&This->offSwitchR, outputR, outputR, length);
+    }
+}
+
+void BMVelvetNoiseDecorrelator_processBufferStereoWithFinalOutput(BMVelvetNoiseDecorrelator *This,
+                                                   float* inputL,
+                                                   float* inputR,
+                                                   float* outputL,
+                                                   float* outputR,
+                                                   float* finalOutputL,
+                                                   float* finalOutputR,
+                                                   size_t length){
+    //Reset numtap if needed
+    BMVelvetNoiseDecorrelator_resetNumTaps(This);
+    BMVelvetNoiseDecorrelator_resetRT60DecayTime(This);
+    BMVelvetNoiseDecorrelator_resetFadeIn(This);
+    // all processing is done by the multi-tap delay class
+    BMMultiTapDelay_processStereoWithFinalOutput(&This->multiTapDelay,
+                                                 inputL, inputR,
+                                                 outputL, outputR, finalOutputL, finalOutputR, length);
+    //Apply lasttap gain
+    vDSP_vsmul(finalOutputL, 1, &This->lastTapGainL, finalOutputL, 1, length);
+    vDSP_vsmul(finalOutputR, 1, &This->lastTapGainR, finalOutputR, 1, length);
+    
+    //Off switch
+    if(BMSmoothSwitch_getState(&This->offSwitchL)!=BMSwitchOn){
+        BMSmoothSwitch_processBufferMono(&This->offSwitchL, finalOutputL, finalOutputL, length);
+        BMSmoothSwitch_processBufferMono(&This->offSwitchR, finalOutputR, finalOutputR, length);
+    }
+}
+
+
+
+
+
+void BMVelvetNoiseDecorrelator_processBufferMonoToStereo(BMVelvetNoiseDecorrelator *This,
+														 float* inputL,
+														 float* outputL, float* outputR,
+														 size_t length){
+    //Reset numtap if needed
+    BMVelvetNoiseDecorrelator_resetNumTaps(This);
+    BMVelvetNoiseDecorrelator_resetRT60DecayTime(This);
+    BMVelvetNoiseDecorrelator_resetFadeIn(This);
+	// all processing is done by the multi-tap delay class
+	BMMultiTapDelay_processBufferStereo(&This->multiTapDelay,
+										inputL, inputL,
+										outputL, outputR,
+										length);
+    
+    //Off switch
+    if(BMSmoothSwitch_getState(&This->offSwitchL)!=BMSwitchOn){
+        BMSmoothSwitch_processBufferMono(&This->offSwitchL, outputL, outputL, length);
+        BMSmoothSwitch_processBufferMono(&This->offSwitchR, outputR, outputR, length);
+    }
 }

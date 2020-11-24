@@ -40,13 +40,13 @@ extern "C" {
         // make sure width is in [0,2]
         assert(This->width >= 0.0 && This->width <= 2.0);
         
-        // save variables to adjust the mid and side channel signal gains
-        float midAdjust  = sqrt(1.0 - This->width*0.5)*M_SQRT2;
-        float sideAdjust = sqrt(This->width*0.5)*M_SQRT2;
+//        // save variables to adjust the mid and side channel signal gains
+//        float midAdjust  = sqrt(1.0 - This->width*0.5)*M_SQRT2;
+//        float sideAdjust = sqrt(This->width*0.5)*M_SQRT2;
         
         // adjust the width by multiplying the adjustment coefficients
-        vDSP_vsmul(This->mid, 1, &midAdjust, This->mid, 1, numSamples);
-        vDSP_vsmul(This->side, 1, &sideAdjust, This->side, 1, numSamples);
+//        vDSP_vsmul(This->mid, 1, &midAdjust, This->mid, 1, numSamples);
+        vDSP_vsmul(This->side, 1, &This->width, This->side, 1, numSamples);
         
         // convert back to stereo
         BMMidSideMatrixConvert(This->mid, This->side, outL, outR, numSamples);

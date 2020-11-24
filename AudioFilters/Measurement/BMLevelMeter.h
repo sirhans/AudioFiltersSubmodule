@@ -23,6 +23,8 @@ extern "C" {
 #include <stdio.h>
 #include "BMEnvelopeFollower.h"
 
+typedef enum bmMetreType {metreTypeRms, metreTypePeak, metreTypeCombined} bmMetreType;
+
     typedef struct BMLevelMeter {
         float sampleRate;
         size_t expectedBufferLength;

@@ -60,6 +60,7 @@ fastDbToGain (float x){
     return fastpow2 (x * 0.16609640474f);
 }
 
+
 static inline void vector_fastDbToGain(const float* input, float* output, size_t length){
     //for(size_t i=0; i<length; i++) output[i] = fastDbToGain(input[i]);
     float magicNumber = 0.16609640474f;

@@ -62,13 +62,13 @@ void BMFirstOrderArray4x4_init(BMFirstOrderArray4x4 *This, size_t numChannels, f
  *
  * @notes Set high frequency decay for High shelf filter array in an FDN
  *
- * @param delayTimesSeconds  the length in seconds of each delay in the FDN
+ * @param delayTimesSamples the length in samples of each delay in the FDN
  * @param fc                cutoff frequency
  * @param unfilteredRT60    decay time below fc (seconds)
  * @param filteredRT60      decay time at nyquist (seconds)
  * @param numChannels       size of FDN
  */
-void BMFirstOrderArray4x4_setHighDecayFDN(BMFirstOrderArray4x4 *This, float* delayTimesSeconds, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels);
+void BMFirstOrderArray4x4_setHighDecayFDN(BMFirstOrderArray4x4 *This, size_t* delayTimesSamples, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels);
 
 
 
@@ -79,13 +79,13 @@ void BMFirstOrderArray4x4_setHighDecayFDN(BMFirstOrderArray4x4 *This, float* del
  *
  * Set low frequency decay for High shelf filter array in an FDN
  *
- * @param delayTimesSeconds  the length in seconds of each delay in the FDN
+ * @param delayTimesSamples the length in samples of each delay in the FDN
  * @param fc                cutoff frequency
  * @param unfilteredRT60    decay time above fc (seconds)
  * @param filteredRT60      decay time at DC (seconds)
  * @param numChannels       size of FDN
  */
-void BMFirstOrderArray4x4_setLowDecayFDN(BMFirstOrderArray4x4 *This, float* delayTimesSeconds, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels);
+void BMFirstOrderArray4x4_setLowDecayFDN(BMFirstOrderArray4x4 *This, size_t* delayTimesSamples, float fc, float unfilteredRT60, float filteredRT60, size_t numChannels);
 
 
 

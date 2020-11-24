@@ -19,7 +19,7 @@ extern "C" {
     /*
      * https://stackoverflow.com/questions/600293/how-to-check-if-a-number-is-a-power-of-2
      */
-    static bool isPowerOfTwo(size_t x)
+    static inline bool isPowerOfTwo(size_t x)
     {
         return (x & (x - 1)) == 0;
     }
@@ -32,7 +32,7 @@ extern "C" {
      *
      * https://stackoverflow.com/questions/9772348/get-absolute-value-without-using-abs-function-nor-if-statement
      */
-    static int32_t absi(int32_t x){
+    static inline int32_t absi(int32_t x){
         return (x ^ (x >> 31)) - (x >> 31);
     }
     
@@ -43,7 +43,7 @@ extern "C" {
      * 
      * https://stackoverflow.com/questions/994593/how-to-do-an-integer-log2-in-c
      */
-    static uint32_t log2i(uint32_t x){
+    static inline uint32_t log2i(uint32_t x){
         // get index of the most significant bit
         return __builtin_ctz(x);
     }
@@ -57,7 +57,7 @@ extern "C" {
      *
      * @returns the greatest common divisor of a and b
      */
-    static size_t gcd_ui(size_t a, size_t b)
+    static inline size_t gcd_ui(size_t a, size_t b)
     {
         while (b != 0)
         {
@@ -77,7 +77,7 @@ extern "C" {
      *
      * @returns the greatest common divisor of a and b
      */
-    static int gcd_i (int a, int b){
+    static inline int gcd_i (int a, int b){
         int c;
         while ( a != 0 ) {
             c = a; a = b%a; b = c;
@@ -94,7 +94,7 @@ extern "C" {
      *
      * https://stackoverflow.com/questions/101439/the-most-efficient-way-to-implement-an-integer-based-power-function-powint-int
      */
-    static int powi(int a, int b)
+    static inline int powi(int a, int b)
     {
         int result = 1;
         while (b)
@@ -113,7 +113,7 @@ extern "C" {
     
     // calcul a^n%mod
     // https://rosettacode.org/wiki/Miller–Rabin_primality_test#Deterministic_up_to_341.2C550.2C071.2C728.2C321
-    static size_t powerMod(size_t a, size_t n, size_t mod)
+    static inline size_t powerMod(size_t a, size_t n, size_t mod)
     {
         size_t power = a;
         size_t result = 1;
@@ -133,7 +133,7 @@ extern "C" {
     // REQUIRED FOR MILLER-RABIN PRIMALITY TEST
     // n−1 = 2^s * d with d odd by factoring powers of 2 from n−1
     // https://rosettacode.org/wiki/Miller–Rabin_primality_test#Deterministic_up_to_341.2C550.2C071.2C728.2C321
-    static bool witness(size_t n, size_t s, size_t d, size_t a)
+    static inline bool witness(size_t n, size_t s, size_t d, size_t a)
     {
         size_t x = powerMod(a, d, n);
         size_t y = 0;
@@ -163,7 +163,7 @@ extern "C" {
      * if n < 341,550,071,728,321, it is enough to test a = 2, 3, 5, 7, 11, 13, and 17.
      */
     // https://rosettacode.org/wiki/Miller–Rabin_primality_test#Deterministic_up_to_341.2C550.2C071.2C728.2C321
-    static bool isPrimeMr(size_t n)
+    static inline bool isPrimeMr(size_t n)
     {
         if (((!(n & 1)) && n != 2 ) || (n < 2) || (n % 3 == 0 && n != 3))
             return false;

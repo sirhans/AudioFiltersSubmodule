@@ -3,7 +3,7 @@
 //  AudioFiltersXcodeProject
 //
 //  Created by hans anderson on 9/14/19.
-//  Copyright © 2019 BlueMangoo. All rights reserved.
+//  Anyone may use this file. No restritions.
 //
 
 #ifndef BMSimpleFDN_h

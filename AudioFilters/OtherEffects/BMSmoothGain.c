@@ -22,6 +22,7 @@ extern "C" {
         return pow(BM_DB_TO_GAIN(dB),1.0/numSamples);
     }
     
+    
     void BMSmoothGain_init(BMSmoothGain *This, float sampleRate){
         This->gain = This->gainTarget = 1.0f;
         This->inTransition = false;
@@ -192,7 +193,7 @@ extern "C" {
              // otherwise just copy
              else {
                  // check that the arrays are not in place; if they are, do nothing
-                 if (inputs != outputs){
+                 if (inputs != (const float**)outputs){
                      for(size_t j=0; j<numChannels; j++)
                          memcpy(outputs[j],inputs[j],sizeof(float)*numSamples);
                  }
@@ -284,15 +285,41 @@ extern "C" {
         // convert dB scale to linear scale gain
         float gain = BM_DB_TO_GAIN(gainDb);
         
-        if(gainDb == FLT_MIN) gain = 0.0f;
+		// turn off the gain completely if the input is FLT_MIN
+        if(gainDb == FLT_MIN) gain = BM_DB_TO_GAIN(-110.0f);
         
         // if this is a legitimate gain change, set the new target and switch to
         // transition state
-        if (gain != This->nextGainTarget){
+        if (gain != This->nextGainTarget) {
             This->nextGainTarget = gain;
             This->inTransition = true;
         }
     }
+	
+	
+	
+	
+	/*!
+	 * BMSmoothGain_setGainDbInstant
+	 *
+	 * @abstract This sets the gain immediately without smoothing the transition
+	 *
+	 * @param This        pointer to an initialized BMSmoothGain struct
+	 * @param gainDb      new target gain in decibels to be approached smoothly
+	 */
+	void BMSmoothGain_setGainDbInstant(BMSmoothGain *This, float gainDb){
+		// convert dB scale to linear scale gain
+        float gain = BM_DB_TO_GAIN(gainDb);
+        
+		// turn off the gain completely if the input is FLT_MIN
+        if(gainDb == FLT_MIN) gain = 0.0f;
+		
+        // if this is a legitimate gain change, set the gain immediately and exit the transition state
+		This->gain = gain;
+        This->gainTarget = gain;
+		This->nextGainTarget = gain;
+		This->inTransition = false;
+	}
     
     
     
