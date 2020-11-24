@@ -148,7 +148,7 @@ void BMReleaseFilter_init(BMReleaseFilter *This, float fc, float sampleRate){
     This->attackMode = false;
     This->ic1 = This->ic2 = 0;
     
-    BMReleaseFilter_setCutoff(This, fc);
+    //BMReleaseFilter_setCutoff(This, fc);
 }
 
 
