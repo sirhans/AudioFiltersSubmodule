@@ -25,6 +25,8 @@ typedef struct BMPanMixer {
     float panLeft,panRight;
 } BMPanMixer;
 
-
+void BMPanMixer_init(BMPanMixer* This,PanMode mode, float sampleRate);
+void BMPanMixer_setPanMix(BMPanMixer* This,float mix);
+void BMPanMixer_processStereo(BMPanMixer* This,float* inL,float* inR,float* outL,float* outR,size_t frameCount);
 
 #endif /* BMPanMixer_h */

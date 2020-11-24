@@ -150,7 +150,8 @@ extern "C" {
         }
         else {
             // bypass the downsampler
-            memcpy(output,input,numSamplesIn * sizeof(float));
+			if(output != input)
+				memcpy(output,input,numSamplesIn * sizeof(float));
         }
     }
     
