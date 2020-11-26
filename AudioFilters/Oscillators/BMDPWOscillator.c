@@ -155,14 +155,14 @@ void BMDPWOscillator_initDifferentiator(BMDPWOscillator *This){
 	// init the FIR filter that will process the differentiation
 	BMFIRFilter_init(&This->differentiator, finiteDifferenceKernel, kernelLength);
     
-    // normalise the difference kernel to get a vector magnitude of 1
-	float sumsq;
-	vDSP_svesq(finiteDifferenceKernel, 1, &sumsq, kernelLength);
-	float normalizer = 1.0f/sqrtf(sumsq);
+    // take the absolute value of the difference kernel to get a smoothing filter
+    vDSP_vabs(finiteDifferenceKernel, 1, finiteDifferenceKernel, 1, kernelLength);
+    
+    // normalise the difference kernel to get a total of 1
+	float sum;
+	vDSP_sve(finiteDifferenceKernel, 1, &sum, kernelLength);
+	float normalizer = 1.0f/sum;
 	vDSP_vsmul(finiteDifferenceKernel, 1, &normalizer, finiteDifferenceKernel, 1, kernelLength);
-	
-	// take the absolute value of the difference kernel to get a smoothing filter
-	vDSP_vabs(finiteDifferenceKernel, 1, finiteDifferenceKernel, 1, kernelLength);
     
     // init the smoothing filter
     BMFIRFilter_init(&This->scalingFilter, finiteDifferenceKernel, kernelLength);
