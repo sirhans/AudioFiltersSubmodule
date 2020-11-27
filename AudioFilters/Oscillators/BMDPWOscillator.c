@@ -2,6 +2,10 @@
 //  BMDPWOscillator.c
 //  AudioFiltersXcodeProject
 //
+//  WE HAVE ABANDONED DEVELOPMENT OF THIS CLASS BECAUSE IT REQUIRES GREATER
+//  PRECISION THAN THE 64 BIT DOUBLE DATA TYPE PROVIDES. MATHEMATICA PROTOTYPES
+//  SUGGEST THAT 128 BIT PRECISION WOULD BE SUFFICIENT.
+//
 //  Created by hans anderson on 11/11/20.
 //  Copyright © 2020 BlueMangoo. We hereby release this code into the public
 //  domain with no restrictions.
@@ -169,15 +173,7 @@ void BMDPWOscillator_initDifferentiator(BMDPWOscillator *This){
 
 
 
-size_t BMDPWFactorial(size_t N){
-	if(N==0) return 0;
-	
-	size_t out = N;
-	while (--N > 1)
-		out *= N;
-	
-	return out;
-}
+
 
 
 
@@ -194,7 +190,7 @@ float BMDPWOscillator_valimakiScalingFunction(size_t N, double f, double sr){
 	
 	double numerator = pow(M_PI,(double)N-1.0);
 	double P = sr/f;
-	double denominator = (double)BMDPWFactorial(N) * pow(2.0 * sin(M_PI/P),(double)(N-1));
+	double denominator = (double)BMFactorial(N) * pow(2.0 * sin(M_PI/P),(double)(N-1));
 	
 	return numerator / denominator;
 }

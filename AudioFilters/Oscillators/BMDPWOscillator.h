@@ -2,6 +2,10 @@
 //  BMDPWOscillator.h
 //  AudioFiltersXcodeProject
 //
+//  WE HAVE ABANDONED DEVELOPMENT OF THIS CLASS BECAUSE IT REQUIRES GREATER
+//  PRECISION THAN THE 64 BIT DOUBLE DATA TYPE PROVIDES. MATHEMATICA PROTOTYPES
+//  SUGGEST THAT 128 BIT PRECISION WOULD BE SUFFICIENT.
+//
 //  This class implements an antialiased differentiated polynomial waveform
 //  oscillator. The basic idea is to express a basic synth waveform as a
 //  polynomial. We symbolically integrate the polynomial several times,
