@@ -94,6 +94,7 @@ void BMCDBlepOscillator_init(BMCDBlepOscillator *This, size_t numBleps, size_t f
 	This->filterOrder = filterOrder;
 	This->oversampleFactor = oversampleFactor;
 	This->sampleRate = sampleRate;
+    This->nextStartPhase = 0;
 	
 	// start the bleps with the ramps at a large number so that their output
 	// will be near zero
@@ -122,7 +123,8 @@ void BMCDBlepOscillator_init(BMCDBlepOscillator *This, size_t numBleps, size_t f
 	// allocate some buffers
 	This->b1 = malloc(sizeof(float) * BM_BUFFER_CHUNK_SIZE * oversampleFactor);
 	This->b2 = malloc(sizeof(float) * BM_BUFFER_CHUNK_SIZE * oversampleFactor);
-	This->b3 = malloc(sizeof(float) * BM_BUFFER_CHUNK_SIZE * oversampleFactor);
+    This->b3 = malloc(sizeof(float) * BM_BUFFER_CHUNK_SIZE * oversampleFactor);
+	This->b4 = malloc(sizeof(size_t) * BM_BUFFER_CHUNK_SIZE * oversampleFactor);
 	
 	// calculate the BLEP ramp increment. This is the change in the BLEP input
 	// for each sample of oversampled audio input.
@@ -155,6 +157,9 @@ void BMCDBlepOscillator_free(BMCDBlepOscillator *This){
 	This->b2 = NULL;
 	free(This->b3);
 	This->b3 = NULL;
+    free(This->b4);
+    This->b4 = NULL;
+    
 }
 
 
@@ -173,6 +178,8 @@ void BMCDBlepOscillator_naiveSaw(const float *phases, float *output, size_t leng
 }
 
 
+
+
 void BMCDBlepOscillator_blepRamps(BMCDBlepOscillator *This, size_t length){
 	for(size_t i=0; i<This->numBleps; i++){
 		vDSP_vramp(&This->blepInputStart[i], &This->blepRampIncrement, This->blepRampBuffers[i], 1, length);
@@ -181,7 +188,9 @@ void BMCDBlepOscillator_blepRamps(BMCDBlepOscillator *This, size_t length){
 
 
 
-void BMDCBlepOscillator_processBlep(BMCDBlepOscillator *This, float *t, float *output, size_t numSamples){
+
+
+void BMCDBlepOscillator_processBlep(BMCDBlepOscillator *This, float *t, float *output, size_t numSamples){
 	// evaluate the polynomial
 	vDSP_vpoly(This->stepResponseCoefficients, 1, t, 1, This->b2, 1, numSamples, This->filterOrder-1);
 	
@@ -199,6 +208,112 @@ void BMDCBlepOscillator_processBlep(BMCDBlepOscillator *This, float *t, float *o
 
 
 
+void BMCDBlepOscillator_freqsToPhases(BMCDBlepOscillator *This, const float *frequencies, float *phases, size_t length){
+    
+    // this is the wavelength of the archetype waveform, which
+    // is the waveform before any scaling is applied.
+    float archetypeWavelength = 2.0f;
+    
+    // this scaling factor converts from frequency to phase increment.
+    // We are generating waveforms on the interval from -1 to 1.
+    // Therefore a freqeuency of f implies a phase increment of (f * archetypeWavelength / sampleRate)
+    // for each sample.
+    float scalingFactor = archetypeWavelength / (This->sampleRate * (float)This->oversampleFactor);
+    
+    // Here we want to running sum the phase increments into the phase buffer to
+    // get the phases.
+    //
+    // Because the vrsum function requires a scaling factor, we conveniently
+    // convert from frequency to phase increment and do the running sum in a
+    // single function call.
+    vDSP_vrsum(frequencies, 1, &scalingFactor, phases, 1, length);
+    
+    // To ensure phase continuity between buffers we adjust the start phase to
+    // align with the end phase of the previous buffer
+    vDSP_vsadd(phases, 1, &This->nextStartPhase, phases, 1, length);
+    
+    // compute the start phase of the next buffer.
+    // note that we shift the phase to centre on zero after this. The formula
+    // below takes into account that the shift has not yet occured at this point.
+    This->nextStartPhase = phases[length-1] + frequencies[length-1]*scalingFactor;
+    This->nextStartPhase = fmodf(This->nextStartPhase, archetypeWavelength);
+    
+    // use floating point mod to wrap the phases into [0,archetypeWavelength]
+    int length_i = (int)length;
+    vvfmodf(phases, phases, &archetypeWavelength, &length_i);
+    
+    // subtract to shift the phases into [-archetypeWavelength/2,archetypeWavelength/2]
+    float negHalfWavelength = archetypeWavelength * -0.5f;
+    vDSP_vsadd(phases, 1, &negHalfWavelength, phases, 1, length);
+}
+
+
+
+/*!
+ *BMCDBlepOscillator_discontinuityOffset
+ *
+ * Given the ramp increment and the next value after the discontinuity,
+ * return the offset between the last value before the discontinuity and the
+ * discontinuity itself.
+ */
+float BMCDBlepOscillator_discontinuityOffset(float nextValue, float increment){
+    return (increment - (nextValue + 1.0f)) / increment;
+}
+
+
+
+
+void BMCDBlepOscillator_resetBlepRamps(BMCDBlepOscillator *This, const float *naiveWave, size_t length){
+    // find the first order finite difference derivative of each element in the
+    // naive waveform
+    float *derivative = This->b2;
+    vDSP_vsub(naiveWave+1, 1, naiveWave, 1, derivative+1, 1, length-1);
+    
+    // calculate the first element of the derivative using the last value from
+    // the previous buffer call
+    
+    // cache the last value from the current buffer call
+    
+    // a phase reset occurs each time the derivative shifts from positive to
+    // negative. we count the zero crossings and store their indices in a buffer
+    size_t *zeroCrossingIndices = This->b4;
+    size_t numZeroCrossings;
+    vDSP_nzcros(derivative, 1, length, zeroCrossingIndices, &numZeroCrossings, length);
+    
+    // remove positive zero crossings from the list
+    size_t j = 0;
+    size_t numNegativeCrossings = 0;
+    for(size_t i=0; i<numZeroCrossings; i++){
+        if(derivative[zeroCrossingIndices[i]] < 0){
+            zeroCrossingIndices[j++] = zeroCrossingIndices[i++];
+            numNegativeCrossings++;
+        }
+        else i++;
+    }
+    
+    // for each negative zero crossing, find the floating point offset between
+    // the audio sample before the discontinuity and the discontinuity itself
+    float *discontinuityOffsets = This->b2;
+    for(size_t i=0; i<numNegativeCrossings; i++){
+        
+        discontinuityOffsets[i] = BMCDBlepOscillator_discontinuityOffset(float nextValue, float increment);
+    }
+    
+    // for each negative zero crossing, reset one of the blep ramps to the discontinuity offset
+    for(size_t i=0; i<numNegativeCrossings; i++){
+        
+        
+        // find out how much to add to the ramp to get to the
+        // discontinuity offset
+        
+        // subtract from all remaining values in the blep input ramp
+        vDSP_vsadd(This->blepRampBuffers[blepRampIndex] + zeroCrossingIndices[i] - 1, <#vDSP_Stride __IA#>, <#const float * _Nonnull __B#>, <#float * _Nonnull __C#>, <#vDSP_Stride __IC#>, <#vDSP_Length __N#>)
+    }
+}
+
+
+
+
 void BMCDBlepOscillator_process(BMCDBlepOscillator *This, const float *frequencies, float *output, size_t numSamples){
 	
 	size_t samplesRemaining = numSamples;
@@ -208,19 +323,26 @@ void BMCDBlepOscillator_process(BMCDBlepOscillator *This, const float *frequenci
 		size_t samplesProcessingOS = This->oversampleFactor * samplesProcessing;
 		
 		// upsample the frequencies
-		float * frequenciesUS = This->b1;
-		BMGaussianUpsampler_processMono(&This->upsampler, frequencies + i, frequenciesUS, samplesProcessing);
+		float * frequenciesOS = This->b1;
+		BMGaussianUpsampler_processMono(&This->upsampler, frequencies + i, frequenciesOS, samplesProcessing);
+        
+        // multiply the frequencies by the oversampling factor
+        float osFactorF = This->oversampleFactor;
+        vDSP_vsmul(frequenciesOS, 1, &osFactorF, frequenciesOS, 1, samplesProcessingOS);
 		
 		// convert frequencies to phases
+        float *phasesOS = This->b1;
+        BMCDBlepOscillator_freqsToPhases(This, frequenciesOS, phasesOS, samplesProcessingOS);
 		
 		// process naive oscillator
-		BMCDBlepOscillator_naiveSaw(const float *phases, float *output, samplesProcessingOS);
+        float *outputOS = This->b1;
+		BMCDBlepOscillator_naiveSaw(phasesOS, outputOS, samplesProcessingOS);
 		
 		// fill the blep input buffers with smoothly ascending ramps. These are
 		// simply counting the passing of time with each sample.
 		BMCDBlepOscillator_blepRamps(This, samplesProcessingOS);
 		
-		// scan the naive oscillator output for discontinuities. Each time you
+		// scan the naive oscillator output for discontinuities. Each time we
 		// find one, subtract a constant from one of the BLEP input buffers,
 		// starting from the time index of the discontinuity and continuing to
 		// the end of the buffer.
@@ -228,10 +350,10 @@ void BMCDBlepOscillator_process(BMCDBlepOscillator *This, const float *frequenci
 		
 		// sum the blep ramps into the output
 		for(size_t i=0; i<This->numBleps; i++)
-		BMDCBlepOscillator_processBlep(This, This->blepRampBuffers[i], <#float *output#>, samplesProcessingOS);
+		BMCDBlepOscillator_processBlep(This, This->blepRampBuffers[i], outputOS, samplesProcessingOS);
 		
 		// downsample
-		BMDownsampler_processBufferMono(&This->downsampler, <#float *input#>, output+i, samplesProcessingOS);
+		BMDownsampler_processBufferMono(&This->downsampler, outputOS, output+i, samplesProcessingOS);
 		
 		// advance indices
 		samplesRemaining -= samplesProcessing;

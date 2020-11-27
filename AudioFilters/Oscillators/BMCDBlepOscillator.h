@@ -39,11 +39,12 @@
 
 typedef struct BMCDBlepOscillator {
 	size_t numBleps, filterOrder, oversampleFactor;
-	float sampleRate, blepRampIncrement;
+	float sampleRate, blepRampIncrement, nextStartPhase;
 	float blepInputStart [BMCDBLEP_MAX_BLEPS];
 	float *blepRampBuffers [BMCDBLEP_MAX_BLEPS];
 	float stepResponseCoefficients [BMCDBLEP_MAX_FILTER_ORDER];
-	float *b1, *b2, *b3;
+    float *b1, *b2, *b3;
+    size_t *b4;
 	BMGaussianUpsampler upsampler;
 	BMDownsampler downsampler;
 	BMMultiLevelBiquad highpass;
