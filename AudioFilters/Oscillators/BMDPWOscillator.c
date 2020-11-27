@@ -399,6 +399,9 @@ void BMDPWOscillator_process(BMDPWOscillator *This, const float *frequencies, fl
         // get the volume scaling signal
         BMDPWOscillator_ampScales(This, This->b3, This->b2, samplesProcessingOS);
         
+        for(size_t i=0; i<samplesProcessingOS; i++)
+            printf("%f,",This->b1[i]);
+        
         // apply a smoothing filter to the scaling signal
         BMFIRFilter_process(&This->scalingFilter, This->b2, This->b2, samplesProcessingOS);
         
