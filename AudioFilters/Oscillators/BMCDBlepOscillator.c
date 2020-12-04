@@ -262,6 +262,33 @@ float BMCDBlepOscillator_discontinuityOffset(float nextValue, float increment){
 
 
 
+/*!
+ *BMCDBlepOscillator_discontinuityOffsets
+ *
+ * does the same thing as discontinuityOffets (no s) but operates on vector-valued inputs
+ */
+void BMCDBlepOscillator_discontinuityOffsets(const size_t *indices, const float *inputs, float *buffer, float *output, float increment, size_t numNegCrossings){
+    // return (increment - (nextValue + 1.0f)) / increment;
+    // equivalent statement: ((increment - 1) + (-nextValue)) / increment
+    
+    // load all the values of the naive waveform just after
+    // the discontinuity. Store in buffer.
+    vDSP_vgathr(inputs, indices, 1, buffer, 1, numNegCrossings);
+    
+    
+    // ((increment - 1) - nextValue) / increment
+    // == ((increment - 1) / increment) + (nextValue * -1.0 / increment)
+    float incrementMinusOneOverIncrement = (increment - 1.0f) / increment;
+    float negOneOverIncrement = -1.0f / increment;
+    vDSP_vsmsa(buffer, 1,
+               &negOneOverIncrement,
+               &incrementMinusOneOverIncrement,
+               buffer, 1,
+               numNegCrossings);
+}
+
+
+
 
 void BMCDBlepOscillator_resetBlepRamps(BMCDBlepOscillator *This, const float *naiveWave, size_t length){
     // find the first order finite difference derivative of each element in the
@@ -295,16 +322,15 @@ void BMCDBlepOscillator_resetBlepRamps(BMCDBlepOscillator *This, const float *na
     // the audio sample before the discontinuity and the discontinuity itself
     float *discontinuityOffsets = This->b2;
     for(size_t i=0; i<numNegativeCrossings; i++){
-        
-        discontinuityOffsets[i] = BMCDBlepOscillator_discontinuityOffset(float nextValue, float increment);
+        discontinuityOffsets[i] = BMCDBlepOscillator_discontinuityOffset(zeroCrossingIndices[i], This->blepRampIncrement);
     }
     
     // for each negative zero crossing, reset one of the blep ramps to the discontinuity offset
     for(size_t i=0; i<numNegativeCrossings; i++){
         
-        
         // find out how much to add to the ramp to get to the
         // discontinuity offset
+        
         
         // subtract from all remaining values in the blep input ramp
         vDSP_vsadd(This->blepRampBuffers[blepRampIndex] + zeroCrossingIndices[i] - 1, <#vDSP_Stride __IA#>, <#const float * _Nonnull __B#>, <#float * _Nonnull __C#>, <#vDSP_Stride __IC#>, <#vDSP_Length __N#>)
