@@ -38,10 +38,11 @@
 #define BMCDBLEP_MAX_FILTER_ORDER 20
 
 typedef struct BMCDBlepOscillator {
-	size_t numBleps, filterOrder, oversampleFactor;
-	float sampleRate, blepRampIncrement, nextStartPhase;
-	float blepInputStart [BMCDBLEP_MAX_BLEPS];
-	float *blepRampBuffers [BMCDBLEP_MAX_BLEPS];
+	size_t numBleps, filterOrder, oversampleFactor, oldestBlep;
+	float sampleRate, blepInputIncrement, nextStartPhase;
+	float blepInputInitialValue [BMCDBLEP_MAX_BLEPS];
+    size_t blepInputWriteOffset [BMCDBLEP_MAX_BLEPS];
+	float *blepInputBuffers [BMCDBLEP_MAX_BLEPS];
 	float stepResponseCoefficients [BMCDBLEP_MAX_FILTER_ORDER];
     float *b1, *b2, *b3;
     size_t *b4;
