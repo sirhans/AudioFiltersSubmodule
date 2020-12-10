@@ -44,6 +44,7 @@ typedef struct BMCDBlepOscillator {
     size_t blepInputWriteOffset [BMCDBLEP_MAX_BLEPS];
 	float *blepInputBuffers [BMCDBLEP_MAX_BLEPS];
 	float stepResponseCoefficients [BMCDBLEP_MAX_FILTER_ORDER];
+	float *archetypeWavelengths;
     float *b1, *b2, *b3;
     size_t *b4;
 	BMGaussianUpsampler upsampler;
@@ -51,6 +52,23 @@ typedef struct BMCDBlepOscillator {
 	BMMultiLevelBiquad highpass;
 } BMCDBlepOscillator;
 
+
+/*!
+ *BMCDBlepOscillator_init
+ */
 void BMCDBlepOscillator_init(BMCDBlepOscillator *This, size_t numBleps, size_t filterOrder, size_t oversampleFactor, float sampleRate);
+
+/*!
+ *BMCDBlepOscillator_free
+ */
+void BMCDBlepOscillator_free(BMCDBlepOscillator *This);
+
+
+/*!
+ *BMCDBlepOscillator_process
+ */
+void BMCDBlepOscillator_process(BMCDBlepOscillator *This, const float *frequencies, float *output, size_t numSamples);
+
+
 
 #endif /* BMCDBlepOscillator_h */
