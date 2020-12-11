@@ -69,6 +69,7 @@ void BMCDBlepOscillator_init(BMCDBlepOscillator *This, size_t numBleps, size_t f
 	This->sampleRate = sampleRate;
     This->nextStartPhase = 0;
     This->oldestBlep = 0;
+    This->previousEndValue = 0.0f;
 	
 	// start the bleps with the ramps at a large number so that their output
 	// will be near zero
@@ -276,8 +277,10 @@ void BMCDBlepOscillator_generateblepInputs(BMCDBlepOscillator *This, const float
     
     // calculate the first element of the derivative using the last value from
     // the previous buffer call
+    derivative[0] = naiveWave[0] - This->previousEndValue;
     
     // cache the last value from the current buffer call
+    This->previousEndValue = naiveWave[length-1];
     
     // a phase reset occurs each time the derivative shifts from positive to
     // negative. we count the zero crossings and store their indices in a buffer
@@ -313,13 +316,11 @@ void BMCDBlepOscillator_generateblepInputs(BMCDBlepOscillator *This, const float
         // how many samples are we writing?
         size_t samplesWriting = zeroCrossingIndices[i] - This->blepInputWriteOffset[This->oldestBlep];
         
-    TODO: the blepInputInitialValue should depend on the discontinuity offset
-        
         // write the next segment in the ramp
         vDSP_vramp(&This->blepInputInitialValue[This->oldestBlep], &This->blepInputIncrement, blepInputWritePointer, 1, samplesWriting);
         
-        // update the initial value for the next ramp (This is only used if we are writing to the end of the buffer)
-        This->blepInputInitialValue[This->oldestBlep] = blepInputWritePointer[samplesWriting-1] + This->blepInputIncrement;
+        // update the initial value for the next ramp
+        This->blepInputInitialValue[This->oldestBlep] = discontinuityOffsets[i];
         
         // update the offset for the next ramp
         This->blepInputWriteOffset[This->oldestBlep] += samplesWriting;

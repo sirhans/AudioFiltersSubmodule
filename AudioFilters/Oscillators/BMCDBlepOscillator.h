@@ -39,7 +39,7 @@
 
 typedef struct BMCDBlepOscillator {
 	size_t numBleps, filterOrder, oversampleFactor, oldestBlep;
-	float sampleRate, blepInputIncrement, nextStartPhase;
+	float sampleRate, blepInputIncrement, nextStartPhase, previousEndValue;
 	float blepInputInitialValue [BMCDBLEP_MAX_BLEPS];
     size_t blepInputWriteOffset [BMCDBLEP_MAX_BLEPS];
 	float *blepInputBuffers [BMCDBLEP_MAX_BLEPS];
