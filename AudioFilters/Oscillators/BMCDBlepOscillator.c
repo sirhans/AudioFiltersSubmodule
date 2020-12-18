@@ -223,7 +223,7 @@ void BMCDBlepOscillator_freqsToPhases(BMCDBlepOscillator *This, const float *fre
     // below takes into account that the shift has not yet occured at this point.
     This->nextStartPhase = phases[length-1] + frequencies[length-1]*scalingFactor;
     This->nextStartPhase = fmodf(This->nextStartPhase, This->archetypeWavelengths[0]);
-	This->nextStartPhase += This->archetypeWavelengths[0] * -0.5f;
+	//This->nextStartPhase += This->archetypeWavelengths[0] * -0.5f;
     
     // use floating point mod to wrap the phases into [0,archetypeWavelength]
     int length_i = (int)length;
