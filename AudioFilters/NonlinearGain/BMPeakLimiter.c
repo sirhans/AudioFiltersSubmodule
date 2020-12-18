@@ -89,20 +89,21 @@ void BMPeakLimiter_processStereo(BMPeakLimiter *This,
 								 size_t numSamples){
 	// if the lookahead needs an update, do that instead of processing audio
 	if(This->lookaheadTime != This->targetLookaheadTime){
-		memset(outL,0,numSamples*sizeof(float));
-		memset(outR,0,numSamples*sizeof(float));
+//		memset(outL,0,numSamples*sizeof(float));
+//		memset(outR,0,numSamples*sizeof(float));
 		BMPeakLimiter_update(This);
 	}
 	
 	// if no update is necessary then process the audio
 	else {
 		// chunked processing
-		while(numSamples > 0){
-			size_t samplesProcessing = BM_MIN(BM_BUFFER_CHUNK_SIZE, numSamples);
+        size_t samplesProcessed = 0;
+		while(samplesProcessed< numSamples){
+			size_t samplesProcessing = BM_MIN(BM_BUFFER_CHUNK_SIZE, numSamples-samplesProcessed);
 			
 			// rectify the left and right channels into the buffers
-			vDSP_vabs(inL, 1, This->bufferL, 1, samplesProcessing);
-			vDSP_vabs(inR, 1, This->bufferR, 1, samplesProcessing);
+			vDSP_vabs(inL+samplesProcessed, 1, This->bufferL, 1, samplesProcessing);
+			vDSP_vabs(inR+samplesProcessed, 1, This->bufferR, 1, samplesProcessing);
 			
 			// make an alias pointer for code readability
 			float* envelope = This->controlSignal;
@@ -123,19 +124,15 @@ void BMPeakLimiter_processStereo(BMPeakLimiter *This,
 			This->isLimiting = This->controlSignal[samplesProcessing - 1] < 0.999f;
 			
 			// delay the input
-			const float* inputs [2] = {inL,inR};
+			const float* inputs [2] = {inL+samplesProcessed,inR+samplesProcessed};
 			float* outputs [2] = {This->bufferL, This->bufferR};
 			BMShortSimpleDelay_process(&This->delay, inputs, outputs, 2, samplesProcessing);
 			
 			// multiply the delayed inputs by the control signal and write to the output
-			vDSP_vmul(This->bufferL,1,This->controlSignal,1,outL,1,samplesProcessing);
-			vDSP_vmul(This->bufferR,1,This->controlSignal,1,outR,1,samplesProcessing);
+			vDSP_vmul(This->bufferL,1,This->controlSignal,1,outL+samplesProcessed,1,samplesProcessing);
+			vDSP_vmul(This->bufferR,1,This->controlSignal,1,outR+samplesProcessed,1,samplesProcessing);
 			
-			numSamples -= samplesProcessing;
-			inL += samplesProcessing;
-			inR += samplesProcessing;
-			outL += samplesProcessing;
-			outR += samplesProcessing;
+            samplesProcessed += samplesProcessing;
 		}
 	}
 }
@@ -151,21 +148,22 @@ void BMPeakLimiter_processMono(BMPeakLimiter *This,
 							   size_t numSamples){
 	// if the lookahead needs an update, do that instead of processing audio
 	if(This->lookaheadTime != This->targetLookaheadTime){
-		memset(output,0,numSamples*sizeof(float));
+//		memset(output,0,numSamples*sizeof(float));
 		BMPeakLimiter_update(This);
 	}
 	
 	// if no update is necessary then process the audio
 	else {
 		// chunked processing
-		while(numSamples > 0){
-			size_t samplesProcessing = BM_MIN(BM_BUFFER_CHUNK_SIZE, numSamples);
+        size_t samplesProcessed = 0;
+		while(samplesProcessed < numSamples){
+			size_t samplesProcessing = BM_MIN(BM_BUFFER_CHUNK_SIZE, numSamples-samplesProcessed);
 			
 			// make an alias pointer for code readability
 			float* envelope = This->controlSignal;
 			
 			// rectify the input into the envelope buffer
-			vDSP_vabs(input, 1, envelope, 1, samplesProcessing);
+			vDSP_vabs(input+samplesProcessed, 1, envelope, 1, samplesProcessing);
 			
 			// replace values below the threshold with the threshold itself
 			vDSP_vthr(envelope, 1, &This->thresholdGain, envelope, 1, samplesProcessing);
@@ -180,16 +178,14 @@ void BMPeakLimiter_processMono(BMPeakLimiter *This,
 			This->isLimiting = This->controlSignal[samplesProcessing - 1] < 0.999f;
 			
 			// delay the input
-			const float* inputs [1] = {input};
+			const float* inputs [1] = {input+samplesProcessed};
 			float* outputs [1] = {This->bufferL};
 			BMShortSimpleDelay_process(&This->delay, inputs, outputs, 1, samplesProcessing);
 			
 			// multiply the delayed input by the control signal and write to the output
-			vDSP_vmul(This->bufferL,1,This->controlSignal,1,output,1,samplesProcessing);
+			vDSP_vmul(This->bufferL,1,This->controlSignal,1,output+samplesProcessed,1,samplesProcessing);
 			
-			numSamples -= samplesProcessing;
-			input += samplesProcessing;
-			output += samplesProcessing;
+			samplesProcessed += samplesProcessing;
 		}
 	}
 }
