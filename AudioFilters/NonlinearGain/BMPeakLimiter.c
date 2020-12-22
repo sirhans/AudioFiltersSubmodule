@@ -88,8 +88,14 @@ void BMPeakLimiter_processStereo(BMPeakLimiter *This,
                                  float *outL, float *outR,
                                  size_t numSamples){
     // if the lookahead needs an update, do that instead of processing audio
-    if(This->lookaheadTime != This->targetLookaheadTime)
+    if(This->lookaheadTime != This->targetLookaheadTime){
+        // clear the output buffers in case we don't finish the output on time
+        memset(outL,0,sizeof(float)*numSamples);
+        memset(outR,0,sizeof(float)*numSamples);
+        
+        // update settings
         BMPeakLimiter_update(This);
+    }
     
     // chunked processing
     size_t samplesProcessed = 0;
@@ -141,8 +147,13 @@ void BMPeakLimiter_processMono(BMPeakLimiter *This,
                                float *output,
                                size_t numSamples){
     // if the lookahead needs an update, do that instead of processing audio
-    if(This->lookaheadTime != This->targetLookaheadTime)
+    if(This->lookaheadTime != This->targetLookaheadTime){
+        // clear the output buffer in case we don't finish the output on time
+        memset(output,0,sizeof(float)*numSamples);
+        
+        // update settings
         BMPeakLimiter_update(This);
+    }
     
     
     // chunked processing
