@@ -121,8 +121,8 @@ void BMCDBlepOscillator_init(BMCDBlepOscillator *This, size_t numBleps, size_t f
 	// the time in seconds to reach 1 on the x-axis of the graph of the BLEP
 	// function. For example, if blepScale is 1/1000 then it takes 1 ms for the
 	// blep to reach 1 on the x axis.
-	float blepScale = 1.0 / 10.0;
-	This->blepInputIncrement = blepScale * sampleRate * (float)oversampleFactor / 48000.0;
+	float blepScale = 1.0 / 2.0;
+	This->blepInputIncrement = (blepScale * 48000.0) / (sampleRate * (float)oversampleFactor);
 }
 
 
@@ -408,9 +408,9 @@ void BMCDBlepOscillator_process(BMCDBlepOscillator *This, const float *frequenci
 		float * frequenciesOS = This->b1;
 		BMGaussianUpsampler_processMono(&This->upsampler, frequencies + i, frequenciesOS, samplesProcessing);
         
-        // multiply the frequencies by the oversampling factor
-        float osFactorF = This->oversampleFactor;
-        vDSP_vsmul(frequenciesOS, 1, &osFactorF, frequenciesOS, 1, samplesProcessingOS);
+//        // multiply the frequencies by the oversampling factor
+//        float osFactorF = This->oversampleFactor;
+//        vDSP_vsmul(frequenciesOS, 1, &osFactorF, frequenciesOS, 1, samplesProcessingOS);
 		
 		// convert frequencies to phases
         float *phasesOS = This->b1;
