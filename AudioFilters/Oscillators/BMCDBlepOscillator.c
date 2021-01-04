@@ -121,8 +121,8 @@ void BMCDBlepOscillator_init(BMCDBlepOscillator *This, size_t numBleps, size_t f
 	// the time in seconds to reach 1 on the x-axis of the graph of the BLEP
 	// function. For example, if blepScale is 1/1000 then it takes 1 ms for the
 	// blep to reach 1 on the x axis.
-	float blepScale = 1.0 / 1000.0;
-	This->blepInputIncrement = 1.0f / (blepScale * sampleRate * (float)oversampleFactor);
+	float blepScale = 1.0 / 10.0;
+	This->blepInputIncrement = blepScale * sampleRate * (float)oversampleFactor / 48000.0;
 }
 
 
@@ -205,6 +205,10 @@ void BMCDBlepOscillator_freqsToPhases(BMCDBlepOscillator *This, const float *fre
     // Therefore a freqeuency of f implies a phase increment of (f * archetypeWavelength / sampleRate)
     // for each sample.
     float scalingFactor = This->archetypeWavelengths[0] / (This->sampleRate * (float)This->oversampleFactor);
+	
+	// find the phase increment between the last element in the current buffer
+	// and the first increment in the next buffer
+	float nextIncrement = frequencies[length-1] * scalingFactor;
     
     // Here we want to running sum the phase increments into the phase buffer to
     // get the phases.
@@ -221,7 +225,7 @@ void BMCDBlepOscillator_freqsToPhases(BMCDBlepOscillator *This, const float *fre
     // compute the start phase of the next buffer.
     // note that we shift the phase to centre on zero after this. The formula
     // below takes into account that the shift has not yet occured at this point.
-    This->nextStartPhase = phases[length-1] + frequencies[length-1]*scalingFactor;
+    This->nextStartPhase = phases[length-1] + nextIncrement;
     This->nextStartPhase = fmodf(This->nextStartPhase, This->archetypeWavelengths[0]);
 	//This->nextStartPhase += This->archetypeWavelengths[0] * -0.5f;
     
@@ -419,10 +423,18 @@ void BMCDBlepOscillator_process(BMCDBlepOscillator *This, const float *frequenci
 		// calculate the input indices for the BLEP filters and store them
         // in the BLEP input Buffers
         BMCDBlepOscillator_generateblepInputs(This, outputOS, samplesProcessingOS);
+
+// DEBUG
+		// zero out the naive wave for testing
+		// memset(outputOS,0,sizeof(float)*samplesProcessingOS);
 		
 		// sum the blep outputs into the main output
-//		for(size_t j=0; j<This->numBleps; j++)
-//			BMCDBlepOscillator_processBlep(This, This->blepInputBuffers[j], outputOS, samplesProcessingOS);
+		for(size_t j=0; j<This->numBleps; j++)
+			BMCDBlepOscillator_processBlep(This, This->blepInputBuffers[j], outputOS, samplesProcessingOS);
+// DEBUG
+		// scale down to avoid clipping when debugging
+		float scale = 0.5f;
+		vDSP_vsmul(outputOS, 1, &scale, outputOS, 1, samplesProcessingOS);
 		
 		// downsample
 		BMDownsampler_processBufferMono(&This->downsampler, outputOS, output+i, samplesProcessingOS);
