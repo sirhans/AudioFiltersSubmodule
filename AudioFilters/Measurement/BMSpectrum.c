@@ -10,17 +10,11 @@
 #include <assert.h>
 #include "Constants.h"
 #include "BMUnitConversion.h"
+#include "BMIntegerMath.h"
 
 #define BM_SPECTRUM_DEFAULT_BUFFER_LENGTH 4096
 
 void BMSpectrum_setupFFT(BMSpectrum* This,size_t n);
-
-
-bool IsPowerOfTwo(size_t x)
-{
-	return (x & (x - 1)) == 0;
-}
-
 
 
 void BMSpectrum_init(BMSpectrum* This){
@@ -80,7 +74,7 @@ float BMSpectrum_processDataBasic(BMSpectrum* This,
 								  bool applyWindow,
 								  size_t inputLength){
 	assert(inputLength > 0);
-	assert(IsPowerOfTwo(inputLength));
+	assert(isPowerOfTwo(inputLength));
 	assert(inputLength <= This->maxInputLength);
 	
 	// apply a Kaiser window to the input
