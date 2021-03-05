@@ -11,7 +11,7 @@
 #include "BMIntegerMath.h"
 #include "Constants.h"
 
-#define BM_BLIP_MIN_OUTPUT 0.0000001
+#define BM_BLIP_MIN_OUTPUT 0.0000001 // -140 dB
 
 void BMBlip_init(BMBlip *This, size_t filterOrder, size_t oversampleFactor, float lowpassFc, float sampleRate){
 	assert(isPowerOfTwo(filterOrder));
