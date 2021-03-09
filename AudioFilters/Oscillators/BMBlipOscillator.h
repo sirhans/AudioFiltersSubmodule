@@ -16,7 +16,7 @@
 
 typedef struct BMBlip{
 	float nextIndex, negNOverP, pHatNegN, n, p, lastOutput, sampleRate;
-	float *expb;
+	float *exp_ptr, *exp_b1, *exp_b2;
 	size_t n_i, bufferLength;
 } BMBlip;
 
