@@ -15,12 +15,31 @@
 
 
 void BMBlip_update(BMBlip *This, float lowpassFc, size_t filterOrder){
+    // update p and n
+    
+   // TODO: update p and n
+    
+    // set a pointer to the currently unused exp buffer
+    float *exp_backBuffer = This->exp_b1;
+    if(This->exp_ptr == This->exp_b1)
+        exp_backBuffer = This->exp_b2;
+    
+    // fill the buffer
+    float zero = 0.0f;
+    float increment = -1.0 * This->n * (This->sampleRate / 48000.0f) / This->p;
+    vDSP_vramp(&zero, &increment, exp_backBuffer, 1, This->bufferLength);
+    int bufferLengthI = (int)This->bufferLength;
+    vvexpf(exp_backBuffer, exp_backBuffer, &bufferLengthI);
+    
+    // notify the oscillator to flip the buffers
+    This->expBufferNeedsFlip = true;
 }
 
 
 void BMBlip_init(BMBlip *This, size_t filterOrder, size_t oversampleFactor, float lowpassFc, float sampleRate){
 	assert(isPowerOfTwo(filterOrder));
 	
+    This->expBufferNeedsFlip = false;
 	This->p = sampleRate / lowpassFc;
 	This->n_i = filterOrder;
 	This->n = This->n_i;
@@ -36,6 +55,9 @@ void BMBlip_init(BMBlip *This, size_t filterOrder, size_t oversampleFactor, floa
 	float increment = -1.0 * This->n * (sampleRate / 48000.0f) / This->p;
 	vDSP_vramp(&zero, &increment, This->exp_b1, 1, This->bufferLength);
 	vvexpf(This->exp_b1, This->exp_b1, &bufferLengthI);
+    
+    // set the exp pointer to b1
+    This->exp_ptr = This->exp_b1;
 	
 	// init variables
 	This->nextIndex = 0;
