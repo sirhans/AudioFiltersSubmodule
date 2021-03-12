@@ -112,10 +112,11 @@ void BMBlip_process(BMBlip *This, const float *t, float *b1, float *b2, float *o
 	
 	// E^(n - (n t)/p)
 	//
-	// In This->expb is a buffer containing E^(- n t / p) for t = [0..length]
+	// In This->expb is a buffer containing E^(-t * n / p) for t = [0..length]
 	// By multiplying This->expb by a constant scaling factor we can get
 	// E^(n - (n t)/p) without doing exponentiation in real time.
-	float expScale = expf(This->n - (This->n * t[0] / This->p));
+	float exp_0 = expf(This->n + (t[0] * This->negNOverP));
+    float expScale = exp_0 / This->exp_ptr[0];
 	vDSP_vsmul(This->exp_ptr, 1, &expScale, b1, 1, length);
 	
 	//
