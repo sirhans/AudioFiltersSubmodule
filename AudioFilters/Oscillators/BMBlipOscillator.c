@@ -16,10 +16,14 @@
 
 void BMBlip_update(BMBlip *This, float lowpassFc, size_t filterOrder){
     // update p and n
+	This->p = This->sampleRate / lowpassFc;
+	This->n_i = filterOrder;
+	This->n = This->n_i;
+	This->negNOverP = -This->n / This->p;
+	This->pHatNegN = powf(This->p, -This->n);
     
-   // TODO: update p and n
-    
-    // set a pointer to the currently unused exp buffer
+    // set a pointer to the currently unused exp buffer and call it the
+	// back buffer
     float *exp_backBuffer = This->exp_b1;
     if(This->exp_ptr == This->exp_b1)
         exp_backBuffer = This->exp_b2;
@@ -36,36 +40,58 @@ void BMBlip_update(BMBlip *This, float lowpassFc, size_t filterOrder){
 }
 
 
+
+
+
+void BMBlip_flipExpBuffers(BMBlip *This){
+	if(This->exp_ptr == This->exp_b1)
+		This->exp_ptr = This->exp_b2;
+	else
+		This->exp_ptr = This->exp_b1;
+	
+	This->expBufferNeedsFlip = false;
+}
+
+
+
+
+
 void BMBlip_init(BMBlip *This, size_t filterOrder, size_t oversampleFactor, float lowpassFc, float sampleRate){
 	assert(isPowerOfTwo(filterOrder));
 	
-    This->expBufferNeedsFlip = false;
-	This->p = sampleRate / lowpassFc;
-	This->n_i = filterOrder;
-	This->n = This->n_i;
-	This->bufferLength = oversampleFactor * BM_BUFFER_CHUNK_SIZE;
-	int bufferLengthI = (int)This->bufferLength;
-	
-    // allocate buffers for pre-computing the exp function
-    This->exp_b1 = malloc(sizeof(float) * This->bufferLength);
-    This->exp_b2 = malloc(sizeof(float) * This->bufferLength);
-    
-	// fill the buffer exp_b1 with a decaying exponential to avoid doing exponentiation in real time
-	float zero = 0.0f;
-	float increment = -1.0 * This->n * (sampleRate / 48000.0f) / This->p;
-	vDSP_vramp(&zero, &increment, This->exp_b1, 1, This->bufferLength);
-	vvexpf(This->exp_b1, This->exp_b1, &bufferLengthI);
-    
-    // set the exp pointer to b1
-    This->exp_ptr = This->exp_b1;
-	
-	// init variables
-	This->nextIndex = 0;
-	This->negNOverP = -This->n / This->p;
-	This->pHatNegN = powf(This->p, -This->n);
-	This->lastOutput = 1.0f;
 	This->sampleRate = sampleRate;
+	
+	// allocate buffers for pre-computing the exp function
+	This->bufferLength = oversampleFactor * BM_BUFFER_CHUNK_SIZE;
+	This->exp_b1 = malloc(sizeof(float) * This->bufferLength);
+	This->exp_b2 = malloc(sizeof(float) * This->bufferLength);
+	
+	// fill the exp buffers. these buffers store pre-calculated values for an
+	// array of output of the exp function. we do this to avoid computing that
+	// function in real-time. We call this twice with a buffer flip in between
+	// because there are two exp buffers.
+	BMBlip_update(This, lowpassFc, filterOrder);
+	BMBlip_flipExpBuffers(This);
+	BMBlip_update(This, lowpassFc, filterOrder);
+	BMBlip_flipExpBuffers(This);
+	
+	// init some final variables
+	This->nextIndex = 0;
+	This->lastOutput = 1.0f;
+
 }
+
+
+
+
+void BMBlip_free(BMBlip *This){
+	free(This->exp_b1);
+	free(This->exp_b2);
+	This->exp_b1 = NULL;
+	This->exp_b2 = NULL;
+}
+
+
 
 
 
@@ -112,6 +138,9 @@ void BMBlip_process(BMBlip *This, const float *t, float *b1, float *b2, float *o
 }
 
 
+
+
+
 void BMBlip_processBuffer(BMBlip *This, const size_t *integerOffsets, const float *fractionalOffsets, float *output, float *b1, float *b2, float *b3, size_t length){
 	// TODO: don't process these if the output is too small to be significant
 	
@@ -127,8 +156,13 @@ void BMBlip_processBuffer(BMBlip *This, const size_t *integerOffsets, const floa
 		BMBlip_process(This, b3 + samplesTillNextBlip-1, b1 + samplesTillNextBlip-1, b2 + samplesTillNextBlip-1, &This->lastOutput, 1);
 	}
 	
-	// process from the nth offset to the next (n+1) offset
-	while( // Handle the case where there is no integer offset left or none appears in this buffer call
+//	// process from the nth offset to the next (n+1) offset
+//	while( )// Handle the case where there is no integer offset left or none appears in this buffer call
+//
+//		  // flip the exp buffers if we have reached the end of a blip
+//		  if(This->lastOutput <= BM_BLIP_MIN_OUTPUT)
+//			  if(This->expBufferNeedsFlip)
+//				  BMBlip_flipExpBuffers(This);
 }
 
 
