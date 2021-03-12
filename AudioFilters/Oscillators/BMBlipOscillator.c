@@ -17,7 +17,7 @@
 void BMBlip_update(BMBlip *This, float lowpassFc, size_t filterOrder){
     // update p and n
     
-   // TODO: update p and n
+    // TODO: update p and n
     
     // set a pointer to the currently unused exp buffer
     float *exp_backBuffer = This->exp_b1;
@@ -52,7 +52,7 @@ void BMBlip_init(BMBlip *This, size_t filterOrder, size_t oversampleFactor, floa
     
 	// fill the buffer exp_b1 with a decaying exponential to avoid doing exponentiation in real time
 	float zero = 0.0f;
-	float increment = -1.0 * This->n * (sampleRate / 48000.0f) / This->p;
+	float increment = -This->negNOverP * (sampleRate / 48000.0f);
 	vDSP_vramp(&zero, &increment, This->exp_b1, 1, This->bufferLength);
 	vvexpf(This->exp_b1, This->exp_b1, &bufferLengthI);
     
@@ -86,10 +86,11 @@ void BMBlip_process(BMBlip *This, const float *t, float *b1, float *b2, float *o
 	
 	// E^(n - (n t)/p)
 	//
-	// In This->expb is a buffer containing E^(- n t / p) for t = [0..length]
+	// In This->expb is a buffer containing E^(-t * n / p) for t = [0..length]
 	// By multiplying This->expb by a constant scaling factor we can get
 	// E^(n - (n t)/p) without doing exponentiation in real time.
-	float expScale = expf(This->n - (This->n * t[0] / This->p));
+	float exp_0 = expf(This->n + (t[0] * This->negNOverP));
+    float expScale = exp_0 / This->exp_ptr[0];
 	vDSP_vsmul(This->exp_ptr, 1, &expScale, b1, 1, length);
 	
 	//
