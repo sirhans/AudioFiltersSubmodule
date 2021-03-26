@@ -84,7 +84,7 @@ void BMBlip_process(BMBlip *This, const float *t, float *b1, float *b2, float *o
 	// Mathematica:
 	//   E^(n - (n t)/p) p^-n t^n
 	
-	// E^(n - (n t)/p)
+	// b1 = E^(n - (n t)/p)
 	//
 	// In This->expb is a buffer containing E^(-t * n / p) for t = [0..length]
 	// By multiplying This->expb by a constant scaling factor we can get
@@ -105,7 +105,7 @@ void BMBlip_process(BMBlip *This, const float *t, float *b1, float *b2, float *o
 	vDSP_vsmul(b2, 1, &This->pHatNegN, b2, 1, length);
 	
 	//
-	// output += b1 * b2
+	// output += b1 * b2 = (E^(n - (n t)/p))   *   ((p^-n) (t^n))
 	vDSP_vma(b1, 1, b2, 1, output, 1, output, 1, length);
 	
 	// cache the last value
