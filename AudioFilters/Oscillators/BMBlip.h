@@ -44,7 +44,7 @@ void BMBlip_update(BMBlip *This, float lowpassFc, size_t filterOrder);
  *  Each time you call this, the BLIP resets to the beginning of the impulse response.
  *
  *  @param This pointer to an initialised struct
- *  @param offset in [0,1). The fractional sample offset at which the impulse should begin, relative to the start of the next buffer we process. When the offset is zero, the impulse occurs near the second sample of the next buffer. When the offset is near one it occurs at the 
+ *  @param offset in [0,1). The fractional sample offset at which the impulse should begin, relative to the start of the next buffer we process. When the offset is zero the impulse starts at the first sample in the buffer. Values larger than zero delay the offset. The value must be strictly less than one.
  */
 void BMBlip_restart(BMBlip *This, float offset);
 
