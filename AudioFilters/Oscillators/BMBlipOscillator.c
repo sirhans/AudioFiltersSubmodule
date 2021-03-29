@@ -16,13 +16,17 @@ void BMBlipOscillator_init(BMBlipOscillator *This, float sampleRate, size_t over
 	This->sampleRate = sampleRate;
 	This->nextPhase = 0.0f;
 	This->filterOrder = filterOrder;
+	
+	// TODO
 }
 
 
 
 
 
-void BMBlipOscillator_free(BMBlipOscillator *This);
+void BMBlipOscillator_free(BMBlipOscillator *This){
+	// TODO
+}
 
 
 

@@ -26,7 +26,6 @@ void BMBlip_update(BMBlip *This, float lowpassFc, size_t filterOrder){
     
     // fill the buffer
     float zero = 0.0f;
-    This->dt = This->sampleRate / 48000.0f;
     float increment = -1.0 * This->filterConfBack->n * This->dt / This->filterConfBack->p;
     vDSP_vramp(&zero, &increment, This->filterConfBack->exp, 1, This->bufferLength);
     int bufferLengthI = (int)This->bufferLength;
@@ -72,6 +71,7 @@ void BMBlip_init(BMBlip *This, size_t filterOrder, float lowpassFc, float sample
     assert(isPowerOfTwo(filterOrder));
     
     This->sampleRate = sampleRate;
+	This->dt = This->sampleRate / 48000.0f;
     
     // allocate buffers for pre-computing the exp function
     This->bufferLength = BM_BUFFER_CHUNK_SIZE;
