@@ -73,7 +73,7 @@ void BMBlip_init(BMBlip *This, size_t filterOrder, float lowpassFc, float sample
     This->sampleRate = sampleRate;
     
     // allocate buffers for pre-computing the exp function
-    This->bufferLength = 2 * BM_BUFFER_CHUNK_SIZE;
+    This->bufferLength = BM_BUFFER_CHUNK_SIZE;
     This->filterConf1.exp = malloc(sizeof(float) * This->bufferLength);
     This->filterConf2.exp = malloc(sizeof(float) * This->bufferLength);
     This->b1 = malloc(sizeof(float) * This->bufferLength);
