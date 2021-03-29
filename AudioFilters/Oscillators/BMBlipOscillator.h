@@ -20,14 +20,18 @@ typedef struct BMBlipOscillator{
 	BMGaussianUpsampler upsampler;
 	BMDownsampler downsampler;
 	BMMultiLevelBiquad highpass;
-	float *outputOS;
-	float *phaseIncrements;
-	float *phaseIncrementsOS;
-	float **fractionalOffsets;
-	size_t **integerOffsets;
-	size_t *numImpulsesForBlip;
-	size_t numBlips;
+	size_t numBlips, nextBlip, filterOrder;
 	BMBlip *blips;
+	float sampleRate, nextPhase;
 } BMBlipOscillator;
+
+
+void BMBlipOscillator_init(BMBlipOscillator *This, float sampleRate, size_t oversampleFactor, size_t filterOrder, size_t numBlips);
+
+void BMBlipOscillator_free(BMBlipOscillator *This);
+
+void BMBlipOscilaltor_setLowpassFc(BMBlipOscillator *This, float fc);
+
+void BMBlipOscillator_process(BMBlipOscillator *This, const float *frequencies, float* output, size_t length);
 
 #endif /* BMBlipOscillator_h */

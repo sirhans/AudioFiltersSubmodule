@@ -38,6 +38,7 @@ void BMBlip_free(BMBlip *This);
 
 void BMBlip_update(BMBlip *This, float lowpassFc, size_t filterOrder);
 
+
 /*!
  *BMBlip_restart
  *
@@ -54,7 +55,7 @@ void BMBlip_restart(BMBlip *This, float offset);
  *
  * @param This pointer to an initialised struct
  * @param output array of length length. output is summed into here so it should be initialised before calling this function for the first time.
- * @param length length of buffers
+ * @param length length of output
  */
 void BMBlip_process(BMBlip *This, float *output, size_t length);
 
