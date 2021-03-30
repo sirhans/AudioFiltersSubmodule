@@ -129,6 +129,9 @@ void BMBlipOscillator_processChunk(BMBlipOscillator *This, const float *log2Freq
 	for(size_t i=0; i<numImpulses; i++){
         BMBlip_restart(&This->blips[This->nextBlip],fractionalOffsetsOS[i]);
         BMBlip_process(&This->blips[This->nextBlip], outputOS + integerOffsetsOS[i], lengthOS - integerOffsetsOS[i]);
+        
+        // advance to the next blip
+        This->nextBlip = (This->nextBlip+1) % This->numBlips;
 	}
 	
 	// downsample

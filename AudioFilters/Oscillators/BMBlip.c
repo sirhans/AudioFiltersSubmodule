@@ -77,6 +77,8 @@ void BMBlip_init(BMBlip *This, size_t filterOrder, float lowpassFc, float sample
     This->bufferLength = BM_BUFFER_CHUNK_SIZE;
     This->filterConf1.exp = malloc(sizeof(float) * This->bufferLength);
     This->filterConf2.exp = malloc(sizeof(float) * This->bufferLength);
+    This->filterConf = &This->filterConf1;
+    This->filterConfBack = &This->filterConf2;
     This->b1 = malloc(sizeof(float) * This->bufferLength);
     This->b2 = malloc(sizeof(float) * This->bufferLength);
     
