@@ -141,7 +141,7 @@ void BMBlip_processChunk(BMBlip *This, float *output, size_t length){
 	// assert(isPowerOfTwo(n))
 	vDSP_vsq(t, 1, This->b2, 1, length);
 	size_t c = 2;
-	while (c < This->filterConf->n_i)
+	while (c++ < This->filterConf->n_i)
 		vDSP_vsq(This->b2, 1, This->b2, 1, length);
 	//
 	// b2 = p^(-n) t^n
