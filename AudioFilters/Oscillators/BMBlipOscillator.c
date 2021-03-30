@@ -10,6 +10,7 @@
 #include <string.h>
 #include "Constants.h"
 
+
 void BMBlipOscillator_init(BMBlipOscillator *This, float sampleRate, size_t oversampleFactor, size_t filterOrder, size_t numBlips){
 	This->numBlips = numBlips;
 	This->nextBlip = 0;
@@ -23,9 +24,22 @@ void BMBlipOscillator_init(BMBlipOscillator *This, float sampleRate, size_t over
     This->b2 = malloc(sizeof(float)*bufferSize);
     This->b3i = malloc(sizeof(size_t)*bufferSize);
     
+    // init the structs that generate the band-limited impulses
     float lowpassFc = sampleRate * 0.25f;
+    This->blips = malloc(sizeof(BMBlip)*numBlips);
     for(size_t i=0; i<numBlips; i++)
         BMBlip_init(&This->blips[i], filterOrder, lowpassFc, sampleRate);
+    
+    // init the highpass filter to remove DC bias
+    BMMultiLevelBiquad_init(&This->highpass, 1, sampleRate, false, true, false);
+    BMMultiLevelBiquad_setHighPass6db(&This->highpass, 50.0f, 0);
+    
+    // init the gaussian upsampler
+    size_t numPasses = 3;
+    BMGaussianUpsampler_init(&This->upsampler, oversampleFactor, numPasses);
+    
+    // init the downsampler
+    BMDownsampler_init(&This->downsampler, false, oversampleFactor, BMRESAMPLER_FULL_SPECTRUM);
 }
 
 
@@ -36,12 +50,18 @@ void BMBlipOscillator_free(BMBlipOscillator *This){
     free(This->b1);
     free(This->b2);
     free(This->b3i);
+    free(This->blips);
     This->b1 = NULL;
     This->b2 = NULL;
     This->b3i = NULL;
+    This->blips = NULL;
     
     for(size_t i=0; i<This->numBlips; i++)
         BMBlip_free(&This->blips[i]);
+    
+    BMMultiLevelBiquad_free(&This->highpass);
+    BMGaussianUpsampler_free(&This->upsampler);
+    BMDownsampler_free(&This->downsampler);
 }
 
 

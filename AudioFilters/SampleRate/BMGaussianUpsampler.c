@@ -7,18 +7,18 @@
 //  operations.
 //
 //  Created by Hans on 17/11/20.
-//  Copyright © 2020 BlueMangoo. We hereby release this file
+//  Copyright © 2020 BlueMangoo. We release this file
 //  into the public domain without restrictions.
 //
 
 #include "BMGaussianUpsampler.h"
 #include <Accelerate/Accelerate.h>
 
-void BMGaussianUpsampler_init(BMGaussianUpsampler *This, size_t upsampleFactor, size_t numLevels){
+void BMGaussianUpsampler_init(BMGaussianUpsampler *This, size_t upsampleFactor, size_t lowpassNumPasses){
 	This->upsampleFactor = upsampleFactor;
-	This->numLevels = numLevels;
+	This->numLevels = lowpassNumPasses;
 	
-	This->swSum = malloc(sizeof(BMSlidingWindowSum) * numLevels);
+	This->swSum = malloc(sizeof(BMSlidingWindowSum) * lowpassNumPasses);
 	
 	for(size_t i=0; i<This->numLevels; i++)
 		BMSlidingWindowSum_init(&This->swSum[i], upsampleFactor);
