@@ -55,7 +55,7 @@ void BMBlip_restart(BMBlip *This, float offset){
     // offset in [0,1)
     assert(0.0f <= offset && offset < 1.0f);
     
-    This->t0 = -offset;
+    This->t0 = -offset * This->dt;
     This->lastOutput = 1.0f;
     
     // flip the buffers if necessary
@@ -147,7 +147,7 @@ void BMBlip_processChunk(BMBlip *This, float *output, size_t length){
 	// b2 = p^(-n) t^n
 	vDSP_vsmul(This->b2, 1, &This->filterConf->pHatNegN, This->b2, 1, length);
 	
-	// The next line skips the first output sample because the first sample of the impulse is zero
+	// The next line skips the first output sample because the first sample of the impulse response is always zero
 	// output += b1 * b2 = (E^(n - (n t)/p))   *   ((p^-n) (t^n))
 	vDSP_vma(This->b1+1, 1, This->b2+1, 1, output+1, 1, output+1, 1, length-1);
 	
