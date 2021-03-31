@@ -22,7 +22,7 @@ typedef struct BMBlipFilterConfig {
 } BMBlipFilterConfig;
 
 typedef struct BMBlip{
-    float nextIndex, lastOutput, sampleRate, t0, dt;
+    float lastOutput, sampleRate, t0, dt;
     float *b1, *b2;
     size_t bufferLength;
     bool filterConfNeedsFlip;
@@ -31,11 +31,19 @@ typedef struct BMBlip{
 } BMBlip;
 
 
+/*!
+ *BMBlip_init
+ */
 void BMBlip_init(BMBlip *This, size_t filterOrder, float lowpassFc, float sampleRate);
 
+/*!
+ *BMBlip_free
+ */
 void BMBlip_free(BMBlip *This);
 
-
+/*!
+ *BMBlip_update
+ */
 void BMBlip_update(BMBlip *This, float lowpassFc, size_t filterOrder);
 
 

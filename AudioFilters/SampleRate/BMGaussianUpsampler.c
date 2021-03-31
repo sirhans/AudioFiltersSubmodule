@@ -38,17 +38,22 @@ void BMGaussianUpsampler_free(BMGaussianUpsampler *This){
 
 
 void BMGaussianUpsampler_processMono(BMGaussianUpsampler *This, const float *input, float *output, size_t inputLength){
-    size_t outputLength = inputLength*This->upsampleFactor;
-    
-    // set output to zero
-    memset(output,0,sizeof(float)*outputLength);
-    
-    // copy the input samples to the output with scaling factor and stride for upsampling
-    float scale = 1.0f / powf(This->upsampleFactor,This->numLevels-1);
-    vDSP_vsmul(input, 1, &scale, output, This->upsampleFactor, inputLength);
-    
-	// gaussian kernel antialias filter implemented by a series of sliding
-	// window sum operations
-	for(size_t i=0; i<This->numLevels; i++)
-		BMSlidingWindowSum_processMono(&This->swSum[i], output, output, inputLength*This->upsampleFactor);
+	if(This->upsampleFactor > 1){
+		size_t outputLength = inputLength*This->upsampleFactor;
+		
+		// set output to zero
+		memset(output,0,sizeof(float)*outputLength);
+		
+		// copy the input samples to the output with scaling factor and stride for upsampling
+		float scale = 1.0f / powf(This->upsampleFactor,This->numLevels-1);
+		vDSP_vsmul(input, 1, &scale, output, This->upsampleFactor, inputLength);
+		
+		// gaussian kernel antialias filter implemented by a series of sliding
+		// window sum operations
+		for(size_t i=0; i<This->numLevels; i++)
+			BMSlidingWindowSum_processMono(&This->swSum[i], output, output, inputLength*This->upsampleFactor);
+	} else {
+		if(input != output)
+			memcpy(output,input,sizeof(float)*inputLength);
+	}
 }

@@ -83,7 +83,6 @@ void BMBlip_init(BMBlip *This, size_t filterOrder, float lowpassFc, float sample
     This->b2 = malloc(sizeof(float) * This->bufferLength);
     
     // init some variables
-    This->nextIndex = 0;
     This->lastOutput = 0.0f;
     This->t0 = 0.0f;
     
@@ -156,7 +155,7 @@ void BMBlip_processChunk(BMBlip *This, float *output, size_t length){
 		output[0] += This->b1[0] * This->b2[0];
 	
 	// set the start value for the next time we call this function
-	This->t0 = t[length-1] + This->dt;
+	This->t0 += (float)length * This->dt;
 	
 	// cache the last value
 	This->lastOutput = This->b1[length-1] * This->b2[length-1];

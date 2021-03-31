@@ -77,7 +77,7 @@ void BMBlipOscilaltor_setLowpassFc(BMBlipOscillator *This, float fc){
 
 
 
-inline float fractionalPart(float f){
+float fractionalPart(float f){
 	return f - (int)f;
 }
 
