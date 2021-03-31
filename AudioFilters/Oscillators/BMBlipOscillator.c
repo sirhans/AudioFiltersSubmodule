@@ -77,6 +77,13 @@ void BMBlipOscilaltor_setLowpassFc(BMBlipOscillator *This, float fc){
 
 
 
+inline float fractionalPart(float f){
+	return f - (int)f;
+}
+
+
+
+
 void BMBlipOscillator_processChunk(BMBlipOscillator *This, const float *log2Frequencies, float* output, size_t length){
     
     // convert logFrequencies to linear scale frequencies
@@ -103,11 +110,11 @@ void BMBlipOscillator_processChunk(BMBlipOscillator *This, const float *log2Freq
 	for(size_t i=0; i<lengthOS; i++){
 		if(phase > 1.0f){
             // the phase must be in the range [0,1). We use the mod operation to wrap it around instead of just subtracting 1.0f in order to handle cases where the frequency of the oscillator exceeds the sample rate.
-            phase = fmodf(phase, 1.0f);
+            phase = fractionalPart(phase);
             // the integer offset is the sample number immediately before the discontinuity. Note that by calculating it this way we are actually delaying the offset by one sample since we waited until the phase exceeds 1.0 before marking the offset.
 			integerOffsetsOS[j] = i;
             // the fractional offset is the position of the discontinuity between integerOffset and integerOffset+1. Therefore the location of the discontinuity is integerOffset + fractionalOffset.
-            float fractionalOffset = phase / fmodf(This->previousPhaseIncrement, 1.0f);
+            float fractionalOffset = phase / fractionalPart(This->previousPhaseIncrement);
 			fractionalOffsetsOS[j++] = fractionalOffset;
 		}
         float phaseIncrement = phaseIncrementsOS[i];
