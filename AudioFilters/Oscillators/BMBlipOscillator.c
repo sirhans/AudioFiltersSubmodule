@@ -28,7 +28,7 @@ void BMBlipOscillator_init(BMBlipOscillator *This, float sampleRate, size_t over
     float lowpassFc = sampleRate * 0.25f;
     This->blips = malloc(sizeof(BMBlip)*numBlips);
     for(size_t i=0; i<numBlips; i++)
-        BMBlip_init(&This->blips[i], filterOrder, lowpassFc, sampleRate);
+        BMBlip_init(&This->blips[i], filterOrder, lowpassFc, sampleRate*oversampleFactor);
     
     // init the highpass filter to remove DC bias
     BMMultiLevelBiquad_init(&This->highpass, 1, sampleRate, false, true, false);

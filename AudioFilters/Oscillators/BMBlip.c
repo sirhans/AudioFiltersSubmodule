@@ -135,13 +135,18 @@ void BMBlip_processChunk(BMBlip *This, float *output, size_t length){
 	float *t = This->b2;
 	vDSP_vramp(&This->t0, &This->dt, t, 1, length);
 	
+	// calculate the first time value for the following buffer
+	float next_t0 = t[length-1] + This->dt;
+	
 	//
 	// b2 = t^n
-	// assert(isPowerOfTwo(n))
+	//assert(isPowerOfTwo(n))
 	vDSP_vsq(t, 1, This->b2, 1, length);
 	size_t c = 2;
-	while (c++ < This->filterConf->n_i)
+	while (c < This->filterConf->n_i){
 		vDSP_vsq(This->b2, 1, This->b2, 1, length);
+		c *= 2;
+	}
 	//
 	// b2 = p^(-n) t^n
 	vDSP_vsmul(This->b2, 1, &This->filterConf->pHatNegN, This->b2, 1, length);
@@ -155,7 +160,7 @@ void BMBlip_processChunk(BMBlip *This, float *output, size_t length){
 		output[0] += This->b1[0] * This->b2[0];
 	
 	// set the start value for the next time we call this function
-	This->t0 += (float)length * This->dt;
+	This->t0 = next_t0;
 	
 	// cache the last value
 	This->lastOutput = This->b1[length-1] * This->b2[length-1];
