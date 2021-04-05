@@ -104,18 +104,18 @@ void BMBlipOscillator_processChunk(BMBlipOscillator *This, const float *log2Freq
 	// take running sum of the phase increments, taking note of integer and
 	// fractional index of each place where the phase wraps around to zero
     float *fractionalOffsetsOS = This->b1;
-	size_t *integerOffsetsOS = This->b3i;
+	size_t *impulseIndicesOS = This->b3i;
 	float phase = This->nextPhase;
 	size_t j = 0;
 	for(size_t i=0; i<lengthOS; i++){
-		if(phase > 1.0f){
+		if(phase >= 1.0f){
             // the phase must be in the range [0,1). We use the mod operation to wrap it around instead of just subtracting 1.0f in order to handle cases where the frequency of the oscillator exceeds the sample rate.
             phase = fractionalPart(phase);
             // the integer offset is the sample number immediately before the discontinuity. Note that by calculating it this way we are actually delaying the offset by one sample since we waited until the phase exceeds 1.0 before marking the offset.
-			integerOffsetsOS[j] = i;
+			impulseIndicesOS[j] = i;
             // the fractional offset is the position of the discontinuity between integerOffset and integerOffset+1. Therefore the location of the discontinuity is integerOffset + fractionalOffset.
-            float fractionalOffset = phase / fractionalPart(This->previousPhaseIncrement);
-			fractionalOffsetsOS[j++] = fractionalOffset;
+            float fractionalSampleOffset = phase / fractionalPart(This->previousPhaseIncrement);
+			fractionalOffsetsOS[j++] = fractionalSampleOffset;
 		}
         float phaseIncrement = phaseIncrementsOS[i];
 		phase += phaseIncrement;
@@ -135,10 +135,11 @@ void BMBlipOscillator_processChunk(BMBlipOscillator *This, const float *log2Freq
 	// for each phase discontinuity index, process a Blip from the index until the end of the buffer
 	for(size_t i=0; i<numImpulses; i++){
         BMBlip_restart(&This->blips[This->nextBlip],fractionalOffsetsOS[i]);
-        BMBlip_process(&This->blips[This->nextBlip], outputOS + integerOffsetsOS[i], lengthOS - integerOffsetsOS[i]);
+        BMBlip_process(&This->blips[This->nextBlip], outputOS + impulseIndicesOS[i], lengthOS - impulseIndicesOS[i]);
         
         // advance to the next blip
         This->nextBlip = (This->nextBlip+1) % This->numBlips;
+//		printf("nextBlip: %zu, ii: %zu, fo: %f\n", This->nextBlip, impulseIndicesOS[i],fractionalOffsetsOS[i]);
 	}
 	
 	// downsample
