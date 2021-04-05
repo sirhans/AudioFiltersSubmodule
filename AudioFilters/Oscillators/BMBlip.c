@@ -18,7 +18,7 @@
 void BMBlip_update(BMBlip *This, float lowpassFc, size_t filterOrder){
 	
     // update p and n
-    This->filterConfBack->p = This->sampleRate / lowpassFc;
+    This->filterConfBack->p = 48000.0 / lowpassFc;
     This->filterConfBack->n_i = filterOrder;
     This->filterConfBack->n = This->filterConfBack->n_i;
     This->filterConfBack->negNOverP = -This->filterConfBack->n / This->filterConfBack->p;
