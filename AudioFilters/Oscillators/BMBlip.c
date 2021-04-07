@@ -55,7 +55,7 @@ void BMBlip_restart(BMBlip *This, float offset){
     // offset in [0,1)
     assert(0.0f <= offset && offset < 1.0f);
     
-    This->t0 = offset * This->dt;
+    This->t0 = (1.0f - offset) * This->dt;
     
     // flip the buffers if necessary
     if(This->filterConfNeedsFlip)
@@ -171,6 +171,11 @@ void BMBlip_processChunk(BMBlip *This, float *output, size_t length){
 	
 	// output += b1 * b2 = (E^(n - (n t)/p))   *   ((p^-n) (t^n))
 	vDSP_vma(This->b1, 1, This->b2, 1, output, 1, output, 1, length);
+	
+	// if t0 is negative, remove it from the output
+//	if(This->t0 < 0.0f){
+//		output[0] -= This->b1[0] * This->b2[0];
+//	}
 	
 	// set the start value for the next time we call this function
 	This->t0 = next_t0;
