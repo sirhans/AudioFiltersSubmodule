@@ -182,13 +182,16 @@ void BMBlip_processChunk(BMBlip *This, float *output, size_t length){
 
 
 void BMBlip_process(BMBlip *This, float *output, size_t length){
-	size_t samplesLeft = length;
-	size_t samplesProcessed = 0;
+    if(length>0){
+    
+        size_t samplesLeft = length;
+        size_t samplesProcessed = 0;
 	
-	while(samplesLeft > 0){
-		size_t samplesProcessing = BM_MIN(samplesLeft,This->bufferLength);
-		BMBlip_processChunk(This, output + samplesProcessed, samplesProcessing);
-		samplesLeft -= samplesProcessing;
-		samplesProcessed += samplesProcessing;
-	}
+        while(samplesLeft > 0){
+            size_t samplesProcessing = BM_MIN(samplesLeft,This->bufferLength);
+            BMBlip_processChunk(This, output + samplesProcessed, samplesProcessing);
+            samplesLeft -= samplesProcessing;
+            samplesProcessed += samplesProcessing;
+        }
+    }
 }
