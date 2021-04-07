@@ -56,7 +56,6 @@ void BMBlip_restart(BMBlip *This, float offset){
     assert(0.0f <= offset && offset < 1.0f);
     
     This->t0 = offset * This->dt;
-    This->lastOutput = 1.0f;
     
     // flip the buffers if necessary
     if(This->filterConfNeedsFlip)
@@ -83,7 +82,6 @@ void BMBlip_init(BMBlip *This, size_t filterOrder, float lowpassFc, float sample
     This->b2 = malloc(sizeof(float) * This->bufferLength);
     
     // init some variables
-    This->lastOutput = 0.0f;
     This->t0 = 0.0f;
     
     // fill the exp buffers. these buffers store pre-calculated values for an
@@ -112,13 +110,33 @@ void BMBlip_free(BMBlip *This){
 
 
 
+float BMBlip_singleValue(float t, float n, float p){
+	return expf(n - ((n * t) / p)) * powf(p,-n) * powf(t,n);
+}
+
+
+
 void BMBlip_processChunk(BMBlip *This, float *output, size_t length){
 	assert(length <= This->bufferLength);
 	
 	// if the output level is already below the minimum, do nothing
-	if(fabs(This->lastOutput) < BM_BLIP_MIN_OUTPUT)
-		return;
-		
+	//
+	// Note that we are checking two conditions here. The first is that t0 > p.
+	// t0 == p is the peak of the impulse, where the derivative of the impulse
+	// response is 0. We require t0 > p because there are small values both
+	// before and after the peak. We are only concerned with small values after
+	// the peak.
+	float firstOutput = BMBlip_singleValue(This->t0, This->filterConf->n, This->filterConf->p);
+	if(This->t0 > This->filterConf->p && firstOutput < BM_BLIP_MIN_OUTPUT) return;
+	
+//  // Code the slow way to test that the vectorised way below is correct
+//	for(size_t i = 0; i<length; i++){
+//		float t = This->t0 + (float)i * This->dt;
+//		output[i] += BMBlip_singleValue(t, This->filterConf->n, This->filterConf->p);
+//	}
+//	This->t0 = This->t0 + (float)length * This->dt;
+//	return;
+	
 	// Mathematica:
 	//   E^(n - (n t)/p) p^-n t^n
 	
@@ -156,9 +174,6 @@ void BMBlip_processChunk(BMBlip *This, float *output, size_t length){
 	
 	// set the start value for the next time we call this function
 	This->t0 = next_t0;
-	
-	// cache the last value
-	This->lastOutput = This->b1[length-1] * This->b2[length-1];
 }
 
 
