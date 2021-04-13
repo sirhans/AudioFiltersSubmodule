@@ -14,6 +14,8 @@
 
 float BMConv_dBToGain(float db);
 
+void BMConv_dBToGainV(const float *input, float *output, size_t numSamples);
+
 double BMConv_dBToGain_d(double db);
 
 float BMConv_gainToDb(float gain);

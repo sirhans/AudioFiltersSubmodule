@@ -7,6 +7,7 @@
 //
 
 #include <math.h>
+#include <Accelerate/Accelerate.h>
 
 #define BM_DB_TO_GAIN(db) pow(10.0,db/20.0)
 #define BM_GAIN_TO_DB(gain) log10f(gain)*20.0
@@ -68,6 +69,13 @@ float BMConv_fftBinsPerPixel(float freqHz,
 	
 	// return the height of one pixel in FFT bins
 	return BMConv_hzToFFTBin(upperPixelFreq, fftSize, sampleRate) - BMConv_hzToFFTBin(freqHz, fftSize, sampleRate);
+}
+
+void BMConv_dBToGainV(const float *input, float *output, size_t numSamples){
+    int numSamplesI = (int)numSamples;
+    float magicNumber = 0.16609640474f;
+    vDSP_vsmul(input, 1, &magicNumber, output, 1, numSamples);
+    vvexp2f(output, output, &numSamplesI);
 }
 
 #include "BMUnitConversion.h"

@@ -86,8 +86,8 @@ extern "C" {
     /*
      * @param numChannelsIn  1:mono, 2:stereo
      * @param numChannelsOut 1:mono, 2:stereo
-     * @param delayTime delay time in seconds
-     * @param decayTime Time for feedback to decay from unity gain to -60db. Set 0 for no feedback.
+     * @param delayTimeSeconds delay time in seconds
+     * @param decayTimeSeconds Time for feedback to decay from unity gain to -60db. Set 0 for no feedback.
      * @param wetGainDb sets the gain level of the first echo out of the delay
      * @param crossMixAmount In [0,1]. Set to 0 for no cross mix, 1 for 100% cross, 0.5 for even mixing.
      * @param lowpassFC The cutoff frequency of a 12db lowpass filter on the delay signal output
@@ -96,8 +96,8 @@ extern "C" {
      */
     void BMStaticDelay_init(BMStaticDelay *This,
                             size_t numChannelsIn, size_t numChannelsOut,
-                            float delayTime,
-                            float decayTime,
+                            float delayTimeSeconds,
+                            float decayTimeSeconds,
                             float wetGainDb,
                             float crossMixAmount,
                             float lowpassFC,

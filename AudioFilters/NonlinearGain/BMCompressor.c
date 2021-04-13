@@ -13,9 +13,10 @@
 #include <stdlib.h>
 #include <math.h>
 #include "fastlog.h"
-#include "fastpow.h"
+//#include "fastpow.h"
 #include "BMVectorOps.h"
 #include "Constants.h"
+#include "BMUnitConversion.h"
 
 
 void BMCompressor_init(BMCompressor *This, float sampleRate){
@@ -131,7 +132,7 @@ void BMCompressor_ProcessBufferMonoWithSideChain(BMCompressor *This,
         minGainWholeBuffer = MIN(minGainThisChunk,minGainWholeBuffer);
         
         // convert to linear gain control signal
-        vector_fastDbToGain(buffer1,buffer1,samplesProcessing);
+        BMConv_dBToGainV(buffer1,buffer1,samplesProcessing);
 
         // apply the gain adjustment to the audio signal
         vDSP_vmul(buffer1,1,input+samplesProcessed,1,output+samplesProcessed,1,samplesProcessing);
@@ -210,7 +211,7 @@ void BMCompressor_ProcessBufferStereoWithSideChain(BMCompressor *This,
         minGainWholeBuffer = MIN(minGainThisChunk,minGainWholeBuffer);
         
         // convert to linear gain control signal
-        vector_fastDbToGain(buffer1,buffer1,samplesProcessing);
+        BMConv_dBToGainV(buffer1,buffer1,samplesProcessing);
         
         // apply the gain adjustment to the audio signal
         vDSP_vmul(buffer1,1,inputL+samplesProcessed,1,outputL+samplesProcessed,1,samplesProcessing);

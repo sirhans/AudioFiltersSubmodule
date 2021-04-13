@@ -9,7 +9,8 @@
 #include <Accelerate/Accelerate.h>
 #include "BMAttackShaper.h"
 #include "Constants.h"
-#include "fastpow.h"
+//#include "fastpow.h"
+#include "BMUnitConversion.h"
 
 #define BMAS_NOISE_GATE_CLOSED_LEVEL -63.0f
 
@@ -418,7 +419,7 @@ void BMAttackShaperSection_generateControlSignal(BMAttackShaperSection *This,
 	vDSP_vsmul(controlSignal, 1, &adjustedExaggeration, controlSignal, 1, numSamples);
 	
 	// convert back to linear scale
-	vector_fastDbToGain(controlSignal, controlSignal, numSamples);
+	BMConv_dBToGainV(controlSignal, controlSignal, numSamples);
 }
 
 

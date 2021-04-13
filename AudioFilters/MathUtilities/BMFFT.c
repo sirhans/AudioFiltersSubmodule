@@ -182,12 +182,11 @@ void BMFFT_hammingWindow(BMFFT *This,
 double besselI_0(double x)
 {
 	double Sum=0.0, XtoIpower;
-	int i, j, Factorial;
+	int i, Factorial;
 	for(i=1; i<10; i++)
 	{
 		XtoIpower = pow(x/2.0, (double)i);
-		Factorial = 1;
-		for(j=1; j<=i; j++) Factorial *= j;
+		Factorial = BMFactorialI(i);
 		Sum += pow(XtoIpower / (double)Factorial, 2.0);
 	}
 	return(1.0 + Sum);

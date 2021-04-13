@@ -265,6 +265,10 @@ int BMExportWavFile_exportAudioInt(BMExportWavFile* This,char* filePath,float* d
         return ret;
 }
 
+
+/*!
+ *BMExportWavFile_exportAudioFloatToInt16
+ */
 int BMExportWavFile_exportAudioFloatToInt16(BMExportWavFile* This,char* filePath,float* dataL,float* dataR,uint32_t length){
     for(int i=0;i<length;i++){
         dataL[i] = dataL[i]*INT16_MAX;
