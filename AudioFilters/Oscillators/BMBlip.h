@@ -22,7 +22,7 @@ typedef struct BMBlipFilterConfig {
 } BMBlipFilterConfig;
 
 typedef struct BMBlip{
-    float lastOutput, sampleRate, t0, dt;
+    float sampleRate, t0, dt;
     float *b1, *b2;
     size_t bufferLength;
     bool filterConfNeedsFlip;

@@ -134,7 +134,7 @@ void BMBlipOscillator_processChunk(BMBlipOscillator *This, const float *log2Freq
 	
 	// for each phase discontinuity index, process a Blip from the index until the end of the buffer
 	for(size_t i=0; i<numImpulses; i++){
-        BMBlip_restart(&This->blips[This->nextBlip],fractionalOffsetsOS[i]);
+        BMBlip_restart(&This->blips[This->nextBlip], fractionalOffsetsOS[i]);
         BMBlip_process(&This->blips[This->nextBlip], outputOS + impulseIndicesOS[i], lengthOS - impulseIndicesOS[i]);
         
         // advance to the next blip
