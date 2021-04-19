@@ -187,7 +187,6 @@ void BMBlip_processChunk(BMBlip *This, float *output, size_t length){
 
 
 void BMBlip_process(BMBlip *This, float *output, size_t length){
-    if(length>0){
     
         size_t samplesLeft = length;
         size_t samplesProcessed = 0;
@@ -198,5 +197,4 @@ void BMBlip_process(BMBlip *This, float *output, size_t length){
             samplesLeft -= samplesProcessing;
             samplesProcessed += samplesProcessing;
         }
-    }
 }

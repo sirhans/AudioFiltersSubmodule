@@ -27,7 +27,7 @@ typedef struct BMBlipOscillator{
 	BMMultiLevelBiquad highpass;
 	size_t numBlips, nextBlip, filterOrder;
 	BMBlip *blips;
-	float sampleRate, nextPhase, previousPhaseIncrement;
+	float sampleRate, lastPhase;
     float *b1, *b2;
     size_t *b3i;
 } BMBlipOscillator;
