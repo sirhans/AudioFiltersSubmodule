@@ -55,7 +55,7 @@ void BMBlip_restart(BMBlip *This, float offset){
     // offset in [0,1)
     assert(0.0f <= offset && offset < 1.0f);
     
-    This->t0 = (1.0f - offset) * This->dt;
+	This->t0 = (1.0f - offset) * This->dt;
     
     // flip the buffers if necessary
     if(This->filterConfNeedsFlip)

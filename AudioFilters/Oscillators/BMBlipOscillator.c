@@ -113,8 +113,8 @@ void BMBlipOscillator_processChunk(BMBlipOscillator *This, const float *log2Freq
             phase = fractionalPart(phase);
             // the integer offset is the sample number immediately before the discontinuity. Note that by calculating it this way we are actually delaying the offset by one sample since we waited until the phase exceeds 1.0 before marking the offset.
 			impulseIndicesOS[j] = i;
-            // the fractional offset is the position of the discontinuity between integerOffset and integerOffset+1. Therefore the location of the discontinuity is integerOffset + fractionalOffset.
-            float fractionalSampleOffset = phase / fractionalPart(This->previousPhaseIncrement);
+            // the fractional offset is the position of the impulse between integerOffset and integerOffset+1. Therefore the location of the impulse is integerOffset + fractionalOffset.
+			float fractionalSampleOffset = 1.0f - (phase / fractionalPart(phaseIncrement));
 			fractionalOffsetsOS[j++] = fractionalSampleOffset;
 		}
         float phaseIncrement = phaseIncrementsOS[i];
