@@ -15,9 +15,8 @@ void BMBlipOscillator_init(BMBlipOscillator *This, float sampleRate, size_t over
 	This->numBlips = numBlips;
 	This->nextBlip = 0;
 	This->sampleRate = sampleRate;
-	This->nextPhase = 0.0f;
+	This->lastPhase = 0.0f;
 	This->filterOrder = filterOrder;
-    This->previousPhaseIncrement = 0.0f;
     
     size_t bufferSize = BM_BUFFER_CHUNK_SIZE*oversampleFactor;
     This->b1 = malloc(sizeof(float)*bufferSize);
@@ -100,29 +99,40 @@ void BMBlipOscillator_processChunk(BMBlipOscillator *This, const float *log2Freq
 	size_t lengthOS = length * This->upsampler.upsampleFactor;
     float *phaseIncrementsOS = This->b2;
 	BMGaussianUpsampler_processMono(&This->upsampler, phaseIncrements, phaseIncrementsOS, length);
+    
+//    // check phase increments
+//    float pi = phaseIncrementsOS[2];
+//    for(size_t i=0; i<lengthOS; i++){
+//        if(phaseIncrementsOS[i] != pi)
+//            printf("%f, ",phaseIncrementsOS[i]);
+//
+//printf("%f, ",phaseIncrementsOS[i]);
+//    }
 	
 	// take running sum of the phase increments, taking note of integer and
 	// fractional index of each place where the phase wraps around to zero
     float *fractionalOffsetsOS = This->b1;
 	size_t *impulseIndicesOS = This->b3i;
-	float phase = This->nextPhase;
+	float phase = This->lastPhase;
 	size_t j = 0;
 	for(size_t i=0; i<lengthOS; i++){
+        float phaseIncrement = phaseIncrementsOS[i];
+        phase += phaseIncrement;
+        
 		if(phase >= 1.0f){
-            // the phase must be in the range [0,1). We use the mod operation to wrap it around instead of just subtracting 1.0f in order to handle cases where the frequency of the oscillator exceeds the sample rate.
+            // the phase must be in the range [0,1). We use the fractional part operation to wrap it around instead of just subtracting 1.0f in order to handle cases where the frequency of the oscillator exceeds the sample rate.
             phase = fractionalPart(phase);
-            // the integer offset is the sample number immediately before the discontinuity. Note that by calculating it this way we are actually delaying the offset by one sample since we waited until the phase exceeds 1.0 before marking the offset.
+            // the integer offset is the sample number immediately after the discontinuity. Calculating it this way delays each impulse by one sample.
 			impulseIndicesOS[j] = i;
-            // the fractional offset is the position of the discontinuity between integerOffset and integerOffset+1. Therefore the location of the discontinuity is integerOffset + fractionalOffset.
-            float fractionalSampleOffset = phase / fractionalPart(This->previousPhaseIncrement);
+            // the fractional offset is the position of the impulse between integerOffset and integerOffset+1. Therefore the location of the impulse is integerOffset + fractionalOffset.
+//            float fractionalSampleOffset = phase / fractionalPart(This->previousPhaseIncrement);
+            // float fractionalSampleOffset = phase / fractionalPart(phaseIncrement);
+            float fractionalSampleOffset = 0.0f;
 			fractionalOffsetsOS[j++] = fractionalSampleOffset;
 		}
-        float phaseIncrement = phaseIncrementsOS[i];
-		phase += phaseIncrement;
-        This->previousPhaseIncrement = phaseIncrement;
 	}
 	size_t numImpulses = j;
-	This->nextPhase = phase;
+	This->lastPhase = phase;
 	
 	// set the output to zero
     float *outputOS = This->b2;
