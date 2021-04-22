@@ -17,7 +17,7 @@
 
 typedef struct BMBlipFilterConfig {
     float *exp;
-    float negNOverP, pHatNegN, n, p;
+    float negNOverP, pHatNegN, n, p, integral;
     size_t n_i;
 } BMBlipFilterConfig;
 

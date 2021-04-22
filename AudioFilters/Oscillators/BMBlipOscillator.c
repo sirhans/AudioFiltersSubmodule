@@ -17,10 +17,14 @@ void BMBlipOscillator_init(BMBlipOscillator *This, float sampleRate, size_t over
 	This->sampleRate = sampleRate;
 	This->lastPhase = 0.0f;
 	This->filterOrder = filterOrder;
+	This->dcOffset = 0.0f;
+	This->lastImpulseIndex_i = 0;
+	This->lastImpulseIndexOS_f = 0.0f;
     
     size_t bufferSize = BM_BUFFER_CHUNK_SIZE*oversampleFactor;
     This->b1 = malloc(sizeof(float)*bufferSize);
     This->b2 = malloc(sizeof(float)*bufferSize);
+	This->b3 = malloc(sizeof(float)*bufferSize);
     This->b3i = malloc(sizeof(size_t)*bufferSize);
     
     // init the structs that generate the band-limited impulses
@@ -30,8 +34,9 @@ void BMBlipOscillator_init(BMBlipOscillator *This, float sampleRate, size_t over
         BMBlip_init(&This->blips[i], filterOrder, lowpassFc, sampleRate*oversampleFactor);
     
     // init the highpass filter to remove DC bias
-    BMMultiLevelBiquad_init(&This->highpass, 1, sampleRate, false, true, false);
-    BMMultiLevelBiquad_setHighPass6db(&This->highpass, 50.0f, 0);
+    BMMultiLevelBiquad_init(&This->lowpass, 2, sampleRate, false, true, false);
+	BMMultiLevelBiquad_setLowPass6db(&This->lowpass, 30.0f, 0);
+	BMMultiLevelBiquad_setLowPass6db(&This->lowpass, 30.0f, 1);
     
     // init the gaussian upsampler
     size_t numPasses = 3;
@@ -48,17 +53,19 @@ void BMBlipOscillator_init(BMBlipOscillator *This, float sampleRate, size_t over
 void BMBlipOscillator_free(BMBlipOscillator *This){
     free(This->b1);
     free(This->b2);
+	free(This->b3);
     free(This->b3i);
     free(This->blips);
     This->b1 = NULL;
     This->b2 = NULL;
+	This->b3 = NULL;
     This->b3i = NULL;
     This->blips = NULL;
     
     for(size_t i=0; i<This->numBlips; i++)
         BMBlip_free(&This->blips[i]);
     
-    BMMultiLevelBiquad_free(&This->highpass);
+    BMMultiLevelBiquad_free(&This->lowpass);
     BMGaussianUpsampler_free(&This->upsampler);
     BMDownsampler_free(&This->downsampler);
 }
@@ -140,21 +147,49 @@ void BMBlipOscillator_processChunk(BMBlipOscillator *This, const float *log2Freq
 	for(size_t i=0; i<This->numBlips; i++)
 		BMBlip_process(&This->blips[i], outputOS, lengthOS);
 	
+	// rename b3 for readability
+	float *dcOffsetBuffer = This->b3;
+	
 	// for each phase discontinuity index, process a Blip from the index until the end of the buffer
 	for(size_t i=0; i<numImpulses; i++){
         BMBlip_restart(&This->blips[This->nextBlip], fractionalOffsetsOS[i]);
         BMBlip_process(&This->blips[This->nextBlip], outputOS + impulseIndicesOS[i], lengthOS - impulseIndicesOS[i]);
+		
+		// write the DC offset from the last impulse to the current impulse
+		size_t impulseIndex_i = impulseIndicesOS[i] / This->downsampler.downsampleFactor;
+		size_t samplesWritingDCOffset = impulseIndex_i - This->lastImpulseIndex_i;
+		vDSP_vfill(&This->dcOffset, dcOffsetBuffer + This->lastImpulseIndex_i, 1, samplesWritingDCOffset);
+		
+		// update the impulse index and dc offset for next time
+		This->lastImpulseIndex_i = impulseIndex_i;
+		float impulseIndexOS_f = (float)impulseIndicesOS[i] + fractionalOffsetsOS[i];
+		float wavelength = (impulseIndexOS_f - This->lastImpulseIndexOS_f) / (float)This->downsampler.downsampleFactor;
+		This->dcOffset = -This->blips[This->nextBlip].filterConf->integral / wavelength;
+		This->lastImpulseIndexOS_f = impulseIndexOS_f;
         
         // advance to the next blip
         This->nextBlip = (This->nextBlip+1) % This->numBlips;
-//		printf("nextBlip: %zu, ii: %zu, fo: %f\n", This->nextBlip, impulseIndicesOS[i],fractionalOffsetsOS[i]);
 	}
+	
+	// write the DC offset to the end of the buffer
+	size_t samplesWritingDCOffset = length - This->lastImpulseIndex_i;
+	vDSP_vfill(&This->dcOffset, dcOffsetBuffer + This->lastImpulseIndex_i, 1, samplesWritingDCOffset);
+	
+	// update the last impulse index
+	This->lastImpulseIndexOS_f -= lengthOS;
+	This->lastImpulseIndex_i = 0;
 	
 	// downsample
 	BMDownsampler_processBufferMono(&This->downsampler, outputOS, output, lengthOS);
 	
+	// lowpass filter the DC offset buffer to smooth it out
+	BMMultiLevelBiquad_processBufferMono(&This->lowpass, dcOffsetBuffer, dcOffsetBuffer, length);
+	
+	// sum the DC offset buffer to the output
+	vDSP_vadd(output, 1, dcOffsetBuffer, 1, output, 1, length);
+	
 	// highpass
-	BMMultiLevelBiquad_processBufferMono(&This->highpass, output, output, length);
+//	BMMultiLevelBiquad_processBufferMono(&This->highpass, output, output, length);
 }
 
 
