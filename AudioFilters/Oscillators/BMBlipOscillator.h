@@ -24,11 +24,11 @@
 typedef struct BMBlipOscillator{
 	BMGaussianUpsampler upsampler;
 	BMDownsampler downsampler;
-	BMMultiLevelBiquad highpass;
-	size_t numBlips, nextBlip, filterOrder;
+	BMMultiLevelBiquad lowpass;
+	size_t numBlips, nextBlip, filterOrder, lastImpulseIndex_i;
 	BMBlip *blips;
-	float sampleRate, nextPhase, previousPhaseIncrement;
-    float *b1, *b2;
+	float sampleRate, lastPhase, dcOffset, lastImpulseIndexOS_f;
+    float *b1, *b2, *b3;
     size_t *b3i;
 } BMBlipOscillator;
 

@@ -10,9 +10,20 @@
 #include <Accelerate/Accelerate.h>
 #include "BMIntegerMath.h"
 #include "Constants.h"
+#include "BMIntegerMath.h"
 
 
 #define BM_BLIP_MIN_OUTPUT 0.0000001 // -140 dB
+
+
+// compute the integral under the blip from 0 to infinity
+float BMBlip_integrate(float n, float p){
+	// n must be a nonzero positive integer
+	assert((int)n>0 && n==(int)n);
+	
+	// Mathematica: E^n  (n/p)^-n  p^(1-n)  (n-1)!
+	return (pow(M_E,n) * pow(p,1.0 - n) * (double)BMFactorial((int)n - 1) ) / pow(n/p,n);
+}
 
 
 void BMBlip_update(BMBlip *This, float lowpassFc, size_t filterOrder){
@@ -23,6 +34,9 @@ void BMBlip_update(BMBlip *This, float lowpassFc, size_t filterOrder){
     This->filterConfBack->n = This->filterConfBack->n_i;
     This->filterConfBack->negNOverP = -This->filterConfBack->n / This->filterConfBack->p;
     This->filterConfBack->pHatNegN = powf(This->filterConfBack->p, -This->filterConfBack->n);
+	
+	// calculate the integral under the impulse response from zero to infinity
+	This->filterConfBack->integral = BMBlip_integrate(This->filterConfBack->n, This->filterConfBack->p);
     
     // fill the buffer
     float zero = 0.0f;
@@ -55,7 +69,7 @@ void BMBlip_restart(BMBlip *This, float offset){
     // offset in [0,1)
     assert(0.0f <= offset && offset < 1.0f);
     
-    This->t0 = (1.0f - offset) * This->dt;
+	This->t0 = (1.0f - offset) * This->dt;
     
     // flip the buffers if necessary
     if(This->filterConfNeedsFlip)
@@ -70,7 +84,7 @@ void BMBlip_init(BMBlip *This, size_t filterOrder, float lowpassFc, float sample
     assert(isPowerOfTwo(filterOrder));
     
     This->sampleRate = sampleRate;
-	This->dt = This->sampleRate / 48000.0f;
+	This->dt = 1.0f; //This->sampleRate / 48000.0f;
     
     // allocate buffers for pre-computing the exp function
     This->bufferLength = BM_BUFFER_CHUNK_SIZE;
@@ -187,7 +201,6 @@ void BMBlip_processChunk(BMBlip *This, float *output, size_t length){
 
 
 void BMBlip_process(BMBlip *This, float *output, size_t length){
-    if(length>0){
     
         size_t samplesLeft = length;
         size_t samplesProcessed = 0;
@@ -198,5 +211,4 @@ void BMBlip_process(BMBlip *This, float *output, size_t length){
             samplesLeft -= samplesProcessing;
             samplesProcessed += samplesProcessing;
         }
-    }
 }
