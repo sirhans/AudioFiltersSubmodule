@@ -28,6 +28,10 @@ typedef struct BMMonoToStereo {
  */
 void BMMonoToStereo_init(BMMonoToStereo *This, float sampleRate, bool stereoInput);
 
+/*!
+ *BMMonoToStereo_initBigger
+ */
+void BMMonoToStereo_initBigger(BMMonoToStereo *This, float sampleRate, bool stereoInput);
 
 /*!
  *BMMonoToStereo_processBuffer
