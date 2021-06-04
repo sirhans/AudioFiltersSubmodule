@@ -13,12 +13,16 @@
 
 
 void BMMeasurementBuffer_init(BMMeasurementBuffer *This, size_t lengthInSamples){
-	TPCircularBufferInit(&This->buffer, (uint32_t)lengthInSamples*2);
+	TPCircularBufferInit(&This->buffer, (uint32_t)lengthInSamples*sizeof(float)*2);
 	uint32_t bytesAvailable;
 	float *head = TPCircularBufferHead(&This->buffer, &bytesAvailable);
 	assert(bytesAvailable > lengthInSamples * sizeof(float));
 	vDSP_vclr(head, 1, lengthInSamples);
-	TPCircularBufferConsume(&This->buffer, (uint32_t)(lengthInSamples * sizeof(float)));
+    TPCircularBufferProduce(&This->buffer, (uint32_t)(lengthInSamples*sizeof(float)));
+}
+
+void BMMeasurementBuffer_free(BMMeasurementBuffer *This){
+    TPCircularBufferCleanup(&This->buffer);
 }
 
 void BMMeasurementBuffer_inputSamples(BMMeasurementBuffer *This,
@@ -45,4 +49,10 @@ void BMMeasurementBuffer_inputSamples(BMMeasurementBuffer *This,
         
         numSamples -= samplesWriting;
     }
+}
+
+float* BMMeasurementBuffer_getCurrentPointer(BMMeasurementBuffer *This){
+    uint32_t spaceAvailable;
+    float* output = TPCircularBufferHead(&This->buffer, &spaceAvailable);
+    return output;
 }
