@@ -3,129 +3,212 @@
 //  AudioFiltersXcodeProject
 //
 //  Created by hans anderson on 25/02/2021.
-//  Copyright © 2021 BlueMangoo. All rights reserved.
+//  We release this file into the public domain without restrictions
 //
 
 #include "BMBlipOscillator.h"
 #include <string.h>
-#include "BMIntegerMath.h"
 #include "Constants.h"
 
-#define BM_BLIP_MIN_OUTPUT 0.0000001 // -140 dB
 
-void BMBlip_init(BMBlip *This, size_t filterOrder, size_t oversampleFactor, float lowpassFc, float sampleRate){
-	assert(isPowerOfTwo(filterOrder));
-	
-	This->p = sampleRate / lowpassFc;
-	This->n_i = filterOrder;
-	This->n = This->n_i;
-	This->bufferLength = oversampleFactor * BM_BUFFER_CHUNK_SIZE;
-	int bufferLengthI = (int)This->bufferLength;
-	
-	// fill the buffer expb with a decaying exponential to avoid doing exponentiation in real time
-	This->expb = malloc(sizeof(float) * This->bufferLength);
-	float zero = 0.0f;
-	float increment = sampleRate / 48000.0f;
-	vDSP_vramp(&zero, &increment, This->expb, 1, This->bufferLength);
-	vvexpf(This->expb, This->expb, &bufferLengthI);
-	
-	// init variables
-	This->nextIndex = 0;
-	This->negNOverP = -This->n / This->p;
-	This->pHatNegN = powf(This->p, -This->n);
-	This->lastOutput = 1.0f;
+void BMBlipOscillator_init(BMBlipOscillator *This, float sampleRate, size_t oversampleFactor, size_t filterOrder, size_t numBlips){
+	This->numBlips = numBlips;
+	This->nextBlip = 0;
 	This->sampleRate = sampleRate;
+	This->lastPhase = 0.0f;
+	This->filterOrder = filterOrder;
+	This->dcOffset = 0.0f;
+	This->lastImpulseIndex_i = 0;
+	This->lastImpulseIndexOS_f = 0.0f;
+    
+    size_t bufferSize = BM_BUFFER_CHUNK_SIZE*oversampleFactor;
+    This->b1 = malloc(sizeof(float)*bufferSize);
+    This->b2 = malloc(sizeof(float)*bufferSize);
+	This->b3 = malloc(sizeof(float)*bufferSize);
+    This->b3i = malloc(sizeof(size_t)*bufferSize);
+    
+    // init the structs that generate the band-limited impulses
+    float lowpassFc = sampleRate * 0.25f;
+    This->blips = malloc(sizeof(BMBlip)*numBlips);
+    for(size_t i=0; i<numBlips; i++)
+        BMBlip_init(&This->blips[i], filterOrder, lowpassFc, sampleRate*oversampleFactor);
+    
+    // init the highpass filter to remove DC bias
+    BMMultiLevelBiquad_init(&This->lowpass, 2, sampleRate, false, true, false);
+	BMMultiLevelBiquad_setLowPass6db(&This->lowpass, 30.0f, 0);
+	BMMultiLevelBiquad_setLowPass6db(&This->lowpass, 30.0f, 1);
+    
+    // init the gaussian upsampler
+    size_t numPasses = 3;
+    BMGaussianUpsampler_init(&This->upsampler, oversampleFactor, numPasses);
+    
+    // init the downsampler
+    BMDownsampler_init(&This->downsampler, false, oversampleFactor, BMRESAMPLER_FULL_SPECTRUM);
 }
 
 
 
-/*!
- *BMBlip_process
- *
- * @param This pointer to an initialised struct
- * @param t the time parameter
- * @param b1 buffer of length length
- * @param b2 buffer of length length
- * @param output array of length length. output is summed into here so it should be initialised to zero before calling
- * @param length length of buffers
- */
-void BMBlip_process(BMBlip *This, const float *t, float *b1, float *b2, float *output, size_t length){
-	
-	// Mathematica:
-	//   E^(n - (n t)/p) p^-n t^n
-	
-	// E^(n - (n t)/p)
-	//
-	// In This->expb is a buffer containing E^(- n t / p) for t = [0..length]
-	// By multiplying This->expb by a constant scaling factor we can get
-	// E^(n - (n t)/p) without doing exponentiation in real time.
-	float expScale = expf(This->n - (This->n * t[0] / This->p));
-	vDSP_vsmul(This->expb, 1, &expScale, b1, 1, length);
-	
-	//
-	// b2 = t^n
-	// assert(isPowerOfTwo(n))
-	vDSP_vsq(t, 1, b2, 1, length);
-	size_t c = 2;
-	while (c<This->n_i)
-		vDSP_vsq(b2, 1, b2, 1, length);
-	//
-	// b2 = p^(-n) t^n
-	vDSP_vsmul(b2, 1, &This->pHatNegN, b2, 1, length);
-	
-	//
-	// output += b1 * b2
-	vDSP_vma(b1, 1, b2, 1, output, 1, output, 1, length);
-	
-	// cache the last value
-	This->lastOutput = b1[length-1] * b2[length-1];
-}
 
 
-void BMBlip_processBuffer(BMBlip *This, const size_t *integerOffsets, const float *fractionalOffsets, float *output, float *b1, float *b2, float *b3, size_t length){
-	// TODO: don't process these if the output is too small to be significant
-	
-	// process from the zero sample until the first integer offset
-	size_t samplesTillNextBlip = integerOffsets[0] + 1;
-	float increment = 1.0f * This->sampleRate / 48000.0f;
-	vDSP_vramp(&This->nextIndex, &increment, b3, 1, samplesTillNextBlip);
-	if(This->lastOutput > BM_BLIP_MIN_OUTPUT){
-		BMBlip_process(This, b3, b1, b2, output, samplesTillNextBlip);
-		
-		// save the last output from the previous call
-		This->lastOutput = 0.0f;
-		BMBlip_process(This, b3 + samplesTillNextBlip-1, b1 + samplesTillNextBlip-1, b2 + samplesTillNextBlip-1, &This->lastOutput, 1);
-	}
-	
-	// process from the nth offset to the next (n+1) offset
-	while( // Handle the case where there is no integer offset left or none appears in this buffer call
+void BMBlipOscillator_free(BMBlipOscillator *This){
+    free(This->b1);
+    free(This->b2);
+	free(This->b3);
+    free(This->b3i);
+    free(This->blips);
+    This->b1 = NULL;
+    This->b2 = NULL;
+	This->b3 = NULL;
+    This->b3i = NULL;
+    This->blips = NULL;
+    
+    for(size_t i=0; i<This->numBlips; i++)
+        BMBlip_free(&This->blips[i]);
+    
+    BMMultiLevelBiquad_free(&This->lowpass);
+    BMGaussianUpsampler_free(&This->upsampler);
+    BMDownsampler_free(&This->downsampler);
 }
 
 
 
-void BMBlipOscillatorProcess(BMBlipOscillator *This, const float *frequencies, float *output, size_t length){
+
+
+void BMBlipOscilaltor_setLowpassFc(BMBlipOscillator *This, float fc){
+	for(size_t i=0; i<This->numBlips; i++)
+		BMBlip_update(&This->blips[i], fc, This->filterOrder);
+}
+
+
+
+
+
+float fractionalPart(float f){
+	return f - (int)f;
+}
+
+
+
+
+void BMBlipOscillator_processChunk(BMBlipOscillator *This, const float *log2Frequencies, float* output, size_t length){
+    
+    // convert logFrequencies to linear scale frequencies
+    float *frequencies = This->b2;
+    int length_i = (int)length;
+    vvexp2f(frequencies, log2Frequencies, &length_i);
+    
+	// convert frequencies to phase increments, accounting for upsampling
+    float *phaseIncrements = This->b1;
+	float scale = 1.0 / (This->sampleRate * (float)This->upsampler.upsampleFactor);
+	vDSP_vsmul(frequencies, 1, &scale, phaseIncrements, 1, length);
 	
-	// convert from frequencies to phase increments
-	
-	// find the integer and fractional parts of the sample index of each impulse.
-	// store in a multi-dimensional array with one row for each Blip generator.
-	BMBlipOscillator_impulseIndices(This, This->phaseIncrements, length);
-	
-	// upsample
-	BMGaussianUpsampler_processMono(&This->upsampler, This->phaseIncrements, This->phaseIncrementsOS, length);
+	// upsample the phase increments
 	size_t lengthOS = length * This->upsampler.upsampleFactor;
+    float *phaseIncrementsOS = This->b2;
+	BMGaussianUpsampler_processMono(&This->upsampler, phaseIncrements, phaseIncrementsOS, length);
+    
+//    // check phase increments
+//    float pi = phaseIncrementsOS[2];
+//    for(size_t i=0; i<lengthOS; i++){
+//        if(phaseIncrementsOS[i] != pi)
+//            printf("%f, ",phaseIncrementsOS[i]);
+//
+//printf("%f, ",phaseIncrementsOS[i]);
+//    }
 	
-	// initialise the output to zero
-	memset(This->outputOS,0,sizeof(float)*lengthOS);
-	
-	// for each row of indices, process a Blip generator and sum its output into the mix
-	for (size_t i=0; i<This->numBlips; i++){
-		BMBlip_process(This->blips[i], This->integerOffsets[i], This->fractionalOffsets[i], This->outputOS, lengthOS);
+	// take running sum of the phase increments, taking note of integer and
+	// fractional index of each place where the phase wraps around to zero
+    float *fractionalOffsetsOS = This->b1;
+	size_t *impulseIndicesOS = This->b3i;
+	float phase = This->lastPhase;
+	size_t j = 0;
+	for(size_t i=0; i<lengthOS; i++){
+        float phaseIncrement = phaseIncrementsOS[i];
+        phase += phaseIncrement;
+        
+		if(phase >= 1.0f){
+            // the phase must be in the range [0,1). We use the fractional part operation to wrap it around instead of just subtracting 1.0f in order to handle cases where the frequency of the oscillator exceeds the sample rate.
+            phase = fractionalPart(phase);
+            // the integer offset is the sample number immediately after the discontinuity. Calculating it this way delays each impulse by one sample.
+			impulseIndicesOS[j] = i;
+            // the fractional offset is the position of the impulse between integerOffset and integerOffset+1. Therefore the location of the impulse is integerOffset + fractionalOffset.
+			float fractionalSampleOffset = 1.0f - (phase / fractionalPart(phaseIncrement));
+			fractionalOffsetsOS[j++] = fractionalSampleOffset;
+		}
 	}
+	size_t numImpulses = j;
+	This->lastPhase = phase;
+	
+	// set the output to zero
+    float *outputOS = This->b2;
+	memset(outputOS,0,sizeof(float)*lengthOS);
+	
+	// process all the blips from start to end of the current buffer and sum into the output
+	for(size_t i=0; i<This->numBlips; i++)
+		BMBlip_process(&This->blips[i], outputOS, lengthOS);
+	
+	// rename b3 for readability
+	float *dcOffsetBuffer = This->b3;
+	
+	// for each phase discontinuity index, process a Blip from the index until the end of the buffer
+	for(size_t i=0; i<numImpulses; i++){
+        BMBlip_restart(&This->blips[This->nextBlip], fractionalOffsetsOS[i]);
+        BMBlip_process(&This->blips[This->nextBlip], outputOS + impulseIndicesOS[i], lengthOS - impulseIndicesOS[i]);
+		
+		// write the DC offset from the last impulse to the current impulse
+		size_t impulseIndex_i = impulseIndicesOS[i] / This->downsampler.downsampleFactor;
+		size_t samplesWritingDCOffset = impulseIndex_i - This->lastImpulseIndex_i;
+		vDSP_vfill(&This->dcOffset, dcOffsetBuffer + This->lastImpulseIndex_i, 1, samplesWritingDCOffset);
+		
+		// update the impulse index and dc offset for next time
+		This->lastImpulseIndex_i = impulseIndex_i;
+		float impulseIndexOS_f = (float)impulseIndicesOS[i] + fractionalOffsetsOS[i];
+		float wavelength = (impulseIndexOS_f - This->lastImpulseIndexOS_f) / (float)This->downsampler.downsampleFactor;
+		This->dcOffset = -This->blips[This->nextBlip].filterConf->integral / wavelength;
+		This->lastImpulseIndexOS_f = impulseIndexOS_f;
+        
+        // advance to the next blip
+        This->nextBlip = (This->nextBlip+1) % This->numBlips;
+	}
+	
+	// write the DC offset to the end of the buffer
+	size_t samplesWritingDCOffset = length - This->lastImpulseIndex_i;
+	vDSP_vfill(&This->dcOffset, dcOffsetBuffer + This->lastImpulseIndex_i, 1, samplesWritingDCOffset);
+	
+	// update the last impulse index
+	This->lastImpulseIndexOS_f -= lengthOS;
+	This->lastImpulseIndex_i = 0;
 	
 	// downsample
-	BMDownsampler_processBufferMono(&This->downsampler, This->outputOS, output, lengthOS);
+	BMDownsampler_processBufferMono(&This->downsampler, outputOS, output, lengthOS);
 	
-	// highpass filter to eliminate DC offset
-	BMMultiLevelBiquad_processBufferMono(&This->highpass, output, output, length);
+	// lowpass filter the DC offset buffer to smooth it out
+	BMMultiLevelBiquad_processBufferMono(&This->lowpass, dcOffsetBuffer, dcOffsetBuffer, length);
+	
+	// sum the DC offset buffer to the output
+	vDSP_vadd(output, 1, dcOffsetBuffer, 1, output, 1, length);
+	
+	// highpass
+//	BMMultiLevelBiquad_processBufferMono(&This->highpass, output, output, length);
+}
+
+
+
+
+/*
+ * This is a wrapper for the processChunk that ensures the output buffer size does not exceed the length of the internal buffers.
+ */
+void BMBlipOscillator_process(BMBlipOscillator *This, const float *log2Frequencies, float* output, size_t length){
+	size_t samplesLeft = length;
+	size_t samplesProcessed = 0;
+	
+	while(samplesLeft > 0){
+		size_t samplesProcessing = BM_MIN(samplesLeft,BM_BUFFER_CHUNK_SIZE);
+		BMBlipOscillator_processChunk(This,
+									  log2Frequencies + samplesProcessed,
+									  output + samplesProcessed,
+									  samplesProcessing);
+		samplesLeft -= samplesProcessing;
+		samplesProcessed += samplesProcessing;
+	}
 }
