@@ -253,7 +253,7 @@ void BMPitchShiftDelay_processStereoBuffer(BMPitchShiftDelay* This,float* inL, f
                 This->delayParamR.startSamples = This->delayRange - This->delayParamR.stopSamples;
                 This->delayParamL.lastSTC = 0;
                 This->delayParamR.lastSTC = 0;
-                printf("%f %f %lu\n",This->delayParamL.startSamples,This->delayParamL.stopSamples,numSamples-samplesProcessed);
+//                printf("%f %f %lu\n",This->delayParamL.startSamples,This->delayParamL.stopSamples,numSamples-samplesProcessed);
             }
         }
 //        //Afterdelay - test

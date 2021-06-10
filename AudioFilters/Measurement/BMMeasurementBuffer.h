@@ -22,4 +22,11 @@ typedef struct BMMeasurmentBuffer {
     TPCircularBuffer buffer;
 } BMMeasurementBuffer;
 
+void BMMeasurementBuffer_init(BMMeasurementBuffer *This, size_t lengthInSamples);
+void BMMeasurementBuffer_free(BMMeasurementBuffer *This);
+
+void BMMeasurementBuffer_inputSamples(BMMeasurementBuffer *This,
+                                      const float* input,
+                                      size_t numSamples);
+float* BMMeasurementBuffer_getCurrentPointer(BMMeasurementBuffer *This);
 #endif /* BMMeasurementBuffer_h */

@@ -22,22 +22,22 @@
 #include "BMFIRFilter.h"
 #include "BMSimpleDelay.h"
 #include "BMSmoothGain.h"
+#include "BMAttackShaper.h"
+#include "BMSpectrum.h"
+#include "BMMeasurementBuffer.h"
+#include "BMSmoothFade.h"
 
 typedef struct BMStereoBuffer{
     void* bufferL;
     void* bufferR;
 } BMStereoBuffer;
 
-typedef struct BMLongReverb {
+
+
+typedef struct BMLongReverbUnit {
     BMMultiLevelBiquad biquadFilter;
     BMVelvetNoiseDecorrelator* vndArray;
     
-    float** vnd1BufferL;
-    float** vnd1BufferR;
-    float** vnd2BufferL;
-    float** vnd2BufferR;
-    size_t numVND;
-    size_t numInput;
     float fadeInS;
     
     BMPitchShiftDelay pitchShiftDelay;
@@ -52,12 +52,12 @@ typedef struct BMLongReverb {
     BMStereoBuffer lastLoopBuffer;
     BMStereoBuffer wetBuffer;
     BMStereoBuffer LFOBuffer;
+    BMStereoBuffer lastWetBuffer;
     
     BMPanLFO inputPan;
     BMPanLFO outputPan;
-
-    float sampleRate;
-    float maxTapsEachVND;
+    BMSmoothGain smoothGain;
+    
     float diffusion;
     bool updateDiffusion;
     float decayTime;
@@ -67,20 +67,53 @@ typedef struct BMLongReverb {
     float vndLength;
     float desiredVNDLength;
     
+    BMHarmonicityMeasure chordMeasure;
+    
+    size_t measureFillCount;
+    
+    //Attack softener
+    BMMultibandAttackShaper attackSoftener;
+    BMSpectrum measureSpectrum;
+    size_t measureSamples;
+    BMMeasurementBuffer measureDryInput;
+    BMMeasurementBuffer measureWetOutput;
+    float* measureSpectrumDryBuffer;
+    float* measureSpectrumWetBuffer;
+    float currentDecayTime;
+    
+    float* outputL;
+    float* outputR;
+} BMLongReverbUnit;
+
+typedef struct{
+    BMLongReverbUnit* reverb;
+    
+    float** vnd1BufferL;
+    float** vnd1BufferR;
+    float** vnd2BufferL;
+    float** vnd2BufferR;
+    float* dryInputL;
+    float* dryInputR;
+    
+    size_t numVND;
+    size_t numInput;
+    float sampleRate;
+    float maxTapsEachVND;
+    
     float bellQ;
     float lsGain;
     
-    int initNo;
-    
-    BMSmoothGain smoothGain;
-    
-    BMHarmonicityMeasure chordMeasure;
     size_t measureLength;
-    size_t measureFillCount;
-    float* measureInput;
-    float* sfmBuffer;
-    size_t sfmIdx;
-} BMLongReverb;
+    int reverbActiveIdx;
+    int changingReverbCount;
+    BMSmoothFade fadeIn;
+    BMSmoothFade fadeOut;
+    size_t fadeSamples;
+    size_t changeReverbDelaySamples;
+    size_t changeReverbCurrentSamples;
+    
+    int initNo;
+}BMLongReverb;
 
 void BMLongReverb_init(BMLongReverb* This,float sr);
 void BMLongReverb_destroy(BMLongReverb* This);
