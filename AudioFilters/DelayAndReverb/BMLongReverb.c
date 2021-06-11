@@ -27,6 +27,13 @@
 #define VND_BaseLength 0.2f
 #define SFMCount 30
 #define ReverbCount 2
+#define ReverbVerifyChange 3
+#define Reverb_Measure_Threshold 0.49f
+#define Reverb_MinDB -60 //dB
+
+#define AttackShaper_Time 0.080f
+#define AttackShaper_Depth 2.0f
+#define AttackShaper_Noisegate -45 //dB
 
 void BMLongReverb_updateDiffusion(BMLongReverb* This);
 void BMLongReverb_prepareLoopDelay(BMLongReverb* This,int reverbIdx);
@@ -69,7 +76,7 @@ void BMLongReverb_init(BMLongReverb* This,float sr){
         This->numInput = 8;
         This->numVND = This->numInput;
         This->reverb[i].vndArray = malloc(sizeof(BMVelvetNoiseDecorrelator)*This->numVND);
-        
+        This->reverbMeasureThreshold = Reverb_Measure_Threshold;
         
         //Using vnd
         for(int j=0;j<This->numVND;j++){
@@ -129,12 +136,12 @@ void BMLongReverb_init(BMLongReverb* This,float sr){
         This->measureLength = 4096;
         BMHarmonicityMeasure_init(&This->reverb[i].chordMeasure, This->measureLength, sr);
         This->reverb[i].measureFillCount = 0;
-//        This->reverb[i].measureInput = malloc(sizeof(float)*This->measureLength);
-//        This->reverb[i].sfmBuffer = calloc(SFMCount, sizeof(float));
-//        This->reverb[i].sfmIdx = 0;
         
         //Attack softener
         BMMultibandAttackShaper_init(&This->reverb[i].attackSoftener, true, sr);
+        BMMultibandAttackShaper_setAttackTime(&This->reverb[i].attackSoftener, AttackShaper_Time);
+        BMMultibandAttackShaper_setAttackDepth(&This->reverb[i].attackSoftener, AttackShaper_Depth);
+        BMMultibandAttackShaper_setSidechainNoiseGateThreshold(&This->reverb[i].attackSoftener, AttackShaper_Noisegate);
         
         BMSpectrum_init(&This->reverb[i].measureSpectrum);
         This->reverb[i].measureSamples = 4096;
@@ -151,7 +158,8 @@ void BMLongReverb_init(BMLongReverb* This,float sr){
     This->vnd2BufferR = malloc(sizeof(float*)*This->numInput);
     This->changeReverbCurrentSamples = 0;
     This->changeReverbDelaySamples = 0.5f * This->sampleRate;
-    This->changingReverbCount = 0;
+    This->updateReverbCount = 0;
+    This->verifyReverbChangeCount = 0;
     
     for(int j=0;j<This->numVND;j++){
         This->vnd1BufferL[j] = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
@@ -274,12 +282,9 @@ void BMLongReverb_measureSpectrum(BMLongReverb* This,int reverbIdx,float* dryInp
         BMSpectrum_processDataBasic(&This->reverb[reverbIdx].measureSpectrum, wetInput, This->reverb[reverbIdx].measureSpectrumWetBuffer, true, This->reverb[reverbIdx].measureSamples);
         size_t outLength = This->reverb[reverbIdx].measureSamples/2;
         
-        //Validate if we should use this dry input
-        
-        
-        
         //Find normalize spectrum
-        if(normInputDry!=0){
+        if(normInputDry>=BM_DB_TO_GAIN(-60)){
+            printf("vol %f %f\n",normInputDry,BM_DB_TO_GAIN(-60));
             float normDry;
             vDSP_svesq(This->reverb[reverbIdx].measureSpectrumDryBuffer, 1, &normDry, outLength);
             normDry = sqrtf(normDry);
@@ -292,15 +297,22 @@ void BMLongReverb_measureSpectrum(BMLongReverb* This,int reverbIdx,float* dryInp
             float normMix;
             vDSP_sve(This->reverb[reverbIdx].measureSpectrumDryBuffer, 1, &normMix, outLength);
             normMix = sqrtf(normMix);
-            if(normDry!=0&&normWet!=0){
+            if(normDry>=BM_DB_TO_GAIN(-60)&&normWet>=BM_DB_TO_GAIN(-60)){
                 float result = powf((normMix*normMix)/(normDry*normWet),1);
-
-                if(result<0.5f){
-                    //Shoud change active index
-                    This->changingReverbCount = 0;
-                    This->reverbActiveIdx = This->reverbActiveIdx==0 ? 1 : 0;
-                    This->changeReverbCurrentSamples = 0;
-                    printf("change %f\n",result);
+                
+                if(result<This->reverbMeasureThreshold){
+                    if(This->verifyReverbChangeCount>=ReverbVerifyChange){
+                        //Shoud change active index
+                        This->verifyReverbChangeCount = 0;
+                        This->updateReverbCount = 0;
+                        This->reverbActiveIdx = This->reverbActiveIdx==0 ? 1 : 0;
+                        This->changeReverbCurrentSamples = 0;
+                        printf("change %f\n",result);
+                    }else
+                        This->verifyReverbChangeCount++;
+                }else{
+                    //Reset verify
+                    This->verifyReverbChangeCount = 0;
                 }
                 printf("%f\n",result);
             }
@@ -311,9 +323,9 @@ void BMLongReverb_measureSpectrum(BMLongReverb* This,int reverbIdx,float* dryInp
     }
 }
 
-void BMLongReverb_updateDryInput(BMLongReverb* This,int reverbIdx,float* dryInputL,float* dryInputR,size_t numSamples){
+void BMLongReverb_updateReverbInput(BMLongReverb* This,int reverbIdx,float* dryInputL,float* dryInputR,size_t numSamples){
     //Update 2 reverbs settings
-    if(This->changingReverbCount<ReverbCount){
+    if(This->updateReverbCount<ReverbCount){
         if(reverbIdx==This->reverbActiveIdx){
             //fade in to avoid click
             BMSmoothFade_startFading(&This->fadeIn, FT_In);
@@ -329,7 +341,7 @@ void BMLongReverb_updateDryInput(BMLongReverb* This,int reverbIdx,float* dryInpu
             This->reverb[reverbIdx].decayTime = 0.5f;
             BMLongLoopFDN_setRT60DecaySmooth(&This->reverb[reverbIdx].loopFDN, This->reverb[reverbIdx].decayTime,false);
         }
-        This->changingReverbCount++;
+        This->updateReverbCount++;
     }
     
     //Apply setting
@@ -359,7 +371,7 @@ void BMLongReverb_processStereo(BMLongReverb* This,float* inputL,float* inputR,f
             }
             
             //Update input
-            BMLongReverb_updateDryInput(This, reverbIdx, This->dryInputL, This->dryInputR, numSamples);
+            BMLongReverb_updateReverbInput(This, reverbIdx, This->dryInputL, This->dryInputR, numSamples);
             
             //1st layer VND
             for(int i=0;i<This->numInput;i++){
@@ -590,6 +602,10 @@ void BMLongReverb_setHighCutFreq(BMLongReverb* This,float freq){
 
 void BMLongReverb_setHighCutFreqAtIdx(BMLongReverb* This,int reverbIdx,float freq){
     BMMultiLevelBiquad_setLowPass6db(&This->reverb[reverbIdx].biquadFilter, freq, Filter_Level_Tone);
+}
+
+void BMLongReverb_setReverbMeasureThreshold(BMLongReverb* This,float threshold){
+    This->reverbMeasureThreshold = threshold;
 }
 
 #pragma mark - VND

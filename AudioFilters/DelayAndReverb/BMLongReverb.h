@@ -105,12 +105,15 @@ typedef struct{
     
     size_t measureLength;
     int reverbActiveIdx;
-    int changingReverbCount;
+    int updateReverbCount;
+    int verifyReverbChangeCount;
     BMSmoothFade fadeIn;
     BMSmoothFade fadeOut;
     size_t fadeSamples;
     size_t changeReverbDelaySamples;
     size_t changeReverbCurrentSamples;
+    
+    float reverbMeasureThreshold;
     
     int initNo;
 }BMLongReverb;
@@ -126,6 +129,9 @@ void BMLongReverb_setDiffusion(BMLongReverb* This,float diffusion);
 void BMLongReverb_setLSGain(BMLongReverb* This,float gainDb);
 void BMLongReverb_setHighCutFreq(BMLongReverb* This,float freq);
 void BMLongReverb_setFadeInVND(BMLongReverb* This,float timeInS);
+
+//Measurement
+void BMLongReverb_setReverbMeasureThreshold(BMLongReverb* This,float threshold);
 //Test
 void BMLongReverb_impulseResponse(BMLongReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t length);
 #endif /* BMLongReverb_h */
