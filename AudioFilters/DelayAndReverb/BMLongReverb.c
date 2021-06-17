@@ -26,7 +26,7 @@
 #define FDN_BaseMaxDelaySecond 0.800f
 #define VND_BaseLength 0.2f
 #define SFMCount 30
-#define ReverbCount 2
+#define ReverbCount 3
 #define ReverbVerifyChange 3
 #define Reverb_Measure_Threshold 0.49f
 #define Reverb_MinDB -60 //dB
@@ -50,6 +50,7 @@ void BMLongReverb_setLoopDecayTimeAtIdx(BMLongReverb* This,int reverbIdx,float d
 void BMLongReverb_init(BMLongReverb* This,float sr){
     This->reverb = malloc(sizeof(BMLongReverbUnit)*ReverbCount);
     This->sampleRate = sr;
+    This->fadeSamples = 1024;
     for(int i=0;i<ReverbCount;i++){
         //BIQUAD FILTER
         BMMultiLevelBiquad_init(&This->reverb[i].biquadFilter, Filter_TotalLevel, sr, true, false, true);
@@ -76,7 +77,10 @@ void BMLongReverb_init(BMLongReverb* This,float sr){
         This->numInput = 8;
         This->numVND = This->numInput;
         This->reverb[i].vndArray = malloc(sizeof(BMVelvetNoiseDecorrelator)*This->numVND);
-        This->reverbMeasureThreshold = Reverb_Measure_Threshold;
+        This->minSensitive = 0.1f;
+        This->maxSensitive = Reverb_Measure_Threshold;
+        This->minDecay = 0.5f;
+        This->maxDecay = 40.0f;
         
         //Using vnd
         for(int j=0;j<This->numVND;j++){
@@ -118,6 +122,10 @@ void BMLongReverb_init(BMLongReverb* This,float sr){
         This->reverb[i].wetBuffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
         This->reverb[i].lastWetBuffer.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
         This->reverb[i].lastWetBuffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+        
+        //Fade
+        BMSmoothFade_init(&This->reverb[i].smoothFade, This->fadeSamples);
+        This->reverb[i].state = RS_InActive;
         
         //Loop delay
         BMLongReverb_prepareLoopDelay(This,i);
@@ -170,9 +178,7 @@ void BMLongReverb_init(BMLongReverb* This,float sr){
     This->dryInputL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->dryInputR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->reverbActiveIdx = 0;
-    This->fadeSamples = 1024;
-    BMSmoothFade_init(&This->fadeIn, This->fadeSamples);
-    BMSmoothFade_init(&This->fadeOut, This->fadeSamples);
+    This->reverb[This->reverbActiveIdx].state = RS_Active;
     
     This->initNo = ReadyNo;
 }
@@ -261,6 +267,7 @@ void BMLongReverb_destroy(BMLongReverb* This){
 }
 
 #pragma mark - Measurement
+//3 Reverb : 1 active - 1 decay slowsly - 1 inactive for waiting new sound
 void BMLongReverb_measureSpectrum(BMLongReverb* This,int reverbIdx,float* dryInputL,float* dryInputR,float* wetInputL,float* wetInputR,size_t numSamples){
     //Mix dry & wet to mono
     float mul = 0.5f;
@@ -300,14 +307,40 @@ void BMLongReverb_measureSpectrum(BMLongReverb* This,int reverbIdx,float* dryInp
             if(normDry>=BM_DB_TO_GAIN(-60)&&normWet>=BM_DB_TO_GAIN(-60)){
                 float result = powf((normMix*normMix)/(normDry*normWet),1);
                 
-                if(result<This->reverbMeasureThreshold){
+                if(result<=This->maxSensitive&&
+                   result>=This->minSensitive){
                     if(This->verifyReverbChangeCount>=ReverbVerifyChange){
-                        //Shoud change active index
+                        //Shoud change active index 
                         This->verifyReverbChangeCount = 0;
                         This->updateReverbCount = 0;
-                        This->reverbActiveIdx = This->reverbActiveIdx==0 ? 1 : 0;
+                        
                         This->changeReverbCurrentSamples = 0;
-                        printf("change %f\n",result);
+                        
+                        //Reverb active idx
+                        This->reverbActiveIdx++;
+                        if(This->reverbActiveIdx>=ReverbCount)
+                            This->reverbActiveIdx = 0;
+                        
+                        //Calculate active/ inactive decaytime
+                        float v = (This->maxSensitive-result)/(This->maxSensitive-This->minSensitive);
+                        float fadingDecay = v * (This->maxDecay - This->minDecay) + This->minDecay;
+                        printf("change %f %f\n",result,fadingDecay);
+                        
+                        for(int i=0;i<ReverbCount;i++){
+                            if(i==This->reverbActiveIdx){
+                                This->reverb[i].state=RS_Active;
+                                This->reverb[i].decayTime = 40.0f;
+                            }else{
+                                if(This->reverb[i].state==RS_Active){
+                                    //Reverb currently active -> change it to fading state
+                                    This->reverb[i].state = RS_Fading;
+                                    This->reverb[i].decayTime = fadingDecay;
+                                }else{
+                                    This->reverb[i].state = RS_InActive;
+                                    This->reverb[i].decayTime = 0.5f;
+                                }
+                            }
+                        }
                     }else
                         This->verifyReverbChangeCount++;
                 }else{
@@ -326,32 +359,23 @@ void BMLongReverb_measureSpectrum(BMLongReverb* This,int reverbIdx,float* dryInp
 void BMLongReverb_updateReverbInput(BMLongReverb* This,int reverbIdx,float* dryInputL,float* dryInputR,size_t numSamples){
     //Update 2 reverbs settings
     if(This->updateReverbCount<ReverbCount){
-        if(reverbIdx==This->reverbActiveIdx){
+        if(This->reverb[reverbIdx].state==RS_Active||
+           This->reverb[reverbIdx].state==RS_Fading){
             //fade in to avoid click
-            BMSmoothFade_startFading(&This->fadeIn, FT_In);
-            
-            //Change reverb decay time
-            This->reverb[reverbIdx].decayTime = 40;
-            BMLongLoopFDN_setRT60DecaySmooth(&This->reverb[reverbIdx].loopFDN, This->reverb[reverbIdx].decayTime,false);
+            BMSmoothFade_startFading(&This->reverb[reverbIdx].smoothFade, FT_In);
         }else{
             //Fade out & silent the reverb
-            BMSmoothFade_startFading(&This->fadeOut, FT_Out);
-            
-            //Change reverb decay time
-            This->reverb[reverbIdx].decayTime = 0.5f;
-            BMLongLoopFDN_setRT60DecaySmooth(&This->reverb[reverbIdx].loopFDN, This->reverb[reverbIdx].decayTime,false);
+            BMSmoothFade_startFading(&This->reverb[reverbIdx].smoothFade, FT_Out);
         }
+        //Set decay
+        BMLongLoopFDN_setRT60DecaySmooth(&This->reverb[reverbIdx].loopFDN, This->reverb[reverbIdx].decayTime,false);
+        
         This->updateReverbCount++;
     }
     
     //Apply setting
-    if(reverbIdx==This->reverbActiveIdx){
-        //Fade in only
-        BMSmoothFade_processBufferStereo(&This->fadeIn, dryInputL, dryInputR,dryInputL, dryInputR, numSamples);
-    }else{
-        //Fade out only
-        BMSmoothFade_processBufferStereo(&This->fadeOut, dryInputL, dryInputR,dryInputL, dryInputR, numSamples);
-    }
+    BMSmoothFade_processBufferStereo(&This->reverb[reverbIdx].smoothFade, dryInputL, dryInputR,dryInputL, dryInputR, numSamples);
+    
 }
 
 void BMLongReverb_processStereo(BMLongReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t numSamples,bool offlineRendering){
@@ -604,8 +628,20 @@ void BMLongReverb_setHighCutFreqAtIdx(BMLongReverb* This,int reverbIdx,float fre
     BMMultiLevelBiquad_setLowPass6db(&This->reverb[reverbIdx].biquadFilter, freq, Filter_Level_Tone);
 }
 
-void BMLongReverb_setReverbMeasureThreshold(BMLongReverb* This,float threshold){
-    This->reverbMeasureThreshold = threshold;
+void BMLongReverb_setMinSensitive(BMLongReverb* This,float threshold){
+    This->minSensitive = threshold;
+}
+
+void BMLongReverb_setMaxSensitive(BMLongReverb* This,float threshold){
+    This->maxSensitive = threshold;
+}
+
+void BMLongReverb_setMinDecay(BMLongReverb* This,float decay){
+    This->minDecay = decay;
+}
+
+void BMLongReverb_setMaxDecay(BMLongReverb* This,float decay){
+    This->maxDecay = decay;
 }
 
 #pragma mark - VND

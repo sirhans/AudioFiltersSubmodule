@@ -32,7 +32,9 @@ typedef struct BMStereoBuffer{
     void* bufferR;
 } BMStereoBuffer;
 
-
+typedef enum ReverbState{
+    RS_Active,RS_Fading,RS_InActive
+} ReverbState;
 
 typedef struct BMLongReverbUnit {
     BMMultiLevelBiquad biquadFilter;
@@ -83,7 +85,12 @@ typedef struct BMLongReverbUnit {
     
     float* outputL;
     float* outputR;
+    
+    ReverbState state;
+    BMSmoothFade smoothFade;
 } BMLongReverbUnit;
+
+
 
 typedef struct{
     BMLongReverbUnit* reverb;
@@ -107,13 +114,15 @@ typedef struct{
     int reverbActiveIdx;
     int updateReverbCount;
     int verifyReverbChangeCount;
-    BMSmoothFade fadeIn;
-    BMSmoothFade fadeOut;
+    
     size_t fadeSamples;
     size_t changeReverbDelaySamples;
     size_t changeReverbCurrentSamples;
     
-    float reverbMeasureThreshold;
+    float minSensitive;
+    float maxSensitive;
+    float minDecay;
+    float maxDecay;
     
     int initNo;
 }BMLongReverb;
@@ -131,7 +140,10 @@ void BMLongReverb_setHighCutFreq(BMLongReverb* This,float freq);
 void BMLongReverb_setFadeInVND(BMLongReverb* This,float timeInS);
 
 //Measurement
-void BMLongReverb_setReverbMeasureThreshold(BMLongReverb* This,float threshold);
+void BMLongReverb_setMinSensitive(BMLongReverb* This,float threshold);
+void BMLongReverb_setMaxSensitive(BMLongReverb* This,float threshold);
+void BMLongReverb_setMinDecay(BMLongReverb* This,float decay);
+void BMLongReverb_setMaxDecay(BMLongReverb* This,float decay);
 //Test
 void BMLongReverb_impulseResponse(BMLongReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t length);
 #endif /* BMLongReverb_h */
