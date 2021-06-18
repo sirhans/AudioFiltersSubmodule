@@ -18,6 +18,7 @@ typedef struct BMSmoothFade{
     FadeType fadeType;
     size_t fadeLength;
     size_t fadeIdx;
+    float lastVol;
     
     float* fadeBuffer;
 }BMSmoothFade;

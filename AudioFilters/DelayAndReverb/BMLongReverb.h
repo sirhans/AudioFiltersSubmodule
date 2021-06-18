@@ -50,10 +50,8 @@ typedef struct BMLongReverbUnit {
     BMWetDryMixer reverbMixer;
     
     BMStereoBuffer buffer;
-    BMStereoBuffer loopInput;
-    BMStereoBuffer lastLoopBuffer;
-    BMStereoBuffer wetBuffer;
     BMStereoBuffer LFOBuffer;
+    BMStereoBuffer wetBuffer;
     BMStereoBuffer lastWetBuffer;
     
     BMPanLFO inputPan;
@@ -85,6 +83,7 @@ typedef struct BMLongReverbUnit {
     
     float* outputL;
     float* outputR;
+    BMStereoBuffer dryInput;
     
     ReverbState state;
     BMSmoothFade smoothFade;
@@ -99,8 +98,8 @@ typedef struct{
     float** vnd1BufferR;
     float** vnd2BufferL;
     float** vnd2BufferR;
-    float* dryInputL;
-    float* dryInputR;
+    
+    BMStereoBuffer attackSoftenerBuffer;
     
     size_t numVND;
     size_t numInput;

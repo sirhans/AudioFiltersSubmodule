@@ -15,8 +15,8 @@ void BMSmoothFade_init(BMSmoothFade* This,size_t fadeLength){
     This->fadeIdx = 0;
     This->fadeLength = fadeLength;
     This->fadeBuffer = malloc(sizeof(float)*fadeLength);
-    float num = 1.0f;
-    vDSP_vfill(&num, This->fadeBuffer, 1, fadeLength);
+    This->lastVol = 0.0f;
+    vDSP_vfill(&This->lastVol, This->fadeBuffer, 1, fadeLength);
 }
 
 void BMSmoothFade_free(BMSmoothFade* This){
@@ -55,12 +55,19 @@ void BMSmoothFade_processBufferStereo(BMSmoothFade* This, float* inL,float* inR,
             if(This->fadeIdx==This->fadeLength){
                 //Finish fade -> generate the rest fadebuffer to 1
                 size_t remainSamples = frameCount - fadeBufferLength;
-                float num = 1.0f;
-                vDSP_vfill(&num, This->fadeBuffer+fadeBufferLength, 1, remainSamples);
+                This->lastVol = 1.0f;
+                vDSP_vfill(&This->lastVol, This->fadeBuffer+fadeBufferLength, 1, remainSamples);
                 This->fadeType = FT_Stop;
             }
             vDSP_vmul(inL, 1, This->fadeBuffer, 1, outL, 1, frameCount);
             vDSP_vmul(inR, 1, This->fadeBuffer, 1, outR, 1, frameCount);
+            
+            if(This->fadeType==FT_Stop){
+                //Fill fade buffer with 1
+                float num = 1.0f;
+                vDSP_vfill(&num, This->fadeBuffer, 1, frameCount);
+            }
+            
         }else if(This->fadeType==FT_Out){
             size_t fadeBufferLength = BMSmoothFade_generateFadeOutBuffer(This, frameCount);
             //Go from 1 to 0
@@ -74,7 +81,16 @@ void BMSmoothFade_processBufferStereo(BMSmoothFade* This, float* inL,float* inR,
             
             vDSP_vmul(inL, 1, This->fadeBuffer, 1, outL, 1, frameCount);
             vDSP_vmul(inR, 1, This->fadeBuffer, 1, outR, 1, frameCount);
+            
+            if(This->fadeType==FT_Stop){
+                //Fill fade buffer with 0
+                float num = 0.0f;
+                vDSP_vfill(&num, This->fadeBuffer, 1, frameCount);
+            }
         }
+    }else{
+        vDSP_vmul(inL, 1, This->fadeBuffer, 1, outL, 1, frameCount);
+        vDSP_vmul(inR, 1, This->fadeBuffer, 1, outR, 1, frameCount);
     }
     
 }
