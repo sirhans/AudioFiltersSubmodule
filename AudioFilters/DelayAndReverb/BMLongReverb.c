@@ -28,8 +28,8 @@
 #define SFMCount 30
 #define ReverbCount 3
 #define ReverbVerifyChange 3
-#define Reverb_Measure_Threshold 0.49f
 #define Reverb_MinDB -60 //dB
+#define Reverb_DryWetDBRange 40
 
 #define AttackShaper_Time 0.080f
 #define AttackShaper_Depth 2.0f
@@ -78,7 +78,7 @@ void BMLongReverb_init(BMLongReverb* This,float sr){
         This->numVND = This->numInput;
         This->reverb[i].vndArray = malloc(sizeof(BMVelvetNoiseDecorrelator)*This->numVND);
         This->minSensitive = 0.1f;
-        This->maxSensitive = Reverb_Measure_Threshold;
+        This->maxSensitive = 0.5f;
         This->minDecay = 0.5f;
         This->maxDecay = 40.0f;
         This->reverb[i].decayTime = This->minDecay;
@@ -259,9 +259,6 @@ void BMLongReverb_measureSpectrum(BMLongReverb* This,int reverbIdx,float* dryInp
     float mul = 0.5f;
     vDSP_vasm(dryInputL, 1, dryInputR, 1, &mul, This->vnd1BufferL[0], 1, numSamples);
     BMMeasurementBuffer_inputSamples(&This->reverb[reverbIdx].measureDryInput, This->vnd1BufferL[0], numSamples);
-    float normInputDry;
-    vDSP_svesq(This->vnd1BufferL[0], 1, &normInputDry, numSamples);
-    
     //Wet
     vDSP_vasm(wetInputL, 1, wetInputR, 1, &mul, This->vnd1BufferL[0], 1, numSamples);
     BMMeasurementBuffer_inputSamples(&This->reverb[reverbIdx].measureWetOutput, This->vnd1BufferL[0], numSamples);
@@ -276,21 +273,22 @@ void BMLongReverb_measureSpectrum(BMLongReverb* This,int reverbIdx,float* dryInp
         size_t outLength = This->reverb[reverbIdx].measureSamples/2;
         
         //Find normalize spectrum
-        if(normInputDry>=BM_DB_TO_GAIN(-60)){
 //            printf("vol %f %f\n",normInputDry,BM_DB_TO_GAIN(-60));
-            float normDry;
-            vDSP_svesq(This->reverb[reverbIdx].measureSpectrumDryBuffer, 1, &normDry, outLength);
-            normDry = sqrtf(normDry);
-            float normWet;
-            vDSP_svesq(This->reverb[reverbIdx].measureSpectrumWetBuffer, 1, &normWet, outLength);
-            normWet = sqrtf(normWet);
-            
-            //Multiple both spectrum together
-            vDSP_vmul(This->reverb[reverbIdx].measureSpectrumDryBuffer, 1, This->reverb[reverbIdx].measureSpectrumWetBuffer, 1, This->reverb[reverbIdx].measureSpectrumDryBuffer, 1, outLength);
-            float normMix;
-            vDSP_sve(This->reverb[reverbIdx].measureSpectrumDryBuffer, 1, &normMix, outLength);
-            normMix = sqrtf(normMix);
-            if(normDry>=BM_DB_TO_GAIN(-60)){
+        float normDry;
+        vDSP_svesq(This->reverb[reverbIdx].measureSpectrumDryBuffer, 1, &normDry, outLength);
+        normDry = sqrtf(normDry);
+        float normWet;
+        vDSP_svesq(This->reverb[reverbIdx].measureSpectrumWetBuffer, 1, &normWet, outLength);
+        normWet = sqrtf(normWet);
+        
+        //Multiple both spectrum together
+        vDSP_vmul(This->reverb[reverbIdx].measureSpectrumDryBuffer, 1, This->reverb[reverbIdx].measureSpectrumWetBuffer, 1, This->reverb[reverbIdx].measureSpectrumDryBuffer, 1, outLength);
+        float normMix;
+        vDSP_sve(This->reverb[reverbIdx].measureSpectrumDryBuffer, 1, &normMix, outLength);
+        normMix = sqrtf(normMix);
+        if(normDry>=BM_DB_TO_GAIN(-60)){
+            if(fabs(BM_GAIN_TO_DB(normDry)-BM_GAIN_TO_DB(normWet))<Reverb_DryWetDBRange){
+//                printf("db %f %f\n",BM_GAIN_TO_DB(normDry),BM_GAIN_TO_DB(normWet));
                 float result = This->minSensitive;
                 if(normWet!=0)
                     result = powf((normMix*normMix)/(normDry*normWet),1);
@@ -298,7 +296,7 @@ void BMLongReverb_measureSpectrum(BMLongReverb* This,int reverbIdx,float* dryInp
                 if(result<=This->maxSensitive&&
                    result>=This->minSensitive){
                     if(This->verifyReverbChangeCount>=ReverbVerifyChange){
-                        //Shoud change active index 
+                        //Shoud change active index
                         This->verifyReverbChangeCount = 0;
                         This->updateReverbCount = 0;
                         
@@ -335,9 +333,7 @@ void BMLongReverb_measureSpectrum(BMLongReverb* This,int reverbIdx,float* dryInp
                     //Reset verify
                     This->verifyReverbChangeCount = 0;
                 }
-//                printf("%f\n",result);
             }
-//            printf("norm %f %f\n",normWet,normDry);
         }
     }else{
         This->changeReverbCurrentSamples += numSamples;
