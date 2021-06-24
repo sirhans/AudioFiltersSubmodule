@@ -257,13 +257,23 @@ void BMLongReverb_destroy(BMLongReverb* This){
 void BMLongReverb_measureSpectrum(BMLongReverb* This,int reverbIdx,float* dryInputL,float* dryInputR,float* wetInputL,float* wetInputR,size_t numSamples){
     //Mix dry & wet to mono
     float mul = 0.5f;
-    vDSP_vasm(dryInputL, 1, dryInputR, 1, &mul, This->vnd1BufferL[0], 1, numSamples);
-    BMMeasurementBuffer_inputSamples(&This->reverb[reverbIdx].measureDryInput, This->vnd1BufferL[0], numSamples);
+    //check dry input vol
+    float inputVol;
+    vDSP_svesq(dryInputL, 1, &inputVol, numSamples);
+    inputVol = sqrtf(inputVol);
+    bool inputValidate = false;
+    if(inputVol>=BM_DB_TO_GAIN(-60)){
+        vDSP_vasm(dryInputL, 1, dryInputR, 1, &mul, This->vnd1BufferL[0], 1, numSamples);
+        BMMeasurementBuffer_inputSamples(&This->reverb[reverbIdx].measureDryInput, This->vnd1BufferL[0], numSamples);
+        inputValidate = true;
+    }
+    
     //Wet
     vDSP_vasm(wetInputL, 1, wetInputR, 1, &mul, This->vnd1BufferL[0], 1, numSamples);
     BMMeasurementBuffer_inputSamples(&This->reverb[reverbIdx].measureWetOutput, This->vnd1BufferL[0], numSamples);
         
-    if(This->changeReverbCurrentSamples>=This->changeReverbDelaySamples){
+    if(This->changeReverbCurrentSamples>=This->changeReverbDelaySamples&&
+       inputValidate){
         float* dryInput = BMMeasurementBuffer_getCurrentPointer(&This->reverb[reverbIdx].measureDryInput);
         float* wetInput = BMMeasurementBuffer_getCurrentPointer(&This->reverb[reverbIdx].measureWetOutput);
         
@@ -286,54 +296,52 @@ void BMLongReverb_measureSpectrum(BMLongReverb* This,int reverbIdx,float* dryInp
         float normMix;
         vDSP_sve(This->reverb[reverbIdx].measureSpectrumDryBuffer, 1, &normMix, outLength);
         normMix = sqrtf(normMix);
-        if(normDry>=BM_DB_TO_GAIN(-60)){
-            if(fabs(BM_GAIN_TO_DB(normDry)-BM_GAIN_TO_DB(normWet))<Reverb_DryWetDBRange){
-//                printf("db %f %f\n",BM_GAIN_TO_DB(normDry),BM_GAIN_TO_DB(normWet));
-                float result = This->minSensitive;
-                if(normWet!=0)
-                    result = powf((normMix*normMix)/(normDry*normWet),1);
+
+        float result = This->minSensitive;
+        if(normWet!=0)
+            result = powf((normMix*normMix)/(normDry*normWet),1);
+        
+        printf("result %f\n",result);
+        
+        if(result<=This->maxSensitive&&
+           result>=This->minSensitive){
+            if(This->verifyReverbChangeCount>=ReverbVerifyChange){
+                //Shoud change active index
+                This->verifyReverbChangeCount = 0;
+                This->updateReverbCount = 0;
                 
-                if(result<=This->maxSensitive&&
-                   result>=This->minSensitive){
-                    if(This->verifyReverbChangeCount>=ReverbVerifyChange){
-                        //Shoud change active index
-                        This->verifyReverbChangeCount = 0;
-                        This->updateReverbCount = 0;
-                        
-                        This->changeReverbCurrentSamples = 0;
-                        
-                        //Reverb active idx
-                        This->reverbActiveIdx++;
-                        if(This->reverbActiveIdx>=ReverbCount)
-                            This->reverbActiveIdx = 0;
-                        
-                        //Calculate active/ inactive decaytime
-                        float v = (This->maxSensitive-result)/(This->maxSensitive-This->minSensitive);
-                        float fadingDecay = (1-v) * (This->maxDecay - This->minDecay) + This->minDecay;
-                        printf("change %f %f\n",result,fadingDecay);
-                        
-                        for(int i=0;i<ReverbCount;i++){
-                            if(i==This->reverbActiveIdx){
-                                This->reverb[i].state=RS_Active;
-                                This->reverb[i].decayTime = 40.0f;
-                            }else{
-                                if(This->reverb[i].state==RS_Active){
-                                    //Reverb currently active -> change it to fading state
-                                    This->reverb[i].state = RS_Fading;
-                                    This->reverb[i].decayTime = fadingDecay;
-                                }else{
-                                    This->reverb[i].state = RS_InActive;
-                                    This->reverb[i].decayTime = 0.5f;
-                                }
-                            }
+                This->changeReverbCurrentSamples = 0;
+                
+                //Reverb active idx
+                This->reverbActiveIdx++;
+                if(This->reverbActiveIdx>=ReverbCount)
+                    This->reverbActiveIdx = 0;
+                
+                //Calculate active/ inactive decaytime
+                float v = (This->maxSensitive-result)/(This->maxSensitive-This->minSensitive);
+                float fadingDecay = (1-v) * (This->maxDecay - This->minDecay) + This->minDecay;
+                printf("change %f %f\n",result,fadingDecay);
+                
+                for(int i=0;i<ReverbCount;i++){
+                    if(i==This->reverbActiveIdx){
+                        This->reverb[i].state=RS_Active;
+                        This->reverb[i].decayTime = 40.0f;
+                    }else{
+                        if(This->reverb[i].state==RS_Active){
+                            //Reverb currently active -> change it to fading state
+                            This->reverb[i].state = RS_Fading;
+                            This->reverb[i].decayTime = fadingDecay;
+                        }else{
+                            This->reverb[i].state = RS_InActive;
+                            This->reverb[i].decayTime = 0.5f;
                         }
-                    }else
-                        This->verifyReverbChangeCount++;
-                }else{
-                    //Reset verify
-                    This->verifyReverbChangeCount = 0;
+                    }
                 }
-            }
+            }else
+                This->verifyReverbChangeCount++;
+        }else{
+            //Reset verify
+            This->verifyReverbChangeCount = 0;
         }
     }else{
         This->changeReverbCurrentSamples += numSamples;
