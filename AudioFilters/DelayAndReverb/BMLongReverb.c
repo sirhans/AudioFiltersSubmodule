@@ -30,6 +30,7 @@
 #define ReverbVerifyChange 3
 #define Reverb_MinDB -60 //dB
 #define Reverb_DryWetDBRange 40
+#define Reverb_ComplexcityAdjust 0.3f
 
 #define AttackShaper_Time 0.080f
 #define AttackShaper_Depth 2.0f
@@ -46,6 +47,8 @@ void BMLongReverb_setDiffusionAtIdx(BMLongReverb* This,int reverbIdx,float diffu
 void BMLongReverb_setOutputMixerAtIdx(BMLongReverb* This,int reverbIdx,float wetMix);
 void BMLongReverb_setDelayPitchMixerAtIdx(BMLongReverb* This,int reverbIdx,float wetMix);
 void BMLongReverb_setLoopDecayTimeAtIdx(BMLongReverb* This,int reverbIdx,float decayTime);
+// 0 is simplest spectrum and 1 is most complex
+float spectralComplexity(float *A, size_t length);
 
 void BMLongReverb_init(BMLongReverb* This,float sr){
     This->reverb = malloc(sizeof(BMLongReverbUnit)*ReverbCount);
@@ -148,8 +151,8 @@ void BMLongReverb_init(BMLongReverb* This,float sr){
         BMMultibandAttackShaper_setAttackDepth(&This->reverb[i].attackSoftener, AttackShaper_Depth);
         BMMultibandAttackShaper_setSidechainNoiseGateThreshold(&This->reverb[i].attackSoftener, AttackShaper_Noisegate);
         
-        BMSpectrum_init(&This->reverb[i].measureSpectrum);
         This->reverb[i].measureSamples = 4096;
+        BMSpectrum_initWithLength(&This->reverb[i].measureSpectrum,This->reverb[i].measureSamples);
         BMMeasurementBuffer_init(&This->reverb[i].measureDryInput, This->reverb[i].measureSamples);
         BMMeasurementBuffer_init(&This->reverb[i].measureWetOutput, This->reverb[i].measureSamples);
         This->reverb[i].measureSpectrumDryBuffer = malloc(sizeof(float)*This->reverb[i].measureSamples);
@@ -176,9 +179,15 @@ void BMLongReverb_init(BMLongReverb* This,float sr){
     This->attackSoftenerBuffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     
     This->reverbActiveIdx = 0;
+    //Active reverb
     This->reverb[This->reverbActiveIdx].state = RS_Active;
     BMSmoothFade_startFading(&This->reverb[This->reverbActiveIdx].smoothFade, FT_In);
     This->reverb[This->reverbActiveIdx].decayTime = This->maxDecay;
+    //Fading reverb
+    This->reverb[1].state = RS_Fading;
+    This->reverb[1].decayTime = 0.5f;
+    This->reverb[2].state = RS_InActive;
+    This->reverb[2].decayTime = 0.5f;
     
     This->initNo = ReadyNo;
 }
@@ -301,9 +310,12 @@ void BMLongReverb_measureSpectrum(BMLongReverb* This,int reverbIdx,float* dryInp
         if(normWet!=0)
             result = powf((normMix*normMix)/(normDry*normWet),1);
         
-        printf("result %f\n",result);
+
+        float complexcity = spectralComplexity(This->reverb[reverbIdx].measureSpectrumDryBuffer, This->reverb[reverbIdx].measureSamples);
+//        printf("result %f %f\n",result,complexcity);
+        float factor = (1-Reverb_ComplexcityAdjust) + (Reverb_ComplexcityAdjust*complexcity);
         
-        if(result<=This->maxSensitive&&
+        if(result<=This->maxSensitive*factor&&
            result>=This->minSensitive){
             if(This->verifyReverbChangeCount>=ReverbVerifyChange){
                 //Shoud change active index
@@ -320,7 +332,7 @@ void BMLongReverb_measureSpectrum(BMLongReverb* This,int reverbIdx,float* dryInp
                 //Calculate active/ inactive decaytime
                 float v = (This->maxSensitive-result)/(This->maxSensitive-This->minSensitive);
                 float fadingDecay = (1-v) * (This->maxDecay - This->minDecay) + This->minDecay;
-                printf("change %f %f\n",result,fadingDecay);
+                printf("change %f %f %f\n",result,fadingDecay,This->maxSensitive*factor);
                 
                 for(int i=0;i<ReverbCount;i++){
                     if(i==This->reverbActiveIdx){
@@ -684,6 +696,37 @@ void BMLongReverb_updateVND(BMLongReverb* This){
             }
         }
     }
+}
+
+float l2Norm(float *A, size_t length){
+    float sumOfSquares;
+    vDSP_svesq(A,1,&sumOfSquares,length);
+    return sqrtf(sumOfSquares);
+}
+
+float l1Norm(float *A, size_t length){
+    float sumOfMag;
+    vDSP_svemg(A,1,&sumOfMag,length);
+    return sumOfMag;
+}
+
+
+
+// 0 is simplest spectrum and 1 is most complex
+float spectralComplexity(float *A, size_t length){
+    float l1n = l1Norm(A,length);
+    float l2n = l2Norm(A,length);
+
+    // Mathematica Prototype original
+    // 1-(((Norm[x,2]/Norm[x,1])-(1/Sqrt[Length[x]]))/(1-1/Sqrt[Length[x]]))
+    //
+    // Mathematica Prototype simplified
+    // -((Sqrt(length)*(-1+nDiv))/(-1+Sqrt(length)))
+
+    float nDiv = l2n / l1n;
+    float sqrtLn = sqrt((float)length);
+    return -((sqrtLn * (nDiv - 1.0f)) / (sqrtLn - 1.0f));
+//    return nDiv*1000;
 }
 
 #pragma mark - Test
