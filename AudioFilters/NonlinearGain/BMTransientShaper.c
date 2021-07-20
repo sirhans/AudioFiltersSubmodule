@@ -250,7 +250,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     //Mix attack & release control signal
     vDSP_vadd(This->attackControlSignal, 1, This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
-    memcpy(This->attackControlSignal, This->releaseControlSignal, sizeof(float)*numSamples);
+//    memcpy(This->attackControlSignal, This->releaseControlSignal, sizeof(float)*numSamples);
     
     /************************************************
      * filter the control signal to reduce aliasing *
@@ -358,7 +358,7 @@ void BMTransientShaper_init(BMTransientShaper *This, bool isStereo, float sample
     float dsfSensitivity = 1000.0f;
     float dsfFcMin = releaseFC;
     float dsfFcMax = 1000.0f;
-    float exaggeration = 5.0f;
+    float exaggeration = 1.0f;
     BMTransientShaperSection_init(&This->asSections[0],
                                releaseFC,
                                attackFC,
