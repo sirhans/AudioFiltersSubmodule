@@ -219,7 +219,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     // exaggerate the control signal
     float adjustedExaggeration = This->attackDepth * This->exaggeration;
-    vDSP_vsadd(This->attackControlSignal, 1, &adjustedExaggeration, This->attackControlSignal, 1, numSamples);
+    vDSP_vsmul(This->attackControlSignal, 1, &adjustedExaggeration, This->attackControlSignal, 1, numSamples);
     
     
     /* ------------ RELEASE FILTER ---------*/
@@ -245,10 +245,12 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     // exaggerate the control signal
     adjustedExaggeration = This->releaseDepth * This->exaggeration;
-    vDSP_vsadd(This->releaseControlSignal, 1, &adjustedExaggeration, This->releaseControlSignal, 1, numSamples);
+    vDSP_vsmul(This->releaseControlSignal, 1, &adjustedExaggeration, This->releaseControlSignal, 1, numSamples);
+    
     
     //Mix attack & release control signal
     vDSP_vadd(This->attackControlSignal, 1, This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
+    memcpy(This->attackControlSignal, This->releaseControlSignal, sizeof(float)*numSamples);
     
     /************************************************
      * filter the control signal to reduce aliasing *
