@@ -19,7 +19,8 @@
 
 #define BMTS_DELAY_AT_48KHZ_SAMPLES 30.0f
 #define BMTS_AF_NUMLEVELS 1
-#define BMTS_RF_NUMLEVELS 3
+#define BMTS_ARF_NUMLEVELS 3
+#define BMTS_RRF_NUMLEVELS 3
 #define BMTS_DSF_NUMLEVELS 1
 #define BMTS_NUM_SECTIONS 2
 #define BMTS_SECTION_2_AF_MULTIPLIER 1.25f
@@ -41,12 +42,16 @@ typedef struct BMTransientShaperSection {
     BMAttackFilter* attackAF ;
     BMReleaseFilter* releaseRF1;
     BMReleaseFilter* releaseRF2;
+    BMAttackFilter releaseAttackFilter;
     BMDynamicSmoothingFilter* dsf;
     BMShortSimpleDelay dly;
     size_t delaySamples;
     float exaggeration, attackDepth, releaseDepth, sampleRate, noiseGateThreshold;
     bool isStereo;
     bool noiseGateIsOpen;
+    float* testBuffer1;
+    float* testBuffer2;
+    float* testBuffer3;
 } BMTransientShaperSection;
 
 
@@ -68,6 +73,11 @@ void BMTransientShaper_processMono(BMTransientShaper *This,
                                          const float *input,
                                          float *output,
                                    size_t numSamples);
+
+void BMTransientShaper_processStereoTest(BMTransientShaper *This,
+                                           const float *inputL, const float *inputR,
+                                           float *outputL, float *outputR,float* outCS1,float* outCS2,float* outCS3,
+                                         size_t numSamples);
 
 void BMTransientShaper_setAttackTime(BMTransientShaper *This, float attackTimeInSeconds);
 void BMTransientShaper_setAttackDepth(BMTransientShaper *This, float depth);
