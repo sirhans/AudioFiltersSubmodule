@@ -48,6 +48,7 @@ typedef struct BMTransientShaperSection {
     size_t delaySamples;
     float exaggeration, attackDepth, releaseDepth, sampleRate, noiseGateThreshold;
     bool isStereo;
+    bool isTesting;
     bool noiseGateIsOpen;
     float* testBuffer1;
     float* testBuffer2;
@@ -62,7 +63,7 @@ typedef struct BMTransientShaper {
     bool isStereo;
 } BMTransientShaper;
 
-void BMTransientShaper_init(BMTransientShaper *This, bool isStereo, float sampleRate);
+void BMTransientShaper_init(BMTransientShaper *This, bool isStereo, float sampleRate,bool isTesting);
 void BMTransientShaper_free(BMTransientShaper *This);
 
 void BMTransientShaper_processStereo(BMTransientShaper *This,

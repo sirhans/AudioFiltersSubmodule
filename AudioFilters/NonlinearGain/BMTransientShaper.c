@@ -31,13 +31,14 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
                                 float dsfFcMin, float dsfFcMax,
                                 float exaggeration,
                                 float sampleRate,
-                                bool isStereo){
+                                bool isStereo,
+                               bool isTesting){
     This->sampleRate = sampleRate;
     This->exaggeration = exaggeration;
     This->isStereo = isStereo;
     This->attackDepth = 1.0;
     This->releaseDepth = 1.0;
-    
+    This->isTesting = isTesting;
     
     This->inputBuffer = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->b1 = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
@@ -227,7 +228,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     BMTransientShaper_upperLimit(limit, This->attackControlSignal, This->attackControlSignal, numSamples);
     
     // exaggerate the control signal
-    float adjustedExaggeration = This->attackDepth * This->exaggeration;
+    float adjustedExaggeration = This->attackDepth * -This->exaggeration;
     vDSP_vsmul(This->attackControlSignal, 1, &adjustedExaggeration, This->attackControlSignal, 1, numSamples);
     
     
@@ -244,7 +245,8 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     //attack filter to remove noise
     BMAttackFilter_processBuffer(&This->releaseAttackFilter, fastReleaseEnvelope, fastReleaseEnvelope, numSamples);
     
-    memcpy(This->testBuffer1, fastReleaseEnvelope, sizeof(float)*numSamples);
+    if(This->isTesting)
+        memcpy(This->testBuffer1, fastReleaseEnvelope, sizeof(float)*numSamples);
     
     
     
@@ -252,7 +254,8 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     float* slowReleaseEnvelope = This->releaseControlSignal;
     BMReleaseFilter_processBuffer(&This->releaseRF2[0], fastReleaseEnvelope, slowReleaseEnvelope, numSamples);
     
-    memcpy(This->testBuffer2, slowReleaseEnvelope, sizeof(float)*numSamples);
+    if(This->isTesting)
+        memcpy(This->testBuffer2, slowReleaseEnvelope, sizeof(float)*numSamples);
     
     /***************************************************************************
      * find gain reduction (dB) to have the envelope follow slowAttackEnvelope *
@@ -270,7 +273,8 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     adjustedExaggeration = This->releaseDepth * -This->exaggeration;
     vDSP_vsmul(This->releaseControlSignal, 1, &adjustedExaggeration, This->releaseControlSignal, 1, numSamples);
     
-    memcpy(This->testBuffer3, This->releaseControlSignal, sizeof(float)*numSamples);
+    if(This->isTesting)
+        memcpy(This->testBuffer3, This->releaseControlSignal, sizeof(float)*numSamples);
     
     //Mix attack & release control signal
     vDSP_vadd(This->attackControlSignal, 1, This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
@@ -373,7 +377,7 @@ bool BMTransientShaperSection_sidechainNoiseGateIsOpen(BMTransientShaperSection 
  BMTransientShaper ------------------------------
  
  */
-void BMTransientShaper_init(BMTransientShaper *This, bool isStereo, float sampleRate){
+void BMTransientShaper_init(BMTransientShaper *This, bool isStereo, float sampleRate,bool isTesting){
     This->isStereo = isStereo;
     This->asSections = malloc(sizeof(BMTransientShaperSection)*BMTS_NUM_SECTIONS);
     
@@ -394,7 +398,7 @@ void BMTransientShaper_init(BMTransientShaper *This, bool isStereo, float sample
                                dsfFcMin, dsfFcMax,
                                exaggeration,
                                sampleRate,
-                               isStereo);
+                               isStereo,isTesting);
     
     dsfFcMax = 1000.0f;
     BMTransientShaperSection_init(&This->asSections[1],
@@ -404,7 +408,7 @@ void BMTransientShaper_init(BMTransientShaper *This, bool isStereo, float sample
                                dsfFcMin, dsfFcMax,
                                exaggeration*BMTS_SECTION_2_EXAGGERATION_MULTIPLIER,
                                sampleRate,
-                               isStereo);
+                               isStereo,isTesting);
     
     // allocate buffer memory
     size_t bufferSize = sizeof(float) * BM_BUFFER_CHUNK_SIZE;
