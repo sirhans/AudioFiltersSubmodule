@@ -230,15 +230,22 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     float *scaleAttackEnvelop = This->b1;
     
     //Scale it
-    float scaleFactor = -1.0f/5.0f; //5db
+    float scaleFactor = -1.0f/15.0f; //10db
     vDSP_vsmul(This->attackControlSignal, 1, &scaleFactor, scaleAttackEnvelop, 1, numSamples);
 
+
     //Clip between 0 to 1
-    float min = 0;
-    float max = 1;
+    float min = 0.5f;
+    float max = 1.0f;
     vDSP_vclip(scaleAttackEnvelop, 1, &min, &max, scaleAttackEnvelop, 1, numSamples);
 
-
+    
+    
+    float two = 2.0f;
+    float negOne = -1.0f;
+    vDSP_vsmsa(scaleAttackEnvelop, 1, &two, &negOne, scaleAttackEnvelop, 1, numSamples);
+    
+   
 
     float releaseDB = This->releaseDepth * This->exaggeration;
     float mul = -releaseDB;
@@ -250,9 +257,10 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     //Get the sign of release db
     float negFactor = -releaseDB/fabsf(releaseDB);
     vDSP_vsmul(scaleAttackEnvelop, 1, &negFactor, scaleAttackEnvelop, 1, numSamples);
-    
 
     BMReleaseFilter_processBuffer(&This->releaseReleaseFilter, scaleAttackEnvelop, scaleAttackEnvelop, numSamples);
+    
+    
     
     //Return to the sign
     vDSP_vsmul(scaleAttackEnvelop, 1, &negFactor, scaleAttackEnvelop, 1, numSamples);
@@ -262,17 +270,18 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     float adjustedExaggeration = This->attackDepth * -This->exaggeration;
     vDSP_vsmul(This->attackControlSignal, 1, &adjustedExaggeration, This->attackControlSignal, 1, numSamples);
     
+    
     if(This->isTesting)
-        memcpy(This->testBuffer1, This->attackControlSignal, sizeof(float)*numSamples);
+        memcpy(This->testBuffer1,This->attackControlSignal, sizeof(float)*numSamples);
     
     
     
     adjustedExaggeration = 1;
     vDSP_vsmul(scaleAttackEnvelop, 1, &adjustedExaggeration, This->releaseControlSignal, 1, numSamples);
     
-    if(This->isTesting)
-        memcpy(This->testBuffer2,scaleAttackEnvelop, sizeof(float)*numSamples);
     
+    if(This->isTesting)
+        memcpy(This->testBuffer2,  This->releaseControlSignal, sizeof(float)*numSamples);
     
     
     //Mix attack & release control signal
