@@ -206,6 +206,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     for(size_t i=0; i<BMTS_ARF_NUMLEVELS; i++)
         BMReleaseFilter_processBuffer(&This->attackRF[i], input, instantAttackEnvelope, numSamples);
     
+    
 
     // attack filter to get slow attack envelope
     float* slowAttackEnvelope = This->attackControlSignal;
@@ -213,14 +214,15 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     for(size_t i=1; i<BMTS_AF_NUMLEVELS; i++)
         BMAttackFilter_processBuffer(&This->attackAF[i], slowAttackEnvelope, slowAttackEnvelope, numSamples);
     
+    
+    
     /***************************************************************************
      * find gain reduction (dB) to have the envelope follow slowAttackEnvelope *
      ***************************************************************************/
     // controlSignal = slowAttackEnvelope - instantAttackEnvelope;
     vDSP_vsub(instantAttackEnvelope, 1, slowAttackEnvelope, 1, This->attackControlSignal, 1, numSamples);
 
-    
-    
+
     // limit the control signal slightly below 0 dB to prevent zippering during sustain sections
     float limit = -0.2f;
     BMTransientShaper_upperLimit(limit, This->attackControlSignal, This->attackControlSignal, numSamples);
@@ -230,7 +232,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     float *scaleAttackEnvelop = This->b1;
     
     //Scale it
-    float scaleFactor = -1.0f/15.0f; //10db
+    float scaleFactor = -1.0f/10.0f; //10db
     vDSP_vsmul(This->attackControlSignal, 1, &scaleFactor, scaleAttackEnvelop, 1, numSamples);
 
 
@@ -245,7 +247,9 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     float negOne = -1.0f;
     vDSP_vsmsa(scaleAttackEnvelop, 1, &two, &negOne, scaleAttackEnvelop, 1, numSamples);
     
-   
+    if(This->isTesting)
+        memcpy(This->testBuffer1,This->attackControlSignal, sizeof(float)*numSamples);
+    
 
     float releaseDB = This->releaseDepth * This->exaggeration;
     float mul = -releaseDB;
@@ -274,17 +278,16 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     vDSP_vsmul(This->attackControlSignal, 1, &adjustedExaggeration, This->attackControlSignal, 1, numSamples);
     
     
-    if(This->isTesting)
-        memcpy(This->testBuffer1,This->attackControlSignal, sizeof(float)*numSamples);
-    
+
     
     
     adjustedExaggeration = 1;
     vDSP_vsmul(scaleAttackEnvelop, 1, &adjustedExaggeration, This->releaseControlSignal, 1, numSamples);
     
-    
     if(This->isTesting)
         memcpy(This->testBuffer2,  This->releaseControlSignal, sizeof(float)*numSamples);
+    
+    
     
     
     //Mix attack & release control signal
