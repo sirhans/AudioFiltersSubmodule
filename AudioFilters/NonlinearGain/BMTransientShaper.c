@@ -221,18 +221,19 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
      ***************************************************************************/
     // controlSignal = slowAttackEnvelope - instantAttackEnvelope;
     vDSP_vsub(instantAttackEnvelope, 1, slowAttackEnvelope, 1, This->attackControlSignal, 1, numSamples);
-
-
+    
     // limit the control signal slightly below 0 dB to prevent zippering during sustain sections
     float limit = -0.2f;
     BMTransientShaper_upperLimit(limit, This->attackControlSignal, This->attackControlSignal, numSamples);
     
+    if(This->isTesting)
+        memcpy(This->testBuffer1,This->attackControlSignal, sizeof(float)*numSamples);
     
     /* ------------ RELEASE FILTER ---------*/
     float *scaleAttackEnvelop = This->b1;
     
     //Scale it
-    float scaleFactor = -1.0f/10.0f; //10db
+    float scaleFactor = -1.0f/8.0f; //10db
     vDSP_vsmul(This->attackControlSignal, 1, &scaleFactor, scaleAttackEnvelop, 1, numSamples);
 
 
@@ -241,14 +242,15 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     float max = 1.0f;
     vDSP_vclip(scaleAttackEnvelop, 1, &min, &max, scaleAttackEnvelop, 1, numSamples);
 
-    
-    
+
+
     float two = 2.0f;
     float negOne = -1.0f;
     vDSP_vsmsa(scaleAttackEnvelop, 1, &two, &negOne, scaleAttackEnvelop, 1, numSamples);
     
-    if(This->isTesting)
-        memcpy(This->testBuffer1,This->attackControlSignal, sizeof(float)*numSamples);
+//    float min = 0.0f;
+//    float max = 1.0f;
+//    vDSP_vclip(scaleAttackEnvelop, 1, &min, &max, scaleAttackEnvelop, 1, numSamples);
     
 
     float releaseDB = This->releaseDepth * This->exaggeration;
