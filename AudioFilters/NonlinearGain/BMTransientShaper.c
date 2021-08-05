@@ -255,8 +255,11 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
 
     //Make the control signal release adjustable
     //Get the sign of release db
-    float negFactor = -releaseDB/fabsf(releaseDB);
-    vDSP_vsmul(scaleAttackEnvelop, 1, &negFactor, scaleAttackEnvelop, 1, numSamples);
+    float negFactor = 1.0f;
+    if(releaseDB!=0){
+        negFactor = -releaseDB/fabsf(releaseDB);
+        vDSP_vsmul(scaleAttackEnvelop, 1, &negFactor, scaleAttackEnvelop, 1, numSamples);
+    }
 
     BMReleaseFilter_processBuffer(&This->releaseReleaseFilter, scaleAttackEnvelop, scaleAttackEnvelop, numSamples);
     
