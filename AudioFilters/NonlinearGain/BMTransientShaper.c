@@ -234,29 +234,23 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     //Scale it
     float attackThresholdDb = 5.0f; // the signal that > -5db is the attack
-//    float scaleFactor = -1.0f/5.0f; //10db
-//    vDSP_vsmul(instantAttackEnvelope, 1, &scaleFactor, scaleAttackEnvelop, 1, numSamples);
 
     float addV = attackThresholdDb + 1.0f;
     vDSP_vsadd(instantAttackEnvelope, 1, &addV, scaleAttackEnvelop, 1, numSamples);
+    float min = 0.0f;
+    float max = 1.0f;
+    vDSP_vclip(scaleAttackEnvelop, 1, &min, &max, scaleAttackEnvelop, 1, numSamples);
     
-    
-    
+//    float scaleFactor = -1.0f/10.0f; //10db
+//    vDSP_vsmul(This->attackControlSignal, 1, &scaleFactor, scaleAttackEnvelop, 1, numSamples);
 //    //Clip between 0 to 1
 //    float min = 0.5f;
 //    float max = 1.0f;
 //    vDSP_vclip(scaleAttackEnvelop, 1, &min, &max, scaleAttackEnvelop, 1, numSamples);
 //
-//
-//
 //    float two = 2.0f;
 //    float negOne = -1.0f;
 //    vDSP_vsmsa(scaleAttackEnvelop, 1, &two, &negOne, scaleAttackEnvelop, 1, numSamples);
-    
-    float min = 0.0f;
-    float max = 1.0f;
-    vDSP_vclip(scaleAttackEnvelop, 1, &min, &max, scaleAttackEnvelop, 1, numSamples);
-    
     
 
     float releaseDB = This->releaseDepth * This->exaggeration;
