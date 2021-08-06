@@ -38,9 +38,10 @@ typedef struct BMTransientShaperSection {
     float* b2;
     float* attackControlSignal;
     float* releaseControlSignal;
-    BMReleaseFilter* attackRF;
-    BMAttackFilter* attackAF;
-    BMReleaseFilter sustainAttackFilter;
+    BMReleaseFilter* attackInstanceFilter;
+    BMAttackFilter* attackSlowFilter;
+    BMReleaseFilter sustainInstanceAttackFilter;
+    BMAttackFilter sustainSlowAttackFilter;
     BMReleaseFilter sustainReleaseFilter;
     BMDynamicSmoothingFilter* dsf;
     BMShortSimpleDelay dly;
