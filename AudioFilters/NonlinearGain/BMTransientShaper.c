@@ -226,15 +226,12 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     vDSP_vsub(slowAttackEnvelope, 1, instantAttackEnvelope, 1, instantAttackEnvelope, 1, numSamples);
     
-    
+    if(This->isTesting)
+        memcpy(This->testBuffer1, instantAttackEnvelope, sizeof(float)*numSamples);
     
     float *scaleAttackEnvelop = This->b1;
-    
-    
-    
     float scaleFactor = 1.0f/6.0f; //10db
     vDSP_vsmul(instantAttackEnvelope, 1, &scaleFactor, scaleAttackEnvelop, 1, numSamples);
-    
     
     
     //Clip between 0 to 1
@@ -244,11 +241,12 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
 
     
     
-    float two = 1.0f/min;
-    float negOne = -(1.0f/min - 1.0f);
+    float two = 1.0f/(max-min);
+    float negOne = -(min*two);
     vDSP_vsmsa(scaleAttackEnvelop, 1, &two, &negOne, scaleAttackEnvelop, 1, numSamples);
     
-
+    if(This->isTesting)
+        memcpy(This->testBuffer2,scaleAttackEnvelop, sizeof(float)*numSamples);
     
     
     float releaseDB = This->releaseDepth * This->exaggeration;
@@ -271,8 +269,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     //Return to the sign
     vDSP_vsmul(scaleAttackEnvelop, 1, &negFactor, scaleAttackEnvelop, 1, numSamples);
     
-    if(This->isTesting)
-        memcpy(This->testBuffer2,scaleAttackEnvelop, sizeof(float)*numSamples);
+    
     
     
     //Apply depth
@@ -281,8 +278,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     vDSP_vsmul(This->attackControlSignal, 1, &adjustedExaggeration, This->attackControlSignal, 1, numSamples);
     
     
-    if(This->isTesting)
-        memcpy(This->testBuffer1, This->attackControlSignal, sizeof(float)*numSamples);
+    
     
     
     adjustedExaggeration = 1;
@@ -603,7 +599,7 @@ void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTime
     BMTransientShaperSection_setSustainReleaseFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
     //Sustain attack filter
-    float sustainAttackFC = ARTimeToCutoffFrequency(0.05f, 1);
+    float sustainAttackFC = ARTimeToCutoffFrequency(0.02f, 1);
     BMTransientShaperSection_setSustainAttackFC(&This->asSections[0], sustainAttackFC);
     BMTransientShaperSection_setSustainAttackFC(&This->asSections[1], sustainAttackFC*BMTS_SECTION_2_RF_MULTIPLIER);
 }
