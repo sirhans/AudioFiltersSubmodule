@@ -291,7 +291,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
         if(slowAttackEnvelope[i]==1){
             //Attack
             This->releaseControlSignal[i] = This->attackControlSignal[i];
-        }else if(slowAttackEnvelope[i]<=0.0001){
+        }else if(slowAttackEnvelope[i]<=0.0001f){
             //Release
             //Do nothing
             This->releaseControlSignal[i] = This->releaseControlSignal[i];
