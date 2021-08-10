@@ -215,9 +215,6 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     float limit = -0.2f;
     BMTransientShaper_upperLimit(limit, This->attackControlSignal, This->attackControlSignal, numSamples);
     
-    if(This->isTesting)
-        memcpy(This->testBuffer2,This->attackControlSignal, sizeof(float)*numSamples);
-    
     /* ------------ RELEASE FILTER ---------*/
     BMReleaseFilter_processBuffer(&This->sustainInstanceAttackFilter, input, instantAttackEnvelope, numSamples);
     slowAttackEnvelope = This->b2;
@@ -227,8 +224,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     vDSP_vsub(slowAttackEnvelope, 1, instantAttackEnvelope, 1, instantAttackEnvelope, 1, numSamples);
     
-    if(This->isTesting)
-        memcpy(This->testBuffer1, instantAttackEnvelope, sizeof(float)*numSamples);
+    
     
     float *scaleAttackEnvelop = This->b1;
     float scaleFactor = 1.0f/6.0f; //10db
@@ -241,20 +237,21 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     vDSP_vclip(scaleAttackEnvelop, 1, &min, &max, scaleAttackEnvelop, 1, numSamples);
 
     
-    
+    //Store clip result into slowAttackEnvelope to further use
     float two = 1.0f/(max-min);
     float negOne = -(min*two);
-    vDSP_vsmsa(scaleAttackEnvelop, 1, &two, &negOne, scaleAttackEnvelop, 1, numSamples);
-    
+    vDSP_vsmsa(scaleAttackEnvelop, 1, &two, &negOne, slowAttackEnvelope, 1, numSamples);
     
     
     
     float releaseDB = This->releaseDepth * This->exaggeration;
     float mul = -releaseDB;
-    vDSP_vsmul(scaleAttackEnvelop, 1, &mul, scaleAttackEnvelop, 1, numSamples);
+    vDSP_vsmul(slowAttackEnvelope, 1, &mul, scaleAttackEnvelop, 1, numSamples);
 
     vDSP_vsadd(scaleAttackEnvelop, 1, &releaseDB, scaleAttackEnvelop, 1, numSamples);
 
+    
+    
     //Make the control signal release adjustable
     //Get the sign of release db
     float negFactor = 1.0f;
@@ -277,15 +274,31 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     float adjustedExaggeration = This->attackDepth * -This->exaggeration;
     vDSP_vsmul(This->attackControlSignal, 1, &adjustedExaggeration, This->attackControlSignal, 1, numSamples);
     
+    if(This->isTesting)
+        memcpy(This->testBuffer1, This->attackControlSignal, sizeof(float)*numSamples);
     
     
-    
+    if(This->isTesting)
+        memcpy(This->testBuffer2,scaleAttackEnvelop, sizeof(float)*numSamples);
     
     adjustedExaggeration = 1;
     vDSP_vsmul(scaleAttackEnvelop, 1, &adjustedExaggeration, This->releaseControlSignal, 1, numSamples);
     
-    //Mix attack & release control signal
-    vDSP_vadd(This->attackControlSignal, 1, This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
+//    //Mix attack & release control signal
+//    vDSP_vadd(This->attackControlSignal, 1, This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
+    
+    for(int i=0;i<numSamples;i++){
+        if(slowAttackEnvelope[i]==1){
+            //Attack
+            This->releaseControlSignal[i] = This->attackControlSignal[i];
+        }else if(slowAttackEnvelope[i]<=0.0001){
+            //Release
+            //Do nothing
+            This->releaseControlSignal[i] = This->releaseControlSignal[i];
+        }else{
+            This->releaseControlSignal[i] = This->attackControlSignal[i] + This->releaseControlSignal[i];
+        }
+    }
     
     /************************************************
      * filter the control signal to reduce aliasing *
