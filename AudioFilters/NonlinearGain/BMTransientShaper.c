@@ -114,7 +114,7 @@ void BMTransientShaperSection_setAttackInstanceFC(BMTransientShaperSection *This
 
 void BMTransientShaperSection_setSustainAttackFC(BMTransientShaperSection *This, float releaseFc){
     BMAttackFilter_setCutoff(&This->sustainSlowAttackFilter, releaseFc);
-    BMReleaseFilter_setCutoff(&This->sustainInstanceAttackFilter, releaseFc*0.3f);
+    BMReleaseFilter_setCutoff(&This->sustainInstanceAttackFilter, releaseFc*0.1f);
 }
 
 void BMTransientShaperSection_setSustainReleaseFC(BMTransientShaperSection *This, float releaseFc){
@@ -215,7 +215,8 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     float limit = -0.2f;
     BMTransientShaper_upperLimit(limit, This->attackControlSignal, This->attackControlSignal, numSamples);
     
-    
+    if(This->isTesting)
+        memcpy(This->testBuffer2,This->attackControlSignal, sizeof(float)*numSamples);
     
     /* ------------ RELEASE FILTER ---------*/
     BMReleaseFilter_processBuffer(&This->sustainInstanceAttackFilter, input, instantAttackEnvelope, numSamples);
@@ -245,8 +246,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     float negOne = -(min*two);
     vDSP_vsmsa(scaleAttackEnvelop, 1, &two, &negOne, scaleAttackEnvelop, 1, numSamples);
     
-    if(This->isTesting)
-        memcpy(This->testBuffer2,scaleAttackEnvelop, sizeof(float)*numSamples);
+    
     
     
     float releaseDB = This->releaseDepth * This->exaggeration;
