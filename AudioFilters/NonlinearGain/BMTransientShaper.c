@@ -305,9 +305,20 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
      ************************************************/
     //
     // smoothing filter to prevent clicks
-//    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-//        BMDynamicSmoothingFilter_processBufferWithFastDescent2(&This->dsf[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
+    
+    //Always make the releaseControlsignal upside down
+    negOne = -1;
+    if(This->attackDepth>0){
+        vDSP_vsmul(This->releaseControlSignal, 1, &negOne, This->releaseControlSignal, 1, numSamples);
+    }
+    
+    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
+        BMDynamicSmoothingFilter_processBufferWithFastDescent2(&This->dsf[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
 
+    if(This->attackDepth>0){
+        vDSP_vsmul(This->releaseControlSignal, 1, &negOne, This->releaseControlSignal, 1, numSamples);
+    }
+    
     if(This->isTesting)
         memcpy(This->testBuffer3, This->releaseControlSignal, sizeof(float)*numSamples);
     
