@@ -308,14 +308,18 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     //Always make the releaseControlsignal upside down
     negOne = -1;
-    if(This->attackDepth>0){
+    if(This->attackDepth>0||
+       (This->attackDepth==0&&
+        This->releaseDepth<0)){
         vDSP_vsmul(This->releaseControlSignal, 1, &negOne, This->releaseControlSignal, 1, numSamples);
     }
     
     for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
         BMDynamicSmoothingFilter_processBufferWithFastDescent2(&This->dsf[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
 
-    if(This->attackDepth>0){
+    if(This->attackDepth>0||
+       (This->attackDepth==0&&
+        This->releaseDepth<0)){
         vDSP_vsmul(This->releaseControlSignal, 1, &negOne, This->releaseControlSignal, 1, numSamples);
     }
     
@@ -623,7 +627,7 @@ void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTime
     BMTransientShaperSection_setSustainReleaseFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
     //Sustain attack filter
-    float sustainAttackFC = ARTimeToCutoffFrequency(0.02f, 1);
+    float sustainAttackFC = ARTimeToCutoffFrequency(0.08f, 1);
     BMTransientShaperSection_setSustainAttackFC(&This->asSections[0], sustainAttackFC);
     BMTransientShaperSection_setSustainAttackFC(&This->asSections[1], sustainAttackFC*BMTS_SECTION_2_RF_MULTIPLIER);
 }
