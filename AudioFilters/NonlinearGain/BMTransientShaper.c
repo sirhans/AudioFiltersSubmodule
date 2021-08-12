@@ -313,8 +313,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     }
     
     
-    if(This->isTesting)
-        memcpy(This->testBuffer3,This->attackControlSignal, sizeof(float)*numSamples);
+    
     
     
     //Apply depth
@@ -333,6 +332,9 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     //Mix attack & release control signal
     vDSP_vadd(This->attackControlSignal, 1, This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
+    
+    if(This->isTesting)
+        memcpy(This->testBuffer3,This->releaseControlSignal, sizeof(float)*numSamples);
     
 //    for(int i=0;i<numSamples;i++){
 //        if(clipEnvelope[i]==1){
