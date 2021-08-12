@@ -251,14 +251,16 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     vDSP_vsub(instantAttackEnvelope, 1,clipEnvelope , 1, instantAttackEnvelope, 1, numSamples);
     
     
-    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-        BMDynamicSmoothingFilter_processBufferWithFastDescent2(&This->dsfFakeAttack[i], instantAttackEnvelope, instantAttackEnvelope, numSamples);
+//    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
+//        BMDynamicSmoothingFilter_processBufferWithFastDescent2(&This->dsfFakeAttack[i], instantAttackEnvelope, instantAttackEnvelope, numSamples);
     vDSP_vsmul(instantAttackEnvelope, 1, &negOne, instantAttackEnvelope, 1, numSamples);
     
+    if(This->isTesting)
+        memcpy(This->testBuffer1, instantAttackEnvelope, sizeof(float)*numSamples);
     
     
     float *scaleAttackEnvelop = This->b1;
-    float scaleFactor = 1.0f/5.0f; //10db
+    float scaleFactor = 1.0f/6.0f; //10db
     vDSP_vsmul(instantAttackEnvelope, 1, &scaleFactor, scaleAttackEnvelop, 1, numSamples);
     
     
@@ -311,6 +313,8 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     }
     
     
+    if(This->isTesting)
+        memcpy(This->testBuffer3,This->attackControlSignal, sizeof(float)*numSamples);
     
     
     //Apply depth
@@ -318,8 +322,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     float adjustedExaggeration = This->attackDepth * This->exaggeration;
     vDSP_vsmul(This->attackControlSignal, 1, &adjustedExaggeration, This->attackControlSignal, 1, numSamples);
     
-    if(This->isTesting)
-        memcpy(This->testBuffer1, This->attackControlSignal, sizeof(float)*numSamples);
+    
     
     adjustedExaggeration = 1;
     vDSP_vsmul(scaleAttackEnvelop, 1, &adjustedExaggeration, This->releaseControlSignal, 1, numSamples);
@@ -344,11 +347,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
 //        }
 //    }
     
-    if(This->isTesting)
-        memcpy(This->testBuffer3,This->releaseControlSignal, sizeof(float)*numSamples);
     
-//    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-//        BMDynamicSmoothingFilter_processBufferWithFastDescent2(&This->dsfMix[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
     
     
     
