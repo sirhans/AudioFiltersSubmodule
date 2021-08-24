@@ -285,13 +285,13 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     
     
-//    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-//        BMDynamicSmoothingFilter_processBufferWithFastDescent2(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
+
     
     //return sign
     vDSP_vsmul(This->releaseControlSignal, 1, &negOne, This->releaseControlSignal, 1, numSamples);
     
-    
+//    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
+//        BMDynamicSmoothingFilter_processBufferWithFastDescent2(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
     
     //Apply depth
     // exaggerate the control signal
@@ -705,7 +705,7 @@ void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTime
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[0], slowReleaseFC);
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
-    float fastFC = slowReleaseFC * 0.5f;
+    float fastFC = slowReleaseFC * 0.1f;
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[0], fastFC);
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], fastFC*BMTS_SECTION_2_RF_MULTIPLIER);
 }
