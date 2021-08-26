@@ -40,20 +40,17 @@ typedef struct BMTransientShaperSection {
     float* releaseControlSignal;
     BMReleaseFilter* attackInstanceFilter;
     BMAttackFilter* attackSlowFilter;
-    BMReleaseFilter sustainInstanceAttackFilter;
-    BMAttackFilter sustainSlowAttackFilter;
-    BMReleaseFilter sustainReleaseFilter;
     
     BMReleaseFilter* sustainFastReleaseFilter;
     BMReleaseFilter* sustainSlowReleaseFilter;
+    
     BMDynamicSmoothingFilter* dsfAttack;
-    BMDynamicSmoothingFilter* dsfFakeAttack;
     BMDynamicSmoothingFilter* dsfSustain;
-    BMDynamicSmoothingFilter* dsfMix;
+    
     
     BMShortSimpleDelay dly;
     size_t delaySamples;
-    float exaggeration, attackDepth, releaseDepth, sampleRate, noiseGateThreshold;
+    float attackExaggeration,sustainExaggeration, attackDepth, releaseDepth, sampleRate, noiseGateThreshold;
     bool isStereo;
     bool isTesting;
     bool noiseGateIsOpen;
