@@ -34,7 +34,7 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
                                bool isTesting){
     This->sampleRate = sampleRate;
     This->attackExaggeration = exaggeration;
-    This->sustainExaggeration = 2.0f;
+    This->sustainExaggeration = exaggeration;
     This->isStereo = isStereo;
     This->attackDepth = 1.0;
     This->releaseDepth = 1.0;
@@ -69,6 +69,7 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
         BMReleaseFilter_init(&This->sustainFastReleaseFilter[i], releaseFilterFc, sampleRate);
         BMReleaseFilter_init(&This->sustainSlowReleaseFilter[i], releaseFilterFc, sampleRate);
     }
+    BMAttackFilter_init(&This->sustainAttackFilter, attackFc, sampleRate);
     
     // set the delay to 12 samples at 48 KHz sampleRate or
     // stretch appropriately for other sample rates
@@ -263,6 +264,9 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     //return sign
     vDSP_vsmul(This->releaseControlSignal, 1, &negOne, This->releaseControlSignal, 1, numSamples);
+    
+    //Attack filter
+    BMAttackFilter_processBuffer(&This->sustainAttackFilter, This->releaseControlSignal, This->releaseControlSignal, numSamples);
     
 //    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
 //        BMDynamicSmoothingFilter_processBufferWithFastDescent2(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
