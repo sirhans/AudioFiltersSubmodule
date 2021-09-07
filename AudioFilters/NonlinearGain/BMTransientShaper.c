@@ -488,18 +488,20 @@ void BMTransientShaper_processStereo(BMTransientShaper *This,
     while(numSamples > 0){
         size_t samplesProcessing = BM_MIN(numSamples, BM_BUFFER_CHUNK_SIZE);
         
-        // split the signal into two bands
-        BMCrossover_processStereo(&This->crossover2, inputL, inputR, This->b1L, This->b1R, This->b2L, This->b2R, samplesProcessing);
-
+//        // split the signal into two bands
+//        BMCrossover_processStereo(&This->crossover2, inputL, inputR, This->b1L, This->b1R, This->b2L, This->b2R, samplesProcessing);
+//
+//
+//        // process transient shapers on each band
+//        BMTransientShaperSection_processStereo(&This->asSections[0], This->b1L, This->b1R, This->b1L, This->b1R, samplesProcessing);
+//        BMTransientShaperSection_processStereo(&This->asSections[1], This->b2L, This->b2R, This->b2L, This->b2R, samplesProcessing);
+//
+//
+//        // recombine the signal
+//        vDSP_vadd(This->b1L, 1, This->b2L, 1, outputL, 1, samplesProcessing);
+//        vDSP_vadd(This->b1R, 1, This->b2R, 1, outputR, 1, samplesProcessing);
         
-        // process transient shapers on each band
-        BMTransientShaperSection_processStereo(&This->asSections[0], This->b1L, This->b1R, This->b1L, This->b1R, samplesProcessing);
-        BMTransientShaperSection_processStereo(&This->asSections[1], This->b2L, This->b2R, This->b2L, This->b2R, samplesProcessing);
-        
-        
-        // recombine the signal
-        vDSP_vadd(This->b1L, 1, This->b2L, 1, outputL, 1, samplesProcessing);
-        vDSP_vadd(This->b1R, 1, This->b2R, 1, outputR, 1, samplesProcessing);
+        BMTransientShaperSection_processStereo(&This->asSections[0],inputL , inputR, outputL, outputR, samplesProcessing);
 
         
         // advance pointers
