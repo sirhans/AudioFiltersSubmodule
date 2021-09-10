@@ -117,6 +117,11 @@ void BMAttackFilter_processBuffer(BMAttackFilter *This,
                                   float* output,
                                   size_t numSamples);
 
+void BMAttackFilter_processBufferHighDb(BMAttackFilter *This,
+                                  const float* input,
+                                  float* output,
+                                        size_t numSamples);
+
 /*!
  * BMReleaseFilter_processBuffer
  */
