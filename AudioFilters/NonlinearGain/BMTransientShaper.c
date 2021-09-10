@@ -599,6 +599,9 @@ void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTime
     float fastFC = 10.0f;//slowReleaseFC*0.6f;
     BMTransientShaperSection_setSustainFastFC(&This->asSections[0], fastFC);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[1], fastFC*BMTS_SECTION_2_RF_MULTIPLIER);
+    
+    This->asSections[0].sustainExaggeration = (releaseTimeInSeconds-0.1f)/0.9f * 4.5f + 1.0f;
+    This->asSections[1].sustainExaggeration = This->asSections[0].sustainExaggeration;
 }
     
 
