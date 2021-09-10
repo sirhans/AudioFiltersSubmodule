@@ -251,7 +251,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     float* slowSustainEnvelope = This->b2;
     float* fastSustainEnvelope = This->releaseControlSignal;
     //Attack filter
-    BMAttackFilter_processBufferHighDb(&This->sustainSlowAttackFilter, instantAttackEnvelope, instantAttackEnvelope, numSamples);
+    BMAttackFilter_processBufferBelowDb(&This->sustainSlowAttackFilter,-20, instantAttackEnvelope, instantAttackEnvelope, numSamples);
     
     for(size_t i=0; i<BMTS_ARF_NUMLEVELS; i++)
         BMReleaseFilter_processBuffer(&This->sustainSlowReleaseFilter[i], instantAttackEnvelope, slowSustainEnvelope, numSamples);
