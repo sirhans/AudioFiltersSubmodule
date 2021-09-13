@@ -251,7 +251,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     float* slowSustainEnvelope = This->b2;
     float* fastSustainEnvelope = This->releaseControlSignal;
     //Attack filter
-    BMAttackFilter_processBufferBelowDb(&This->sustainSlowAttackFilter,-15, instantAttackEnvelope, instantAttackEnvelope, numSamples);
+    BMAttackFilter_processBufferBelowDb(&This->sustainSlowAttackFilter,-10, instantAttackEnvelope, instantAttackEnvelope, numSamples);
     
     for(size_t i=0; i<BMTS_ARF_NUMLEVELS; i++)
         BMReleaseFilter_processBuffer(&This->sustainSlowReleaseFilter[i], instantAttackEnvelope, slowSustainEnvelope, numSamples);
@@ -261,11 +261,11 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
         BMReleaseFilter_processBuffer(&This->sustainFastReleaseFilter[i], instantAttackEnvelope, fastSustainEnvelope, numSamples);
     
     
-//    if(This->isTesting)
-//        memcpy(This->testBuffer1, slowSustainEnvelope, sizeof(float)*numSamples);
-//    
-//    if(This->isTesting)
-//        memcpy(This->testBuffer2,fastSustainEnvelope, sizeof(float)*numSamples);
+    if(This->isTesting)
+        memcpy(This->testBuffer1, slowSustainEnvelope, sizeof(float)*numSamples);
+    
+    if(This->isTesting)
+        memcpy(This->testBuffer2,fastSustainEnvelope, sizeof(float)*numSamples);
     
     //Get release control
     vDSP_vsub(fastSustainEnvelope, 1, slowSustainEnvelope, 1, This->releaseControlSignal, 1, numSamples);
