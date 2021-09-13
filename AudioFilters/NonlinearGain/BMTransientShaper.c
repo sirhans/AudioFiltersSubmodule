@@ -74,6 +74,10 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     BMAttackFilter_init(&This->sustainFastAttackFilter, myFC, sampleRate);
     BMAttackFilter_init(&This->sustainSlowAttackFilter, myFC, sampleRate);
     
+    float sustainAttackFC = 10.0f;
+    BMAttackFilter_init(&This->sustainFakeAttackFilter, sustainAttackFC, sampleRate);
+    
+    
     // set the delay to 12 samples at 48 KHz sampleRate or
     // stretch appropriately for other sample rates
     size_t numChannels = isStereo ? 2 : 1;
@@ -251,7 +255,14 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     float* slowSustainEnvelope = This->b2;
     float* fastSustainEnvelope = This->releaseControlSignal;
     //Attack filter
-    BMAttackFilter_processBufferBelowDb(&This->sustainSlowAttackFilter,-15, instantAttackEnvelope, instantAttackEnvelope, numSamples);
+    BMAttackFilter_processBuffer(&This->sustainFakeAttackFilter, instantAttackEnvelope, slowSustainEnvelope, numSamples);
+    //Subtract
+    vDSP_vsub(slowSustainEnvelope, 1, instantAttackEnvelope, 1, slowSustainEnvelope, 1, numSamples);
+    
+    BMAttackFilter_processBufferBelowDb(&This->sustainSlowAttackFilter,5,slowSustainEnvelope, instantAttackEnvelope, instantAttackEnvelope, numSamples);
+    
+    
+    
     
     for(size_t i=0; i<BMTS_ARF_NUMLEVELS; i++)
         BMReleaseFilter_processBuffer(&This->sustainSlowReleaseFilter[i], instantAttackEnvelope, slowSustainEnvelope, numSamples);
@@ -260,12 +271,14 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     for(size_t i=0; i<BMTS_ARF_NUMLEVELS; i++)
         BMReleaseFilter_processBuffer(&This->sustainFastReleaseFilter[i], instantAttackEnvelope, fastSustainEnvelope, numSamples);
     
-    
     if(This->isTesting)
         memcpy(This->testBuffer1, slowSustainEnvelope, sizeof(float)*numSamples);
     
     if(This->isTesting)
         memcpy(This->testBuffer2,fastSustainEnvelope, sizeof(float)*numSamples);
+    
+    
+    
     
     //Get release control
     vDSP_vsub(fastSustainEnvelope, 1, slowSustainEnvelope, 1, This->releaseControlSignal, 1, numSamples);
@@ -416,7 +429,7 @@ void BMTransientShaper_init(BMTransientShaper *This, bool isStereo, float sample
     
     
     // set default noise gate threshold
-    BMTransientShaper_setSidechainNoiseGateThreshold(This, -45.0f);
+    BMTransientShaper_setSidechainNoiseGateThreshold(This, BMTS_NOISE_GATE_CLOSED_LEVEL);
     
     // process a few buffers of silence to get the filters warmed up
     float* input = calloc(256,sizeof(float));
@@ -600,7 +613,7 @@ void BMTransientShaper_setReleaseDepth(BMTransientShaper *This, float depth){
 void BMTransientShaper_setSidechainNoiseGateThreshold(BMTransientShaper *This, float thresholdDb){
     // Don't allow the noise gate threshold to be set lower than the
     // gain setting the gate takes when it's closed
-    assert(thresholdDb > BMTS_NOISE_GATE_CLOSED_LEVEL);
+    assert(thresholdDb >= BMTS_NOISE_GATE_CLOSED_LEVEL);
     
     for(size_t i=0; i<BMTS_NUM_SECTIONS; i++)
         This->asSections[i].noiseGateThreshold = BM_DB_TO_GAIN(thresholdDb);

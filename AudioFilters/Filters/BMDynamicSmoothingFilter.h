@@ -41,6 +41,10 @@ void BMDynamicSmoothingFilter_processBuffer(BMDynamicSmoothingFilter *This,
 											float* output,
 											size_t numSamples);
 
+void BMDynamicSmoothingFilter_processBufferFastAccent(BMDynamicSmoothingFilter *This,
+                                            const float* input,
+                                            float* output,
+                                                      size_t numSamples);
 /*!
  *BMDynamicSmoothingFilter_processBufferWithFastDescent
  */

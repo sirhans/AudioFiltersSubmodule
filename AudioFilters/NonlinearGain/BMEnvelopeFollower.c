@@ -205,7 +205,7 @@ void BMAttackFilter_processBuffer(BMAttackFilter *This,
     }
 }
 
-void BMAttackFilter_processBufferBelowDb(BMAttackFilter *This,float maxDb,
+void BMAttackFilter_processBufferBelowDb(BMAttackFilter *This,float maxDb,float* slowAttack,
                                   const float* input,
                                   float* output,
                                   size_t numSamples){
@@ -214,7 +214,7 @@ void BMAttackFilter_processBufferBelowDb(BMAttackFilter *This,float maxDb,
         float x = input[i];
         
         // if we are in attack mode,
-        if (x > This->previousOutputValue&&x<maxDb){
+        if (x > This->previousOutputValue&&fabsf(slowAttack[i])<maxDb){
             
             // if this is the first sample in attack mode
             if(!This->attackMode){

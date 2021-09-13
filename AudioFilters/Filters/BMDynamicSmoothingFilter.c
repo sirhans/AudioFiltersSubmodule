@@ -86,14 +86,30 @@ void BMDynamicSmoothingFilter_processBuffer(BMDynamicSmoothingFilter *This,
 	}
 }
 
-
 float BMDSF_positiveOnly(float x){
-	return 0.5 * (x + fabsf(x));
+    return 0.5 * (x + fabsf(x));
 }
 
 float BMDSF_negativeOnly(float x){
-	return 0.5 * (x - fabsf(x));
+    return 0.5 * (x - fabsf(x));
 }
+
+void BMDynamicSmoothingFilter_processBufferFastAccent(BMDynamicSmoothingFilter *This,
+                                            const float* input,
+                                            float* output,
+                                            size_t numSamples){
+    for(size_t i=0; i<numSamples; i++){
+        float bandz = This->low1z - This->low2z;
+        float g = This->gMin + This->sensitivity * BMDSF_positiveOnly(bandz);
+        g = MIN(g, This->gMax);
+        This->low2z += g * (bandz);
+        This->low1z += g * (input[i] - This->low1z);
+        output[i] = This->low2z;
+    }
+}
+
+
+
 
 
 void BMDynamicSmoothingFilter_processBufferWithFastDescent(BMDynamicSmoothingFilter *This,
@@ -102,8 +118,10 @@ void BMDynamicSmoothingFilter_processBufferWithFastDescent(BMDynamicSmoothingFil
 														   size_t numSamples){
 	for(size_t i=0; i<numSamples; i++){
 		float bandz = This->low2z - This->low1z;
+        
 		float g = This->gMin + This->sensitivity * BMDSF_positiveOnly(bandz);
 		g = MIN(g, This->gMax);
+        
 		This->low2z += g * (-bandz);
 		This->low1z += g * (input[i] - This->low1z);
 		output[i] = This->low2z;

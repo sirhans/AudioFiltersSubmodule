@@ -117,7 +117,7 @@ void BMAttackFilter_processBuffer(BMAttackFilter *This,
                                   float* output,
                                   size_t numSamples);
 
-void BMAttackFilter_processBufferBelowDb(BMAttackFilter *This,float maxDb,
+void BMAttackFilter_processBufferBelowDb(BMAttackFilter *This,float maxDb,float* slowAttack,
                                   const float* input,
                                   float* output,
                                          size_t numSamples);
