@@ -257,16 +257,16 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     float* fastSustainEnvelope = This->releaseControlSignal;
 //    //Attack filter
 //    BMAttackFilter_processBuffer(&This->sustainFakeAttackFilter, instantAttackEnvelope, slowSustainEnvelope, numSamples);
-//    
+//
 //    if(This->isTesting)
 //        memcpy(This->testBuffer1, slowSustainEnvelope, sizeof(float)*numSamples);
-//    
+//
 //    if(This->isTesting)
 //        memcpy(This->testBuffer2,instantAttackEnvelope, sizeof(float)*numSamples);
-//    
+//
 //    //Subtract
 //    vDSP_vsub(slowSustainEnvelope, 1, instantAttackEnvelope, 1, slowSustainEnvelope, 1, numSamples);
-//    
+//
 //    BMAttackFilter_processBufferBelowDb(&This->sustainSlowAttackFilter,This->attackFilterThreshold,slowSustainEnvelope, instantAttackEnvelope, instantAttackEnvelope, numSamples);
     
     
@@ -595,11 +595,11 @@ void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTime
     // find the lpf cutoff frequency that corresponds to the specified attack time
     float slowReleaseFC = ARTimeToCutoffFrequency(releaseTimeInSeconds, BMTS_RRF_NUMLEVELS);
     
-    slowReleaseFC *= 0.2f;//0.05
+    slowReleaseFC *= 0.07f;//0.05
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[0], slowReleaseFC);
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
-    float fastFC = slowReleaseFC*1.6f;
+    float fastFC = slowReleaseFC*1.66f;
     BMTransientShaperSection_setSustainFastFC(&This->asSections[0], fastFC);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[1], fastFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
