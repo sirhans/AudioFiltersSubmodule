@@ -46,6 +46,7 @@ typedef struct BMTransientShaperSection {
     BMAttackFilter sustainFastAttackFilter;
     BMAttackFilter sustainSlowAttackFilter;
     BMAttackFilter sustainFakeAttackFilter;
+    float attackFilterThreshold;
     
     BMDynamicSmoothingFilter* dsfAttack;
     BMDynamicSmoothingFilter* dsfSustain;

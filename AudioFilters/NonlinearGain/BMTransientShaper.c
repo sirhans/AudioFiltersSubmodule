@@ -74,7 +74,8 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     BMAttackFilter_init(&This->sustainFastAttackFilter, myFC, sampleRate);
     BMAttackFilter_init(&This->sustainSlowAttackFilter, myFC, sampleRate);
     
-    float sustainAttackFC = 10.0f;
+    float sustainAttackFC = 5.0f;
+    This->attackFilterThreshold = 6.0f;
     BMAttackFilter_init(&This->sustainFakeAttackFilter, sustainAttackFC, sampleRate);
     
     
@@ -256,10 +257,17 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     float* fastSustainEnvelope = This->releaseControlSignal;
     //Attack filter
     BMAttackFilter_processBuffer(&This->sustainFakeAttackFilter, instantAttackEnvelope, slowSustainEnvelope, numSamples);
+    
+    if(This->isTesting)
+        memcpy(This->testBuffer1, slowSustainEnvelope, sizeof(float)*numSamples);
+    
+    if(This->isTesting)
+        memcpy(This->testBuffer2,instantAttackEnvelope, sizeof(float)*numSamples);
+    
     //Subtract
     vDSP_vsub(slowSustainEnvelope, 1, instantAttackEnvelope, 1, slowSustainEnvelope, 1, numSamples);
     
-    BMAttackFilter_processBufferBelowDb(&This->sustainSlowAttackFilter,5,slowSustainEnvelope, instantAttackEnvelope, instantAttackEnvelope, numSamples);
+    BMAttackFilter_processBufferBelowDb(&This->sustainSlowAttackFilter,This->attackFilterThreshold,slowSustainEnvelope, instantAttackEnvelope, instantAttackEnvelope, numSamples);
     
     
     
@@ -271,11 +279,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     for(size_t i=0; i<BMTS_ARF_NUMLEVELS; i++)
         BMReleaseFilter_processBuffer(&This->sustainFastReleaseFilter[i], instantAttackEnvelope, fastSustainEnvelope, numSamples);
     
-    if(This->isTesting)
-        memcpy(This->testBuffer1, slowSustainEnvelope, sizeof(float)*numSamples);
     
-    if(This->isTesting)
-        memcpy(This->testBuffer2,fastSustainEnvelope, sizeof(float)*numSamples);
     
     
     
