@@ -202,13 +202,13 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     // absolute value
     vDSP_vabs(input, 1, input, 1, numSamples);
     
-//    // apply a simple per-sample noise gate
-//    float noiseGateClosedValue = BM_DB_TO_GAIN(BMTS_NOISE_GATE_CLOSED_LEVEL);
-//    BMTransientShaperSection_simpleNoiseGate(This, input, This->noiseGateThreshold, noiseGateClosedValue, input, numSamples);
-//
-//    // convert to decibels
-//    float one = 1.0f;
-//    vDSP_vdbcon(input, 1, &one, input, 1, numSamples, 0);
+    // apply a simple per-sample noise gate
+    float noiseGateClosedValue = BM_DB_TO_GAIN(BMTS_NOISE_GATE_CLOSED_LEVEL);
+    BMTransientShaperSection_simpleNoiseGate(This, input, This->noiseGateThreshold, noiseGateClosedValue, input, numSamples);
+
+    // convert to decibels
+    float one = 1.0f;
+    vDSP_vdbcon(input, 1, &one, input, 1, numSamples, 0);
     
     /* ------------ ATTACK FILTER ---------*/
     // release filter to get instant attack envelope
