@@ -132,6 +132,8 @@ void BMAttackFilter_init(BMAttackFilter *This, float fc, float sampleRate){
     This->previousOutputValue = 0.0f;
     This->attackMode = false;
     This->ic1 = This->ic2 = 0;
+    This->localPeakValue = 0;
+    This->localReleaseValue = 0;
     
     BMAttackFilter_setCutoff(This, fc);
 }
@@ -214,29 +216,34 @@ void BMAttackFilter_processBufferBelowDb(BMAttackFilter *This,float maxDb,float*
         float x = input[i];
         
         // if we are in attack mode,
-        if (x > This->previousOutputValue&&fabsf(slowAttack[i])<maxDb){
+        if (x > This->previousOutputValue){
             
-            // if this is the first sample in attack mode
-            if(!This->attackMode){
-                // set the attack mode flag
-                This->attackMode = true;
-                // and update the state variables to get continuous gradient
-                This->ic1 = This->previousOutputGradient  *This->gInv_2;
-                // and continuous output value
-                This->ic2 = This->previousOutputValue;
+            if(x<maxDb){
+                // if this is the first sample in attack mode
+                if(!This->attackMode){
+                    // set the attack mode flag
+                    This->attackMode = true;
+                    // and update the state variables to get continuous gradient
+                    This->ic1 = This->previousOutputGradient  *This->gInv_2;
+                    // and continuous output value
+                    This->ic2 = This->previousOutputValue;
+                }
+                
+                // process the state variable filter
+                float v3 = x - This->ic2;
+                float v1 = This->a1  *This->ic1 + This->a2 * v3;
+                float v2 = This->ic2 + This->a2  *This->ic1 + This->a3 * v3;
+                
+                // update the state variables
+                This->ic1 = 2.0f * v1 - This->ic1;
+                This->ic2 = 2.0f * v2 - This->ic2;
+                
+                // output
+                output[i] = v2;
+            }else{
+                //Copy output
+                output[i] = x;
             }
-            
-            // process the state variable filter
-            float v3 = x - This->ic2;
-            float v1 = This->a1  *This->ic1 + This->a2 * v3;
-            float v2 = This->ic2 + This->a2  *This->ic1 + This->a3 * v3;
-            
-            // update the state variables
-            This->ic1 = 2.0f * v1 - This->ic1;
-            This->ic2 = 2.0f * v2 - This->ic2;
-            
-            // output
-            output[i] = v2;
         }
         
         // if we are in release mode,
@@ -250,6 +257,7 @@ void BMAttackFilter_processBufferBelowDb(BMAttackFilter *This,float maxDb,float*
             // and save the gradient so that we have it ready in case the next
             // sample we switch into attack mode
             This->previousOutputGradient = x - This->previousOutputValue;
+            This->localReleaseValue = x;
         }
         
         This->previousOutputValue = output[i];

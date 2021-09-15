@@ -48,6 +48,8 @@ typedef struct BMAttackFilter {
     float g,gInv_2,k;
     float a1, a2, a3;
     float previousOutputValue, previousOutputGradient;
+    float localReleaseValue;
+    float localPeakValue;
     bool attackMode;
 } BMAttackFilter;
 
