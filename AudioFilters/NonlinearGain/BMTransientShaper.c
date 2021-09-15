@@ -270,12 +270,14 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     if(This->isTesting)
         memcpy(This->testBuffer2,fastSustainEnvelope, sizeof(float)*numSamples);
 
+    if(This->isTesting)
+        memcpy(This->testBuffer3, instantAttackEnvelope, sizeof(float)*numSamples);
     
     //Get release control
     vDSP_vsub(fastSustainEnvelope, 1, slowSustainEnvelope, 1, This->releaseControlSignal, 1, numSamples);
     
-    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-        BMDynamicSmoothingFilter_processBufferWithFastDescent2(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
+//    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
+//        BMDynamicSmoothingFilter_processBufferWithFastDescent2(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
     
     //Apply depth
     // exaggerate the control signal
@@ -290,8 +292,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     //Mix attack & release control signal
     vDSP_vadd(This->attackControlSignal, 1, This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
     
-    if(This->isTesting)
-        memcpy(This->testBuffer3, This->releaseControlSignal, sizeof(float)*numSamples);
+    
     
     // convert back to linear scale
     BMConv_dBToGainV(This->releaseControlSignal, This->releaseControlSignal, numSamples);
@@ -546,10 +547,23 @@ void BMTransientShaper_processStereoTest(BMTransientShaper *This,
         This->asSections[0].testBuffer2 = outCS2 + samplesProcessed;
         This->asSections[0].testBuffer3 = outCS3 + samplesProcessed;
         
-        // process transient shapers on each band
-        BMTransientShaperSection_processStereo(&This->asSections[0], inputL+ samplesProcessed, inputR+ samplesProcessed, outputL+ samplesProcessed, outputR+ samplesProcessed, samplesProcessing);
+//        // process transient shapers on each band
+//        BMTransientShaperSection_processStereo(&This->asSections[0], inputL+ samplesProcessed, inputR+ samplesProcessed, outputL+ samplesProcessed, outputR+ samplesProcessed, samplesProcessing);
         
 
+        // split the signal into two bands
+        BMCrossover_processStereo(&This->crossover2, inputL+ samplesProcessed, inputR+ samplesProcessed, This->b1L, This->b1R, This->b2L, This->b2R, samplesProcessing);
+
+
+        // process transient shapers on each band
+        BMTransientShaperSection_processStereo(&This->asSections[0], This->b1L, This->b1R, This->b1L, This->b1R, samplesProcessing);
+//        BMTransientShaperSection_processStereo(&This->asSections[1], This->b2L, This->b2R, This->b2L, This->b2R, samplesProcessing);
+
+
+        // recombine the signal
+        vDSP_vadd(This->b1L, 1, This->b2L, 1, outputL+ samplesProcessed, 1, samplesProcessing);
+        vDSP_vadd(This->b1R, 1, This->b2R, 1, outputR+ samplesProcessed, 1, samplesProcessing);
+        
         
         // advance pointers
         samplesProcessed += samplesProcessing;
@@ -585,11 +599,11 @@ void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTime
     // find the lpf cutoff frequency that corresponds to the specified attack time
     float slowReleaseFC = ARTimeToCutoffFrequency(releaseTimeInSeconds, BMTS_RRF_NUMLEVELS);
     
-    slowReleaseFC *= 0.07f;//0.05
+    slowReleaseFC *= 0.3f;//0.05
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[0], slowReleaseFC);
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
-    float fastFC = slowReleaseFC*1.66f;
+    float fastFC = slowReleaseFC*1.2f;
     BMTransientShaperSection_setSustainFastFC(&This->asSections[0], fastFC);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[1], fastFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
