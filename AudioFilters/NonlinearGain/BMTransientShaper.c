@@ -202,13 +202,13 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     // absolute value
     vDSP_vabs(input, 1, input, 1, numSamples);
     
-    // apply a simple per-sample noise gate
-    float noiseGateClosedValue = BM_DB_TO_GAIN(BMTS_NOISE_GATE_CLOSED_LEVEL);
-    BMTransientShaperSection_simpleNoiseGate(This, input, This->noiseGateThreshold, noiseGateClosedValue, input, numSamples);
-    
-    // convert to decibels
-    float one = 1.0f;
-    vDSP_vdbcon(input, 1, &one, input, 1, numSamples, 0);
+//    // apply a simple per-sample noise gate
+//    float noiseGateClosedValue = BM_DB_TO_GAIN(BMTS_NOISE_GATE_CLOSED_LEVEL);
+//    BMTransientShaperSection_simpleNoiseGate(This, input, This->noiseGateThreshold, noiseGateClosedValue, input, numSamples);
+//
+//    // convert to decibels
+//    float one = 1.0f;
+//    vDSP_vdbcon(input, 1, &one, input, 1, numSamples, 0);
     
     /* ------------ ATTACK FILTER ---------*/
     // release filter to get instant attack envelope
@@ -270,8 +270,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     if(This->isTesting)
         memcpy(This->testBuffer2,fastSustainEnvelope, sizeof(float)*numSamples);
 
-    if(This->isTesting)
-        memcpy(This->testBuffer3, instantAttackEnvelope, sizeof(float)*numSamples);
+    
     
     //Get release control
     vDSP_vsub(fastSustainEnvelope, 1, slowSustainEnvelope, 1, This->releaseControlSignal, 1, numSamples);
@@ -292,7 +291,8 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     //Mix attack & release control signal
     vDSP_vadd(This->attackControlSignal, 1, This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
     
-    
+    if(This->isTesting)
+        memcpy(This->testBuffer3, This->releaseControlSignal, sizeof(float)*numSamples);
     
     // convert back to linear scale
     BMConv_dBToGainV(This->releaseControlSignal, This->releaseControlSignal, numSamples);
@@ -603,7 +603,7 @@ void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTime
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[0], slowReleaseFC);
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
-    float fastFC = slowReleaseFC*1.2f;
+    float fastFC = slowReleaseFC*1.66f;
     BMTransientShaperSection_setSustainFastFC(&This->asSections[0], fastFC);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[1], fastFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
