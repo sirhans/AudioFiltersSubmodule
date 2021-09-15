@@ -599,7 +599,7 @@ void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTime
     // find the lpf cutoff frequency that corresponds to the specified attack time
     float slowReleaseFC = ARTimeToCutoffFrequency(releaseTimeInSeconds, BMTS_RRF_NUMLEVELS);
     
-    slowReleaseFC *= 0.3f;//0.05
+    slowReleaseFC *= 0.07f;//0.05
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[0], slowReleaseFC);
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
