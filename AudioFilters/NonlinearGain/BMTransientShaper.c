@@ -92,7 +92,7 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     // the dynamic smoothing filter prevents clicks when changing gain
     for(size_t i=0; i<BMTS_DSF_NUMLEVELS; i++){
         BMDynamicSmoothingFilter_init(&This->dsfAttack[i], dsfSensitivity, dsfFcMin, dsfFcMax, This->sampleRate);
-        BMDynamicSmoothingFilter_init(&This->dsfSustain[i], dsfSensitivity, dsfFcMin, dsfFcMax, This->sampleRate);
+        BMDynamicSmoothingFilter_init(&This->dsfSustain[i], 3.0f, 5.0f, 1000.0f, This->sampleRate);
     }
 
 }
@@ -148,7 +148,7 @@ void BMTransientShaperSection_setSustainSlowFC(BMTransientShaperSection *This, f
 void BMTransientShaperSection_setDSMinFrequency(BMTransientShaperSection *This, float dsMinFc){
     for(size_t i=0; i<BMTS_DSF_NUMLEVELS; i++){
         BMDynamicSmoothingFilter_setMinFc(&This->dsfAttack[i], dsMinFc);
-        BMDynamicSmoothingFilter_setMinFc(&This->dsfSustain[i], dsMinFc);
+//        BMDynamicSmoothingFilter_setMinFc(&This->dsfSustain[i], dsMinFc);
     }
 }
 
@@ -278,15 +278,23 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
 
     //Get release control
-    vDSP_vsub(fastSustainEnvelope, 1, slowSustainEnvelope, 1, This->releaseControlSignal, 1, numSamples);
+    vDSP_vsub(slowSustainEnvelope, 1, fastSustainEnvelope, 1, This->releaseControlSignal, 1, numSamples);
     
+    
+    
+    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
+        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
+    
+    if(This->isTesting)
+        memcpy(This->testBuffer3,  This->releaseControlSignal, sizeof(float)*numSamples);
     
     //Apply depth
     // exaggerate the control signal
     float adjustedExaggeration = This->attackDepth * This->attackExaggeration;
     vDSP_vsmul(This->attackControlSignal, 1, &adjustedExaggeration, This->attackControlSignal, 1, numSamples);
     
-    adjustedExaggeration = This->releaseDepth * This->sustainExaggeration;
+    
+    adjustedExaggeration = This->releaseDepth * -This->sustainExaggeration;
     vDSP_vsmul(This->releaseControlSignal, 1, &adjustedExaggeration, This->releaseControlSignal, 1, numSamples);
     
     
@@ -294,8 +302,10 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     //Mix attack & release control signal
     vDSP_vadd(This->attackControlSignal, 1, This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
     
-    if(This->isTesting)
-        memcpy(This->testBuffer3,  This->releaseControlSignal, sizeof(float)*numSamples);
+    
+    
+    
+    
     
     // convert back to linear scale
     BMConv_dBToGainV(This->releaseControlSignal, This->releaseControlSignal, numSamples);
@@ -606,7 +616,7 @@ void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTime
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[0], slowReleaseFC);
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
-    float fastFC = ARTimeToCutoffFrequency(releaseTimeInSeconds/2.0f, BMTS_RRF2_NUMLEVELS);
+    float fastFC = ARTimeToCutoffFrequency(releaseTimeInSeconds, BMTS_RRF2_NUMLEVELS);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[0], fastFC);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[1], fastFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
