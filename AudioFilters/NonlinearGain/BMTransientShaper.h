@@ -53,6 +53,7 @@ typedef struct BMTransientShaperSection {
     
     BMDynamicSmoothingFilter* dsfAttack;
     BMDynamicSmoothingFilter* dsfSustain;
+    BMDynamicSmoothingFilter* dsfSustainSlow;
     
     
     BMShortSimpleDelay dly;
