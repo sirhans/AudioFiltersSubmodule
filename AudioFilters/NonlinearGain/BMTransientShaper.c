@@ -93,8 +93,8 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     // the dynamic smoothing filter prevents clicks when changing gain
     for(size_t i=0; i<BMTS_DSF_NUMLEVELS; i++){
         BMDynamicSmoothingFilter_init(&This->dsfAttack[i], dsfSensitivity, dsfFcMin, dsfFcMax, This->sampleRate);
-        BMDynamicSmoothingFilter_init(&This->dsfSustain[i], 3.0f, 5.0f, 1000.0f, This->sampleRate);
-        BMDynamicSmoothingFilter_init(&This->dsfSustainSlow[i], 2.0f, 5.0f, 1000.0f, This->sampleRate);
+        BMDynamicSmoothingFilter_init(&This->dsfSustain[i], 2.5f, 5.0f, 1000.0f, This->sampleRate);
+        BMDynamicSmoothingFilter_init(&This->dsfSustainSlow[i], 2.5f, 5.0f, 1000.0f, This->sampleRate);
     }
 
 }
@@ -272,11 +272,11 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     for(size_t i=0; i<BMTS_RRF2_NUMLEVELS; i++)
         BMReleaseFilter_processBuffer(&This->sustainFastReleaseFilter[i], instantAttackEnvelope, fastSustainEnvelope, numSamples);
     
+    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
+        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustainSlow[i], slowSustainEnvelope, slowSustainEnvelope, numSamples);
     
-    
-//    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-//        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustainSlow[i], slowSustainEnvelope, slowSustainEnvelope, numSamples);
-    
+    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
+        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustain[i], fastSustainEnvelope, fastSustainEnvelope, numSamples);
     
 
     if(This->isTesting)
@@ -289,8 +289,8 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     vDSP_vsub(slowSustainEnvelope, 1, fastSustainEnvelope, 1, This->releaseControlSignal, 1, numSamples);
     
     
-    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
+    limit = 0.0f;
+    BMTransientShaper_upperLimit(limit, This->releaseControlSignal, This->releaseControlSignal, numSamples);
     
     
     //Apply depth
@@ -622,7 +622,7 @@ void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTime
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[0], slowReleaseFC);
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
-    float fastFC = ARTimeToCutoffFrequency(releaseTimeInSeconds*6.0f, BMTS_RRF2_NUMLEVELS);
+    float fastFC = ARTimeToCutoffFrequency(releaseTimeInSeconds*4.0f, BMTS_RRF2_NUMLEVELS);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[0], fastFC);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[1], fastFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
