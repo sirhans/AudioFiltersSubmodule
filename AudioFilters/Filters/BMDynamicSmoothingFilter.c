@@ -78,13 +78,14 @@ void BMDynamicSmoothingFilter_processBufferFastAccent2(BMDynamicSmoothingFilter 
 											size_t numSamples){
     float threshold = This->sensitivity; //DB
 	for(size_t i=0; i<numSamples; i++){
+        if(input[i]>-40){
 		float bandz = This->low1z - This->low2z;
         //If the input is far from the output & we are going up
         if(fabsf(input[i] - This->low2z)>threshold&&
            input[i] > This->low2z
            ){
             if(This->g!=This->gMax){
-                This->low1z = ((This->gMax * This->low2z) - (This->g * bandz)) / This->gMax;
+//                This->low1z = ((This->gMax * This->low2z) - (This->g * bandz)) / This->gMax;
                 This->g = This->gMax;
             }
             
@@ -94,7 +95,7 @@ void BMDynamicSmoothingFilter_processBufferFastAccent2(BMDynamicSmoothingFilter 
             if(This->g!=This->gMin){
                 if(input[i] < This->low2z){
 //                    This->low1z = This->low2z;
-                    This->low1z = ((This->gMin * This->low2z) - (This->g * bandz)) / This->gMin;
+//                    This->low1z = ((This->gMin * This->low2z) - (This->g * bandz)) / This->gMin;
                     This->g = This->gMin;
                 }else{
                     //Ignore g
@@ -105,6 +106,7 @@ void BMDynamicSmoothingFilter_processBufferFastAccent2(BMDynamicSmoothingFilter 
 		This->low2z += This->g * (bandz);
 		This->low1z += This->g * (input[i] - This->low1z);
 		output[i] = This->low2z;
+        }
 	}
 }
 

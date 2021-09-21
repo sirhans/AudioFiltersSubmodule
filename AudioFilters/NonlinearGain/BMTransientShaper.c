@@ -93,7 +93,7 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     // the dynamic smoothing filter prevents clicks when changing gain
     for(size_t i=0; i<BMTS_DSF_NUMLEVELS; i++){
         BMDynamicSmoothingFilter_init(&This->dsfAttack[i], dsfSensitivity, dsfFcMin, dsfFcMax, This->sampleRate);
-        BMDynamicSmoothingFilter_init(&This->dsfSustain[i], 2.5f, 5.0f, 1000.0f, This->sampleRate);
+        BMDynamicSmoothingFilter_init(&This->dsfSustain[i], 3.5f, 5.0f, 1000.0f, This->sampleRate);
         BMDynamicSmoothingFilter_init(&This->dsfSustainSlow[i], 2.5f, 5.0f, 1000.0f, This->sampleRate);
     }
 
@@ -272,12 +272,10 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     for(size_t i=0; i<BMTS_RRF2_NUMLEVELS; i++)
         BMReleaseFilter_processBuffer(&This->sustainFastReleaseFilter[i], instantAttackEnvelope, fastSustainEnvelope, numSamples);
     
-    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustainSlow[i], slowSustainEnvelope, slowSustainEnvelope, numSamples);
+//    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
+//        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustainSlow[i], fastSustainEnvelope, fastSustainEnvelope, numSamples);
     
-    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustain[i], fastSustainEnvelope, fastSustainEnvelope, numSamples);
-    
+
 
     if(This->isTesting)
         memcpy(This->testBuffer1, slowSustainEnvelope, sizeof(float)*numSamples);
@@ -288,10 +286,11 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     //Get release control
     vDSP_vsub(slowSustainEnvelope, 1, fastSustainEnvelope, 1, This->releaseControlSignal, 1, numSamples);
     
+    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
+        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
     
-    limit = 0.0f;
-    BMTransientShaper_upperLimit(limit, This->releaseControlSignal, This->releaseControlSignal, numSamples);
-    
+    if(This->isTesting)
+        memcpy(This->testBuffer3,  This->releaseControlSignal, sizeof(float)*numSamples);
     
     //Apply depth
     // exaggerate the control signal
@@ -309,8 +308,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     
     
-    if(This->isTesting)
-        memcpy(This->testBuffer3,  This->releaseControlSignal, sizeof(float)*numSamples);
+    
     
     
     // convert back to linear scale
