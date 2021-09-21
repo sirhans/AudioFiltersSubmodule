@@ -93,7 +93,7 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     // the dynamic smoothing filter prevents clicks when changing gain
     for(size_t i=0; i<BMTS_DSF_NUMLEVELS; i++){
         BMDynamicSmoothingFilter_init(&This->dsfAttack[i], dsfSensitivity, dsfFcMin, dsfFcMax, This->sampleRate);
-        BMDynamicSmoothingFilter_init(&This->dsfSustain[i], 3.5f, 5.0f, 1000.0f, This->sampleRate);
+        BMDynamicSmoothingFilter_init(&This->dsfSustain[i], 1.5f, 5.0f, 1000.0f, This->sampleRate);
         BMDynamicSmoothingFilter_init(&This->dsfSustainSlow[i], 2.5f, 5.0f, 1000.0f, This->sampleRate);
     }
 
@@ -271,10 +271,6 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     for(size_t i=0; i<BMTS_RRF2_NUMLEVELS; i++)
         BMReleaseFilter_processBuffer(&This->sustainFastReleaseFilter[i], instantAttackEnvelope, fastSustainEnvelope, numSamples);
-    
-//    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-//        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustainSlow[i], fastSustainEnvelope, fastSustainEnvelope, numSamples);
-    
 
 
     if(This->isTesting)
@@ -286,11 +282,13 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     //Get release control
     vDSP_vsub(slowSustainEnvelope, 1, fastSustainEnvelope, 1, This->releaseControlSignal, 1, numSamples);
     
-    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
-    
     if(This->isTesting)
         memcpy(This->testBuffer3,  This->releaseControlSignal, sizeof(float)*numSamples);
+    
+//    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
+//        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
+    
+    
     
     //Apply depth
     // exaggerate the control signal
@@ -614,13 +612,13 @@ void BMTransientShaper_setAttackDepth(BMTransientShaper *This, float depth){
 
 void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTimeInSeconds){
     // find the lpf cutoff frequency that corresponds to the specified attack time
-    float slowReleaseFC = ARTimeToCutoffFrequency(releaseTimeInSeconds*12.0f, BMTS_RRF1_NUMLEVELS);
+    float slowReleaseFC = ARTimeToCutoffFrequency(releaseTimeInSeconds*8.0f, BMTS_RRF1_NUMLEVELS);
     
 //    slowReleaseFC *= 0.1f;//0.05
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[0], slowReleaseFC);
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
-    float fastFC = ARTimeToCutoffFrequency(releaseTimeInSeconds*4.0f, BMTS_RRF2_NUMLEVELS);
+    float fastFC = ARTimeToCutoffFrequency(releaseTimeInSeconds*6.0f, BMTS_RRF2_NUMLEVELS);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[0], fastFC);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[1], fastFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
