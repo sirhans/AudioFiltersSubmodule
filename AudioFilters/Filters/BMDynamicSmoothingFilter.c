@@ -78,7 +78,6 @@ void BMDynamicSmoothingFilter_processBufferFastAccent2(BMDynamicSmoothingFilter 
 											size_t numSamples){
     float threshold = This->sensitivity; //DB
 	for(size_t i=0; i<numSamples; i++){
-        if(input[i]>-40){
 		float bandz = This->low1z - This->low2z;
         //If the input is far from the output & we are going up
         if(fabsf(input[i] - This->low2z)>threshold&&
@@ -106,7 +105,6 @@ void BMDynamicSmoothingFilter_processBufferFastAccent2(BMDynamicSmoothingFilter 
 		This->low2z += This->g * (bandz);
 		This->low1z += This->g * (input[i] - This->low1z);
 		output[i] = This->low2z;
-        }
 	}
 }
 
