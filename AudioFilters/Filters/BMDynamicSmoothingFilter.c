@@ -84,7 +84,7 @@ void BMDynamicSmoothingFilter_processBufferFastAccent2(BMDynamicSmoothingFilter 
            input[i] > This->low2z
            ){
             if(This->g!=This->gMax){
-//                This->low1z = ((This->gMax * This->low2z) - (This->g * bandz)) / This->gMax;
+                This->low1z = ((This->gMax * This->low2z) - (This->g * bandz)) / This->gMax;
                 This->g = This->gMax;
             }
             
@@ -93,8 +93,7 @@ void BMDynamicSmoothingFilter_processBufferFastAccent2(BMDynamicSmoothingFilter 
             //If we are going down and the input is close to the output
             if(This->g!=This->gMin){
                 if(input[i] < This->low2z){
-//                    This->low1z = This->low2z;
-//                    This->low1z = ((This->gMin * This->low2z) - (This->g * bandz)) / This->gMin;
+                    This->low1z = ((This->gMin * This->low2z) - (This->g * bandz)) / This->gMin;
                     This->g = This->gMin;
                 }else{
                     //Ignore g
@@ -106,6 +105,40 @@ void BMDynamicSmoothingFilter_processBufferFastAccent2(BMDynamicSmoothingFilter 
 		This->low1z += This->g * (input[i] - This->low1z);
 		output[i] = This->low2z;
 	}
+}
+
+void BMDynamicSmoothingFilter_processBufferFastAccent3(BMDynamicSmoothingFilter *This,
+                                            const float* input,
+                                            float* output,
+                                            size_t numSamples){
+    float threshold = This->sensitivity; //DB
+    for(size_t i=0; i<numSamples; i++){
+        float bandz = This->low1z - This->low2z;
+        //If the input is far from the output & we are going up
+        if(input[i]>threshold
+           ){
+            if(This->g!=This->gMax){
+                This->low1z = ((This->gMax * This->low2z) - (This->g * bandz)) / This->gMax;
+                This->g = This->gMax;
+            }
+            
+        }else{
+            //Decending
+            //If we are going down and the input is close to the output
+            if(This->g!=This->gMin){
+                if(input[i] < This->low2z){
+                    This->low1z = ((This->gMin * This->low2z) - (This->g * bandz)) / This->gMin;
+                    This->g = This->gMin;
+                }else{
+                    //Ignore g
+                }
+            }
+            
+        }
+        This->low2z += This->g * (bandz);
+        This->low1z += This->g * (input[i] - This->low1z);
+        output[i] = This->low2z;
+    }
 }
 
 float BMDSF_positiveOnly(float x){

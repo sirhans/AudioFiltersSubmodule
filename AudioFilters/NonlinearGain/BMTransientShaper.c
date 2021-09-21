@@ -50,7 +50,7 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     This->dsfAttack = malloc(sizeof(BMDynamicSmoothingFilter)*BMTS_DSF_NUMLEVELS);
     This->dsfSustain = malloc(sizeof(BMDynamicSmoothingFilter)*BMTS_DSF_NUMLEVELS);
     This->dsfSustainSlow = malloc(sizeof(BMDynamicSmoothingFilter)*BMTS_DSF_NUMLEVELS);
-    
+    This->dsfSustainFast = malloc(sizeof(BMDynamicSmoothingFilter)*BMTS_DSF_NUMLEVELS);
     
     
     // the release filters generate the fast envelope across the peaks
@@ -93,8 +93,9 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     // the dynamic smoothing filter prevents clicks when changing gain
     for(size_t i=0; i<BMTS_DSF_NUMLEVELS; i++){
         BMDynamicSmoothingFilter_init(&This->dsfAttack[i], dsfSensitivity, dsfFcMin, dsfFcMax, This->sampleRate);
-        BMDynamicSmoothingFilter_init(&This->dsfSustain[i], 1.5f, 5.0f, 1000.0f, This->sampleRate);
-        BMDynamicSmoothingFilter_init(&This->dsfSustainSlow[i], 2.5f, 5.0f, 1000.0f, This->sampleRate);
+        BMDynamicSmoothingFilter_init(&This->dsfSustain[i], 1.5f, 5.0f, 10000.0f, This->sampleRate);
+        BMDynamicSmoothingFilter_init(&This->dsfSustainSlow[i], -15.0f, 1.0f, 1000.0f, This->sampleRate);
+        BMDynamicSmoothingFilter_init(&This->dsfSustainFast[i], -15.0f, 1.0f, 1000.0f, This->sampleRate);
     }
 
 }
@@ -123,6 +124,8 @@ void BMTransientShaperSection_free(BMTransientShaperSection *This){
     This->dsfSustain = NULL;
     free(This->dsfSustainSlow);
     This->dsfSustainSlow = NULL;
+    free(This->dsfSustainFast);
+    This->dsfSustainFast = NULL;
 }
 
 void BMTransientShaperSection_setAttackSlowFC(BMTransientShaperSection *This, float attackFc){
@@ -272,6 +275,12 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     for(size_t i=0; i<BMTS_RRF2_NUMLEVELS; i++)
         BMReleaseFilter_processBuffer(&This->sustainFastReleaseFilter[i], instantAttackEnvelope, fastSustainEnvelope, numSamples);
 
+//    //Dynamic smooth
+//    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
+//        BMDynamicSmoothingFilter_processBufferFastAccent3(&This->dsfSustainSlow[i], slowSustainEnvelope, slowSustainEnvelope, numSamples);
+//    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
+//        BMDynamicSmoothingFilter_processBufferFastAccent3(&This->dsfSustainFast[i], fastSustainEnvelope, fastSustainEnvelope, numSamples);
+    
 
     if(This->isTesting)
         memcpy(This->testBuffer1, slowSustainEnvelope, sizeof(float)*numSamples);
@@ -282,13 +291,13 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     //Get release control
     vDSP_vsub(slowSustainEnvelope, 1, fastSustainEnvelope, 1, This->releaseControlSignal, 1, numSamples);
     
+    
+    
+    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
+        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
+    
     if(This->isTesting)
         memcpy(This->testBuffer3,  This->releaseControlSignal, sizeof(float)*numSamples);
-    
-//    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-//        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
-    
-    
     
     //Apply depth
     // exaggerate the control signal
