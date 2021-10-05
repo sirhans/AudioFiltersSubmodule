@@ -99,6 +99,28 @@ void BMFFT_FFTComplexOutput(BMFFT *This,
 
 
 
+void BMFFT_IFFT(BMFFT *This,
+			    const DSPSplitComplex* input,
+				float *output,
+				size_t inputLength){
+	
+	// require the input length to meet the requirements of the FFT setup struct
+	assert(2*inputLength <= This->maxInputLength);
+	assert(isPowerOfTwo(inputLength));
+	assert(inputLength > 0);
+	
+	// calculate the inverse fft
+	size_t recursionLevels = log2i((uint32_t)inputLength);
+	vDSP_fft_zropt(This->setup, input, 1, &This->fft_output, 1, &This->fft_buffer, recursionLevels, FFT_INVERSE);
+	
+	// convert the output from the packed complex array that the fft algo uses
+	vDSP_ztoc(&This->fft_output, 1, (DSPComplex *)output, 2, inputLength);
+}
+
+
+
+
+
 void BMFFT_absFFTCombinedDCNQ(BMFFT *This,
                               const float* input,
                               float* output,
@@ -252,6 +274,15 @@ void BMFFT_generateBlackmanHarrisCoefficients(float* window, size_t length){
 
 
 
+void BMFFT_generateHannCoefficients(float *window, size_t length){
+	bool normalise = false;
+	vDSP_hann_window(window, length, normalise);
+}
+
+
+
+
+
 void BMFFT_blackmanHarrisWindow(BMFFT *This,
 								const float* input,
 								float* output,
@@ -277,8 +308,7 @@ void BMFFT_hannWindow(BMFFT *This,
 	
 	// if the window cached in the buffer does not have the specified length, or isn't a blackman-harris window recompute it.
 	if(This->windowCurrentLength != numSamples || This->windowType != BMFFT_HANN){
-		bool normalise = false;
-		vDSP_hann_window(This->window, numSamples, normalise);
+		BMFFT_generateHannCoefficients(This->window,numSamples);
 		This->windowCurrentLength = numSamples;
 		This->windowType = BMFFT_HANN;
 	}

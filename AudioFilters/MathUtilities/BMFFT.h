@@ -52,9 +52,9 @@ void BMFFT_free(BMFFT *This);
 /*!
  *BMFFT_complexFFT
  *
- * calculates complex output from real-valued input. Only the positive frequency side of the output is returned (from DC to nyquist). Because the DC and Nyquist terms are both real-valued, the Nyquist term is stored in output[0].imag so that the output length can be inputLength/2 rather than inputLength/2 + 1.
+ * calculates complex output from real-valued input. Only the positive frequency side of the output is returned (from DC to nyquist). Because the DC aBMFFT_generateKaiserCoefficients-valued, the Nyquist term is stored in output[0].imag so that the output length can be inputLength/2 rather than inputLength/2 + 1.
  *
- * @param This pointer to an uninitialised struct
+ * @param This pointer to an initialised struct
  * @param input real valued input array of length inputLength
  * @param output a complex-valued array of length inputLength / 2
  * @param inputLength a power of 2 such that 0 < inputLength <= This->maxInputLength
@@ -63,6 +63,20 @@ void BMFFT_FFTComplexOutput(BMFFT *This,
 							const float* input,
 							DSPSplitComplex *output,
 							size_t inputLength);
+
+
+/*!
+ *BMFFT_IFFT
+ *
+ * @param This pointer to an initialised struct
+ * @param input complex valued array of inputLength (positive frequencies only)
+ * @param output real valued output array of length 2*inputLength
+ * @inputLength a power of 2 such that 0 < inputLength <= This->maxInputLength
+ */
+void BMFFT_IFFT(BMFFT *This,
+				const DSPSplitComplex* input,
+				float *output,
+				size_t inputLength);
 
 
 
@@ -206,6 +220,22 @@ void BMFFT_kaiserWindow(BMFFT *This,
  * @param length length of window
  */
 void BMFFT_generateKaiserCoefficients(float* window, double beta, size_t length);
+
+
+
+/*!
+ *BMFFT_generateHannCoefficients
+ *
+ * This function generates the hann window coefficients with the
+ * window centred at length/2.
+ * 
+ * If you need to apply this window in realtime you should use
+ * BMFFT_hannWindow instead.
+ *
+ * @param window output array with length=length
+ * @param length length of window
+ */
+void BMFFT_generateHannCoefficients(float* window, size_t length);
 
 
 
