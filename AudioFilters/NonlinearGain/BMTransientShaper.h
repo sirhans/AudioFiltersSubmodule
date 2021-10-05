@@ -1,117 +1,101 @@
 //
 //  BMTransientShaper.h
-//  AudioFiltersXcodeProject
+//  BMAUTransientShaper
 //
-//  Created by hans anderson on 5/17/19.
-//  Copyright © 2019 BlueMangoo. All rights reserved.
+//  Created by Nguyen Minh Tien on 7/9/21.
 //
 
 #ifndef BMTransientShaper_h
 #define BMTransientShaper_h
 
 #include <stdio.h>
-#include "BMEnvelopeFollower.h"
 #include "Constants.h"
+#include "BMEnvelopeFollower.h"
+#include "BMMultiLevelBiquad.h"
+#include "BMDynamicSmoothingFilter.h"
+#include "BMShortSimpleDelay.h"
+#include "BMQuadraticLimiter.h"
+#include "BMCrossover.h"
 
+#define BMTS_DELAY_AT_48KHZ_SAMPLES 100.0f
+#define BMTS_AF_NUMLEVELS 1
+#define BMTS_ARF_NUMLEVELS 3
+#define BMTS_RRF1_NUMLEVELS 1
+#define BMTS_RRF2_NUMLEVELS 3
+#define BMTS_DSF_NUMLEVELS 1
+#define BMTS_NUM_SECTIONS 2
+#define BMTS_SECTION_2_AF_MULTIPLIER 1.25f
+#define BMTS_SECTION_2_RF_MULTIPLIER 2.0f
+#define BMTS_SECTION_2_EXAGGERATION_MULTIPLIER 1.1f
+#define BMTS_NOISE_GATE_CLOSED_LEVEL -100.0f
 
-typedef struct BMTransientEnveloper {
-    // filters for transient attack envelope
-    BMReleaseFilter attackRF1 [BMENV_NUM_STAGES];
-    BMReleaseFilter attackRF2 [BMENV_NUM_STAGES];
-    BMAttackFilter  attackAF1 [BMENV_NUM_STAGES];
-    BMAttackFilter  attackAF2 [BMENV_NUM_STAGES];
-    BMDynamicSmoothingFilter attackDSF;
-    bool filterAttackOnset;
-    
-    // filter for transient after-attack envelope
-    BMReleaseFilter afterAttackRF;
-    
-    // filters for transient release envelope
-    BMReleaseFilter releaseRF1 [BMENV_NUM_STAGES];
-    BMReleaseFilter releaseRF2;
-    BMDynamicSmoothingFilter releaseDSF;
-    
-    // filters for after-attack envelopes
-} BMTransientEnveloper;
+#define BMTS_BAND_1_FC 300.0f
+#define BMTS_BAND_2_FC 750.0f
+#define BMTS_BAND_3_FC 1600.0f
 
+typedef struct BMTransientShaperSection {
+    float* inputBuffer;
+    float* b1;
+    float* b2;
+    float* attackControlSignal;
+    float* releaseControlSignal;
+    BMReleaseFilter* attackInstanceFilter;
+    BMAttackFilter* attackSlowFilter;
+    
+    BMReleaseFilter* sustainFastReleaseFilter;
+    BMReleaseFilter* sustainSlowReleaseFilter;
+
+    BMAttackFilter sustainFakeAttackFilter;
+    BMAttackFilter sustainAttackFilter;
+    BMReleaseFilter sustainInputFastReleaseFilter;
+    BMReleaseFilter sustainInputSlowReleaseFilter;
+    float attackFilterThreshold;
+    
+    BMDynamicSmoothingFilter* dsfAttack;
+    BMDynamicSmoothingFilter* dsfSustain;
+    BMDynamicSmoothingFilter* dsfSustainSlow;
+    BMDynamicSmoothingFilter* dsfSustainFast;
+    
+    
+    BMShortSimpleDelay dly;
+    size_t delaySamples;
+    float attackExaggeration,sustainExaggeration, attackDepth, releaseDepth, sampleRate, noiseGateThreshold;
+    bool isStereo;
+    bool isTesting;
+    bool noiseGateIsOpen;
+    float* testBuffer1;
+    float* testBuffer2;
+    float* testBuffer3;
+} BMTransientShaperSection;
 
 
 typedef struct BMTransientShaper {
-    BMTransientEnveloper enveloper;
-	float attackEnv [BM_BUFFER_CHUNK_SIZE];
-	float postAttackEnv [BM_BUFFER_CHUNK_SIZE];
-	float releaseEnv [BM_BUFFER_CHUNK_SIZE];
-	float buffer1 [BM_BUFFER_CHUNK_SIZE];
-	float attackStrength, postAttackStrength, releaseStrength;
+    BMTransientShaperSection* asSections;// [BMTS_NUM_SECTIONS];
+    BMCrossover crossover2;
+    float *b1L, *b2L, *b1R, *b2R;
+    bool isStereo;
 } BMTransientShaper;
 
+void BMTransientShaper_init(BMTransientShaper *This, bool isStereo, float sampleRate,bool isTesting);
+void BMTransientShaper_free(BMTransientShaper *This);
 
+void BMTransientShaper_processStereo(BMTransientShaper *This,
+                                           const float *inputL, const float *inputR,
+                                           float *outputL, float *outputR,
+                                     size_t numSamples);
+void BMTransientShaper_processMono(BMTransientShaper *This,
+                                         const float *input,
+                                         float *output,
+                                   size_t numSamples);
 
-/*!
- *BMTransientShaper_init
- *
- * @abstract this function does not allocate heap memory
- */
-void BMTransientShaper_init(BMTransientShaper *This, float sampleRate);
+void BMTransientShaper_processStereoTest(BMTransientShaper *This,
+                                           const float *inputL, const float *inputR,
+                                           float *outputL, float *outputR,float* outCS1,float* outCS2,float* outCS3,
+                                         size_t numSamples);
 
-
-/*!
- *BMTransientShaper_processBufferStereo
- */
-void BMTransientShaper_processBufferStereo(BMTransientShaper *This,
-										   const float* inL, const float* inR,
-										   float* outL, float* outR,
-										   size_t numSamples);
-
-/*!
- *BMTransientShaper_setAttackStrength
- *
- * @param This pointer to an initialised struct
- * @param strength in -1,1
- */
-void BMTransientShaper_setAttackStrength(BMTransientShaper *This, float strength);
-
-
-/*!
- *BMTransientShaper_setPostAttackStrength
- *
- * @param This pointer to an initialised struct
- * @param strength in -1,1
- */
-void BMTransientShaper_setPostAttackStrength(BMTransientShaper *This, float strength);
-
-
-/*!
- *BMTransientShaper_setReleaseStrength
- *
- * @param This pointer to an initialised struct
- * @param strength in -1,1
- */
-void BMTransientShaper_setReleaseStrength(BMTransientShaper *This, float strength);
-
-
-/*!
- *BMTransientShaper_setAttackTime
- */
-void BMTransientShaper_setAttackTime(BMTransientShaper *This, float timeInSeconds);
-
-
-
-/*!
- *BMTransientShaper_setPostAttackTime
- */
-void BMTransientShaper_setPostAttackTime(BMTransientShaper *This, float timeInSeconds);
-
-
-
-
-/*!
- *BMTransientShaper_setReleaseTime
- */
-void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float timeInSeconds);
-
-
-
-
+void BMTransientShaper_setAttackTime(BMTransientShaper *This, float attackTimeInSeconds);
+void BMTransientShaper_setAttackDepth(BMTransientShaper *This, float depth);
+void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTimeInSeconds);
+void BMTransientShaper_setReleaseDepth(BMTransientShaper *This, float depth);
 
 #endif /* BMTransientShaper_h */

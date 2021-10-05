@@ -48,6 +48,8 @@ typedef struct BMAttackFilter {
     float g,gInv_2,k;
     float a1, a2, a3;
     float previousOutputValue, previousOutputGradient;
+    float localReleaseValue;
+    float localPeakValue;
     bool attackMode;
 } BMAttackFilter;
 
@@ -116,6 +118,11 @@ void BMAttackFilter_processBuffer(BMAttackFilter *This,
                                   const float* input,
                                   float* output,
                                   size_t numSamples);
+
+void BMAttackFilter_processBufferBelowDb(BMAttackFilter *This,float maxDb,float* slowAttack,
+                                  const float* input,
+                                  float* output,
+                                         size_t numSamples);
 
 /*!
  * BMReleaseFilter_processBuffer

@@ -13,9 +13,11 @@
 #define BM_MTS_LOW_CROSSOVER_FC 350.0f
 #define BM_MTS_HIGH_CROSSOVER_FC 1200.0f
 #define BM_MTS_TAPS_PER_CHANNEL 24
+#define BM_MTS_TAPS_PER_CHANNEL_BIG 128
 #define BM_MTS_WET_MIX 0.92f
 #define BM_MTS_DECORRELATOR_FREQUENCY_BAND_WIDTH 50.0f
 #define BM_MTS_DIFFUSION_TIME 1.0f / BM_MTS_DECORRELATOR_FREQUENCY_BAND_WIDTH
+#define BM_MTS_DIFFUSION_TIME_BIG 2.0f / BM_MTS_DECORRELATOR_FREQUENCY_BAND_WIDTH
 
 
 
@@ -56,6 +58,38 @@ void BMMonoToStereo_init(BMMonoToStereo *This, float sampleRate, bool stereoInpu
 }
 
 
+void BMMonoToStereo_initBigger(BMMonoToStereo *This, float sampleRate, bool stereoInput){
+    This->stereoInput = stereoInput;
+    
+    // initialise the velvet noise decorrelator that does the main work
+    BMVelvetNoiseDecorrelator_init(&This->vnd,
+                                   BM_MTS_DIFFUSION_TIME_BIG,
+                                   BM_MTS_TAPS_PER_CHANNEL_BIG,
+                                   BM_MTS_RT60,
+                                   true,
+                                   sampleRate);
+    
+    // set the wet/dry mix
+    BMVelvetNoiseDecorrelator_setWetMix(&This->vnd, BM_MTS_WET_MIX);
+    
+    // initialise a pair of crossover filters that will isolate only the midrange
+    // frequencies for mono-to-stereo conversion
+    BMCrossover3way_init(&This->crossover,
+                         BM_MTS_LOW_CROSSOVER_FC,
+                         BM_MTS_HIGH_CROSSOVER_FC,
+                         sampleRate,
+                         false,
+                         stereoInput);
+    
+    // allocate memory for buffers
+    size_t numBuffers = 6;
+    This->lowL = malloc(sizeof(float) * BM_BUFFER_CHUNK_SIZE * numBuffers);
+    This->lowR = This->lowL + BM_BUFFER_CHUNK_SIZE;
+    This->midL = This->lowR + BM_BUFFER_CHUNK_SIZE;
+    This->midR = This->midL + BM_BUFFER_CHUNK_SIZE;
+    This->highL = This->midR + BM_BUFFER_CHUNK_SIZE;
+    This->highR = This->highL + BM_BUFFER_CHUNK_SIZE;
+}
 
 
 

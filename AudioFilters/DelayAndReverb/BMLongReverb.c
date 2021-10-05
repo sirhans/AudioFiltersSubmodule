@@ -11,7 +11,6 @@
 #include "BMFastHadamard.h"
 
 
-
 #define Filter_Level_Lowshelf 0
 #define Filter_Level_Tone 1
 #define Filter_Level_HP100Hz 3
@@ -27,123 +26,216 @@
 #define FDN_BaseMaxDelaySecond 0.800f
 #define VND_BaseLength 0.2f
 #define SFMCount 30
+#define ReverbCount 3
+#define ReverbVerifyChange 3
+#define Reverb_MinDB -60 //dB
+#define Reverb_DryWetDBRange 40
+#define Reverb_ComplexcityAdjust 0.3f
+
+#define AttackShaper_Time 0.080f
+#define AttackShaper_Depth 2.0f
+#define AttackShaper_Noisegate -45 //dB
 
 void BMLongReverb_updateDiffusion(BMLongReverb* This);
-void BMLongReverb_prepareLoopDelay(BMLongReverb* This);
+void BMLongReverb_prepareLoopDelay(BMLongReverb* This,int reverbIdx);
 void BMLongReverb_updateLoopGain(BMLongReverb* This,size_t* delayTimeL,size_t* delayTimeR,float* gainL,float* gainR);
-float BMLongReverb_calculateScaleVol(BMLongReverb* This);
+float BMLongReverb_calculateScaleVol(BMLongReverb* This,int reverbIdx);
 void BMLongReverb_updateVND(BMLongReverb* This);
-
+void BMLongReverb_setHighCutFreqAtIdx(BMLongReverb* This,int reverbIdx,float freq);
+void BMLongReverb_setLSGainAtIdx(BMLongReverb* This,int reverbIdx,float gainDb);
+void BMLongReverb_setDiffusionAtIdx(BMLongReverb* This,int reverbIdx,float diffusion);
+void BMLongReverb_setOutputMixerAtIdx(BMLongReverb* This,int reverbIdx,float wetMix);
+void BMLongReverb_setDelayPitchMixerAtIdx(BMLongReverb* This,int reverbIdx,float wetMix);
+void BMLongReverb_setLoopDecayTimeAtIdx(BMLongReverb* This,int reverbIdx,float decayTime);
+// 0 is simplest spectrum and 1 is most complex
+float spectralComplexity(float *A, size_t length);
 
 void BMLongReverb_init(BMLongReverb* This,float sr){
+    This->reverb = malloc(sizeof(BMLongReverbUnit)*ReverbCount);
     This->sampleRate = sr;
-    //BIQUAD FILTER
-    BMMultiLevelBiquad_init(&This->biquadFilter, Filter_TotalLevel, sr, true, false, true);
-    //Highpass 1st order 100Hz
-    BMMultiLevelBiquad_setHighPass12db(&This->biquadFilter, 60, Filter_Level_HP100Hz);
-    //Tone control - use 6db
-	BMLongReverb_setHighCutFreq(This, 1200.0f);
-    //lowpass 36db
-	BMMultiLevelBiquad_setHighOrderBWLP(&This->biquadFilter, 9300, Filter_Level_Lowpass10k, Filter_Level_TotalLP);
-    //Low shelf
-    This->lsGain = 0;
-	BMLongReverb_setLSGain(This, This->lsGain);
+    This->fadeSamples = 1024;
+    for(int i=0;i<ReverbCount;i++){
+        //BIQUAD FILTER
+        BMMultiLevelBiquad_init(&This->reverb[i].biquadFilter, Filter_TotalLevel, sr, true, false, true);
+        //Highpass 1st order 100Hz
+        BMMultiLevelBiquad_setHighPass12db(&This->reverb[i].biquadFilter, 60, Filter_Level_HP100Hz);
+        
+        //lowpass 36db
+        BMMultiLevelBiquad_setHighOrderBWLP(&This->reverb[i].biquadFilter, 9300, Filter_Level_Lowpass10k, Filter_Level_TotalLP);
+        
+        //Tone control - use 6db
+        BMLongReverb_setHighCutFreqAtIdx(This,i, 1200.0f);
+        //Low shelf
+        This->lsGain = 0;
+        BMLongReverb_setLSGainAtIdx(This,i, This->lsGain);
+        
+        //VND
+        This->reverb[i].updateVND = false;
+        This->maxTapsEachVND = 16;
+        This->reverb[i].diffusion = 1.0f;
+        This->reverb[i].vndLength = VND_BaseLength;
+        This->reverb[i].fadeInS = 0;
+        This->reverb[i].vndDryTap = false;
+        
+        This->numInput = 8;
+        This->numVND = This->numInput;
+        This->reverb[i].vndArray = malloc(sizeof(BMVelvetNoiseDecorrelator)*This->numVND);
+        This->minSensitive = 0.1f;
+        This->maxSensitive = 0.5f;
+        This->minDecay = 0.5f;
+        This->maxDecay = 40.0f;
+        This->reverb[i].decayTime = This->minDecay;
+        
+        //Using vnd
+        for(int j=0;j<This->numVND;j++){
+            //First layer
+            BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->reverb[i].vndArray[j], This->reverb[i].vndLength, This->maxTapsEachVND, 100, This->reverb[i].vndDryTap, sr);
+            BMVelvetNoiseDecorrelator_setFadeIn(&This->reverb[i].vndArray[j], 0.0f);
+            if(This->reverb[i].vndDryTap)
+                BMVelvetNoiseDecorrelator_setWetMix(&This->reverb[i].vndArray[j], 1.0f);
+        }
+        
+        //Pitch shifting
+        size_t delayRange = (1000*sr)/48000.0f;
+        size_t maxDelayRange = (20000*sr)/48000.0f;
+        float duration = 3.5f;
+        BMPitchShiftDelay_init(&This->reverb[i].pitchShiftDelay, duration,delayRange ,maxDelayRange , sr, false, true);
+        
+        BMPitchShiftDelay_setWetGain(&This->reverb[i].pitchShiftDelay, 1.0f);
+        BMPitchShiftDelay_setDelayDuration(&This->reverb[i].pitchShiftDelay,duration);
+        BMPitchShiftDelay_setDelayRange(&This->reverb[i].pitchShiftDelay, delayRange);
+        BMPitchShiftDelay_setBandLowpass(&This->reverb[i].pitchShiftDelay, 4000);
+        BMPitchShiftDelay_setBandHighpass(&This->reverb[i].pitchShiftDelay,120);
+        BMPitchShiftDelay_setMixOtherChannel(&This->reverb[i].pitchShiftDelay, 1.0f);
+        
+        This->reverb[i].buffer.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+        This->reverb[i].buffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+        This->reverb[i].LFOBuffer.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+        This->reverb[i].LFOBuffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+        This->reverb[i].dryInput.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+        This->reverb[i].dryInput.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+        
+        This->reverb[i].outputL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+        This->reverb[i].outputR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+        
+        This->reverb[i].wetBuffer.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+        This->reverb[i].wetBuffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+        This->reverb[i].lastWetBuffer.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+        This->reverb[i].lastWetBuffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+        
+        //Fade
+        BMSmoothFade_init(&This->reverb[i].smoothFade, This->fadeSamples);
+        This->reverb[i].state = RS_InActive;
+        
+        //Loop delay
+        BMLongReverb_prepareLoopDelay(This,i);
+        
+        BMLongReverb_setLoopDecayTimeAtIdx(This,i, 10);
+        BMLongReverb_setDelayPitchMixerAtIdx(This,i, 0.5f);
+        BMWetDryMixer_init(&This->reverb[i].reverbMixer, sr);
+        BMLongReverb_setOutputMixerAtIdx(This,i, 0.5f);
+        
+        BMSmoothGain_init(&This->reverb[i].smoothGain, sr);
+        
+        //Pan
+        BMPanLFO_init(&This->reverb[i].inputPan, 0.412f, 0.6f, sr,true);
+        BMPanLFO_init(&This->reverb[i].outputPan, 1.1f, 0.3f, sr,true);
+        
+        This->measureLength = 4096;
+        BMHarmonicityMeasure_init(&This->reverb[i].chordMeasure, This->measureLength, sr);
+        This->reverb[i].measureFillCount = 0;
+        
+        //Attack softener
+        BMMultibandAttackShaper_init(&This->reverb[i].attackSoftener, true, sr);
+        BMMultibandAttackShaper_setAttackTime(&This->reverb[i].attackSoftener, AttackShaper_Time);
+        BMMultibandAttackShaper_setAttackDepth(&This->reverb[i].attackSoftener, AttackShaper_Depth);
+        BMMultibandAttackShaper_setSidechainNoiseGateThreshold(&This->reverb[i].attackSoftener, AttackShaper_Noisegate);
+        
+        This->reverb[i].measureSamples = 4096;
+        BMSpectrum_initWithLength(&This->reverb[i].measureSpectrum,This->reverb[i].measureSamples);
+        BMMeasurementBuffer_init(&This->reverb[i].measureDryInput, This->reverb[i].measureSamples);
+        BMMeasurementBuffer_init(&This->reverb[i].measureWetOutput, This->reverb[i].measureSamples);
+        This->reverb[i].measureSpectrumDryBuffer = malloc(sizeof(float)*This->reverb[i].measureSamples);
+        This->reverb[i].measureSpectrumWetBuffer = malloc(sizeof(float)*This->reverb[i].measureSamples);
+    }
     
-    //VND
-    This->updateVND = false;
-    This->maxTapsEachVND = 16;
-    This->diffusion = 1.0f;
-    This->vndLength = VND_BaseLength;
-    This->fadeInS = 0;
-    This->vndDryTap = false;
-    
-    This->numInput = 8;
-    This->numVND = This->numInput;
-    This->vndArray = malloc(sizeof(BMVelvetNoiseDecorrelator)*This->numVND);
     This->vnd1BufferL = malloc(sizeof(float*)*This->numInput);
     This->vnd1BufferR = malloc(sizeof(float*)*This->numInput);
     This->vnd2BufferL = malloc(sizeof(float*)*This->numInput);
     This->vnd2BufferR = malloc(sizeof(float*)*This->numInput);
+    This->changeReverbCurrentSamples = 0;
+    This->changeReverbDelaySamples = 0.5f * This->sampleRate;
+    This->updateReverbCount = 0;
+    This->verifyReverbChangeCount = 0;
     
-    //Using vnd
-    for(int i=0;i<This->numVND;i++){
-        //First layer
-        BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vndArray[i], This->vndLength, This->maxTapsEachVND, 100, This->vndDryTap, sr);
-        BMVelvetNoiseDecorrelator_setFadeIn(&This->vndArray[i], 0.0f);
-        if(This->vndDryTap)
-            BMVelvetNoiseDecorrelator_setWetMix(&This->vndArray[i], 1.0f);
-        
-        This->vnd1BufferL[i] = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-        This->vnd1BufferR[i] = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-        This->vnd2BufferL[i] = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-        This->vnd2BufferR[i] = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+    for(int j=0;j<This->numVND;j++){
+        This->vnd1BufferL[j] = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+        This->vnd1BufferR[j] = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+        This->vnd2BufferL[j] = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+        This->vnd2BufferR[j] = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     }
     
-    //Pitch shifting
-    size_t delayRange = (1000*sr)/48000.0f;
-    size_t maxDelayRange = (20000*sr)/48000.0f;
-    float duration = 3.5f;
-    BMPitchShiftDelay_init(&This->pitchShiftDelay, duration,delayRange ,maxDelayRange , sr, false, true);
+    This->attackSoftenerBuffer.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+    This->attackSoftenerBuffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     
-    BMPitchShiftDelay_setWetGain(&This->pitchShiftDelay, 1.0f);
-    BMPitchShiftDelay_setDelayDuration(&This->pitchShiftDelay,duration);
-    BMPitchShiftDelay_setDelayRange(&This->pitchShiftDelay, delayRange);
-    BMPitchShiftDelay_setBandLowpass(&This->pitchShiftDelay, 4000);
-    BMPitchShiftDelay_setBandHighpass(&This->pitchShiftDelay,120);
-    BMPitchShiftDelay_setMixOtherChannel(&This->pitchShiftDelay, 1.0f);
-    
-    This->buffer.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-    This->buffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-    This->LFOBuffer.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-    This->LFOBuffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-    This->loopInput.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-    This->loopInput.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-    This->lastLoopBuffer.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-    This->lastLoopBuffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-    memset(This->lastLoopBuffer.bufferL, 0, sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-    memset(This->lastLoopBuffer.bufferR, 0, sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-    
-    This->wetBuffer.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-    This->wetBuffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-    
-    //Loop delay
-    BMLongReverb_prepareLoopDelay(This);
-    
-    BMLongReverb_setLoopDecayTime(This, 10);
-    BMLongReverb_setDelayPitchMixer(This, 0.5f);
-    BMWetDryMixer_init(&This->reverbMixer, sr);
-    BMLongReverb_setOutputMixer(This, 0.5f);
-    
-    BMSmoothGain_init(&This->smoothGain, sr);
-    
-    //Pan
-    BMPanLFO_init(&This->inputPan, 0.412f, 0.6f, sr,true);
-    BMPanLFO_init(&This->outputPan, 1.1f, 0.3f, sr,true);
-    
-    This->measureLength = 4096;
-    BMHarmonicityMeasure_init(&This->chordMeasure, This->measureLength, sr);
-    This->measureFillCount = 0;
-    This->measureInput = malloc(sizeof(float)*This->measureLength);
-    This->sfmBuffer = calloc(SFMCount, sizeof(float));
-    This->sfmIdx = 0;
+    This->reverbActiveIdx = 0;
+    //Active reverb
+    This->reverb[This->reverbActiveIdx].state = RS_Active;
+    BMSmoothFade_startFading(&This->reverb[This->reverbActiveIdx].smoothFade, FT_In);
+    This->reverb[This->reverbActiveIdx].decayTime = This->maxDecay;
+    //Fading reverb
+    This->reverb[1].state = RS_Fading;
+    This->reverb[1].decayTime = 0.5f;
+    This->reverb[2].state = RS_InActive;
+    This->reverb[2].decayTime = 0.5f;
     
     This->initNo = ReadyNo;
 }
 
-void BMLongReverb_prepareLoopDelay(BMLongReverb* This){
+void BMLongReverb_prepareLoopDelay(BMLongReverb* This,int reverbIdx){
     size_t numDelays = 24;
     float maxDT = FDN_BaseMaxDelaySecond;
     float minDT = 0.020f;
-	bool zeroTaps = false;
-    BMLongLoopFDN_init(&This->loopFDN, numDelays, minDT, maxDT, zeroTaps, 8, 1,100,true, This->sampleRate);
+    bool zeroTaps = false;
+    BMLongLoopFDN_init(&This->reverb[reverbIdx].loopFDN, numDelays, minDT, maxDT, zeroTaps, 8, 1,100,true, This->sampleRate);
 }
 
 void BMLongReverb_destroy(BMLongReverb* This){
-    BMMultiLevelBiquad_free(&This->biquadFilter);
-    
-    for(int i=0;i<This->numVND;i++){
-        BMVelvetNoiseDecorrelator_free(&This->vndArray[i]);
+    for(int j=0;j<ReverbCount;j++){
+        BMMultiLevelBiquad_free(&This->reverb[j].biquadFilter);
+        
+        for(int i=0;i<This->numVND;i++){
+            BMVelvetNoiseDecorrelator_free(&This->reverb[j].vndArray[i]);
+        }
+        
+        
+        BMPitchShiftDelay_destroy(&This->reverb[j].pitchShiftDelay);
+        
+        BMLongLoopFDN_free(&This->reverb[j].loopFDN);
+        
+        free(This->reverb[j].buffer.bufferL);
+        This->reverb[j].buffer.bufferL = nil;
+        free(This->reverb[j].buffer.bufferR);
+        This->reverb[j].buffer.bufferR = nil;
+        free(This->reverb[j].LFOBuffer.bufferL);
+        This->reverb[j].LFOBuffer.bufferL = nil;
+        free(This->reverb[j].LFOBuffer.bufferR);
+        This->reverb[j].LFOBuffer.bufferR = nil;
+        free(This->reverb[j].dryInput.bufferL);
+        This->reverb[j].dryInput.bufferL = nil;
+        free(This->reverb[j].dryInput.bufferR);
+        This->reverb[j].dryInput.bufferR = nil;
+        
+        BMMultibandAttackShaper_free(&This->reverb[j].attackSoftener);
+        BMSpectrum_free(&This->reverb[j].measureSpectrum);
+        BMMeasurementBuffer_free(&This->reverb[j].measureDryInput);
+        BMMeasurementBuffer_free(&This->reverb[j].measureWetOutput);
+        free(This->reverb[j].measureSpectrumDryBuffer);
+        This->reverb[j].measureSpectrumDryBuffer = nil;
+        free(This->reverb[j].measureSpectrumWetBuffer);
+        This->reverb[j].measureSpectrumWetBuffer = nil;
     }
+    
     for(int i=0;i<This->numInput;i++){
         free(This->vnd1BufferL[i]);
         This->vnd1BufferL[i] = nil;
@@ -155,146 +247,241 @@ void BMLongReverb_destroy(BMLongReverb* This){
         This->vnd2BufferR[i] = nil;
     }
     
+    free(This->attackSoftenerBuffer.bufferL);
+    This->attackSoftenerBuffer.bufferL = nil;
+    free(This->attackSoftenerBuffer.bufferR);
+    This->attackSoftenerBuffer.bufferR = nil;
+    
     free(This->vnd1BufferL);
     free(This->vnd1BufferR);
     free(This->vnd2BufferL);
     free(This->vnd2BufferR);
     
-    BMPitchShiftDelay_destroy(&This->pitchShiftDelay);
-    
-    BMLongLoopFDN_free(&This->loopFDN);
-    
-    free(This->buffer.bufferL);
-    This->buffer.bufferL = nil;
-    free(This->buffer.bufferR);
-    This->buffer.bufferR = nil;
-    free(This->LFOBuffer.bufferL);
-    This->LFOBuffer.bufferL = nil;
-    free(This->LFOBuffer.bufferR);
-    This->LFOBuffer.bufferR = nil;
-    free(This->loopInput.bufferL);
-    This->loopInput.bufferL = nil;
-    free(This->loopInput.bufferR);
-    This->loopInput.bufferR = nil;
-    free(This->lastLoopBuffer.bufferL);
-    This->lastLoopBuffer.bufferL = nil;
-    free(This->lastLoopBuffer.bufferR);
-    This->lastLoopBuffer.bufferR = nil;
-    free(This->wetBuffer.bufferL);
-    This->wetBuffer.bufferL = nil;
-    free(This->wetBuffer.bufferR);
-    This->wetBuffer.bufferR = nil;
+    free(This->reverb);
+    This->reverb = nil;
 }
 
-static inline float BMLongReverb_storeSFM(BMLongReverb* This,float sfm){
-    This->sfmBuffer[This->sfmIdx] = sfm;
-    This->sfmIdx++;
-    if(This->sfmIdx>=SFMCount)
-        This->sfmIdx = 0;
-    float sum;
-    vDSP_sve(This->sfmBuffer, 1, &sum, SFMCount);
-    return sum/SFMCount;
-}
+#pragma mark - Measurement
+//3 Reverb : 1 active - 1 decay slowsly - 1 inactive for waiting new sound
+void BMLongReverb_measureSpectrum(BMLongReverb* This,int reverbIdx,float* dryInputL,float* dryInputR,float* wetInputL,float* wetInputR,size_t numSamples){
+    //Mix dry & wet to mono
+    float mul = 0.5f;
+    //check dry input vol
+    float inputVol;
+    vDSP_svesq(dryInputL, 1, &inputVol, numSamples);
+    inputVol = sqrtf(inputVol);
+    bool inputValidate = false;
+    if(inputVol>=BM_DB_TO_GAIN(-60)){
+        vDSP_vasm(dryInputL, 1, dryInputR, 1, &mul, This->vnd1BufferL[0], 1, numSamples);
+        BMMeasurementBuffer_inputSamples(&This->reverb[reverbIdx].measureDryInput, This->vnd1BufferL[0], numSamples);
+        inputValidate = true;
+    }
+    
+    //Wet
+    vDSP_vasm(wetInputL, 1, wetInputR, 1, &mul, This->vnd1BufferL[0], 1, numSamples);
+    BMMeasurementBuffer_inputSamples(&This->reverb[reverbIdx].measureWetOutput, This->vnd1BufferL[0], numSamples);
+        
+    if(This->changeReverbCurrentSamples>=This->changeReverbDelaySamples&&
+       inputValidate){
+        float* dryInput = BMMeasurementBuffer_getCurrentPointer(&This->reverb[reverbIdx].measureDryInput);
+        float* wetInput = BMMeasurementBuffer_getCurrentPointer(&This->reverb[reverbIdx].measureWetOutput);
+        
+        //Get spectrum of dry / wet input
+        BMSpectrum_processDataBasic(&This->reverb[reverbIdx].measureSpectrum, dryInput, This->reverb[reverbIdx].measureSpectrumDryBuffer, true, This->reverb[reverbIdx].measureSamples);
+        BMSpectrum_processDataBasic(&This->reverb[reverbIdx].measureSpectrum, wetInput, This->reverb[reverbIdx].measureSpectrumWetBuffer, true, This->reverb[reverbIdx].measureSamples);
+        size_t outLength = This->reverb[reverbIdx].measureSamples/2;
+        
+        //Find normalize spectrum
+//            printf("vol %f %f\n",normInputDry,BM_DB_TO_GAIN(-60));
+        float normDry;
+        vDSP_svesq(This->reverb[reverbIdx].measureSpectrumDryBuffer, 1, &normDry, outLength);
+        normDry = sqrtf(normDry);
+        float normWet;
+        vDSP_svesq(This->reverb[reverbIdx].measureSpectrumWetBuffer, 1, &normWet, outLength);
+        normWet = sqrtf(normWet);
+        
+        //Multiple both spectrum together
+        vDSP_vmul(This->reverb[reverbIdx].measureSpectrumDryBuffer, 1, This->reverb[reverbIdx].measureSpectrumWetBuffer, 1, This->reverb[reverbIdx].measureSpectrumDryBuffer, 1, outLength);
+        float normMix;
+        vDSP_sve(This->reverb[reverbIdx].measureSpectrumDryBuffer, 1, &normMix, outLength);
+        normMix = sqrtf(normMix);
 
-void BMLongReverb_measureFlatness(BMLongReverb* This,float* inputL,float* inputR,size_t numSamples){
-    //Measure the flatness of wetbuffer
-    if(This->measureFillCount>=This->measureLength){
-        This->measureFillCount = 0;
-        float sfm = BMHarmonicityMeasure_processMonoBuffer(&This->chordMeasure, This->measureInput, This->measureLength);
-        if(sfm<1){
-            //Store into sfmBuffer
-            float meanSFM = BMLongReverb_storeSFM(This, sfm);
-            
-            if(sfm>0.035f){
-                //Flatness too high -> set decay time to fast end
-                BMLongLoopFDN_setRT60DecaySmooth(&This->loopFDN, 1.0f,false);
-            }else{
-                //Set sound to long
-                BMLongLoopFDN_setRT60DecaySmooth(&This->loopFDN, 100.0f,false);
-            }
-            printf("sfm %f\n",sfm);
+        float result = This->minSensitive;
+        if(normWet!=0)
+            result = powf((normMix*normMix)/(normDry*normWet),1);
+        
+
+        float complexcity = spectralComplexity(This->reverb[reverbIdx].measureSpectrumDryBuffer, This->reverb[reverbIdx].measureSamples);
+//        printf("result %f %f\n",result,complexcity);
+        float factor = (1-Reverb_ComplexcityAdjust) + (Reverb_ComplexcityAdjust*complexcity);
+        
+        if(result<=This->maxSensitive*factor&&
+           result>=This->minSensitive){
+            if(This->verifyReverbChangeCount>=ReverbVerifyChange){
+                //Shoud change active index
+                This->verifyReverbChangeCount = 0;
+                This->updateReverbCount = 0;
+                
+                This->changeReverbCurrentSamples = 0;
+                
+                //Reverb active idx
+                This->reverbActiveIdx++;
+                if(This->reverbActiveIdx>=ReverbCount)
+                    This->reverbActiveIdx = 0;
+                
+                //Calculate active/ inactive decaytime
+                float v = (This->maxSensitive-result)/(This->maxSensitive-This->minSensitive);
+                float fadingDecay = (1-v) * (This->maxDecay - This->minDecay) + This->minDecay;
+                printf("change %f %f %f\n",result,fadingDecay,This->maxSensitive*factor);
+                
+                for(int i=0;i<ReverbCount;i++){
+                    if(i==This->reverbActiveIdx){
+                        This->reverb[i].state=RS_Active;
+                        This->reverb[i].decayTime = 40.0f;
+                    }else{
+                        if(This->reverb[i].state==RS_Active){
+                            //Reverb currently active -> change it to fading state
+                            This->reverb[i].state = RS_Fading;
+                            This->reverb[i].decayTime = fadingDecay;
+                        }else{
+                            This->reverb[i].state = RS_InActive;
+                            This->reverb[i].decayTime = 0.5f;
+                        }
+                    }
+                }
+            }else
+                This->verifyReverbChangeCount++;
+        }else{
+            //Reset verify
+            This->verifyReverbChangeCount = 0;
         }
     }else{
-        //Mix to mono input to calculate
-        vDSP_vadd(inputL, 1, inputR, 1, This->measureInput+This->measureFillCount, 1, numSamples);
-        This->measureFillCount += numSamples;
+        This->changeReverbCurrentSamples += numSamples;
     }
+}
+
+void BMLongReverb_updateReverbInput(BMLongReverb* This,int reverbIdx,float* inputL,float* inputR,float* dryInputL,float* dryInputR,size_t numSamples){
+    //Update 2 reverbs settings
+    if(This->updateReverbCount<ReverbCount){
+        if(This->reverb[reverbIdx].state==RS_Active){
+            //fade in to avoid click
+            BMSmoothFade_startFading(&This->reverb[reverbIdx].smoothFade, FT_In);
+        }else if(This->reverb[reverbIdx].state==RS_Fading){
+            //Fade out & silent the reverb
+            BMSmoothFade_startFading(&This->reverb[reverbIdx].smoothFade, FT_Out);
+        }else{
+            //Inactive fading -> dont need to fade anymore
+        }
+        //Set decay
+        BMLongLoopFDN_setRT60DecaySmooth(&This->reverb[reverbIdx].loopFDN, This->reverb[reverbIdx].decayTime,false);
+        
+        This->updateReverbCount++;
+    }
+    
+    //Apply setting
+    BMSmoothFade_processBufferStereo(&This->reverb[reverbIdx].smoothFade, inputL, inputR,dryInputL, dryInputR, numSamples);
 }
 
 void BMLongReverb_processStereo(BMLongReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t numSamples,bool offlineRendering){
     if(This->initNo==ReadyNo){
         assert(numSamples<=BM_BUFFER_CHUNK_SIZE);
-        
-        BMLongReverb_updateVND(This);
-        BMLongReverb_updateDiffusion(This);
-        
-        //1st layer VND
-        for(int i=0;i<This->numInput;i++){
-            //PitchShifting delay into wetbuffer
-            BMVelvetNoiseDecorrelator_processBufferStereo(&This->vndArray[i], inputL, inputR, This->vnd1BufferL[i], This->vnd1BufferR[i], numSamples);
-        }
-        
-        if(This->numInput>4){
-            BMFastHadamardTransformBuffer(This->vnd1BufferL, This->vnd2BufferL, This->numInput, numSamples);
-            BMFastHadamardTransformBuffer(This->vnd1BufferR, This->vnd2BufferR, This->numInput, numSamples);
-        }else{
-            for(int j=0;j<This->numInput;j++){
-                memcpy(This->vnd2BufferL[j], This->vnd1BufferL[j], sizeof(float)*numSamples);
-                memcpy(This->vnd2BufferR[j], This->vnd1BufferR[j], sizeof(float)*numSamples);
+        for(int reverbIdx=0;reverbIdx<ReverbCount;reverbIdx++){
+            BMLongReverb_updateVND(This);
+            BMLongReverb_updateDiffusion(This);
+            
+            //Process attack softener for wet input
+            BMMultibandAttackShaper_processStereo(&This->reverb[reverbIdx].attackSoftener, inputL, inputR, This->attackSoftenerBuffer.bufferL, This->attackSoftenerBuffer.bufferR, numSamples);
+            
+            //Measurement
+            if(reverbIdx==This->reverbActiveIdx){
+                //Only measure on active reverb
+                BMLongReverb_measureSpectrum(This,reverbIdx, This->attackSoftenerBuffer.bufferL, This->attackSoftenerBuffer.bufferR, This->reverb[reverbIdx].lastWetBuffer.bufferL, This->reverb[reverbIdx].lastWetBuffer.bufferR, numSamples);
+            }
+            
+            //Update input
+            BMLongReverb_updateReverbInput(This, reverbIdx, inputL, inputR, This->reverb[reverbIdx].dryInput.bufferL, This->reverb[reverbIdx].dryInput.bufferR, numSamples);
+            
+            //1st layer VND
+            for(int i=0;i<This->numInput;i++){
+                //PitchShifting delay into wetbuffer
+                BMVelvetNoiseDecorrelator_processBufferStereo(&This->reverb[reverbIdx].vndArray[i],This->reverb[reverbIdx].dryInput.bufferL, This->reverb[reverbIdx].dryInput.bufferR, This->vnd1BufferL[i], This->vnd1BufferR[i], numSamples);
+            }
+            
+            if(This->numInput>4){
+                BMFastHadamardTransformBuffer(This->vnd1BufferL, This->vnd2BufferL, This->numInput, numSamples);
+                BMFastHadamardTransformBuffer(This->vnd1BufferR, This->vnd2BufferR, This->numInput, numSamples);
+            }else{
+                for(int j=0;j<This->numInput;j++){
+                    memcpy(This->vnd2BufferL[j], This->vnd1BufferL[j], sizeof(float)*numSamples);
+                    memcpy(This->vnd2BufferR[j], This->vnd1BufferR[j], sizeof(float)*numSamples);
+                }
+            }
+            
+            //Long FDN
+            BMLongLoopFDN_processMultiChannelInput(&This->reverb[reverbIdx].loopFDN, This->vnd2BufferL, This->vnd2BufferR, This->numInput, This->reverb[reverbIdx].wetBuffer.bufferL, This->reverb[reverbIdx].wetBuffer.bufferR, numSamples);
+
+            //Add vnd2Buffer[0] to the output of FDN to simulate the zero tap of fdn. Cant use zero tap setting
+            // becauz of the Fast Hadamard Transform mix all the input.
+            float mul = 1.0f;
+            vDSP_vsma(This->vnd2BufferL[0], 1, &mul, This->reverb[reverbIdx].wetBuffer.bufferL, 1, This->reverb[reverbIdx].wetBuffer.bufferL, 1, numSamples);
+            vDSP_vsma(This->vnd2BufferR[0], 1, &mul, This->reverb[reverbIdx].wetBuffer.bufferR, 1, This->reverb[reverbIdx].wetBuffer.bufferR, 1, numSamples);
+            
+            BMPitchShiftDelay_processStereoBuffer(&This->reverb[reverbIdx].pitchShiftDelay, This->reverb[reverbIdx].wetBuffer.bufferL, This->reverb[reverbIdx].wetBuffer.bufferR, This->reverb[reverbIdx].wetBuffer.bufferL, This->reverb[reverbIdx].wetBuffer.bufferR, numSamples);
+            
+            //Filters
+            BMMultiLevelBiquad_processBufferStereo(&This->reverb[reverbIdx].biquadFilter, This->reverb[reverbIdx].wetBuffer.bufferL, This->reverb[reverbIdx].wetBuffer.bufferR, This->reverb[reverbIdx].wetBuffer.bufferL, This->reverb[reverbIdx].wetBuffer.bufferR, numSamples);
+            
+            //Normalize vol
+            BMSmoothGain_processBuffer(&This->reverb[reverbIdx].smoothGain, This->reverb[reverbIdx].wetBuffer.bufferL, This->reverb[reverbIdx].wetBuffer.bufferR, This->reverb[reverbIdx].wetBuffer.bufferL, This->reverb[reverbIdx].wetBuffer.bufferR, numSamples);
+            
+            //Measurement
+            if(reverbIdx==This->reverbActiveIdx){
+                memcpy(This->reverb[reverbIdx].lastWetBuffer.bufferL, This->reverb[reverbIdx].wetBuffer.bufferL, numSamples*sizeof(float));
+                memcpy(This->reverb[reverbIdx].lastWetBuffer.bufferR, This->reverb[reverbIdx].wetBuffer.bufferR, numSamples*sizeof(float));
+            }
+            
+            
+            //LFO pan
+            // Input pan LFO
+            BMPanLFO_process(&This->reverb[reverbIdx].inputPan, This->reverb[reverbIdx].LFOBuffer.bufferL, This->reverb[reverbIdx].LFOBuffer.bufferR, numSamples);
+            vDSP_vmul(This->reverb[reverbIdx].wetBuffer.bufferL, 1, This->reverb[reverbIdx].LFOBuffer.bufferL, 1, This->reverb[reverbIdx].wetBuffer.bufferL, 1, numSamples);
+            vDSP_vmul(This->reverb[reverbIdx].wetBuffer.bufferR, 1, This->reverb[reverbIdx].LFOBuffer.bufferR, 1, This->reverb[reverbIdx].wetBuffer.bufferR, 1, numSamples);
+            BMPanLFO_process(&This->reverb[reverbIdx].outputPan, This->reverb[reverbIdx].LFOBuffer.bufferL, This->reverb[reverbIdx].LFOBuffer.bufferR, numSamples);
+            vDSP_vmul(This->reverb[reverbIdx].wetBuffer.bufferL, 1, This->reverb[reverbIdx].LFOBuffer.bufferL, 1, This->reverb[reverbIdx].wetBuffer.bufferL, 1, numSamples);
+            vDSP_vmul(This->reverb[reverbIdx].wetBuffer.bufferR, 1, This->reverb[reverbIdx].LFOBuffer.bufferR, 1, This->reverb[reverbIdx].wetBuffer.bufferR, 1, numSamples);
+            
+            //mix dry & wet reverb
+            if(offlineRendering){
+                float dryMix = 1 - This->reverb[reverbIdx].reverbMixer.mixTarget;
+                vDSP_vsmsma(This->reverb[reverbIdx].wetBuffer.bufferL, 1, &This->reverb[reverbIdx].reverbMixer.mixTarget, This->reverb[reverbIdx].dryInput.bufferL, 1, &dryMix, This->reverb[reverbIdx].outputL, 1, numSamples);
+                vDSP_vsmsma(This->reverb[reverbIdx].wetBuffer.bufferR, 1, &This->reverb[reverbIdx].reverbMixer.mixTarget, This->reverb[reverbIdx].dryInput.bufferR, 1, &dryMix, This->reverb[reverbIdx].outputR, 1, numSamples);
+            }else{
+                //Process reverb dry/wet mixer
+                BMWetDryMixer_processBufferInPhase(&This->reverb[reverbIdx].reverbMixer, This->reverb[reverbIdx].wetBuffer.bufferL, This->reverb[reverbIdx].wetBuffer.bufferR, This->reverb[reverbIdx].dryInput.bufferL, This->reverb[reverbIdx].dryInput.bufferR, This->reverb[reverbIdx].outputL, This->reverb[reverbIdx].outputR, numSamples);
             }
         }
         
-        //Long FDN
-        BMLongLoopFDN_processMultiChannelInput(&This->loopFDN, This->vnd2BufferL, This->vnd2BufferR, This->numInput, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
-        
-//        memcpy(outputL,This->wetBuffer.bufferL, sizeof(float)*numSamples);
-//        memcpy(outputR,This->wetBuffer.bufferR , sizeof(float)*numSamples);
-//        return;
-		
-        //Add vnd2Buffer[0] to the output of FDN to simulate the zero tap of fdn. Cant use zero tap setting
-        // becauz of the Fast Hadamard Transform mix all the input.
-        float mul = 1.0f;
-        vDSP_vsma(This->vnd2BufferL[0], 1, &mul, This->wetBuffer.bufferL, 1, This->wetBuffer.bufferL, 1, numSamples);
-        vDSP_vsma(This->vnd2BufferR[0], 1, &mul, This->wetBuffer.bufferR, 1, This->wetBuffer.bufferR, 1, numSamples);
-        
-        BMPitchShiftDelay_processStereoBuffer(&This->pitchShiftDelay, This->wetBuffer.bufferL, This->wetBuffer.bufferR, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
-        
-        //Filters
-        BMMultiLevelBiquad_processBufferStereo(&This->biquadFilter, This->wetBuffer.bufferL, This->wetBuffer.bufferR, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
-        
-        //Normalize vol
-        BMSmoothGain_processBuffer(&This->smoothGain, This->wetBuffer.bufferL, This->wetBuffer.bufferR, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
-        
-        //Flatness
-        BMLongReverb_measureFlatness(This, This->wetBuffer.bufferL, This->wetBuffer.bufferR, numSamples);
-        
-        //LFO pan
-        // Input pan LFO
-        BMPanLFO_process(&This->inputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
-        vDSP_vmul(This->wetBuffer.bufferL, 1, This->LFOBuffer.bufferL, 1, This->wetBuffer.bufferL, 1, numSamples);
-        vDSP_vmul(This->wetBuffer.bufferR, 1, This->LFOBuffer.bufferR, 1, This->wetBuffer.bufferR, 1, numSamples);
-        BMPanLFO_process(&This->outputPan, This->LFOBuffer.bufferL, This->LFOBuffer.bufferR, numSamples);
-        vDSP_vmul(This->wetBuffer.bufferL, 1, This->LFOBuffer.bufferL, 1, This->wetBuffer.bufferL, 1, numSamples);
-        vDSP_vmul(This->wetBuffer.bufferR, 1, This->LFOBuffer.bufferR, 1, This->wetBuffer.bufferR, 1, numSamples);
-        
-        //mix dry & wet reverb
-        if(offlineRendering){
-            float dryMix = 1 - This->reverbMixer.mixTarget;
-            vDSP_vsmsma(This->wetBuffer.bufferL, 1, &This->reverbMixer.mixTarget, inputL, 1, &dryMix, outputL, 1, numSamples);
-            vDSP_vsmsma(This->wetBuffer.bufferR, 1, &This->reverbMixer.mixTarget, inputR, 1, &dryMix, outputR, 1, numSamples);
-        }else{
-            //Process reverb dry/wet mixer
-            BMWetDryMixer_processBufferInPhase(&This->reverbMixer, This->wetBuffer.bufferL, This->wetBuffer.bufferR, inputL, inputR, outputL, outputR, numSamples);
+        //Mix reverb output to final output
+        vDSP_vclr(outputL, 1, numSamples);
+        vDSP_vclr(outputR, 1, numSamples);
+        for(int reverbIdx = 0;reverbIdx<ReverbCount;reverbIdx++){
+//            if(This->reverb[reverbIdx].state==RS_InActive){
+                vDSP_vadd(This->reverb[reverbIdx].outputL, 1, outputL, 1, outputL, 1, numSamples);
+                vDSP_vadd(This->reverb[reverbIdx].outputR, 1, outputR, 1, outputR, 1, numSamples);
+//            }
         }
-
+        //Normalize
+        float norm = 1.0f/sqrtf(2.0f);
+        vDSP_vsmul(outputL, 1, &norm, outputL, 1, numSamples);
+        vDSP_vsmul(outputR, 1, &norm, outputR, 1, numSamples);
     }
 }
 
 
 
-float BMLongReverb_calculateScaleVol(BMLongReverb* This){
-    float factor = log2f(This->decayTime);
-    float scaleDB = (-3. * (factor)) + (1.2f-This->diffusion)*10.0f;
+float BMLongReverb_calculateScaleVol(BMLongReverb* This,int reverbIdx){
+    float factor = log2f(This->reverb[reverbIdx].decayTime);
+    float scaleDB = (-3. * (factor)) + (1.2f-This->reverb[reverbIdx].diffusion)*10.0f;
 //    printf("%f\n",scaleDB);
     return scaleDB;
 }
@@ -303,11 +490,18 @@ float BMLongReverb_calculateScaleVol(BMLongReverb* This){
 
 #pragma mark - Set
 void BMLongReverb_setLoopDecayTime(BMLongReverb* This,float decayTime){
-    This->decayTime = decayTime;
-    BMLongLoopFDN_setRT60DecaySmooth(&This->loopFDN, decayTime,false);
+    for(int reverbIdx=0;reverbIdx<ReverbCount;reverbIdx++){
+        BMLongReverb_setLoopDecayTimeAtIdx(This, reverbIdx, decayTime);
+    }
+}
+
+void BMLongReverb_setLoopDecayTimeAtIdx(BMLongReverb* This,int reverbIdx,float decayTime){
+    This->reverb[reverbIdx].decayTime = decayTime;
+    BMLongLoopFDN_setRT60DecaySmooth(&This->reverb[reverbIdx].loopFDN, decayTime,false);
     
-    float gainDB = BMLongReverb_calculateScaleVol(This);
-    BMSmoothGain_setGainDb(&This->smoothGain, gainDB);
+    float gainDB = BMLongReverb_calculateScaleVol(This,reverbIdx);
+    BMSmoothGain_setGainDb(&This->reverb[reverbIdx].smoothGain, gainDB);
+    
 }
 
 #define DepthMax 0.90f
@@ -358,6 +552,13 @@ float BMLongReverb_getDurationBaseOnMode(BMLongReverb* This,float mode){
 }
 
 void BMLongReverb_setDelayPitchMixer(BMLongReverb* This,float wetMix){
+    for(int reverbIdx=0;reverbIdx<ReverbCount;reverbIdx++){
+        BMLongReverb_setDelayPitchMixerAtIdx(This,reverbIdx, wetMix);
+    }
+}
+
+void BMLongReverb_setDelayPitchMixerAtIdx(BMLongReverb* This,int reverbIdx,float wetMix){
+    
     //Set delayrange of pitch shift to control speed of pitch shift
     //0 to 5
     float mode = BM_MIN(roundf((wetMix*5.0f)/0.75f),5);
@@ -370,106 +571,176 @@ void BMLongReverb_setDelayPitchMixer(BMLongReverb* This,float wetMix){
     float delayRange = BMLongReverb_getDelayRangeBaseOnMode(This,mode);
 //    printf("pitch %f %f %f\n",mix,duration,delayRange);
     
-    BMPitchShiftDelay_setWetGain(&This->pitchShiftDelay, mix);
-    BMPitchShiftDelay_setDelayDuration(&This->pitchShiftDelay,duration);
-    BMPitchShiftDelay_setDelayRange(&This->pitchShiftDelay, delayRange);
+    BMPitchShiftDelay_setWetGain(&This->reverb[reverbIdx].pitchShiftDelay, mix);
+    BMPitchShiftDelay_setDelayDuration(&This->reverb[reverbIdx].pitchShiftDelay,duration);
+    BMPitchShiftDelay_setDelayRange(&This->reverb[reverbIdx].pitchShiftDelay, delayRange);
     
     //Control pan
-    BMPanLFO_setDepth(&This->inputPan, wetMix*DepthMax);
-	BMPanLFO_setDepth(&This->outputPan, 0.5f*wetMix*DepthMax);
+    BMPanLFO_setDepth(&This->reverb[reverbIdx].inputPan, wetMix*DepthMax);
+    BMPanLFO_setDepth(&This->reverb[reverbIdx].outputPan, 0.5f*wetMix*DepthMax);
 }
 
-
-
 void BMLongReverb_setOutputMixer(BMLongReverb* This,float wetMix){
-    BMWetDryMixer_setMix(&This->reverbMixer, wetMix*wetMix);
+    for(int reverbIdx=0;reverbIdx<ReverbCount;reverbIdx++){
+        BMLongReverb_setOutputMixerAtIdx(This, reverbIdx, wetMix);
+    }
+}
+
+void BMLongReverb_setOutputMixerAtIdx(BMLongReverb* This,int reverbIdx,float wetMix){
+    BMWetDryMixer_setMix(&This->reverb[reverbIdx].reverbMixer, wetMix*wetMix);
 }
 
 void BMLongReverb_setDiffusion(BMLongReverb* This,float diffusion){
-    if(This->diffusion!=diffusion){
-        This->diffusion = diffusion;
-        This->updateDiffusion = true;
+    for(int reverbIdx=0;reverbIdx<ReverbCount;reverbIdx++){
+        BMLongReverb_setDiffusionAtIdx(This, reverbIdx, diffusion);
+    }
+}
+
+void BMLongReverb_setDiffusionAtIdx(BMLongReverb* This,int reverbIdx,float diffusion){
+    if(This->reverb[reverbIdx].diffusion!=diffusion){
+        This->reverb[reverbIdx].diffusion = diffusion;
+        This->reverb[reverbIdx].updateDiffusion = true;
         This->numInput = BM_MAX((roundf(8 * diffusion)/2.0f)*2,2);
         
-//        //Diff go from 0.1 to 1
-//        float maxDelayS = FDN_BaseMaxDelaySecond*(1.1f-diffusion);
-//        BMLongLoopFDN_setMaxDelay(&This->loopFDN, maxDelayS);
-        
         //update wet vol
-        float gainDb = BMLongReverb_calculateScaleVol(This);
-        BMSmoothGain_setGainDb(&This->smoothGain, gainDb);
+        float gainDb = BMLongReverb_calculateScaleVol(This,reverbIdx);
+        BMSmoothGain_setGainDb(&This->reverb[reverbIdx].smoothGain, gainDb);
     }
 }
 
 void BMLongReverb_updateDiffusion(BMLongReverb* This){
-    if(This->updateDiffusion){
-        This->updateDiffusion = false;
-        float numTaps = floorf(This->maxTapsEachVND * This->diffusion);
-        for(int i=0;i<This->numVND;i++){
-            BMVelvetNoiseDecorrelator_setNumTaps(&This->vndArray[i], numTaps);
+    for(int reverbIdx=0;reverbIdx<ReverbCount;reverbIdx++){
+        if(This->reverb[reverbIdx].updateDiffusion){
+            This->reverb[reverbIdx].updateDiffusion = false;
+            float numTaps = floorf(This->maxTapsEachVND * This->reverb[reverbIdx].diffusion);
+            for(int i=0;i<This->numVND;i++){
+                BMVelvetNoiseDecorrelator_setNumTaps(&This->reverb[reverbIdx].vndArray[i], numTaps);
+            }
         }
     }
 }
 
 void BMLongReverb_setLSGain(BMLongReverb* This,float gainDb){
-    BMMultiLevelBiquad_setLowShelfFirstOrder(&This->biquadFilter, Filter_LS_FC, gainDb, Filter_Level_Lowshelf);
+    for(int reverbIdx=0;reverbIdx<ReverbCount;reverbIdx++){
+        BMLongReverb_setLSGainAtIdx(This, reverbIdx, gainDb);
+    }
+}
+
+void BMLongReverb_setLSGainAtIdx(BMLongReverb* This,int reverbIdx,float gainDb){
+    BMMultiLevelBiquad_setLowShelfFirstOrder(&This->reverb[reverbIdx].biquadFilter, Filter_LS_FC, gainDb, Filter_Level_Lowshelf);
 }
 
 void BMLongReverb_setHighCutFreq(BMLongReverb* This,float freq){
-    BMMultiLevelBiquad_setLowPass6db(&This->biquadFilter, freq, Filter_Level_Tone);
+    for(int reverbIdx=0;reverbIdx<ReverbCount;reverbIdx++){
+        BMLongReverb_setHighCutFreqAtIdx(This, reverbIdx, freq);
+    }
+}
+
+void BMLongReverb_setHighCutFreqAtIdx(BMLongReverb* This,int reverbIdx,float freq){
+    BMMultiLevelBiquad_setLowPass6db(&This->reverb[reverbIdx].biquadFilter, freq, Filter_Level_Tone);
+}
+
+void BMLongReverb_setMinSensitive(BMLongReverb* This,float threshold){
+    This->minSensitive = threshold;
+}
+
+void BMLongReverb_setMaxSensitive(BMLongReverb* This,float threshold){
+    This->maxSensitive = threshold;
+}
+
+void BMLongReverb_setMinDecay(BMLongReverb* This,float decay){
+    This->minDecay = decay;
+}
+
+void BMLongReverb_setMaxDecay(BMLongReverb* This,float decay){
+    This->maxDecay = decay;
 }
 
 #pragma mark - VND
 void BMLongReverb_setFadeInVND(BMLongReverb* This,float timeInS){
-    This->desiredVNDLength = VND_BaseLength;
-    if(timeInS>VND_BaseLength){
-        //If fadein time is bigger than vndlength -> need to reset vnd length
-        This->desiredVNDLength = timeInS;
+    for(int reverbIdx=0;reverbIdx<ReverbCount;reverbIdx++){
+        This->reverb[reverbIdx].desiredVNDLength = VND_BaseLength;
+        if(timeInS>VND_BaseLength){
+            //If fadein time is bigger than vndlength -> need to reset vnd length
+            This->reverb[reverbIdx].desiredVNDLength = timeInS;
+        }
+        This->reverb[reverbIdx].fadeInS = timeInS;
+        
+        This->reverb[reverbIdx].updateVND = true;
     }
-    This->fadeInS = timeInS;
-    
-    This->updateVND = true;
-    
 }
 
 void BMLongReverb_updateVND(BMLongReverb* This){
-    if(This->updateVND){
-        This->updateVND = false;
-        if(This->desiredVNDLength!=This->vndLength){
-            This->vndLength = This->desiredVNDLength;
-            //Free & reinit
-            for(int i=0;i<This->numVND;i++){
-                //1st layer
-                BMVelvetNoiseDecorrelator_free(&This->vndArray[i]);
-                BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->vndArray[i], This->vndLength, This->maxTapsEachVND, 100, This->vndDryTap, This->sampleRate);
-                if(This->vndDryTap)
-                    BMVelvetNoiseDecorrelator_setWetMix(&This->vndArray[i], 1.0f);
-                //Update fade in
-                BMVelvetNoiseDecorrelator_setFadeIn(&This->vndArray[i], This->fadeInS);
-            }
+    for(int reverbIdx=0;reverbIdx<ReverbCount;reverbIdx++){
+        if(This->reverb[reverbIdx].updateVND){
+            This->reverb[reverbIdx].updateVND = false;
+            if(This->reverb[reverbIdx].desiredVNDLength!=This->reverb[reverbIdx].vndLength){
+                This->reverb[reverbIdx].vndLength = This->reverb[reverbIdx].desiredVNDLength;
+                //Free & reinit
+                for(int i=0;i<This->numVND;i++){
+                    //1st layer
+                    BMVelvetNoiseDecorrelator_free(&This->reverb[reverbIdx].vndArray[i]);
+                    BMVelvetNoiseDecorrelator_initWithEvenTapDensity(&This->reverb[reverbIdx].vndArray[i], This->reverb[reverbIdx].vndLength, This->maxTapsEachVND, 100, This->reverb[reverbIdx].vndDryTap, This->sampleRate);
+                    if(This->reverb[reverbIdx].vndDryTap)
+                        BMVelvetNoiseDecorrelator_setWetMix(&This->reverb[reverbIdx].vndArray[i], 1.0f);
+                    //Update fade in
+                    BMVelvetNoiseDecorrelator_setFadeIn(&This->reverb[reverbIdx].vndArray[i], This->reverb[reverbIdx].fadeInS);
+                }
 
-            BMLongReverb_setDiffusion(This, This->diffusion);
-        }else{
-            for(int i=0;i<This->numVND;i++){
-                //Update fade in
-                BMVelvetNoiseDecorrelator_setFadeIn(&This->vndArray[i], This->fadeInS);
+                BMLongReverb_setDiffusionAtIdx(This,reverbIdx, This->reverb[reverbIdx].diffusion);
+            }else{
+                for(int i=0;i<This->numVND;i++){
+                    //Update fade in
+                    BMVelvetNoiseDecorrelator_setFadeIn(&This->reverb[reverbIdx].vndArray[i], This->reverb[reverbIdx].fadeInS);
+                }
             }
         }
     }
 }
 
+float l2Norm(float *A, size_t length){
+    float sumOfSquares;
+    vDSP_svesq(A,1,&sumOfSquares,length);
+    return sqrtf(sumOfSquares);
+}
+
+float l1Norm(float *A, size_t length){
+    float sumOfMag;
+    vDSP_svemg(A,1,&sumOfMag,length);
+    return sumOfMag;
+}
+
+
+
+// 0 is simplest spectrum and 1 is most complex
+float spectralComplexity(float *A, size_t length){
+    float l1n = l1Norm(A,length);
+    float l2n = l2Norm(A,length);
+
+    // Mathematica Prototype original
+    // 1-(((Norm[x,2]/Norm[x,1])-(1/Sqrt[Length[x]]))/(1-1/Sqrt[Length[x]]))
+    //
+    // Mathematica Prototype simplified
+    // -((Sqrt(length)*(-1+nDiv))/(-1+Sqrt(length)))
+
+    float nDiv = l2n / l1n;
+    float sqrtLn = sqrt((float)length);
+    return -((sqrtLn * (nDiv - 1.0f)) / (sqrtLn - 1.0f));
+//    return nDiv*1000;
+}
+
 #pragma mark - Test
 void BMLongReverb_impulseResponse(BMLongReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t length){
-    size_t sampleProcessed = 0;
-    size_t sampleProcessing = 0;
-    This->biquadFilter.useSmoothUpdate = false;
-    while(sampleProcessed<length){
-        sampleProcessing = BM_MIN(BM_BUFFER_CHUNK_SIZE, length - sampleProcessed);
-        
-        BMLongReverb_processStereo(This, inputL+sampleProcessed, inputR+sampleProcessed, outputL+sampleProcessed, outputR+sampleProcessed, sampleProcessing,true);
-        if(outputL[sampleProcessed]>1.0f)
-            printf("error\n");
-        sampleProcessed += sampleProcessing;
-    }
-    This->biquadFilter.useSmoothUpdate = true;
+//    size_t sampleProcessed = 0;
+//    size_t sampleProcessing = 0;
+//    This->biquadFilter.useSmoothUpdate = false;
+//    while(sampleProcessed<length){
+//        sampleProcessing = BM_MIN(BM_BUFFER_CHUNK_SIZE, length - sampleProcessed);
+//
+//        BMLongReverb_processStereo(This, inputL+sampleProcessed, inputR+sampleProcessed, outputL+sampleProcessed, outputR+sampleProcessed, sampleProcessing,true);
+//        if(outputL[sampleProcessed]>1.0f)
+//            printf("error\n");
+//        sampleProcessed += sampleProcessing;
+//    }
+//    This->biquadFilter.useSmoothUpdate = true;
 }
