@@ -642,13 +642,13 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
 
 void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTimeInSeconds){
     // find the lpf cutoff frequency that corresponds to the specified attack time
-    releaseTimeInSeconds *= 15.0f;//4.0f
+    releaseTimeInSeconds *= 12.0f;//4.0f
     float slowReleaseFC = ARTimeToCutoffFrequency(releaseTimeInSeconds, BMTS_RRF1_NUMLEVELS);
     
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[0], slowReleaseFC);
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
-    releaseTimeInSeconds *= 0.6f;
+    releaseTimeInSeconds *= 0.4f;
     float fastFC = ARTimeToCutoffFrequency(releaseTimeInSeconds, BMTS_RRF2_NUMLEVELS);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[0], fastFC);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[1], fastFC*BMTS_SECTION_2_RF_MULTIPLIER);
