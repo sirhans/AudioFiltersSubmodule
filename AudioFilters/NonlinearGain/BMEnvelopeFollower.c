@@ -91,7 +91,9 @@ void BMReleaseFilter_setCutoff(BMReleaseFilter *This, float fc){
 	This->a3 = (float)a3;
 }
 
-
+void BMReleaseFilter_setCutoffMin(BMReleaseFilter *This, float fc){
+    This->fcMin = fc;
+}
 
 void BMReleaseFilter_updateSampleRate(BMReleaseFilter *This, float sampleRate){
     This->sampleRate = sampleRate;
@@ -150,7 +152,9 @@ void BMReleaseFilter_init(BMReleaseFilter *This, float fc, float sampleRate){
     This->attackMode = false;
     This->ic1 = This->ic2 = 0;
     
+    BMReleaseFilter_setCutoffMin(This, 1.0f);
     BMReleaseFilter_setCutoff(This, fc);
+    
 }
 
 
@@ -322,7 +326,65 @@ void BMReleaseFilter_processBuffer(BMReleaseFilter *This,
     }
 }
 
-
+void BMReleaseFilter_processBufferDynamic(BMReleaseFilter *This,
+                                   const float* input,
+                                   float* output,
+                                   float* standard,
+                                   size_t numSamples){
+    
+    for (size_t i=0; i<numSamples; i++){
+        //Calculate fc - Distance is between 3 db to 10db -> fc grow from fcMax to fcMin
+        float distance = fabsf(input[i]-standard[i]);
+        float fcMax = 10.0f;
+        float minDb = 2.0f;
+        float maxDb = 5.0f;
+        float v = MIN(MAX((distance - minDb)/(maxDb-minDb),0),1.0f);
+        float fc = This->fcMin + (fcMax-This->fcMin) * powf(1.0f-v, 2.0f);
+        BMReleaseFilter_setCutoff(This, fc);
+//        printf("fc %f %f %f\n",fc,distance,v);
+        
+        //Process
+        float x = input[i];
+        
+        // if we are in attack mode,
+        if (x > This->previousOutputValue){
+            // set the attack mode flag
+            This->attackMode = true;
+            // copy the input to the output
+            output[i] = x;
+        }
+        
+        // if we are in release mode,
+        else {
+            // if this is the first sample in release mode
+            if(This->attackMode){
+                // unset the attack mode flag
+                This->attackMode = false;
+                // set the gradient to zero
+                This->ic1 = 0.0f;
+                // set the second state variable to the previous output
+                // to keep the output function continuous
+                This->ic2 = This->previousOutputValue;
+            }
+            
+            // process the state variable filter
+            float v3 = x - This->ic2;
+            float v1 = This->a1  *This->ic1 + This->a2 * v3;
+            float v2 = This->ic2 + This->a2  *This->ic1 + This->a3 * v3;
+            
+            // update the state variables
+            This->ic1 = 2.0f * v1 - This->ic1;
+            This->ic2 = 2.0f * v2 - This->ic2;
+            
+            // output
+            output[i] = v2;
+        }
+        
+        This->previousOutputValue = output[i];
+        
+        
+    }
+}
 
 
 

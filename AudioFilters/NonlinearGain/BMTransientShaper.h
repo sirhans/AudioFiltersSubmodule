@@ -21,7 +21,7 @@
 #define BMTS_AF_NUMLEVELS 1
 #define BMTS_ARF_NUMLEVELS 3
 #define BMTS_RRF1_NUMLEVELS 1
-#define BMTS_RRF2_NUMLEVELS 3
+#define BMTS_RRF2_NUMLEVELS 1
 #define BMTS_DSF_NUMLEVELS 1
 #define BMTS_NUM_SECTIONS 2
 #define BMTS_SECTION_2_AF_MULTIPLIER 1.25f
@@ -45,11 +45,11 @@ typedef struct BMTransientShaperSection {
     BMReleaseFilter* sustainFastReleaseFilter;
     BMReleaseFilter* sustainSlowReleaseFilter;
 
-    BMAttackFilter sustainFakeAttackFilter;
-    BMAttackFilter sustainAttackFilter;
+    BMReleaseFilter sustainStandardReleaseFilter;
     BMReleaseFilter sustainInputFastReleaseFilter;
     BMReleaseFilter sustainInputSlowReleaseFilter;
     float attackFilterThreshold;
+    float* standard;
     
     BMDynamicSmoothingFilter* dsfAttack;
     BMDynamicSmoothingFilter* dsfSustain;

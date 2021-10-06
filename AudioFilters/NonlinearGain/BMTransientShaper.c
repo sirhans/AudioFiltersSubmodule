@@ -11,7 +11,9 @@
 void BMTransientShaperSection_setAttackSlowFC(BMTransientShaperSection *This, float attackFc);
 void BMTransientShaperSection_setAttackInstanceFC(BMTransientShaperSection *This, float releaseFc);
 void BMTransientShaperSection_setDSMinFrequency(BMTransientShaperSection *This, float dsMinFc);
-
+void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *This,
+                                                  float *input,
+                                                    size_t numSamples);
 void BMTransientShaper_upperLimit(float limit, const float* input, float *output, size_t numSamples);
 void BMTransientShaper_setSidechainNoiseGateThreshold(BMTransientShaper *This, float thresholdDb);
 void BMTransientShaper_processStereo(BMTransientShaper *This,
@@ -43,6 +45,7 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     This->inputBuffer = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->b1 = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->b2 = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+    This->standard = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->attackControlSignal = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->releaseControlSignal = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->attackInstanceFilter = malloc(sizeof(BMReleaseFilter)*BMTS_ARF_NUMLEVELS);
@@ -78,11 +81,10 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     BMReleaseFilter_init(&This->sustainInputFastReleaseFilter, releaseFilterFc, sampleRate);
     BMReleaseFilter_init(&This->sustainInputSlowReleaseFilter, releaseFilterFc, sampleRate);
     
-    float sustainAttackFC = 20.0f;
-    This->attackFilterThreshold = -10.0f;
-    BMAttackFilter_init(&This->sustainFakeAttackFilter, sustainAttackFC, sampleRate);
-    sustainAttackFC = 1.0f;
-    BMAttackFilter_init(&This->sustainAttackFilter, sustainAttackFC, sampleRate);
+    float standardReleaseTime = 2.0f; //Second
+    float slowReleaseFC = ARTimeToCutoffFrequency(standardReleaseTime, 1);
+    BMReleaseFilter_init(&This->sustainStandardReleaseFilter, slowReleaseFC, sampleRate);
+    
     
     // set the delay to 12 samples at 48 KHz sampleRate or
     // stretch appropriately for other sample rates
@@ -94,8 +96,8 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     for(size_t i=0; i<BMTS_DSF_NUMLEVELS; i++){
         BMDynamicSmoothingFilter_init(&This->dsfAttack[i], dsfSensitivity, dsfFcMin, dsfFcMax, This->sampleRate);
         BMDynamicSmoothingFilter_init(&This->dsfSustain[i], 1.5f, 5.0f, 10000.0f, This->sampleRate);
-        BMDynamicSmoothingFilter_init(&This->dsfSustainSlow[i], -15.0f, 1.0f, 1000.0f, This->sampleRate);
-        BMDynamicSmoothingFilter_init(&This->dsfSustainFast[i], -15.0f, 1.0f, 1000.0f, This->sampleRate);
+        BMDynamicSmoothingFilter_init(&This->dsfSustainSlow[i], 1.0f, 5.0f, 1000.0f, This->sampleRate);
+        BMDynamicSmoothingFilter_init(&This->dsfSustainFast[i], 1.0f, 5.0f, 1000.0f, This->sampleRate);
     }
 
 }
@@ -108,6 +110,8 @@ void BMTransientShaperSection_free(BMTransientShaperSection *This){
     This->b1 = NULL;
     free(This->b2);
     This->b2 = NULL;
+    free(This->standard);
+    This->standard = NULL;
     free(This->attackControlSignal);
     This->attackControlSignal = NULL;
     free(This->releaseControlSignal);
@@ -141,6 +145,7 @@ void BMTransientShaperSection_setAttackInstanceFC(BMTransientShaperSection *This
 
 void BMTransientShaperSection_setSustainFastFC(BMTransientShaperSection *This, float releaseFc){
     for(size_t i=0; i<BMTS_RRF2_NUMLEVELS; i++){
+        BMReleaseFilter_setCutoffMin(&This->sustainFastReleaseFilter[i], releaseFc);
         BMReleaseFilter_setCutoff(&This->sustainFastReleaseFilter[i], releaseFc);
     }
     
@@ -148,7 +153,7 @@ void BMTransientShaperSection_setSustainFastFC(BMTransientShaperSection *This, f
 
 void BMTransientShaperSection_setSustainSlowFC(BMTransientShaperSection *This, float releaseFc){
     for(size_t i=0; i<BMTS_RRF1_NUMLEVELS; i++){
-        BMReleaseFilter_setCutoff(&This->sustainSlowReleaseFilter[i], releaseFc);
+        BMReleaseFilter_setCutoffMin(&This->sustainSlowReleaseFilter[i], releaseFc);
     }
 }
 
@@ -200,128 +205,7 @@ void BMTransientShaperSection_simpleNoiseGate(BMTransientShaperSection *This,
 /*!
  *BMAttackShaperSection_generateControlSignal
  */
-void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *This,
-                                                  float *input,
-                                                  size_t numSamples){
-    assert(numSamples <= BM_BUFFER_CHUNK_SIZE);
-    
-    
-    /*************************
-     * volume envelope in dB *
-     *************************/
-    
-    // absolute value
-    vDSP_vabs(input, 1, input, 1, numSamples);
-    
-    // apply a simple per-sample noise gate
-    float noiseGateClosedValue = BM_DB_TO_GAIN(BMTS_NOISE_GATE_CLOSED_LEVEL);
-    BMTransientShaperSection_simpleNoiseGate(This, input, This->noiseGateThreshold, noiseGateClosedValue, input, numSamples);
 
-    // convert to decibels
-    float one = 1.0f;
-    vDSP_vdbcon(input, 1, &one, input, 1, numSamples, 0);
-    
-    /* ------------ ATTACK FILTER ---------*/
-    // release filter to get instant attack envelope
-    float *instantAttackEnvelope = This->b1;
-    for(size_t i=0; i<BMTS_ARF_NUMLEVELS; i++)
-        BMReleaseFilter_processBuffer(&This->attackInstanceFilter[i], input, instantAttackEnvelope, numSamples);
-
-    // attack filter to get slow attack envelope
-    float* slowAttackEnvelope = This->attackControlSignal;
-    BMAttackFilter_processBuffer(&This->attackSlowFilter[0], instantAttackEnvelope, slowAttackEnvelope, numSamples);
-    for(size_t i=1; i<BMTS_AF_NUMLEVELS; i++)
-        BMAttackFilter_processBuffer(&This->attackSlowFilter[i], slowAttackEnvelope, slowAttackEnvelope, numSamples);
-    
-    
-    
-    /***************************************************************************
-     * find gain reduction (dB) to have the envelope follow slowAttackEnvelope *
-     ***************************************************************************/
-    // controlSignal = slowAttackEnvelope - instantAttackEnvelope;
-    vDSP_vsub(instantAttackEnvelope, 1, slowAttackEnvelope, 1, This->attackControlSignal, 1, numSamples);
-    
-    // limit the control signal slightly below 0 dB to prevent zippering during sustain sections
-    float limit = -0.2f;
-    BMTransientShaper_upperLimit(limit, This->attackControlSignal, This->attackControlSignal, numSamples);
-    
-    
-    
-    /************************************************
-     * filter the control signal to reduce aliasing *
-     ************************************************/
-    //
-    // smoothing filter to prevent clicks
-    
-    //Always make the attackControlSignal upside down
-    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-        BMDynamicSmoothingFilter_processBufferWithFastDescent2(&This->dsfAttack[i], This->attackControlSignal, This->attackControlSignal, numSamples);
-    
-    //Return sign
-    float negOne = -1;
-    vDSP_vsmul(This->attackControlSignal, 1, &negOne, This->attackControlSignal, 1, numSamples);
-    
-    
-    /* ------------ SUSTAIN FILTER ---------*/
-    /*--------------------------------------*/
-    float* slowSustainEnvelope = This->b2;
-    float* fastSustainEnvelope = This->releaseControlSignal;
-    
-    //Fast & slow release filters
-    for(size_t i=0; i<BMTS_RRF1_NUMLEVELS; i++)
-        BMReleaseFilter_processBuffer(&This->sustainSlowReleaseFilter[i], instantAttackEnvelope, slowSustainEnvelope, numSamples);
-    
-    
-    for(size_t i=0; i<BMTS_RRF2_NUMLEVELS; i++)
-        BMReleaseFilter_processBuffer(&This->sustainFastReleaseFilter[i], instantAttackEnvelope, fastSustainEnvelope, numSamples);
-
-//    //Dynamic smooth
-//    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-//        BMDynamicSmoothingFilter_processBufferFastAccent3(&This->dsfSustainSlow[i], slowSustainEnvelope, slowSustainEnvelope, numSamples);
-//    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-//        BMDynamicSmoothingFilter_processBufferFastAccent3(&This->dsfSustainFast[i], fastSustainEnvelope, fastSustainEnvelope, numSamples);
-    
-
-    if(This->isTesting)
-        memcpy(This->testBuffer1, slowSustainEnvelope, sizeof(float)*numSamples);
-
-    if(This->isTesting)
-        memcpy(This->testBuffer2,fastSustainEnvelope, sizeof(float)*numSamples);
-    
-    //Get release control
-    vDSP_vsub(slowSustainEnvelope, 1, fastSustainEnvelope, 1, This->releaseControlSignal, 1, numSamples);
-    
-    
-    
-    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
-    
-    if(This->isTesting)
-        memcpy(This->testBuffer3,  This->releaseControlSignal, sizeof(float)*numSamples);
-    
-    //Apply depth
-    // exaggerate the control signal
-    float adjustedExaggeration = This->attackDepth * This->attackExaggeration;
-    vDSP_vsmul(This->attackControlSignal, 1, &adjustedExaggeration, This->attackControlSignal, 1, numSamples);
-    
-    
-    adjustedExaggeration = This->releaseDepth * -This->sustainExaggeration;
-    vDSP_vsmul(This->releaseControlSignal, 1, &adjustedExaggeration, This->releaseControlSignal, 1, numSamples);
-    
-    
-    
-    //Mix attack & release control signal
-    vDSP_vadd(This->attackControlSignal, 1, This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
-    
-    
-    
-    
-    
-    
-    // convert back to linear scale
-    BMConv_dBToGainV(This->releaseControlSignal, This->releaseControlSignal, numSamples);
-   
-}
 
 void BMTransientShaperSection_processStereo(BMTransientShaperSection *This,
                                          const float *inputL, const float *inputR,
@@ -619,12 +503,148 @@ void BMTransientShaper_setAttackDepth(BMTransientShaper *This, float depth){
         This->asSections[i].attackDepth = depth;
 }
 
+void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *This,
+                                                  float *input,
+                                                  size_t numSamples){
+    assert(numSamples <= BM_BUFFER_CHUNK_SIZE);
+    
+    
+    /*************************
+     * volume envelope in dB *
+     *************************/
+    
+    // absolute value
+    vDSP_vabs(input, 1, input, 1, numSamples);
+    
+    // apply a simple per-sample noise gate
+    float noiseGateClosedValue = BM_DB_TO_GAIN(BMTS_NOISE_GATE_CLOSED_LEVEL);
+    BMTransientShaperSection_simpleNoiseGate(This, input, This->noiseGateThreshold, noiseGateClosedValue, input, numSamples);
+
+    // convert to decibels
+    float one = 1.0f;
+    vDSP_vdbcon(input, 1, &one, input, 1, numSamples, 0);
+    
+    /* ------------ ATTACK FILTER ---------*/
+    // release filter to get instant attack envelope
+    float *instantAttackEnvelope = This->b1;
+    for(size_t i=0; i<BMTS_ARF_NUMLEVELS; i++)
+        BMReleaseFilter_processBuffer(&This->attackInstanceFilter[i], input, instantAttackEnvelope, numSamples);
+
+    // attack filter to get slow attack envelope
+    float* slowAttackEnvelope = This->attackControlSignal;
+    BMAttackFilter_processBuffer(&This->attackSlowFilter[0], instantAttackEnvelope, slowAttackEnvelope, numSamples);
+    for(size_t i=1; i<BMTS_AF_NUMLEVELS; i++)
+        BMAttackFilter_processBuffer(&This->attackSlowFilter[i], slowAttackEnvelope, slowAttackEnvelope, numSamples);
+    
+    
+    
+    /***************************************************************************
+     * find gain reduction (dB) to have the envelope follow slowAttackEnvelope *
+     ***************************************************************************/
+    // controlSignal = slowAttackEnvelope - instantAttackEnvelope;
+    vDSP_vsub(instantAttackEnvelope, 1, slowAttackEnvelope, 1, This->attackControlSignal, 1, numSamples);
+    
+    // limit the control signal slightly below 0 dB to prevent zippering during sustain sections
+    float limit = -0.2f;
+    BMTransientShaper_upperLimit(limit, This->attackControlSignal, This->attackControlSignal, numSamples);
+    
+    
+    
+    /************************************************
+     * filter the control signal to reduce aliasing *
+     ************************************************/
+    //
+    // smoothing filter to prevent clicks
+    
+    //Always make the attackControlSignal upside down
+    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
+        BMDynamicSmoothingFilter_processBufferWithFastDescent2(&This->dsfAttack[i], This->attackControlSignal, This->attackControlSignal, numSamples);
+    
+    //Return sign
+    float negOne = -1;
+    vDSP_vsmul(This->attackControlSignal, 1, &negOne, This->attackControlSignal, 1, numSamples);
+    
+    
+    /* ------------ SUSTAIN FILTER ---------*/
+    /*--------------------------------------*/
+    float* slowSustainEnvelope = This->b2;
+    float* fastSustainEnvelope = This->releaseControlSignal;
+    
+    //Standard release filter
+    BMReleaseFilter_processBuffer(&This->sustainStandardReleaseFilter, instantAttackEnvelope, This->standard, numSamples);
+    
+    
+    //Fast & slow release filters
+    for(size_t i=0; i<BMTS_RRF1_NUMLEVELS; i++)
+        BMReleaseFilter_processBufferDynamic(&This->sustainSlowReleaseFilter[i], instantAttackEnvelope, slowSustainEnvelope,This->standard, numSamples);
+    
+    
+    for(size_t i=0; i<BMTS_RRF2_NUMLEVELS; i++)
+        BMReleaseFilter_processBufferDynamic(&This->sustainFastReleaseFilter[i], instantAttackEnvelope, fastSustainEnvelope,This->standard, numSamples);
+        
+    
+//    //Fast & slow release filters
+//    for(size_t i=0; i<BMTS_RRF1_NUMLEVELS; i++)
+//        BMReleaseFilter_processBuffer(&This->sustainSlowReleaseFilter[i], instantAttackEnvelope, slowSustainEnvelope, numSamples);
+//
+//
+//    for(size_t i=0; i<BMTS_RRF2_NUMLEVELS; i++)
+//    BMReleaseFilter_processBuffer(&This->sustainFastReleaseFilter[i], instantAttackEnvelope, fastSustainEnvelope, numSamples);
+
+//    //Dynamic smooth
+//    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
+//        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustainSlow[i], slowSustainEnvelope, slowSustainEnvelope, numSamples);
+//    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
+//        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustainFast[i], fastSustainEnvelope, fastSustainEnvelope, numSamples);
+
+    
+
+    if(This->isTesting)
+        memcpy(This->testBuffer1, slowSustainEnvelope, sizeof(float)*numSamples);
+
+    if(This->isTesting)
+        memcpy(This->testBuffer2,fastSustainEnvelope, sizeof(float)*numSamples);
+    
+    //Get release control
+    vDSP_vsub(slowSustainEnvelope, 1, fastSustainEnvelope, 1, This->releaseControlSignal, 1, numSamples);
+    
+    if(This->isTesting)
+        memcpy(This->testBuffer3,  This->releaseControlSignal, sizeof(float)*numSamples);
+    
+    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
+        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
+    
+    
+    
+    //Apply depth
+    // exaggerate the control signal
+    float adjustedExaggeration = This->attackDepth * This->attackExaggeration;
+    vDSP_vsmul(This->attackControlSignal, 1, &adjustedExaggeration, This->attackControlSignal, 1, numSamples);
+    
+    
+    adjustedExaggeration = This->releaseDepth * -This->sustainExaggeration;
+    vDSP_vsmul(This->releaseControlSignal, 1, &adjustedExaggeration, This->releaseControlSignal, 1, numSamples);
+    
+    
+    
+    //Mix attack & release control signal
+    vDSP_vadd(This->attackControlSignal, 1, This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
+    
+    
+    
+    
+    
+    
+    // convert back to linear scale
+    BMConv_dBToGainV(This->releaseControlSignal, This->releaseControlSignal, numSamples);
+   
+}
+
 void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTimeInSeconds){
     // find the lpf cutoff frequency that corresponds to the specified attack time
-    releaseTimeInSeconds *= 3.0f;
+    releaseTimeInSeconds *= 15.0f;//4.0f
     float slowReleaseFC = ARTimeToCutoffFrequency(releaseTimeInSeconds, BMTS_RRF1_NUMLEVELS);
     
-//    slowReleaseFC *= 0.1f;//0.05
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[0], slowReleaseFC);
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
