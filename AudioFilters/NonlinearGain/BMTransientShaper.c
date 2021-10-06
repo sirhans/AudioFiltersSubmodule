@@ -72,10 +72,12 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     
     for(size_t i=0; i<BMTS_RRF1_NUMLEVELS; i++){
         BMReleaseFilter_init(&This->sustainSlowReleaseFilter[i], releaseFilterFc, sampleRate);
+        BMReleaseFilter_setDBRange(&This->sustainSlowReleaseFilter[i], 2.0f, 5.0f);
     }
     
     for(size_t i=0; i<BMTS_RRF2_NUMLEVELS; i++){
         BMReleaseFilter_init(&This->sustainFastReleaseFilter[i], releaseFilterFc, sampleRate);
+        BMReleaseFilter_setDBRange(&This->sustainFastReleaseFilter[i], 2.0f, 5.0f);
     }
     
     BMReleaseFilter_init(&This->sustainInputFastReleaseFilter, releaseFilterFc, sampleRate);
@@ -143,17 +145,16 @@ void BMTransientShaperSection_setAttackInstanceFC(BMTransientShaperSection *This
         BMReleaseFilter_setCutoff(&This->attackInstanceFilter[i], releaseFc);
 }
 
-void BMTransientShaperSection_setSustainFastFC(BMTransientShaperSection *This, float releaseFc){
+void BMTransientShaperSection_setSustainFastFC(BMTransientShaperSection *This, float fcMin,float fcMax){
     for(size_t i=0; i<BMTS_RRF2_NUMLEVELS; i++){
-        BMReleaseFilter_setCutoffMin(&This->sustainFastReleaseFilter[i], releaseFc);
-        BMReleaseFilter_setCutoff(&This->sustainFastReleaseFilter[i], releaseFc);
+        BMReleaseFilter_setCutoffRange(&This->sustainFastReleaseFilter[i], fcMin,fcMax);
     }
     
 }
 
-void BMTransientShaperSection_setSustainSlowFC(BMTransientShaperSection *This, float releaseFc){
+void BMTransientShaperSection_setSustainSlowFC(BMTransientShaperSection *This, float fcMin,float fcMax){
     for(size_t i=0; i<BMTS_RRF1_NUMLEVELS; i++){
-        BMReleaseFilter_setCutoffMin(&This->sustainSlowReleaseFilter[i], releaseFc);
+        BMReleaseFilter_setCutoffRange(&This->sustainSlowReleaseFilter[i], fcMin,fcMax);
     }
 }
 
@@ -581,23 +582,6 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     for(size_t i=0; i<BMTS_RRF2_NUMLEVELS; i++)
         BMReleaseFilter_processBufferDynamic(&This->sustainFastReleaseFilter[i], instantAttackEnvelope, fastSustainEnvelope,This->standard, numSamples);
-        
-    
-//    //Fast & slow release filters
-//    for(size_t i=0; i<BMTS_RRF1_NUMLEVELS; i++)
-//        BMReleaseFilter_processBuffer(&This->sustainSlowReleaseFilter[i], instantAttackEnvelope, slowSustainEnvelope, numSamples);
-//
-//
-//    for(size_t i=0; i<BMTS_RRF2_NUMLEVELS; i++)
-//    BMReleaseFilter_processBuffer(&This->sustainFastReleaseFilter[i], instantAttackEnvelope, fastSustainEnvelope, numSamples);
-
-//    //Dynamic smooth
-//    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-//        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustainSlow[i], slowSustainEnvelope, slowSustainEnvelope, numSamples);
-//    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-//        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustainFast[i], fastSustainEnvelope, fastSustainEnvelope, numSamples);
-
-    
 
     if(This->isTesting)
         memcpy(This->testBuffer1, slowSustainEnvelope, sizeof(float)*numSamples);
@@ -642,16 +626,17 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
 
 void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTimeInSeconds){
     // find the lpf cutoff frequency that corresponds to the specified attack time
+    float fcMax = 10.0f;
     releaseTimeInSeconds *= 12.0f;//4.0f
     float slowReleaseFC = ARTimeToCutoffFrequency(releaseTimeInSeconds, BMTS_RRF1_NUMLEVELS);
     
-    BMTransientShaperSection_setSustainSlowFC(&This->asSections[0], slowReleaseFC);
-    BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER);
+    BMTransientShaperSection_setSustainSlowFC(&This->asSections[0], slowReleaseFC,fcMax);
+    BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER,fcMax*BMTS_SECTION_2_RF_MULTIPLIER);
     
     releaseTimeInSeconds *= 0.4f;
     float fastFC = ARTimeToCutoffFrequency(releaseTimeInSeconds, BMTS_RRF2_NUMLEVELS);
-    BMTransientShaperSection_setSustainFastFC(&This->asSections[0], fastFC);
-    BMTransientShaperSection_setSustainFastFC(&This->asSections[1], fastFC*BMTS_SECTION_2_RF_MULTIPLIER);
+    BMTransientShaperSection_setSustainFastFC(&This->asSections[0], fastFC,fcMax);
+    BMTransientShaperSection_setSustainFastFC(&This->asSections[1], fastFC*BMTS_SECTION_2_RF_MULTIPLIER,fcMax*BMTS_SECTION_2_RF_MULTIPLIER);
     
     This->asSections[0].sustainExaggeration = 1.0f;//(releaseTimeInSeconds-0.1f)/0.9f * 4.5f + 1.0f;
     This->asSections[1].sustainExaggeration = This->asSections[0].sustainExaggeration;

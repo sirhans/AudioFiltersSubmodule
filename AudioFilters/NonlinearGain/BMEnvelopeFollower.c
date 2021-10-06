@@ -91,8 +91,14 @@ void BMReleaseFilter_setCutoff(BMReleaseFilter *This, float fc){
 	This->a3 = (float)a3;
 }
 
-void BMReleaseFilter_setCutoffMin(BMReleaseFilter *This, float fc){
-    This->fcMin = fc;
+void BMReleaseFilter_setCutoffRange(BMReleaseFilter *This, float min,float max){
+    This->fcMin = min;
+    This->fcMax = max;
+}
+
+void BMReleaseFilter_setDBRange(BMReleaseFilter *This, float min,float max){
+    This->minDb = min;
+    This->maxDb = max;
 }
 
 void BMReleaseFilter_updateSampleRate(BMReleaseFilter *This, float sampleRate){
@@ -152,7 +158,8 @@ void BMReleaseFilter_init(BMReleaseFilter *This, float fc, float sampleRate){
     This->attackMode = false;
     This->ic1 = This->ic2 = 0;
     
-    BMReleaseFilter_setCutoffMin(This, 1.0f);
+    BMReleaseFilter_setCutoffRange(This, 1.0f,1.0f);
+    BMReleaseFilter_setDBRange(This, 0.0f,0.0f);
     BMReleaseFilter_setCutoff(This, fc);
     
 }
@@ -335,11 +342,8 @@ void BMReleaseFilter_processBufferDynamic(BMReleaseFilter *This,
     for (size_t i=0; i<numSamples; i++){
         //Calculate fc - Distance is between 3 db to 10db -> fc grow from fcMax to fcMin
         float distance = fabsf(input[i]-standard[i]);
-        float fcMax = 10.0f;
-        float minDb = 2.0f;
-        float maxDb = 5.0f;
-        float v = BM_MIN(BM_MAX((distance - minDb)/(maxDb-minDb),0),1.0f);
-        float fc = This->fcMin + (fcMax-This->fcMin) * powf(1.0f-v, 2.0f);
+        float v = BM_MIN(BM_MAX((distance - This->minDb)/(This->maxDb - This->minDb),0),1.0f);
+        float fc = This->fcMin + (This->fcMax-This->fcMin) * powf(1.0f-v, 2.0f);
         BMReleaseFilter_setCutoff(This, fc);
 //        printf("fc %f %f %f\n",fc,distance,v);
         
