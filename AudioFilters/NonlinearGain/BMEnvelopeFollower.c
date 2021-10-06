@@ -338,7 +338,7 @@ void BMReleaseFilter_processBufferDynamic(BMReleaseFilter *This,
         float fcMax = 10.0f;
         float minDb = 2.0f;
         float maxDb = 5.0f;
-        float v = MIN(MAX((distance - minDb)/(maxDb-minDb),0),1.0f);
+        float v = BM_MIN(BM_MAX((distance - minDb)/(maxDb-minDb),0),1.0f);
         float fc = This->fcMin + (fcMax-This->fcMin) * powf(1.0f-v, 2.0f);
         BMReleaseFilter_setCutoff(This, fc);
 //        printf("fc %f %f %f\n",fc,distance,v);
