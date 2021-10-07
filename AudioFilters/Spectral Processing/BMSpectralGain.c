@@ -13,6 +13,64 @@
 #define BMSG_KAISER_BETA 16.0
 
 
+void BMSpectralGain_init(BMSpectralGain *This, size_t maxFFTSize){
+//	typedef struct BMSpectralGain {
+//		BMFFT fft;
+//		float *b1r, *kaiserWindow, *kaiserToHann;
+//		float *outputRight, *outputCentre, *outputLeft;
+//		float *inputRight, *inputCentre, *inputLeft;
+//		DSPSplitComplex *b2c;
+//		size_t kaiserWindowLength, hannWindowLength;
+//	} BMSpectralGain;
+	
+	BMFFT_init(&This->fft, maxFFTSize);
+	
+	float *floatBuffers = malloc(sizeof(float)*maxFFTSize);
+	This->b1r = malloc(sizeof(float)*maxFFTSize);
+	This->kaiserWindow = malloc(sizeof(float)*maxFFTSize);
+	This->kaiserToHann = malloc(sizeof(float)*maxFFTSize);
+	This->outputRight = malloc(sizeof(float)*maxFFTSize);
+	This->outputCentre = malloc(sizeof(float)*maxFFTSize);
+	This->outputLeft = malloc(sizeof(float)*maxFFTSize);
+	This->inputLeft	= malloc(sizeof(float)*maxFFTSize);
+	This->inputCentre = malloc(sizeof(float)*maxFFTSize);
+	This->inputRight = malloc(sizeof(float)*maxFFTSize);
+	This->b2c = malloc(sizeof(DSPSplitComplex)*maxFFTSize);
+	
+	This->kaiserWindowLength = This->hannWindowLength = 0;
+}
+
+
+
+
+void BMSpectralGain_free(BMSpectralGain *This){
+	BMFFT_free(&This->fft);
+	
+	free(This->b1r);
+	free(This->kaiserWindow);
+	free(This->kaiserToHann);
+	free(This->outputRight);
+	free(This->outputCentre);
+	free(This->outputLeft);
+	free(This->inputLeft);
+	free(This->inputCentre);
+	free(This->inputRight);
+	free(This->b2c);
+	This->b1r = NULL;
+	This->kaiserWindow = NULL;
+	This->kaiserToHann = NULL;
+	This->outputRight = NULL;
+	This->outputCentre = NULL;
+	This->outputLeft = NULL;
+	This->inputLeft = NULL;
+	This->inputCentre = NULL;
+	This->inputRight = NULL;
+	This->b2c = NULL;
+}
+
+
+
+
 void BMSpectralGain_kaiserToHann(BMSpectralGain *This,
 								 float *inputWithKaiser,
 								 float *outputWithHann,

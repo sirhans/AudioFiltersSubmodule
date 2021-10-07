@@ -24,6 +24,24 @@ typedef struct BMSpectralGain {
 
 
 /*!
+ *BMSpectralGain_init
+ *
+ * @param This
+ * @param maxFFTSize the fft size can be adjusted at any time as long as it does not exceed this number
+ */
+void BMSpectralGain_init(BMSpectralGain *This, size_t maxFFTSize);
+
+
+
+/*!
+ *BMSpectralGain_free
+ */
+void BMSpectralGain_free(BMSpectralGain *This);
+
+
+
+
+/*!
  * BMSpectralGain_processOneBuffer
  *
  * This function takes an input buffer and an array representing the gain to be applied to each FFT bin. It does the following operations:
