@@ -631,12 +631,12 @@ void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTime
     float slowReleaseFC = ARTimeToCutoffFrequency(releaseTimeInSeconds, BMTS_RRF1_NUMLEVELS);
     
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[0], slowReleaseFC,fcMax);
-    BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER,fcMax*BMTS_SECTION_2_RF_MULTIPLIER);
+    BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER,fcMax);
     
     releaseTimeInSeconds *= 0.4f;
-    float fastFC = ARTimeToCutoffFrequency(releaseTimeInSeconds, BMTS_RRF2_NUMLEVELS);
+    float fastFC = ARTimeToCutoffFrequency(releaseTimeInSeconds/1.5f, BMTS_RRF2_NUMLEVELS);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[0], fastFC,fcMax);
-    BMTransientShaperSection_setSustainFastFC(&This->asSections[1], fastFC*BMTS_SECTION_2_RF_MULTIPLIER,fcMax*BMTS_SECTION_2_RF_MULTIPLIER);
+    BMTransientShaperSection_setSustainFastFC(&This->asSections[1], fastFC*BMTS_SECTION_2_RF_MULTIPLIER,fcMax);
     
     This->asSections[0].sustainExaggeration = 1.0f;//(releaseTimeInSeconds-0.1f)/0.9f * 4.5f + 1.0f;
     This->asSections[1].sustainExaggeration = This->asSections[0].sustainExaggeration;
