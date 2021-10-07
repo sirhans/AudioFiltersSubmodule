@@ -73,7 +73,8 @@ void BMSpectralGain_processThreeBuffers(BMSpectralGain *This,
 		// set the centre pointer to the centre input minus the padding
 		centre = inputCentre - padding;
 		
-		// set the right pointer to the right input minus the padding
+		// set the right pointer to the right input minus the side buffer length
+		// (because the side buffers are exactly half the FFT size)
 		right = inputRight - sideBufferLength;
 		
 	// if the inputs are not contiguous, copy to buffers and set pointers to the buffers
