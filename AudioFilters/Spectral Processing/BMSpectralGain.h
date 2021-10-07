@@ -26,7 +26,7 @@ typedef struct BMSpectralGain {
 /*!
  *BMSpectralGain_init
  *
- * @param This
+ * @param This pointer to an uninitialised struct
  * @param maxFFTSize the fft size can be adjusted at any time as long as it does not exceed this number
  */
 void BMSpectralGain_init(BMSpectralGain *This, size_t maxFFTSize);
