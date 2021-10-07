@@ -30,7 +30,8 @@
  * signal amplitude is decreasing
  */
 typedef struct BMReleaseFilter {
-    float sampleRate, fc;
+    float sampleRate, fc,fcMin,fcMax;
+    float minDb,maxDb;
     float ic1, ic2;
     float g,k;
     float a1, a2, a3;
@@ -132,7 +133,11 @@ void BMReleaseFilter_processBuffer(BMReleaseFilter *This,
                                    float* output,
                                    size_t numSamples);
 
-
+void BMReleaseFilter_processBufferDynamic(BMReleaseFilter *This,
+                                   const float* input,
+                                   float* output,
+                                   float* standard,
+                                   size_t numSamples);
 /*!
  * BMReleaseFilter_processBufferNegative
  *
@@ -154,8 +159,8 @@ void BMAttackFilter_setCutoff(BMAttackFilter *This, float fc);
  * BMReleaseFilter_setCutoff
  */
 void BMReleaseFilter_setCutoff(BMReleaseFilter *This, float fc);
-
-
+void BMReleaseFilter_setCutoffRange(BMReleaseFilter *This, float min,float max);
+void BMReleaseFilter_setDBRange(BMReleaseFilter *This, float min,float max);
 /*!
  * BMReleaseFilter_updateSampleRate
  */
