@@ -51,6 +51,27 @@ void BMSpectralGain_processOneBuffer(BMSpectralGain *This,
 									 size_t inputLength,
 									 size_t outputLength);
 
-
+/*!
+ *BMSpectralGain_processThreeBuffers
+ *
+ * @param This pointer to an initialised struct
+ * @param gainLeft an array of length 1+fftSize/2 representing the gain change at each fft bin
+ * @param inputLeft audio buffer containing fftSize/2 samples to the immediate left of inputCentre
+ * @param gainCentre an array of length 1+fftSize/2 representing the gain change at each fft bin
+ * @param inputCentre audio buffer containing the samples that correspond directly to the output
+ * @param gainRight an array of length 1+fftSize/2 representing the gain change at each fft bin
+ * @param inputRight audio buffer containing fftSize/2 samples to the immediate right of inputCentre
+ * @param fftSize size of the fft used for spectral processing
+ * @param sideBufferLength length of inputLeft and inputRight. must be equal to fftSize/2
+ * @param centreBufferLength length of inputCentre and output. must be less than fftSize
+ * @param output output buffer of length centreBufferLength
+ */
+void BMSpectralGain_processThreeBuffers(BMSpectralGain *This,
+										const float *gainLeft, const float *inputLeft,
+										const float *gainCentre, const float *inputCentre,
+										const float *gainRight, const float *inputRight,
+										size_t fftSize, size_t sideBufferLength, size_t centreBufferLength,
+										float *output
+										);
 
 #endif /* BMSpectralGain_h */
