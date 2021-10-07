@@ -14,18 +14,9 @@
 
 
 void BMSpectralGain_init(BMSpectralGain *This, size_t maxFFTSize){
-//	typedef struct BMSpectralGain {
-//		BMFFT fft;
-//		float *b1r, *kaiserWindow, *kaiserToHann;
-//		float *outputRight, *outputCentre, *outputLeft;
-//		float *inputRight, *inputCentre, *inputLeft;
-//		DSPSplitComplex *b2c;
-//		size_t kaiserWindowLength, hannWindowLength;
-//	} BMSpectralGain;
-	
+
 	BMFFT_init(&This->fft, maxFFTSize);
 	
-	float *floatBuffers = malloc(sizeof(float)*maxFFTSize);
 	This->b1r = malloc(sizeof(float)*maxFFTSize);
 	This->kaiserWindow = malloc(sizeof(float)*maxFFTSize);
 	This->kaiserToHann = malloc(sizeof(float)*maxFFTSize);
