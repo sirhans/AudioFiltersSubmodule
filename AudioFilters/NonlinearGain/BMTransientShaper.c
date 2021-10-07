@@ -634,7 +634,7 @@ void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTime
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER,fcMax);
     
     releaseTimeInSeconds *= 0.4f;
-    float fastFC = ARTimeToCutoffFrequency(releaseTimeInSeconds/1.5f, BMTS_RRF2_NUMLEVELS);
+    float fastFC = ARTimeToCutoffFrequency(releaseTimeInSeconds/2.5f, BMTS_RRF2_NUMLEVELS);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[0], fastFC,fcMax);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[1], fastFC*BMTS_SECTION_2_RF_MULTIPLIER,fcMax);
     
