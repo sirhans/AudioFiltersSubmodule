@@ -60,7 +60,7 @@ void BMSpectralGain_free(BMSpectralGain *This);
  * @param input an array of input of length inputLength
  * @param output an array of length outputLength
  * @param inputLength length of input
- * @param outputLength length of output. Must be in [1,inputLength)
+ * @param outputLength length of output. Must be in [1,inputLength-2]. We recommend outputLength = inputLength/2. Distortion will occur when outputLength is close to inputLength.
  */
 void BMSpectralGain_processOneBuffer(BMSpectralGain *This,
 									 const float *gain,
@@ -71,6 +71,8 @@ void BMSpectralGain_processOneBuffer(BMSpectralGain *This,
 
 /*!
  *BMSpectralGain_processThreeBuffers
+ *
+ * Processing one buffer at a time using the processOneBuffer function has the unfortuante drawback that its output can not be used directly as output without first doing overlap and add with the buffer before and after it. This function processes a buffer of audio samples, called here by the name "inputCentre" along with a buffer that comes immediately before it and another that comes after it, called inputLeft and inputCentre. With these three inputs together it becomes possible to output a completed buffer of audio samples ready for immediate audio playback without additional overlap-add computations (because the overlap and add step is done by this function).
  *
  * @param This pointer to an initialised struct
  * @param gainLeft an array of length 1+fftSize/2 representing the gain change at each fft bin
