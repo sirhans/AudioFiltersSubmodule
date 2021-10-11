@@ -519,12 +519,12 @@ void BMTransientShaper_setAttackTime(BMTransientShaper *This, float attackTimeIn
     
     //Boost attack
     //Attack filter
-    attackFc = ARTimeToCutoffFrequency(attackTimeInSeconds, BMTS_AF_NUMLEVELS);
+    attackFc = ARTimeToCutoffFrequency(BM_MIN(attackTimeInSeconds,0.25f), BMTS_AF_NUMLEVELS);
     BMTransientShaperSection_setAttackBoostSlowFC(&This->asSections[0], attackFc);
     BMTransientShaperSection_setAttackBoostSlowFC(&This->asSections[1], attackFc*BMTS_SECTION_2_AF_MULTIPLIER);
     
     //Release filter
-    instanceFc = ARTimeToCutoffFrequency(attackTimeInSeconds, BMTS_ARF_NUMLEVELS);
+    instanceFc = ARTimeToCutoffFrequency(0.15f, BMTS_ARF_NUMLEVELS);
     BMTransientShaperSection_setAttackBoostInstantFC(&This->asSections[0], instanceFc);
     BMTransientShaperSection_setAttackBoostInstantFC(&This->asSections[1], instanceFc*BMTS_SECTION_2_RF_MULTIPLIER);
     
@@ -619,10 +619,11 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
      ************************************************/
     //
     // smoothing filter to prevent clicks
-    
+    if(This->attackDepth<0){
     //Always make the attackControlSignal upside down
-    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-        BMDynamicSmoothingFilter_processBufferWithFastDescent2(&This->dsfAttack[i], This->attackControlSignal, This->attackControlSignal, numSamples);
+        for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
+            BMDynamicSmoothingFilter_processBufferWithFastDescent2(&This->dsfAttack[i], This->attackControlSignal, This->attackControlSignal, numSamples);
+    }
     
     //Return sign
     float negOne = -1;
