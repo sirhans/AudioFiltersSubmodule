@@ -519,7 +519,7 @@ void BMTransientShaper_setAttackTime(BMTransientShaper *This, float attackTimeIn
     
     //Boost attack
     //Attack filter
-    attackFc = ARTimeToCutoffFrequency(BM_MIN(attackTimeInSeconds,0.25f), BMTS_AF_NUMLEVELS);
+    attackFc = ARTimeToCutoffFrequency(BM_MAX(BM_MIN(attackTimeInSeconds/8.0f,0.045f),0.01f), BMTS_AF_NUMLEVELS);
     BMTransientShaperSection_setAttackBoostSlowFC(&This->asSections[0], attackFc);
     BMTransientShaperSection_setAttackBoostSlowFC(&This->asSections[1], attackFc*BMTS_SECTION_2_AF_MULTIPLIER);
     
