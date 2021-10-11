@@ -8,8 +8,10 @@
 #include "BMTransientShaper.h"
 #include "BMUnitConversion.h"
 
-void BMTransientShaperSection_setAttackSlowFC(BMTransientShaperSection *This, float attackFc);
-void BMTransientShaperSection_setAttackInstanceFC(BMTransientShaperSection *This, float releaseFc);
+void BMTransientShaperSection_setAttackReduceSlowFC(BMTransientShaperSection *This, float attackFc);
+void BMTransientShaperSection_setAttackReduceInstantFC(BMTransientShaperSection *This, float releaseFc);
+void BMTransientShaperSection_setAttackBoostSlowFC(BMTransientShaperSection *This, float attackFc);
+void BMTransientShaperSection_setAttackBoostInstantFC(BMTransientShaperSection *This, float releaseFc);
 void BMTransientShaperSection_setDSMinFrequency(BMTransientShaperSection *This, float dsMinFc);
 void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *This,
                                                   float *input,
@@ -48,8 +50,10 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     This->standard = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->attackControlSignal = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->releaseControlSignal = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-    This->attackInstanceFilter = malloc(sizeof(BMReleaseFilter)*BMTS_ARF_NUMLEVELS);
-    This->attackSlowFilter = malloc(sizeof(BMAttackFilter)*BMTS_AF_NUMLEVELS);
+    This->attackReduceInstantFilter = malloc(sizeof(BMReleaseFilter)*BMTS_ARF_NUMLEVELS);
+    This->attackReduceSlowFilter = malloc(sizeof(BMAttackFilter)*BMTS_AF_NUMLEVELS);
+    This->attackBoostInstantFilter = malloc(sizeof(BMReleaseFilter)*BMTS_ARF_NUMLEVELS);
+    This->attackBoostSlowFilter = malloc(sizeof(BMAttackFilter)*BMTS_AF_NUMLEVELS);
     This->dsfAttack = malloc(sizeof(BMDynamicSmoothingFilter)*BMTS_DSF_NUMLEVELS);
     This->dsfSustain = malloc(sizeof(BMDynamicSmoothingFilter)*BMTS_DSF_NUMLEVELS);
     This->dsfSustainSlow = malloc(sizeof(BMDynamicSmoothingFilter)*BMTS_DSF_NUMLEVELS);
@@ -57,14 +61,16 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     
     
     // the release filters generate the fast envelope across the peaks
-    for(size_t i=0; i<BMTS_ARF_NUMLEVELS; i++)
-        BMReleaseFilter_init(&This->attackInstanceFilter[i], releaseFilterFc, sampleRate);
+    for(size_t i=0; i<BMTS_ARF_NUMLEVELS; i++){
+        BMReleaseFilter_init(&This->attackReduceInstantFilter[i], releaseFilterFc, sampleRate);
+        BMReleaseFilter_init(&This->attackBoostInstantFilter[i], releaseFilterFc, sampleRate);
+    }
     
     // the attack filter controls the attack time
-    for(size_t i=0; i<BMTS_AF_NUMLEVELS; i++)
-        BMAttackFilter_init(&This->attackSlowFilter[i], attackFc, sampleRate);
-    
-    BMTransientShaperSection_setAttackSlowFC(This, attackFc);
+    for(size_t i=0; i<BMTS_AF_NUMLEVELS; i++){
+        BMAttackFilter_init(&This->attackReduceSlowFilter[i], attackFc, sampleRate);
+        BMAttackFilter_init(&This->attackBoostSlowFilter[i], attackFc, sampleRate);
+    }
     
     //Sustain
     This->sustainSlowReleaseFilter = malloc(sizeof(BMReleaseFilter)*BMTS_RRF1_NUMLEVELS);
@@ -119,10 +125,15 @@ void BMTransientShaperSection_free(BMTransientShaperSection *This){
     free(This->releaseControlSignal);
     This->releaseControlSignal = NULL;
     
-    free(This->attackInstanceFilter);
-    This->attackInstanceFilter = NULL;
-    free(This->attackSlowFilter);
-    This->attackSlowFilter = NULL;
+    free(This->attackReduceInstantFilter);
+    This->attackReduceInstantFilter = NULL;
+    free(This->attackReduceSlowFilter);
+    This->attackReduceSlowFilter = NULL;
+    
+    free(This->attackBoostInstantFilter);
+    This->attackBoostInstantFilter = NULL;
+    free(This->attackBoostSlowFilter);
+    This->attackBoostSlowFilter = NULL;
     
     free(This->dsfAttack);
     This->dsfAttack = NULL;
@@ -134,15 +145,30 @@ void BMTransientShaperSection_free(BMTransientShaperSection *This){
     This->dsfSustainFast = NULL;
 }
 
-void BMTransientShaperSection_setAttackSlowFC(BMTransientShaperSection *This, float attackFc){
+void BMTransientShaperSection_setAttackReduceSlowFC(BMTransientShaperSection *This, float attackFc){
     // set the attack filter
-    for(size_t i=0; i<BMTS_AF_NUMLEVELS; i++)
-    BMAttackFilter_setCutoff(&This->attackSlowFilter[i], attackFc);
+    for(size_t i=0; i<BMTS_AF_NUMLEVELS; i++){
+        BMAttackFilter_setCutoff(&This->attackReduceSlowFilter[i], attackFc);
+    }
 }
 
-void BMTransientShaperSection_setAttackInstanceFC(BMTransientShaperSection *This, float releaseFc){
-    for(size_t i=0; i<BMTS_ARF_NUMLEVELS; i++)
-        BMReleaseFilter_setCutoff(&This->attackInstanceFilter[i], releaseFc);
+void BMTransientShaperSection_setAttackBoostSlowFC(BMTransientShaperSection *This, float attackFc){
+    // set the attack filter
+    for(size_t i=0; i<BMTS_AF_NUMLEVELS; i++){
+        BMAttackFilter_setCutoff(&This->attackBoostSlowFilter[i], attackFc);
+    }
+}
+
+void BMTransientShaperSection_setAttackReduceInstantFC(BMTransientShaperSection *This, float releaseFc){
+    for(size_t i=0; i<BMTS_ARF_NUMLEVELS; i++){
+        BMReleaseFilter_setCutoff(&This->attackReduceInstantFilter[i], releaseFc);
+    }
+}
+
+void BMTransientShaperSection_setAttackBoostInstantFC(BMTransientShaperSection *This, float releaseFc){
+    for(size_t i=0; i<BMTS_ARF_NUMLEVELS; i++){
+        BMReleaseFilter_setCutoff(&This->attackBoostInstantFilter[i], releaseFc);
+    }
 }
 
 void BMTransientShaperSection_setSustainFastFC(BMTransientShaperSection *This, float fcMin,float fcMax){
@@ -481,14 +507,26 @@ void BMTransientShaper_processStereoTest(BMTransientShaper *This,
 
 void BMTransientShaper_setAttackTime(BMTransientShaper *This, float attackTimeInSeconds){
     // find the lpf cutoff frequency that corresponds to the specified attack time
+    //Reduce attack
     float attackFc = ARTimeToCutoffFrequency(attackTimeInSeconds, BMTS_AF_NUMLEVELS);
     
-    BMTransientShaperSection_setAttackSlowFC(&This->asSections[0], attackFc);
-    BMTransientShaperSection_setAttackSlowFC(&This->asSections[1], attackFc*BMTS_SECTION_2_AF_MULTIPLIER);
+    BMTransientShaperSection_setAttackReduceSlowFC(&This->asSections[0], attackFc);
+    BMTransientShaperSection_setAttackReduceSlowFC(&This->asSections[1], attackFc*BMTS_SECTION_2_AF_MULTIPLIER);
     
     float instanceFc = BM_MIN(attackFc * 0.6666f, 20.0f);
-    BMTransientShaperSection_setAttackInstanceFC(&This->asSections[0], instanceFc);
-    BMTransientShaperSection_setAttackInstanceFC(&This->asSections[1], instanceFc*BMTS_SECTION_2_RF_MULTIPLIER);
+    BMTransientShaperSection_setAttackReduceInstantFC(&This->asSections[0], instanceFc);
+    BMTransientShaperSection_setAttackReduceInstantFC(&This->asSections[1], instanceFc*BMTS_SECTION_2_RF_MULTIPLIER);
+    
+    //Boost attack
+    //Attack filter
+    attackFc = ARTimeToCutoffFrequency(attackTimeInSeconds, BMTS_AF_NUMLEVELS);
+    BMTransientShaperSection_setAttackBoostSlowFC(&This->asSections[0], attackFc);
+    BMTransientShaperSection_setAttackBoostSlowFC(&This->asSections[1], attackFc*BMTS_SECTION_2_AF_MULTIPLIER);
+    
+    //Release filter
+    instanceFc = ARTimeToCutoffFrequency(attackTimeInSeconds, BMTS_ARF_NUMLEVELS);
+    BMTransientShaperSection_setAttackBoostInstantFC(&This->asSections[0], instanceFc);
+    BMTransientShaperSection_setAttackBoostInstantFC(&This->asSections[1], instanceFc*BMTS_SECTION_2_RF_MULTIPLIER);
     
     float dsMinFc = instanceFc;
     BMTransientShaperSection_setDSMinFrequency(&This->asSections[0], dsMinFc);
@@ -528,16 +566,36 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     /* ------------ ATTACK FILTER ---------*/
     // release filter to get instant attack envelope
     float *instantAttackEnvelope = This->b1;
-    for(size_t i=0; i<BMTS_ARF_NUMLEVELS; i++)
-        BMReleaseFilter_processBuffer(&This->attackInstanceFilter[i], input, instantAttackEnvelope, numSamples);
-
-    // attack filter to get slow attack envelope
     float* slowAttackEnvelope = This->attackControlSignal;
-    BMAttackFilter_processBuffer(&This->attackSlowFilter[0], instantAttackEnvelope, slowAttackEnvelope, numSamples);
-    for(size_t i=1; i<BMTS_AF_NUMLEVELS; i++)
-        BMAttackFilter_processBuffer(&This->attackSlowFilter[i], slowAttackEnvelope, slowAttackEnvelope, numSamples);
     
-    
+    if(This->attackDepth<0){
+        //Reduce attack
+        memcpy(instantAttackEnvelope, input, sizeof(float)*numSamples);
+        for(size_t i=0; i<BMTS_ARF_NUMLEVELS; i++)
+            BMReleaseFilter_processBuffer(&This->attackReduceInstantFilter[i], instantAttackEnvelope, instantAttackEnvelope, numSamples);
+
+        // attack filter to get slow attack envelope
+        
+        memcpy(slowAttackEnvelope, instantAttackEnvelope, sizeof(float)*numSamples);
+        for(size_t i=0; i<BMTS_AF_NUMLEVELS; i++)
+            BMAttackFilter_processBuffer(&This->attackReduceSlowFilter[i], slowAttackEnvelope, slowAttackEnvelope, numSamples);
+    }else{
+        //Boost attack
+        memcpy(instantAttackEnvelope, input, sizeof(float)*numSamples);
+        for(size_t i=0; i<BMTS_ARF_NUMLEVELS; i++)
+            BMReleaseFilter_processBuffer(&This->attackBoostInstantFilter[i], instantAttackEnvelope, instantAttackEnvelope, numSamples);
+
+        // attack filter to get slow attack envelope
+        
+        memcpy(slowAttackEnvelope, instantAttackEnvelope, sizeof(float)*numSamples);
+        for(size_t i=0; i<BMTS_AF_NUMLEVELS; i++)
+            BMAttackFilter_processBuffer(&This->attackBoostSlowFilter[i], slowAttackEnvelope, slowAttackEnvelope, numSamples);
+    }
+    if(This->isTesting)
+        memcpy(This->testBuffer1, slowAttackEnvelope, sizeof(float)*numSamples);
+
+    if(This->isTesting)
+        memcpy(This->testBuffer2,instantAttackEnvelope, sizeof(float)*numSamples);
     
     /***************************************************************************
      * find gain reduction (dB) to have the envelope follow slowAttackEnvelope *
@@ -545,9 +603,14 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     // controlSignal = slowAttackEnvelope - instantAttackEnvelope;
     vDSP_vsub(instantAttackEnvelope, 1, slowAttackEnvelope, 1, This->attackControlSignal, 1, numSamples);
     
+    
+    
+    
+    
     // limit the control signal slightly below 0 dB to prevent zippering during sustain sections
     float limit = -0.2f;
     BMTransientShaper_upperLimit(limit, This->attackControlSignal, This->attackControlSignal, numSamples);
+    
     
     
     
@@ -566,6 +629,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     vDSP_vsmul(This->attackControlSignal, 1, &negOne, This->attackControlSignal, 1, numSamples);
     
     
+    
     /* ------------ SUSTAIN FILTER ---------*/
     /*--------------------------------------*/
     float* slowSustainEnvelope = This->b2;
@@ -576,29 +640,22 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     
     //Fast & slow release filters
+    memcpy(slowSustainEnvelope, instantAttackEnvelope, sizeof(float)*numSamples);
     for(size_t i=0; i<BMTS_RRF1_NUMLEVELS; i++)
-        BMReleaseFilter_processBufferDynamic(&This->sustainSlowReleaseFilter[i], instantAttackEnvelope, slowSustainEnvelope,This->standard, numSamples);
+        BMReleaseFilter_processBufferDynamic(&This->sustainSlowReleaseFilter[i], slowSustainEnvelope, slowSustainEnvelope,This->standard, numSamples);
     
-    
+    memcpy(fastSustainEnvelope, instantAttackEnvelope, sizeof(float)*numSamples);
     for(size_t i=0; i<BMTS_RRF2_NUMLEVELS; i++)
-        BMReleaseFilter_processBufferDynamic(&This->sustainFastReleaseFilter[i], instantAttackEnvelope, fastSustainEnvelope,This->standard, numSamples);
+        BMReleaseFilter_processBufferDynamic(&This->sustainFastReleaseFilter[i], fastSustainEnvelope, fastSustainEnvelope,This->standard, numSamples);
 
-    if(This->isTesting)
-        memcpy(This->testBuffer1, slowSustainEnvelope, sizeof(float)*numSamples);
-
-    if(This->isTesting)
-        memcpy(This->testBuffer2,fastSustainEnvelope, sizeof(float)*numSamples);
     
     //Get release control
     vDSP_vsub(slowSustainEnvelope, 1, fastSustainEnvelope, 1, This->releaseControlSignal, 1, numSamples);
     
-    if(This->isTesting)
-        memcpy(This->testBuffer3,  This->releaseControlSignal, sizeof(float)*numSamples);
+    
     
     for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
         BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
-    
-    
     
     //Apply depth
     // exaggerate the control signal
@@ -615,7 +672,8 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     vDSP_vadd(This->attackControlSignal, 1, This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
     
     
-    
+    if(This->isTesting)
+        memcpy(This->testBuffer3,  This->attackControlSignal, sizeof(float)*numSamples);
     
     
     
