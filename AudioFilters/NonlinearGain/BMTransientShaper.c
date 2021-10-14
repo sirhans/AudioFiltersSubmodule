@@ -624,13 +624,16 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
             //Smooth attack reduction
             BMDynamicSmoothingFilter_processBufferWithFastDescent2(&This->dsfAttack[i], This->attackControlSignal, This->attackControlSignal, numSamples);
     }else{
-        float limit = -10.0f;
+        float limit = -5.0f;
         BMTransientShaper_lowerLimit(limit, This->attackControlSignal, This->attackControlSignal, numSamples);
+        
+        
         
         //Smooth attack boost
         BMAttackFilter_processBufferLP(&This->attackBoostSmoothFilter, This->attackControlSignal, This->attackControlSignal, numSamples);
         
-        
+        if(This->isTesting)
+            memcpy(This->testBuffer3,  This->attackControlSignal, sizeof(float)*numSamples);
     }
     
     vDSP_vneg(This->attackControlSignal, 1, This->attackControlSignal, 1, numSamples);
@@ -678,8 +681,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     vDSP_vadd(This->attackControlSignal, 1, This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
     
     
-    if(This->isTesting)
-        memcpy(This->testBuffer3,  This->attackControlSignal, sizeof(float)*numSamples);
+    
     
     // convert back to linear scale
     BMConv_dBToGainV(This->releaseControlSignal, This->releaseControlSignal, numSamples);
