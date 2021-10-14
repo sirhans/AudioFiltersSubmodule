@@ -17,6 +17,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
                                                   float *input,
                                                     size_t numSamples);
 void BMTransientShaper_upperLimit(float limit, const float* input, float *output, size_t numSamples);
+void BMTransientShaper_lowerLimit(float limit, const float* input, float *output, size_t numSamples);
 void BMTransientShaper_setSidechainNoiseGateThreshold(BMTransientShaper *This, float thresholdDb);
 void BMTransientShaper_processStereo(BMTransientShaper *This,
                                            const float *inputL, const float *inputR,
@@ -71,6 +72,8 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
         BMAttackFilter_init(&This->attackReduceSlowFilter[i], attackFc, sampleRate);
         BMAttackFilter_init(&This->attackBoostSlowFilter[i], attackFc, sampleRate);
     }
+    //Attack boost smooth
+    BMAttackFilter_init(&This->attackBoostSmoothFilter,20.0f,sampleRate);
     
     //Sustain
     This->sustainSlowReleaseFilter = malloc(sizeof(BMReleaseFilter)*BMTS_RRF1_NUMLEVELS);
@@ -85,6 +88,8 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
         BMReleaseFilter_init(&This->sustainFastReleaseFilter[i], releaseFilterFc, sampleRate);
         BMReleaseFilter_setDBRange(&This->sustainFastReleaseFilter[i], 2.0f, 5.0f);
     }
+    
+    
     
     BMReleaseFilter_init(&This->sustainInputFastReleaseFilter, releaseFilterFc, sampleRate);
     BMReleaseFilter_init(&This->sustainInputSlowReleaseFilter, releaseFilterFc, sampleRate);
@@ -604,31 +609,31 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     vDSP_vsub(instantAttackEnvelope, 1, slowAttackEnvelope, 1, This->attackControlSignal, 1, numSamples);
     
     
-    
-    
-    
-    // limit the control signal slightly below 0 dB to prevent zippering during sustain sections
-    float limit = -0.2f;
-    BMTransientShaper_upperLimit(limit, This->attackControlSignal, This->attackControlSignal, numSamples);
-    
-    
-    
-    
     /************************************************
      * filter the control signal to reduce aliasing *
      ************************************************/
     //
     // smoothing filter to prevent clicks
     if(This->attackDepth<0){
-    //Always make the attackControlSignal upside down
+        // limit the control signal slightly below 0 dB to prevent zippering during sustain sections
+        float limit = -0.2f;
+        BMTransientShaper_upperLimit(limit, This->attackControlSignal, This->attackControlSignal, numSamples);
+        
+        //Always make the attackControlSignal upside down
         for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
+            //Smooth attack reduction
             BMDynamicSmoothingFilter_processBufferWithFastDescent2(&This->dsfAttack[i], This->attackControlSignal, This->attackControlSignal, numSamples);
+    }else{
+        float limit = -10.0f;
+        BMTransientShaper_lowerLimit(limit, This->attackControlSignal, This->attackControlSignal, numSamples);
+        
+        //Smooth attack boost
+        BMAttackFilter_processBufferLP(&This->attackBoostSmoothFilter, This->attackControlSignal, This->attackControlSignal, numSamples);
+        
+        
     }
     
-    //Return sign
-    float negOne = -1;
-    vDSP_vsmul(This->attackControlSignal, 1, &negOne, This->attackControlSignal, 1, numSamples);
-    
+    vDSP_vneg(This->attackControlSignal, 1, This->attackControlSignal, 1, numSamples);
     
     
     /* ------------ SUSTAIN FILTER ---------*/
@@ -675,8 +680,6 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     if(This->isTesting)
         memcpy(This->testBuffer3,  This->attackControlSignal, sizeof(float)*numSamples);
-    
-    
     
     // convert back to linear scale
     BMConv_dBToGainV(This->releaseControlSignal, This->releaseControlSignal, numSamples);
@@ -741,5 +744,9 @@ void BMTransientShaper_upperLimit(float limit, const float* input, float *output
     limit = -limit;
     vDSP_vthr(output, 1, &limit, output, 1, numSamples);
     vDSP_vneg(output, 1, output, 1, numSamples);
+}
+
+void BMTransientShaper_lowerLimit(float limit, const float* input, float *output, size_t numSamples){
+    vDSP_vthr(output, 1, &limit, output, 1, numSamples);
 }
 

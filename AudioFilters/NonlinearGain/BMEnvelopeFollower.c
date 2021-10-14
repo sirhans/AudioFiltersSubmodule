@@ -218,7 +218,7 @@ void BMAttackFilter_processBuffer(BMAttackFilter *This,
     }
 }
 
-void BMAttackFilter_processBufferBelowDb(BMAttackFilter *This,float maxDb,float* slowAttack,
+void BMAttackFilter_processBufferLP(BMAttackFilter *This,
                                   const float* input,
                                   float* output,
                                   size_t numSamples){
@@ -226,52 +226,17 @@ void BMAttackFilter_processBufferBelowDb(BMAttackFilter *This,float maxDb,float*
     for (size_t i=0; i<numSamples; i++){
         float x = input[i];
         
-        // if we are in attack mode,
-        if (x > This->previousOutputValue){
-            
-            if(x<maxDb){
-                // if this is the first sample in attack mode
-                if(!This->attackMode){
-                    // set the attack mode flag
-                    This->attackMode = true;
-                    // and update the state variables to get continuous gradient
-                    This->ic1 = This->previousOutputGradient  *This->gInv_2;
-                    // and continuous output value
-                    This->ic2 = This->previousOutputValue;
-                }
-                
-                // process the state variable filter
-                float v3 = x - This->ic2;
-                float v1 = This->a1  *This->ic1 + This->a2 * v3;
-                float v2 = This->ic2 + This->a2  *This->ic1 + This->a3 * v3;
-                
-                // update the state variables
-                This->ic1 = 2.0f * v1 - This->ic1;
-                This->ic2 = 2.0f * v2 - This->ic2;
-                
-                // output
-                output[i] = v2;
-            }else{
-                //Copy output
-                output[i] = x;
-            }
-        }
+        // process the state variable filter
+        float v3 = x - This->ic2;
+        float v1 = This->a1  *This->ic1 + This->a2 * v3;
+        float v2 = This->ic2 + This->a2  *This->ic1 + This->a3 * v3;
         
-        // if we are in release mode,
-        else {
-            // unset the attack mode flag
-            This->attackMode = false;
-            
-            // copy the input to the output
-            output[i] = x;
-            
-            // and save the gradient so that we have it ready in case the next
-            // sample we switch into attack mode
-            This->previousOutputGradient = x - This->previousOutputValue;
-            This->localReleaseValue = x;
-        }
+        // update the state variables
+        This->ic1 = 2.0f * v1 - This->ic1;
+        This->ic2 = 2.0f * v2 - This->ic2;
         
-        This->previousOutputValue = output[i];
+        // output
+        output[i] = v2;
     }
 }
 
