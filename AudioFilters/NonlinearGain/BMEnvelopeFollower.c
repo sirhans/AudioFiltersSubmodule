@@ -91,8 +91,9 @@ void BMReleaseFilter_setCutoff(BMReleaseFilter *This, float fc){
 	This->a3 = (float)a3;
 }
 
-void BMReleaseFilter_setCutoffRange(BMReleaseFilter *This, float min,float max){
+void BMReleaseFilter_setCutoffRange(BMReleaseFilter *This, float min,float cross,float max){
     This->fcMin = min;
+    This->fcCross = cross;
     This->fcMax = max;
 }
 
@@ -158,7 +159,7 @@ void BMReleaseFilter_init(BMReleaseFilter *This, float fc, float sampleRate){
     This->attackMode = false;
     This->ic1 = This->ic2 = 0;
     
-    BMReleaseFilter_setCutoffRange(This, 1.0f,1.0f);
+    BMReleaseFilter_setCutoffRange(This, 1.0f,1.0f,1.0f);
     BMReleaseFilter_setDBRange(This, 0.0f,0.0f);
     BMReleaseFilter_setCutoff(This, fc);
     
@@ -303,14 +304,21 @@ void BMReleaseFilter_processBufferDynamic(BMReleaseFilter *This,
                                    float* output,
                                    float* standard,
                                    size_t numSamples){
-    
     for (size_t i=0; i<numSamples; i++){
-        //Calculate fc - Distance is between 3 db to 10db -> fc grow from fcMax to fcMin
-        float distance = fabsf(input[i]-standard[i]);
-        float v = BM_MIN(BM_MAX((distance - This->minDb)/(This->maxDb - This->minDb),0),1.0f);
-        float fc = This->fcMin + (This->fcMax-This->fcMin) * powf(1.0f-v, 2.0f);
-        BMReleaseFilter_setCutoff(This, fc);
-//        printf("fc %f %f %f\n",fc,distance,v);
+        //Calculate fc - Distance is between 3 db -> fc grow from fcMax to fcMin
+        if(input[i]>=standard[i]){
+            //Above
+            float distance = fabsf(input[i]-standard[i]);
+            float v = (BM_MIN(distance,3.0f)/3.0f);
+            float fc = v * (This->fcMax-This->fcCross) * powf(1.0f-v, 2.0f) + This->fcCross;
+            BMReleaseFilter_setCutoff(This, fc);
+        }else{
+            //Below
+            float distance = fabsf(input[i]-standard[i]);
+            float v = 1.0f - (BM_MIN(distance,3.0f)/3.0f);
+            float fc = v * (This->fcCross-This->fcMin) * powf(1.0f-v, 2.0f) + This->fcMin;
+            BMReleaseFilter_setCutoff(This, fc);
+        }
         
         //Process
         float x = input[i];
@@ -459,4 +467,209 @@ void BMEnvelopeFollower_processBuffer(BMEnvelopeFollower *This, const float* inp
     }
 }
 
+#pragma mark - FirstOrderAttackFilter
+/*!
+*BMFOAttackFilter_init
+*/
+void BMFOAttackFilter_init(BMFOAttackFilter* This,float fc, float sampleRate){
+    This->z1_f = 0.0f;
+    This->az_f = 0.0f;
+    This->sampleRate = sampleRate;
+    This->previousOutputValue = 0;
+    This->attackMode = true;
+    
+    BMFOAttackFilter_setCutoff(This, fc);
+}
+void BMFOAttackFilter_setCutoff(BMFOAttackFilter* This, float fc){
+    This->fc = fc;
+    double gamma = tan(M_PI * fc / This->sampleRate);
+    double one_over_denominator = 1.0 / (gamma + 1.0);
+    
+    This->b0_f = gamma * one_over_denominator;
+    This->b1_f = This->b0_f;
+    
+    This->a1_f = (gamma - 1.0) * one_over_denominator;
+}
 
+void BMFOAttackFilter_processBuffer(BMFOAttackFilter* This,
+                                    const float* input,
+                                    float* output,
+                                    size_t numSamples){
+    
+        for(size_t i=0; i<numSamples; i++){
+            if(input[i]>This->z1_f){
+                //Attack mode
+                if(!This->attackMode){
+                    This->attackMode = true;
+                    //Connect sample from not attackmode to  attack mode
+                    This->az_f = This->z1_f;
+                }
+                output[i] = input[i] * This->b0_f + This->az_f * This->b1_f - This->z1_f * This->a1_f;
+            }else{
+                //Not attack mode
+                if(This->attackMode){
+                    This->attackMode = false;
+                }
+                //Copy the output
+                output[i] = input[i];
+            }
+            This->az_f = input[i];
+            This->z1_f = output[i];
+        }
+}
+
+#pragma mark - FirstOrderReleaseFilter
+void BMFOReleaseFilter_init(BMFOReleaseFilter* This,float fc, float sampleRate){
+    This->z1_f = 0.0f;
+    This->az_f = 0.0f;
+    This->sampleRate = sampleRate;
+    
+    BMFOReleaseFilter_setCutoff(This, fc);
+}
+void BMFOReleaseFilter_setCutoff(BMFOReleaseFilter* This, float fc){
+    double gamma = tan(M_PI * fc / This->sampleRate);
+    double one_over_denominator = 1.0 / (gamma + 1.0);
+
+    This->b0_f = gamma * one_over_denominator;
+    This->b1_f = This->b0_f;
+
+    This->a1_f = (gamma - 1.0) * one_over_denominator;
+}
+
+void BMFOReleaseFilter_processBuffer(BMFOReleaseFilter* This,
+                                    const float* input,
+                                    float* output,
+                                    size_t numSamples){
+    for(size_t i=0; i<numSamples; i++){
+        if(input[i]<This->z1_f){
+            //Release mode
+            if(This->attackMode){
+                This->attackMode = false;
+                //Connect sample from not attackmode to  attack mode
+                
+            }
+            output[i] = input[i] * This->b0_f + This->az_f * This->b1_f - This->z1_f * This->a1_f;
+        }else{
+            //Not release mode
+            if(!This->attackMode){
+                This->attackMode = true;
+            }
+            //Copy the output
+            output[i] = input[i];
+        }
+        This->az_f = input[i];
+        This->z1_f = output[i];
+    }
+}
+
+#pragma mark - Multi Release Filter
+void BMMultiReleaseFilter_init(BMMultiReleaseFilter *This, float fc,int numLayers, float sampleRate){
+    This->numLayers = numLayers;
+    This->filters = malloc(sizeof(BMReleaseFilter)*numLayers);
+    This->foFilters = malloc(sizeof(BMFOReleaseFilter)*numLayers);
+    for(int i=0;i<numLayers;i++){
+        BMReleaseFilter_init(&This->filters[i], fc, sampleRate);
+        BMFOReleaseFilter_init(&This->foFilters[i], fc, sampleRate);
+    }
+}
+
+void BMMultiReleaseFilter_destroy(BMMultiReleaseFilter *This){
+    free(This->filters);
+    This->filters = nil;
+    free(This->foFilters);
+    This->foFilters = nil;
+}
+
+void BMMultiReleaseFilter_setCutoff(BMMultiReleaseFilter *This, float fc){
+    for(int i=0;i<This->numLayers;i++){
+        BMReleaseFilter_setCutoff(&This->filters[i], fc);
+        BMFOReleaseFilter_setCutoff(&This->foFilters[i], fc);
+    }
+}
+
+void BMMultiReleaseFilter_setCutoffRange(BMMultiReleaseFilter *This, float min,float cross,float max){
+    for(int i=0;i<This->numLayers;i++){
+        BMReleaseFilter_setCutoffRange(&This->filters[i], min,cross, max);
+    }
+}
+void BMMultiReleaseFilter_setDBRange(BMMultiReleaseFilter *This, float min,float max){
+    for(int i=0;i<This->numLayers;i++){
+        BMReleaseFilter_setDBRange(&This->filters[i], min, max);
+    }
+}
+
+void BMMultiReleaseFilter_processBufferFO(BMMultiReleaseFilter *This,
+                                   const float* input,
+                                   float* output,
+                                   size_t numSamples){
+    memcpy(output, input, sizeof(float)*numSamples);
+    for(int i=0;i<This->numLayers;i++){
+        BMFOReleaseFilter_processBuffer(&This->foFilters[i], output, output, numSamples);
+    }
+}
+
+void BMMultiReleaseFilter_processBuffer(BMMultiReleaseFilter *This,
+                                   const float* input,
+                                   float* output,
+                                   size_t numSamples){
+    memcpy(output, input, sizeof(float)*numSamples);
+    for(int i=0;i<This->numLayers;i++){
+        BMReleaseFilter_processBuffer(&This->filters[i], output, output, numSamples);
+    }
+}
+
+void BMMultiReleaseFilter_processBufferDynamic(BMMultiReleaseFilter *This,
+                                   const float* input,
+                                   float* output,
+                                   float* standard,
+                                   size_t numSamples){
+//    memcpy(output, input, sizeof(float)*numSamples);
+    for(int i=0;i<This->numLayers;i++){
+        BMReleaseFilter_processBufferDynamic(&This->filters[i], input, output, standard, numSamples);
+    }
+}
+
+#pragma mark - Multi Attack Filter
+void BMMultiAttackFilter_init(BMMultiAttackFilter *This, float fc,int numLayers, float sampleRate){
+    This->numLayers = numLayers;
+    This->filters = malloc(sizeof(BMAttackFilter)*numLayers);
+    This->foFilters = malloc(sizeof(BMFOAttackFilter)*numLayers);
+    for(int i=0;i<numLayers;i++){
+        BMAttackFilter_init(&This->filters[i], fc, sampleRate);
+        BMFOAttackFilter_init(&This->foFilters[i], fc, sampleRate);
+    }
+}
+
+void BMMultiAttackFilter_destroy(BMMultiAttackFilter *This){
+    free(This->filters);
+    This->filters = nil;
+    free(This->foFilters);
+    This->foFilters = nil;
+}
+
+void BMMultiAttackFilter_setCutoff(BMMultiAttackFilter *This, float fc){
+    for(int i=0;i<This->numLayers;i++){
+        BMAttackFilter_setCutoff(&This->filters[i], fc);
+        BMFOAttackFilter_setCutoff(&This->foFilters[i], fc);
+    }
+}
+
+void BMMultiAttackFilter_processBuffer(BMMultiAttackFilter *This,
+                                  const float* input,
+                                  float* output,
+                                  size_t numSamples){
+    memcpy(output, input, sizeof(float)*numSamples);
+    for(int i=0;i<This->numLayers;i++){
+        BMAttackFilter_processBuffer(&This->filters[i], output, output, numSamples);
+    }
+}
+
+void BMMultiAttackFilter_processBufferFO(BMMultiAttackFilter *This,
+                                  const float* input,
+                                  float* output,
+                                  size_t numSamples){
+    memcpy(output, input, sizeof(float)*numSamples);
+    for(int i=0;i<This->numLayers;i++){
+        BMFOAttackFilter_processBuffer(&This->foFilters[i], output, output, numSamples);
+    }
+}

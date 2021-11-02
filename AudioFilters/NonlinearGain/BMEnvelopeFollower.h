@@ -30,7 +30,7 @@
  * signal amplitude is decreasing
  */
 typedef struct BMReleaseFilter {
-    float sampleRate, fc,fcMin,fcMax;
+    float sampleRate, fc,fcMin,fcMax,fcCross;
     float minDb,maxDb;
     float ic1, ic2;
     float g,k;
@@ -38,6 +38,7 @@ typedef struct BMReleaseFilter {
     float previousOutputValue;
     bool attackMode;
 } BMReleaseFilter;
+
 
 
 /*
@@ -53,6 +54,8 @@ typedef struct BMAttackFilter {
     float localPeakValue;
     bool attackMode;
 } BMAttackFilter;
+
+
 
 
 typedef struct BMEnvelopeFollower {
@@ -158,7 +161,7 @@ void BMAttackFilter_setCutoff(BMAttackFilter *This, float fc);
  * BMReleaseFilter_setCutoff
  */
 void BMReleaseFilter_setCutoff(BMReleaseFilter *This, float fc);
-void BMReleaseFilter_setCutoffRange(BMReleaseFilter *This, float min,float max);
+void BMReleaseFilter_setCutoffRange(BMReleaseFilter *This, float min,float cross,float max);
 void BMReleaseFilter_setDBRange(BMReleaseFilter *This, float min,float max);
 /*!
  * BMReleaseFilter_updateSampleRate
@@ -180,8 +183,107 @@ void BMAttackFilter_updateSampleRate(BMAttackFilter *This, float sampleRate);
  */
 float ARTimeToCutoffFrequency(float time, size_t numStages);
 
+/*
+ BMFirstOrderAttackFilter
+ */
+
+typedef struct BMFOAttackFilter {
+    float z1_f, b0_f, b1_f, a1_f, az_f;
+    float sampleRate, fc;
+    float previousOutputValue;
+    bool attackMode;
+} BMFOAttackFilter;
+
+void BMFOAttackFilter_init(BMFOAttackFilter* This,float fc, float sampleRate);
+void BMFOAttackFilter_setCutoff(BMFOAttackFilter* This, float fc);
+void BMFOAttackFilter_processBuffer(BMFOAttackFilter* This,
+                                    const float* input,
+                                    float* output,
+                                    size_t numSamples);
+
+/*
+ BMFirstOrderReleaseFilter
+ */
+
+typedef struct BMFOReleaseFilter {
+    float z1_f, b0_f, b1_f, a1_f, az_f;
+    float sampleRate, fc;
+    float previousOutputValue;
+    bool attackMode;
+} BMFOReleaseFilter;
+
+void BMFOReleaseFilter_init(BMFOReleaseFilter* This,float fc, float sampleRate);
+void BMFOReleaseFilter_setCutoff(BMFOReleaseFilter* This, float fc);
+void BMFOReleaseFilter_processBuffer(BMFOReleaseFilter* This,
+                                    const float* input,
+                                    float* output,
+                                    size_t numSamples);
+
+/*
+ BMFOAttackFilter
+ */
+void BMFOAttackFilter_init(BMFOAttackFilter* This,float fc, float sampleRate);
+void BMFOAttackFilter_setLowpassFirstOrder(BMFOAttackFilter* This, float fc);
+void BMFOAttackFilter_processBuffer(BMFOAttackFilter* This,
+                                    const float* input,
+                                    float* output,
+                                    size_t numSamples);
+
+/*
+ BMMultiReleaseFilter
+ */
+
+typedef struct BMMultiReleaseFilter {
+    BMReleaseFilter* filters;
+    BMFOReleaseFilter* foFilters;
+    int numLayers;
+}BMMultiReleaseFilter;
+
+void BMMultiReleaseFilter_init(BMMultiReleaseFilter *This, float fc,int numLayers, float sampleRate);
+void BMMultiReleaseFilter_destroy(BMMultiReleaseFilter *This);
+
+void BMMultiReleaseFilter_setCutoff(BMMultiReleaseFilter *This, float fc);
+void BMMultiReleaseFilter_setCutoffRange(BMMultiReleaseFilter *This, float min,float cross,float max);
+void BMMultiReleaseFilter_setDBRange(BMMultiReleaseFilter *This, float min,float max);
+
+void BMMultiReleaseFilter_processBuffer(BMMultiReleaseFilter *This,
+                                   const float* input,
+                                   float* output,
+                                        size_t numSamples);
+void BMMultiReleaseFilter_processBufferFO(BMMultiReleaseFilter *This,
+                                   const float* input,
+                                   float* output,
+                                        size_t numSamples);
+void BMMultiReleaseFilter_processBufferDynamic(BMMultiReleaseFilter *This,
+                                   const float* input,
+                                   float* output,
+                                   float* standard,
+                                   size_t numSamples);
 
 
+/*
+ BMMultiAttackFilter
+ */
+
+typedef struct BMMultiAttackFilter {
+    BMAttackFilter* filters;
+    BMFOAttackFilter* foFilters;
+    int numLayers;
+}BMMultiAttackFilter;
+
+void BMMultiAttackFilter_init(BMMultiAttackFilter *This, float fc,int numLayers, float sampleRate);
+void BMMultiAttackFilter_destroy(BMMultiAttackFilter *This);
+
+void BMMultiAttackFilter_setCutoff(BMMultiAttackFilter *This, float fc);
+
+void BMMultiAttackFilter_processBuffer(BMMultiAttackFilter *This,
+                                  const float* input,
+                                  float* output,
+                                       size_t numSamples);
+void BMMultiAttackFilter_processBufferFO(BMMultiAttackFilter *This,
+                                  const float* input,
+                                  float* output,
+                                         size_t numSamples);
 
 
 

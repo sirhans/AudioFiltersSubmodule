@@ -19,7 +19,7 @@
 
 #define BMTS_DELAY_AT_48KHZ_SAMPLES 100.0f
 #define BMTS_AF_NUMLEVELS 1
-#define BMTS_ARF_NUMLEVELS 3
+#define BMTS_ARF_NUMLEVELS 1
 #define BMTS_RRF1_NUMLEVELS 1
 #define BMTS_RRF2_NUMLEVELS 1
 #define BMTS_DSF_NUMLEVELS 1
@@ -39,18 +39,19 @@ typedef struct BMTransientShaperSection {
     float* b2;
     float* attackControlSignal;
     float* releaseControlSignal;
-    BMReleaseFilter* attackReduceInstantFilter;
-    BMAttackFilter* attackReduceSlowFilter;
-    BMReleaseFilter* attackBoostInstantFilter;
-    BMAttackFilter* attackBoostSlowFilter;
+    BMMultiReleaseFilter attackReduceInstantFilter;
+    BMMultiAttackFilter attackReduceSlowFilter;
+    BMMultiReleaseFilter attackBoostInstantFilter;
+    BMMultiAttackFilter attackBoostSlowFilter;
     BMAttackFilter attackBoostSmoothFilter;
     
-    BMReleaseFilter* sustainFastReleaseFilter;
-    BMReleaseFilter* sustainSlowReleaseFilter;
+    BMMultiReleaseFilter sustainFastReleaseFilter;
+    BMMultiReleaseFilter sustainSlowReleaseFilter;
 
-    BMReleaseFilter sustainStandardReleaseFilter;
-    BMReleaseFilter sustainInputFastReleaseFilter;
-    BMReleaseFilter sustainInputSlowReleaseFilter;
+    BMMultiReleaseFilter sustainStandardReleaseFilter;
+    BMFOAttackFilter sustainStandardAttackFilter;
+    BMMultiReleaseFilter sustainInputReleaseFilter;
+    
     float attackFilterThreshold;
     float* standard;
     
