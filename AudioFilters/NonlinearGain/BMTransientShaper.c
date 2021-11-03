@@ -631,11 +631,16 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     //Get release control
     vDSP_vsub(slowSustainEnvelope, 1, fastSustainEnvelope, 1, This->releaseControlSignal, 1, numSamples);
     
+    //TEST - SMOOTH
+    vDSP_vneg(This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
     
+    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
+        BMDynamicSmoothingFilter_processBufferWithFastDescent2(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
     
+    vDSP_vneg(This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
     
-//    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-//        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
+    if(This->isTesting)
+        memcpy(This->testBuffer3,  This->releaseControlSignal, sizeof(float)*numSamples);
     
     //Apply depth
     // exaggerate the control signal
@@ -650,8 +655,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     vDSP_vadd(This->attackControlSignal, 1, This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
     
     
-    if(This->isTesting)
-        memcpy(This->testBuffer3,  This->releaseControlSignal, sizeof(float)*numSamples);
+    
     
     // convert back to linear scale
     BMConv_dBToGainV(This->releaseControlSignal, This->releaseControlSignal, numSamples);
