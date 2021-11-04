@@ -79,7 +79,7 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     float instanceReleaseFC = ARTimeToCutoffFrequency(0.15f, BMTS_ARF_NUMLEVELS);
     BMMultiReleaseFilter_init(&This->sustainInputReleaseFilter, instanceReleaseFC,BMTS_ARF_NUMLEVELS, sampleRate);
     
-    float slowReleaseFC = ARTimeToCutoffFrequency(0.15f*40.0f, BMTS_ARF_NUMLEVELS);
+    float slowReleaseFC = ARTimeToCutoffFrequency(2.0f, BMTS_ARF_NUMLEVELS);
     BMMultiReleaseFilter_init(&This->sustainStandardReleaseFilter, slowReleaseFC,BMTS_ARF_NUMLEVELS, sampleRate);
     
     slowReleaseFC = 120.0f;//ARTimeToCutoffFrequency(standardReleaseTime, 1);
@@ -589,11 +589,8 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
         float limit = -5.0f;
         BMTransientShaper_lowerLimit(limit, This->attackControlSignal, This->attackControlSignal, numSamples);
         
-        
-        
         //Smooth attack boost
         BMAttackFilter_processBufferLP(&This->attackBoostSmoothFilter, This->attackControlSignal, This->attackControlSignal, numSamples);
-        
         
     }
     
@@ -605,15 +602,14 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     float* slowSustainEnvelope = This->b2;
     float* fastSustainEnvelope = This->releaseControlSignal;
     
-    //Standard release filter
-    BMFOAttackFilter_processBuffer(&This->sustainStandardAttackFilter, input, This->standard, numSamples);
-    
-    BMMultiReleaseFilter_processBufferFO(&This->sustainStandardReleaseFilter, This->standard, This->standard, numSamples);
-    
-    
     
     //Get the instance attack for the input
     BMMultiReleaseFilter_processBufferFO(&This->sustainInputReleaseFilter, input, instantAttackEnvelope, numSamples);
+    
+    //Standard release filter
+    BMMultiReleaseFilter_processBufferFO(&This->sustainStandardReleaseFilter, instantAttackEnvelope, This->standard, numSamples);
+    if(This->isTesting)
+        memcpy(This->testBuffer2,This->standard, sizeof(float)*numSamples);
     
     //Fast & slow release filters
     BMMultiReleaseFilter_processBufferDynamic(&This->sustainSlowReleaseFilter, instantAttackEnvelope, slowSustainEnvelope,This->standard, numSamples);
@@ -623,8 +619,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     if(This->isTesting)
         memcpy(This->testBuffer1, slowSustainEnvelope, sizeof(float)*numSamples);
 
-    if(This->isTesting)
-        memcpy(This->testBuffer2,fastSustainEnvelope, sizeof(float)*numSamples);
+    
     
     
     
@@ -653,7 +648,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     vDSP_vadd(This->attackControlSignal, 1, This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
     
     if(This->isTesting)
-        memcpy(This->testBuffer3,  This->releaseControlSignal, sizeof(float)*numSamples);
+        memcpy(This->testBuffer3,  instantAttackEnvelope, sizeof(float)*numSamples);
     
     
     // convert back to linear scale
@@ -664,14 +659,14 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
 void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTimeInSeconds){
     // find the lpf cutoff frequency that corresponds to the specified attack time
     float fcMax = 10.0f;
-    float fcCross = 4.0f;
-    float slowReleaseFC = ARTimeToCutoffFrequency(releaseTimeInSeconds*14.0f, BMTS_RRF1_NUMLEVELS);
+    float fcCross = 9.0f;
+    float slowReleaseFC = ARTimeToCutoffFrequency(releaseTimeInSeconds*12, BMTS_RRF1_NUMLEVELS);
     
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[0], slowReleaseFC,fcCross,fcMax);
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER,fcCross,fcMax);
     
     fcCross = 6.0f;
-    float fastFC = ARTimeToCutoffFrequency(releaseTimeInSeconds*9.5f, BMTS_RRF2_NUMLEVELS);
+    float fastFC = ARTimeToCutoffFrequency(releaseTimeInSeconds*6.0f, BMTS_RRF2_NUMLEVELS);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[0], fastFC,fcCross,fcMax);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[1], fastFC*BMTS_SECTION_2_RF_MULTIPLIER,fcCross,fcMax);
     
