@@ -306,12 +306,16 @@ void BMReleaseFilter_processBufferDynamic(BMReleaseFilter *This,
                                    size_t numSamples){
     for (size_t i=0; i<numSamples; i++){
         //Calculate fc - Distance is between 3 db -> fc grow from fcMax to fcMin
-        //Below
-        float range = 5.0f;
         float distance = fabsf(input[i]-standard[i]);
-        float v = 1.0f - (BM_MIN(distance,range)/range);
-        float fc = v * (This->fcMax-This->fcMin) * powf(1.0f-v, 2.0f) + This->fcMin;
+        float v = BM_MIN(BM_MAX((distance - This->minDb)/(This->maxDb - This->minDb),0),1.0f);
+        float fc = This->fcMin + (This->fcMax-This->fcMin) * powf(1.0f-v, 2.0f);
         BMReleaseFilter_setCutoff(This, fc);
+//        //Below
+//        float range = 5.0f;
+//        float distance = fabsf(input[i]-standard[i]);
+//        float v = 1.0f - (BM_MIN(distance,range)/range);
+//        float fc = v * (This->fcMax-This->fcMin) * powf(1.0f-v, 2.0f) + This->fcMin;
+//        BMReleaseFilter_setCutoff(This, fc);
         
         //Process
         float x = input[i];

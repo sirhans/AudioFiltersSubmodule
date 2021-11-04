@@ -608,8 +608,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     //Standard release filter
     BMMultiReleaseFilter_processBufferFO(&This->sustainStandardReleaseFilter, instantAttackEnvelope, This->standard, numSamples);
-    if(This->isTesting)
-        memcpy(This->testBuffer2,This->standard, sizeof(float)*numSamples);
+    
     
     //Fast & slow release filters
     BMMultiReleaseFilter_processBufferDynamic(&This->sustainSlowReleaseFilter, instantAttackEnvelope, slowSustainEnvelope,This->standard, numSamples);
@@ -620,7 +619,8 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
         memcpy(This->testBuffer1, slowSustainEnvelope, sizeof(float)*numSamples);
 
     
-    
+    if(This->isTesting)
+        memcpy(This->testBuffer2,fastSustainEnvelope, sizeof(float)*numSamples);
     
     
     //Get release control
@@ -648,7 +648,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     vDSP_vadd(This->attackControlSignal, 1, This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
     
     if(This->isTesting)
-        memcpy(This->testBuffer3,  instantAttackEnvelope, sizeof(float)*numSamples);
+        memcpy(This->testBuffer3,  This->releaseControlSignal, sizeof(float)*numSamples);
     
     
     // convert back to linear scale
@@ -666,7 +666,7 @@ void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTime
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER,fcCross,fcMax);
     
     fcCross = 6.0f;
-    float fastFC = ARTimeToCutoffFrequency(releaseTimeInSeconds*6.0f, BMTS_RRF2_NUMLEVELS);
+    float fastFC = ARTimeToCutoffFrequency(releaseTimeInSeconds*4.8f, BMTS_RRF2_NUMLEVELS);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[0], fastFC,fcCross,fcMax);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[1], fastFC*BMTS_SECTION_2_RF_MULTIPLIER,fcCross,fcMax);
     
