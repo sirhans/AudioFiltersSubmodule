@@ -216,3 +216,41 @@ void BMDynamicSmoothingFilter_processBufferWithFastDescent2(BMDynamicSmoothingFi
 		output[i] = This->low2z;
 	}
 }
+
+void BMDynamicSmoothingFilter_processBufferWithFastDescentDynamic(BMDynamicSmoothingFilter *This,
+                                                           const float* input,
+                                                           float* output,
+                                                           size_t numSamples){
+    for(size_t i=0; i<numSamples; i++){
+        float bandz = This->low2z - This->low1z;
+        
+        // adjust cutoff frequency depending on the direction of motion
+        // if descending
+        if(input[i] < This->low2z){
+            // update g if it isn't already at the right value
+            This->descending = true;
+            if(This->g != This->gMax){
+                // this keeps the gradient continuous when changing g
+                This->low1z = ((This->gMax * This->low2z) - (This->g * bandz)) / This->gMax;
+                This->g = This->gMax;
+            }
+            
+        }
+        // if ascending
+        else{
+            //Accending will go from gmax to gmin in 5db
+            if(This->descending){
+                This->descending = false;
+                // this sets the gradient to zero to avoid sharp discontinuity
+                This->low1z = This->low2z;
+            }
+            //Calculate g 0db -> 5db
+            This->g = (1 - BM_MIN(input[i],5.0f)/5.0f)*(This->gMax-This->gMin) + This->gMin;
+        }
+        
+        // lowpass filter
+        This->low2z += This->g * (-bandz);
+        This->low1z += This->g * (input[i] - This->low1z);
+        output[i] = This->low2z;
+    }
+}

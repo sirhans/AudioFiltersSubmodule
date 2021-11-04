@@ -629,18 +629,16 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     
     //Get release control
-    vDSP_vsub(slowSustainEnvelope, 1, fastSustainEnvelope, 1, This->releaseControlSignal, 1, numSamples);
+    vDSP_vsub(fastSustainEnvelope, 1, slowSustainEnvelope, 1, This->releaseControlSignal, 1, numSamples);
     
     //TEST - SMOOTH
-    vDSP_vneg(This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
     
     for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-        BMDynamicSmoothingFilter_processBufferWithFastDescent2(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
+        BMDynamicSmoothingFilter_processBufferWithFastDescentDynamic(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
     
     vDSP_vneg(This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
     
-    if(This->isTesting)
-        memcpy(This->testBuffer3,  This->releaseControlSignal, sizeof(float)*numSamples);
+    
     
     //Apply depth
     // exaggerate the control signal
@@ -654,7 +652,8 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     //Mix attack & release control signal
     vDSP_vadd(This->attackControlSignal, 1, This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
     
-    
+    if(This->isTesting)
+        memcpy(This->testBuffer3,  This->releaseControlSignal, sizeof(float)*numSamples);
     
     
     // convert back to linear scale
@@ -665,8 +664,8 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
 void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTimeInSeconds){
     // find the lpf cutoff frequency that corresponds to the specified attack time
     float fcMax = 10.0f;
-    float fcCross = 5.0f;
-    float slowReleaseFC = ARTimeToCutoffFrequency(releaseTimeInSeconds*12.0f, BMTS_RRF1_NUMLEVELS);
+    float fcCross = 4.0f;
+    float slowReleaseFC = ARTimeToCutoffFrequency(releaseTimeInSeconds*14.0f, BMTS_RRF1_NUMLEVELS);
     
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[0], slowReleaseFC,fcCross,fcMax);
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER,fcCross,fcMax);
