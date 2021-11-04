@@ -94,7 +94,7 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     // the dynamic smoothing filter prevents clicks when changing gain
     for(size_t i=0; i<BMTS_DSF_NUMLEVELS; i++){
         BMDynamicSmoothingFilter_init(&This->dsfAttack[i], dsfSensitivity, dsfFcMin, dsfFcMax, This->sampleRate);
-        BMDynamicSmoothingFilter_init(&This->dsfSustain[i], 1.5f, 5.0f, 10000.0f, This->sampleRate);
+        BMDynamicSmoothingFilter_init(&This->dsfSustain[i], 1.5f, 0.01f, 10000.0f, This->sampleRate);
         BMDynamicSmoothingFilter_init(&This->dsfSustainSlow[i], 1.0f, 5.0f, 1000.0f, This->sampleRate);
         BMDynamicSmoothingFilter_init(&This->dsfSustainFast[i], 1.0f, 5.0f, 1000.0f, This->sampleRate);
     }
