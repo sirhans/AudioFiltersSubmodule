@@ -88,7 +88,7 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     float slowReleaseFC = ARTimeToCutoffFrequency(2.0f, BMTS_ARF_NUMLEVELS);
     BMMultiReleaseFilter_init(&This->sustainStandardReleaseFilter, slowReleaseFC,BMTS_ARF_NUMLEVELS, sampleRate);
     
-    slowReleaseFC = ARTimeToCutoffFrequency(0.02f, 1);
+    slowReleaseFC = ARTimeToCutoffFrequency(0.1f, 1);
     BMMultiAttackFilter_init(&This->sustainStandardAttackFilter, slowReleaseFC, 1, sampleRate);
     
     // set the delay to 12 samples at 48 KHz sampleRate or
@@ -291,7 +291,7 @@ void BMTransientShaper_init(BMTransientShaper *This, bool isStereo, float sample
     This->inputBuffer = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     
     // init the 2-way crossover
-    float crossover2fc = 80.0;
+    float crossover2fc = 120.0;
     BMCrossover_init(&This->crossover2, crossover2fc, sampleRate, true, isStereo);
     
     float attackFC = 40.0f;
@@ -465,26 +465,7 @@ void BMTransientShaper_processStereoTest(BMTransientShaper *This,
         This->asSections[0].testBuffer2 = outCS2 + samplesProcessed;
         This->asSections[0].testBuffer3 = outCS3 + samplesProcessed;
         
-        // split the signal into two bands
-        BMCrossover_processStereo(&This->crossover2, inputL+ samplesProcessed, inputR+ samplesProcessed, This->b1L, This->b1R, This->b2L, This->b2R, samplesProcessing);
-
-        // generate a control signal to modulate the volume of the input
-        float half = 0.5f;
-        vDSP_vasm(This->b1L, 1, This->b1R, 1, &half, This->inputBuffer, 1, samplesProcessing);
-        BMTransientShaperSection_generateControlSignal(&This->asSections[0], This->inputBuffer, samplesProcessing);
-        //Copy control signal
-        memcpy(This->asSections[1].releaseControlSignal, This->asSections[0].releaseControlSignal, sizeof(float)*samplesProcessing);
-        
-        
-        //Apply control signal
-        BMTransientShaperSection_processStereo(&This->asSections[0], This->b1L, This->b1R, This->b1L, This->b1R, samplesProcessing);
-        BMTransientShaperSection_processStereo(&This->asSections[1], This->b2L, This->b2R, This->b2L, This->b2R, samplesProcessing);
-
-
-        // recombine the signal
-        vDSP_vadd(This->b1L, 1, This->b2L, 1, outputL+ samplesProcessed, 1, samplesProcessing);
-        vDSP_vadd(This->b1R, 1, This->b2R, 1, outputR+ samplesProcessed, 1, samplesProcessing);
-        
+        BMTransientShaper_processStereo(This, inputL+samplesProcessed, inputR+samplesProcessed, outputL+samplesProcessed, outputR+samplesProcessed, samplesProcessing);
         
         // advance pointers
         samplesProcessed += samplesProcessing;
@@ -624,6 +605,9 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     BMMultiAttackFilter_processBufferFO(&This->sustainStandardAttackFilter, instantAttackEnvelope, This->standard, numSamples);
     vDSP_vsub(This->standard, 1, instantAttackEnvelope, 1, This->standard, 1, numSamples);
     
+    if(This->isTesting)
+        memcpy(This->testBuffer2,This->standard, sizeof(float)*numSamples);
+    
     float min = 0.0f;
     float max = 5.0f;
     vDSP_vclip(This->standard, 1, &min,&max , This->standard, 1, numSamples);
@@ -632,8 +616,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     BMTransientShaperSection_generateSustainControl(This, This->standard, This->releaseControlSignal, numSamples);
     
-    if(This->isTesting)
-        memcpy(This->testBuffer2,This->standard, sizeof(float)*numSamples);
+    
     
     //TEST - SMOOTH
     for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
