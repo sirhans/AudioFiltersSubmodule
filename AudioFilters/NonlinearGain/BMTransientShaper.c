@@ -385,42 +385,6 @@ float BMTransientShaper_getLatencyInSeconds(BMTransientShaper *This){
 
 
 
-
-
-void BMTransientShaper_processStereo(BMTransientShaper *This,
-                                           const float *inputL, const float *inputR,
-                                           float *outputL, float *outputR,
-                                           size_t numSamples){
-    assert(This->isStereo);
-    
-    size_t samplesProcessed = 0;
-    size_t samplesProcessing;
-    while(numSamples-samplesProcessed > 0){
-        samplesProcessing = BM_MIN(numSamples-samplesProcessed, BM_BUFFER_CHUNK_SIZE);
-        
-        // split the signal into two bands
-        BMCrossover_processStereo(&This->crossover2, inputL, inputR, This->b1L, This->b1R, This->b2L, This->b2R, samplesProcessing);
-
-        // generate a control signal to modulate the volume of the input
-        float half = 0.5f;
-        vDSP_vasm(This->b1L, 1, This->b1R, 1, &half, This->inputBuffer, 1, samplesProcessing);
-        BMTransientShaperSection_generateControlSignal(&This->asSections[0], This->inputBuffer, samplesProcessing);
-
-        // process transient shapers on each band
-        BMTransientShaperSection_processStereo(&This->asSections[0], This->b1L, This->b1R, This->b1L, This->b1R, samplesProcessing);
-        BMTransientShaperSection_processStereo(&This->asSections[1], This->b2L, This->b2R, This->b2L, This->b2R, samplesProcessing);
-
-
-        // recombine the signal
-        vDSP_vadd(This->b1L, 1, This->b2L, 1, outputL, 1, samplesProcessing);
-        vDSP_vadd(This->b1R, 1, This->b2R, 1, outputR, 1, samplesProcessing);
-
-        
-        // advance pointers
-        samplesProcessed += samplesProcessing;
-    }
-}
-
 void BMTransientShaper_processMono(BMTransientShaper *This,
                                          const float *input,
                                          float *output,
@@ -448,6 +412,42 @@ void BMTransientShaper_processMono(BMTransientShaper *This,
         output += samplesProcessing;
     }
 }
+
+void BMTransientShaper_processStereo(BMTransientShaper *This,
+                                           const float *inputL, const float *inputR,
+                                           float *outputL, float *outputR,
+                                           size_t numSamples){
+    assert(This->isStereo);
+    
+    size_t samplesProcessed = 0;
+    size_t samplesProcessing;
+    while(numSamples-samplesProcessed > 0){
+        samplesProcessing = BM_MIN(numSamples-samplesProcessed, BM_BUFFER_CHUNK_SIZE);
+        
+        // split the signal into two bands
+        BMCrossover_processStereo(&This->crossover2, inputL+samplesProcessed, inputR+samplesProcessed, This->b1L, This->b1R, This->b2L, This->b2R, samplesProcessing);
+
+        // generate a control signal to modulate the volume of the input
+        float half = 0.5f;
+        vDSP_vasm(This->b1L, 1, This->b1R, 1, &half, This->inputBuffer, 1, samplesProcessing);
+        BMTransientShaperSection_generateControlSignal(&This->asSections[0], This->inputBuffer, samplesProcessing);
+
+        // process transient shapers on each band
+        BMTransientShaperSection_processStereo(&This->asSections[0], This->b1L, This->b1R, This->b1L, This->b1R, samplesProcessing);
+        BMTransientShaperSection_processStereo(&This->asSections[1], This->b2L, This->b2R, This->b2L, This->b2R, samplesProcessing);
+
+
+        // recombine the signal
+        vDSP_vadd(This->b1L, 1, This->b2L, 1, outputL+samplesProcessed, 1, samplesProcessing);
+        vDSP_vadd(This->b1R, 1, This->b2R, 1, outputR+samplesProcessed, 1, samplesProcessing);
+
+        
+        // advance pointers
+        samplesProcessed += samplesProcessing;
+    }
+}
+
+
 
 void BMTransientShaper_processStereoTest(BMTransientShaper *This,
                                            const float *inputL, const float *inputR,
@@ -605,8 +605,8 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     /* ------------ SUSTAIN FILTER ---------*/
     /*--------------------------------------*/
-    float* slowSustainEnvelope = This->b2;
-    float* fastSustainEnvelope = This->releaseControlSignal;
+//    float* slowSustainEnvelope = This->b2;
+//    float* fastSustainEnvelope = This->releaseControlSignal;
     
     
     //Get the instance attack for the input
@@ -630,11 +630,9 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     if(This->isTesting)
         memcpy(This->testBuffer2,This->standard, sizeof(float)*numSamples);
     
-    vDSP_vneg(This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
     //TEST - SMOOTH
     for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
-        BMDynamicSmoothingFilter_processBufferWithFastDescent2(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
-    vDSP_vneg(This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
+        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
     
     
     //Apply depth
