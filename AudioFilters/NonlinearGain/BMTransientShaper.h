@@ -34,7 +34,6 @@
 #define BMTS_BAND_3_FC 1600.0f
 
 typedef struct BMTransientShaperSection {
-    float* inputBuffer;
     float* b1;
     float* b2;
     float* attackControlSignal;
@@ -49,7 +48,7 @@ typedef struct BMTransientShaperSection {
     BMMultiReleaseFilter sustainSlowReleaseFilter;
 
     BMMultiReleaseFilter sustainStandardReleaseFilter;
-    BMFOAttackFilter sustainStandardAttackFilter;
+    BMMultiAttackFilter sustainStandardAttackFilter;
     BMMultiReleaseFilter sustainInputReleaseFilter;
     
     float attackFilterThreshold;
@@ -70,6 +69,9 @@ typedef struct BMTransientShaperSection {
     float* testBuffer1;
     float* testBuffer2;
     float* testBuffer3;
+    float releaseSamples;
+    float currentReleaseSample;
+    float lastOutput;
 } BMTransientShaperSection;
 
 
@@ -77,7 +79,9 @@ typedef struct BMTransientShaper {
     BMTransientShaperSection* asSections;// [BMTS_NUM_SECTIONS];
     BMCrossover crossover2;
     float *b1L, *b2L, *b1R, *b2R;
+    float* inputBuffer;
     bool isStereo;
+    
 } BMTransientShaper;
 
 void BMTransientShaper_init(BMTransientShaper *This, bool isStereo, float sampleRate,bool isTesting);
