@@ -431,7 +431,9 @@ void BMTransientShaper_processStereo(BMTransientShaper *This,
         float half = 0.5f;
         vDSP_vasm(This->b1L, 1, This->b1R, 1, &half, This->inputBuffer, 1, samplesProcessing);
         BMTransientShaperSection_generateControlSignal(&This->asSections[0], This->inputBuffer, samplesProcessing);
-
+        //Copy control signal
+        memcpy(This->asSections[1].releaseControlSignal, This->asSections[0].releaseControlSignal, sizeof(float)*samplesProcessing);
+        
         // process transient shapers on each band
         BMTransientShaperSection_processStereo(&This->asSections[0], This->b1L, This->b1R, This->b1L, This->b1R, samplesProcessing);
         BMTransientShaperSection_processStereo(&This->asSections[1], This->b2L, This->b2R, This->b2L, This->b2R, samplesProcessing);
@@ -470,10 +472,13 @@ void BMTransientShaper_processStereoTest(BMTransientShaper *This,
         float half = 0.5f;
         vDSP_vasm(This->b1L, 1, This->b1R, 1, &half, This->inputBuffer, 1, samplesProcessing);
         BMTransientShaperSection_generateControlSignal(&This->asSections[0], This->inputBuffer, samplesProcessing);
+        //Copy control signal
+        memcpy(This->asSections[1].releaseControlSignal, This->asSections[0].releaseControlSignal, sizeof(float)*samplesProcessing);
+        
         
         //Apply control signal
         BMTransientShaperSection_processStereo(&This->asSections[0], This->b1L, This->b1R, This->b1L, This->b1R, samplesProcessing);
-//        BMTransientShaperSection_processStereo(&This->asSections[1], This->b2L, This->b2R, This->b2L, This->b2R, samplesProcessing);
+        BMTransientShaperSection_processStereo(&This->asSections[1], This->b2L, This->b2R, This->b2L, This->b2R, samplesProcessing);
 
 
         // recombine the signal
