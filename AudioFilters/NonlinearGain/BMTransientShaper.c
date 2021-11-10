@@ -608,18 +608,6 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     BMMultiReleaseFilter_processBufferFO(&This->sustainInputReleaseFilter, input, instantAttackEnvelope, numSamples);
     
     
-    
-//    //Fake attack
-//    BMMultiAttackFilter_processBufferFO(&This->sustainStandardAttackFilter, instantAttackEnvelope, This->standard, numSamples);
-//
-//    vDSP_vsub(This->standard, 1, instantAttackEnvelope, 1, This->standard, 1, numSamples);
-//
-//    float min = 0.0f;
-//    float max = 5.0f;
-//    vDSP_vclip(This->standard, 1, &min,&max , This->standard, 1, numSamples);
-//    float convertOne = 1.0f/max;
-//    vDSP_vsmul(This->standard, 1, &convertOne, This->standard, 1, numSamples);
-    
     BMMultiReleaseFilter_processBufferFO(&This->sustainSlowReleaseFilter, instantAttackEnvelope, slowSustainEnvelope, numSamples);
     BMMultiReleaseFilter_processBufferFO(&This->sustainFastReleaseFilter, instantAttackEnvelope, fastSustainEnvelope, numSamples);
     
@@ -628,11 +616,14 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     if(This->isTesting)
         memcpy(This->testBuffer2,slowSustainEnvelope, sizeof(float)*numSamples);
     
-    vDSP_vsub(slowSustainEnvelope, 1, fastSustainEnvelope, 1, This->releaseControlSignal, 1, numSamples);
-    
-//    BMTransientShaperSection_generateSustainControl(This, This->standard, This->releaseControlSignal , numSamples);
     
     
+    vDSP_vsub(slowSustainEnvelope, 1, fastSustainEnvelope, 1, This->standard, 1, numSamples);
+    
+    BMTransientShaperSection_generateSustainControl(This, This->standard, This->releaseControlSignal , numSamples);
+    
+    if(This->isTesting)
+        memcpy(This->testBuffer3, This->releaseControlSignal, sizeof(float)*numSamples);
     
 //    //TEST - SMOOTH
 //    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
@@ -651,8 +642,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     //Mix attack & release control signal
     vDSP_vadd(This->attackControlSignal, 1, This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
     
-    if(This->isTesting)
-        memcpy(This->testBuffer3, This->releaseControlSignal, sizeof(float)*numSamples);
+    
     
     
     // convert back to linear scale
@@ -663,10 +653,10 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
 void BMTransientShaperSection_generateSustainControl(BMTransientShaperSection *This,float* input,float* output,size_t numSamples){
     float fastDecay = 0.5f;
     float slowDecay = 1.01f;
-    float scale = 10.0f;
+    float scale = 1.0f;
     //Input is the attack signal clipped at 1.0f. At 1.0f, sustain is 0. The sustain go to fast decay mode after reaching non-clip 1.0f. After reaching 1.0f value, it goes to slow decay mode
     for(int i=0;i<numSamples;i++){
-        if(input[i]==1.0f){
+        if(input[i]==0.0f){
             //Clip attack at 1.0f -> attack mean sustain = 0
             output[i] = 0.0f;
             This->currentReleaseSample = 0.0f;
