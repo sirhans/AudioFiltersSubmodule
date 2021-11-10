@@ -620,14 +620,14 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     
     
-    vDSP_vsub(slowSustainEnvelope, 1, fastSustainEnvelope, 1, This->standard, 1, numSamples);
+    vDSP_vsub(slowSustainEnvelope, 1, fastSustainEnvelope, 1, This->releaseControlSignal, 1, numSamples);
     
-    BMTransientShaperSection_generateSustainControl(This, This->standard, This->releaseControlSignal , numSamples);
+//    BMTransientShaperSection_generateSustainControl(This, This->standard, This->releaseControlSignal , numSamples);
     
 //    //TEST - SMOOTH
 //    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++)
 //        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
-//    
+//
     if(This->isTesting)
         memcpy(This->testBuffer3, This->releaseControlSignal, sizeof(float)*numSamples);
     
