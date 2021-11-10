@@ -17,7 +17,7 @@
 #include "BMQuadraticLimiter.h"
 #include "BMCrossover.h"
 
-#define BMTS_DELAY_AT_48KHZ_SAMPLES 100.0f
+#define BMTS_DELAY_AT_48KHZ_SAMPLES 100
 #define BMTS_AF_NUMLEVELS 1
 #define BMTS_ARF_NUMLEVELS 1
 #define BMTS_RRF1_NUMLEVELS 1
