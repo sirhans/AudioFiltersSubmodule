@@ -85,7 +85,7 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     float instanceReleaseFC = ARTimeToCutoffFrequency(0.2f, BMTS_ARF_NUMLEVELS);
     BMMultiReleaseFilter_init(&This->sustainInputReleaseFilter, instanceReleaseFC,BMTS_ARF_NUMLEVELS, sampleRate);
     
-    float slowReleaseFC = ARTimeToCutoffFrequency(0.1f, BMTS_ARF_NUMLEVELS);
+    float slowReleaseFC = ARTimeToCutoffFrequency(5.0f, BMTS_ARF_NUMLEVELS);
     BMMultiReleaseFilter_init(&This->sustainStandardReleaseFilter, slowReleaseFC,BMTS_ARF_NUMLEVELS, sampleRate);
     
     slowReleaseFC = ARTimeToCutoffFrequency(1.0f, 1);
@@ -611,7 +611,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
 //        BMDynamicSmoothingFilter_processBufferDynamic(&This->dsfSustain[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
 //    vDSP_vneg(This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
     
-    BMMultiAttackFilter_processBufferFOBelowDb(&This->sustainStandardAttackFilter, This->releaseControlSignal, This->releaseControlSignal,-0.5f, numSamples);
+    BMMultiAttackFilter_processBufferFOBelowDb(&This->sustainStandardAttackFilter, This->releaseControlSignal, This->releaseControlSignal,-0.1f, numSamples);
     BMMultiReleaseFilter_processBufferFO(&This->sustainStandardReleaseFilter, This->releaseControlSignal, This->releaseControlSignal, numSamples);
     
     //Apply depth
