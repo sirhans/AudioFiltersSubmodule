@@ -85,14 +85,17 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     float instanceReleaseFC = ARTimeToCutoffFrequency(0.2f, BMTS_ARF_NUMLEVELS);
     BMMultiReleaseFilter_init(&This->sustainInputReleaseFilter, instanceReleaseFC,BMTS_ARF_NUMLEVELS, sampleRate);
     
-    float minReleaseFC = ARTimeToCutoffFrequency(0.5f, BMTS_ARF_NUMLEVELS);
-    float maxReleaseFC = ARTimeToCutoffFrequency(5.0f, BMTS_ARF_NUMLEVELS);
+    float sustainAttackFC = ARTimeToCutoffFrequency(10.0f, 1);
+    BMMultiAttackFilter_init(&This->sustainStandardAttackFilter, sustainAttackFC, 1, sampleRate);
+    
+    
+    float minReleaseFC = ARTimeToCutoffFrequency(1.1f, BMTS_ARF_NUMLEVELS);
+    float maxReleaseFC = ARTimeToCutoffFrequency(3.0f, BMTS_ARF_NUMLEVELS);
     BMMultiReleaseFilter_init(&This->sustainStandardReleaseFilter, minReleaseFC,BMTS_ARF_NUMLEVELS, sampleRate);
-    BMMultiReleaseFilter_setDBRange(&This->sustainStandardReleaseFilter, 0, 1.0f);
+    BMMultiReleaseFilter_setDBRange(&This->sustainStandardReleaseFilter, 0, 10000);
     BMMultiReleaseFilter_setCutoffRange(&This->sustainStandardReleaseFilter, minReleaseFC,minReleaseFC,maxReleaseFC);
     
-    float sustainAttackFC = ARTimeToCutoffFrequency(2.0f, 1);
-    BMMultiAttackFilter_init(&This->sustainStandardAttackFilter, sustainAttackFC, 1, sampleRate);
+    
     
     // set the delay to 12 samples at 48 KHz sampleRate or
     // stretch appropriately for other sample rates
@@ -597,8 +600,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     
     
-    if(This->isTesting)
-        memcpy(This->testBuffer1,  fastSustainEnvelope, sizeof(float)*numSamples);
+    
     if(This->isTesting)
         memcpy(This->testBuffer2,slowSustainEnvelope, sizeof(float)*numSamples);
     
@@ -609,9 +611,14 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
 //    BMTransientShaperSection_generateSustainControl(This, This->standard, This->releaseControlSignal , numSamples);
     
     BMMultiAttackFilter_processBufferFOBelowDb(&This->sustainStandardAttackFilter, This->releaseControlSignal, This->releaseControlSignal,-0.1f, numSamples);
+    
+    if(This->isTesting)
+        memcpy(This->testBuffer1,  This->releaseControlSignal, sizeof(float)*numSamples);
+    
 //    BMMultiReleaseFilter_processBufferFO(&This->sustainStandardReleaseFilter, This->releaseControlSignal, This->releaseControlSignal, numSamples);
+    
     //Dynamic
-    BMMultiReleaseFilter_processBufferDynamic(&This->sustainStandardReleaseFilter, This->releaseControlSignal, This->releaseControlSignal, numSamples);
+    BMMultiReleaseFilter_processBufferDynamic1(&This->sustainStandardReleaseFilter, This->releaseControlSignal, This->releaseControlSignal, numSamples);
     
     //Apply depth
     // exaggerate the control signal
@@ -664,16 +671,21 @@ void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTime
     
     // find the lpf cutoff frequency that corresponds to the specified attack time
     
-    float slowReleaseFC = ARTimeToCutoffFrequency(releaseTimeInSeconds*5.55f, BMTS_RRF1_NUMLEVELS);
+    float slowReleaseFC = ARTimeToCutoffFrequency(0.1f*5.55f, BMTS_RRF1_NUMLEVELS);
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[0], slowReleaseFC);
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
-    float fastFC = ARTimeToCutoffFrequency(releaseTimeInSeconds*1.6f, BMTS_RRF2_NUMLEVELS);
+    float fastFC = ARTimeToCutoffFrequency(0.1f*1.6f, BMTS_RRF2_NUMLEVELS);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[0], fastFC);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[1], fastFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
     This->asSections[0].sustainExaggeration = 1.0f;//(releaseTimeInSeconds-0.1f)/0.9f * 4.5f + 1.0f;
     This->asSections[1].sustainExaggeration = This->asSections[0].sustainExaggeration;
+    
+    //Apply release time
+    float minReleaseFC = ARTimeToCutoffFrequency(releaseTimeInSeconds, BMTS_ARF_NUMLEVELS);
+    float maxReleaseFC = ARTimeToCutoffFrequency(3.0f, BMTS_ARF_NUMLEVELS);
+    BMMultiReleaseFilter_setCutoffRange(&This->asSections[0].sustainStandardReleaseFilter, minReleaseFC,minReleaseFC,maxReleaseFC);
 }
     
 

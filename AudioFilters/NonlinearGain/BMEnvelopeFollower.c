@@ -360,12 +360,6 @@ void BMReleaseFilter_processBufferDynamic(BMReleaseFilter *This,
         float v = BM_MIN(BM_MAX((distance - This->minDb)/(This->maxDb - This->minDb),0),1.0f);
         float fc = This->fcMin + (This->fcMax-This->fcMin) * powf(v, 10.0f);
         BMReleaseFilter_setCutoff(This, fc);
-//        //Below
-//        float range = 5.0f;
-//        float distance = fabsf(input[i]-standard[i]);
-//        float v = 1.0f - (BM_MIN(distance,range)/range);
-//        float fc = v * (This->fcMax-This->fcMin) * powf(1.0f-v, 2.0f) + This->fcMin;
-//        BMReleaseFilter_setCutoff(This, fc);
         
         //Process
         float x = input[i];
@@ -410,6 +404,63 @@ void BMReleaseFilter_processBufferDynamic(BMReleaseFilter *This,
     }
 }
 
+void BMReleaseFilter_processBufferDynamic1(BMReleaseFilter *This,
+                                   const float* input,
+                                   float* output,
+                                   size_t numSamples){
+    for (size_t i=0; i<numSamples; i++){
+        //Calculate fc - Distance is between 3 db -> fc grow from fcMax to fcMin
+        float distance = fabsf(input[i]);
+        if(distance<0.001f){
+            This->samplesFromZero = 0;
+        }else
+            This->samplesFromZero++;
+        float v = BM_MIN(BM_MAX((This->samplesFromZero/This->maxDb),0),1.0f);
+        float fc = This->fcMin + (This->fcMax-This->fcMin) * powf(v, 10.0f);
+        BMReleaseFilter_setCutoff(This, fc);
+        
+        //Process
+        float x = input[i];
+        
+        // if we are in attack mode,
+        if (x > This->previousOutputValue){
+            // set the attack mode flag
+            This->attackMode = true;
+            // copy the input to the output
+            output[i] = x;
+        }
+        
+        // if we are in release mode,
+        else {
+            // if this is the first sample in release mode
+            if(This->attackMode){
+                // unset the attack mode flag
+                This->attackMode = false;
+                // set the gradient to zero
+                This->ic1 = 0.0f;
+                // set the second state variable to the previous output
+                // to keep the output function continuous
+                This->ic2 = This->previousOutputValue;
+            }
+            
+            // process the state variable filter
+            float v3 = x - This->ic2;
+            float v1 = This->a1  *This->ic1 + This->a2 * v3;
+            float v2 = This->ic2 + This->a2  *This->ic1 + This->a3 * v3;
+            
+            // update the state variables
+            This->ic1 = 2.0f * v1 - This->ic1;
+            This->ic2 = 2.0f * v2 - This->ic2;
+            
+            // output
+            output[i] = v2;
+        }
+        
+        This->previousOutputValue = output[i];
+        
+        
+    }
+}
 
 
 void BMEnvelopeFollower_init(BMEnvelopeFollower *This, float sampleRate){
@@ -776,6 +827,16 @@ void BMMultiReleaseFilter_processBufferDynamic(BMMultiReleaseFilter *This,
 //    memcpy(output, input, sizeof(float)*numSamples);
     for(int i=0;i<This->numLayers;i++){
         BMReleaseFilter_processBufferDynamic(&This->filters[i], input, output, numSamples);
+    }
+}
+
+void BMMultiReleaseFilter_processBufferDynamic1(BMMultiReleaseFilter *This,
+                                   const float* input,
+                                   float* output,
+                                   size_t numSamples){
+//    memcpy(output, input, sizeof(float)*numSamples);
+    for(int i=0;i<This->numLayers;i++){
+        BMReleaseFilter_processBufferDynamic1(&This->filters[i], input, output, numSamples);
     }
 }
 

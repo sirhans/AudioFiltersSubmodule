@@ -32,6 +32,7 @@
 typedef struct BMReleaseFilter {
     float sampleRate, fc,fcMin,fcMax,fcCross;
     float minDb,maxDb;
+    float samplesFromZero;
     float ic1, ic2;
     float g,k;
     float a1, a2, a3;
@@ -273,7 +274,10 @@ void BMMultiReleaseFilter_processBufferDynamic(BMMultiReleaseFilter *This,
                                    const float* input,
                                    float* output,
                                    size_t numSamples);
-
+void BMMultiReleaseFilter_processBufferDynamic1(BMMultiReleaseFilter *This,
+                                   const float* input,
+                                   float* output,
+                                    size_t numSamples);
 
 /*
  BMMultiAttackFilter
