@@ -638,6 +638,33 @@ void BMFOReleaseFilter_processBuffer(BMFOReleaseFilter* This,
     }
 }
 
+void BMFOReleaseFilter_processBufferBelowDb(BMFOReleaseFilter* This,
+                                    const float* input,
+                                    float* output,float db,
+                                    size_t numSamples){
+    for(size_t i=0; i<numSamples; i++){
+        if(input[i]<This->z1_f&&
+           input[i]<db){
+            //Release mode
+            if(This->attackMode){
+                This->attackMode = false;
+                //Connect sample from not attackmode to  attack mode
+                
+            }
+            output[i] = input[i] * This->b0_f + This->az_f * This->b1_f - This->z1_f * This->a1_f;
+        }else{
+            //Not release mode
+            if(!This->attackMode){
+                This->attackMode = true;
+            }
+            //Copy the output
+            output[i] = input[i];
+        }
+        This->az_f = input[i];
+        This->z1_f = output[i];
+    }
+}
+
 void BMFOReleaseFilter_processBufferStandard(BMFOReleaseFilter* This,
                                     const float* input,
                                     float* output,
@@ -711,6 +738,16 @@ void BMMultiReleaseFilter_processBufferFO(BMMultiReleaseFilter *This,
     }
 }
 
+void BMMultiReleaseFilter_processBufferFOBelowDb(BMMultiReleaseFilter *This,
+                                   const float* input,
+                                   float* output,float db,
+                                   size_t numSamples){
+    memcpy(output, input, sizeof(float)*numSamples);
+    for(int i=0;i<This->numLayers;i++){
+        BMFOReleaseFilter_processBufferBelowDb(&This->foFilters[i], output, output,db, numSamples);
+    }
+}
+
 void BMMultiReleaseFilter_processBufferStandard(BMMultiReleaseFilter *This,
                                    const float* input,
                                    float* standard,
@@ -730,6 +767,8 @@ void BMMultiReleaseFilter_processBuffer(BMMultiReleaseFilter *This,
         BMReleaseFilter_processBuffer(&This->filters[i], output, output, numSamples);
     }
 }
+
+
 
 void BMMultiReleaseFilter_processBufferDynamic(BMMultiReleaseFilter *This,
                                    const float* input,

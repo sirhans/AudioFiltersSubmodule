@@ -226,6 +226,10 @@ void BMFOReleaseFilter_processBuffer(BMFOReleaseFilter* This,
                                     const float* input,
                                     float* output,
                                     size_t numSamples);
+void BMFOReleaseFilter_processBufferBelowDb(BMFOReleaseFilter* This,
+                                    const float* input,
+                                    float* output,float db,
+                                            size_t numSamples);
 
 /*
  BMFOAttackFilter
@@ -262,6 +266,10 @@ void BMMultiReleaseFilter_processBufferFO(BMMultiReleaseFilter *This,
                                    const float* input,
                                    float* output,
                                         size_t numSamples);
+void BMMultiReleaseFilter_processBufferFOBelowDb(BMMultiReleaseFilter *This,
+                                   const float* input,
+                                   float* output,float db,
+                                     size_t numSamples);
 void BMMultiReleaseFilter_processBufferDynamic(BMMultiReleaseFilter *This,
                                    const float* input,
                                    float* output,
