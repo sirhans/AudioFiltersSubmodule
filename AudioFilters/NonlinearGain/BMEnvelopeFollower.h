@@ -204,6 +204,10 @@ void BMFOAttackFilter_processBuffer(BMFOAttackFilter* This,
                                     const float* input,
                                     float* output,
                                     size_t numSamples);
+void BMFOAttackFilter_processBufferBelowDb(BMFOAttackFilter* This,
+                                    const float* input,
+                                    float* output,float db,
+                                   size_t numSamples);
 
 /*
  BMFirstOrderReleaseFilter
@@ -288,6 +292,10 @@ void BMMultiAttackFilter_processBufferFO(BMMultiAttackFilter *This,
                                   const float* input,
                                   float* output,
                                          size_t numSamples);
+void BMMultiAttackFilter_processBufferFOBelowDb(BMMultiAttackFilter *This,
+                                  const float* input,
+                                  float* output,float db,
+                                        size_t numSamples);
 
 
 

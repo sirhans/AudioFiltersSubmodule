@@ -566,6 +566,34 @@ void BMFOAttackFilter_processBuffer(BMFOAttackFilter* This,
         }
 }
 
+void BMFOAttackFilter_processBufferBelowDb(BMFOAttackFilter* This,
+                                    const float* input,
+                                    float* output,float db,
+                                    size_t numSamples){
+    
+        for(size_t i=0; i<numSamples; i++){
+            if(input[i]>This->z1_f&&
+               input[i]<db){
+                //Attack mode
+                if(!This->attackMode){
+                    This->attackMode = true;
+                    //Connect sample from not attackmode to  attack mode
+                    This->az_f = This->z1_f;
+                }
+                output[i] = input[i] * This->b0_f + This->az_f * This->b1_f - This->z1_f * This->a1_f;
+            }else{
+                //Not attack mode
+                if(This->attackMode){
+                    This->attackMode = false;
+                }
+                //Copy the output
+                output[i] = input[i];
+            }
+            This->az_f = input[i];
+            This->z1_f = output[i];
+        }
+}
+
 #pragma mark - FirstOrderReleaseFilter
 void BMFOReleaseFilter_init(BMFOReleaseFilter* This,float fc, float sampleRate){
     This->z1_f = 0.0f;
@@ -756,5 +784,15 @@ void BMMultiAttackFilter_processBufferFO(BMMultiAttackFilter *This,
     memcpy(output, input, sizeof(float)*numSamples);
     for(int i=0;i<This->numLayers;i++){
         BMFOAttackFilter_processBuffer(&This->foFilters[i], output, output, numSamples);
+    }
+}
+
+void BMMultiAttackFilter_processBufferFOBelowDb(BMMultiAttackFilter *This,
+                                  const float* input,
+                                  float* output,float db,
+                                  size_t numSamples){
+    memcpy(output, input, sizeof(float)*numSamples);
+    for(int i=0;i<This->numLayers;i++){
+        BMFOAttackFilter_processBufferBelowDb(&This->foFilters[i], output, output,db, numSamples);
     }
 }

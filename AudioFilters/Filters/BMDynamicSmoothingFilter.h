@@ -71,10 +71,10 @@ void BMDynamicSmoothingFilter_processBufferWithFastDescent2(BMDynamicSmoothingFi
 															const float* input,
 															float* output,
 															size_t numSamples);
-void BMDynamicSmoothingFilter_processBufferWithFastDescentDynamic(BMDynamicSmoothingFilter *This,
+void BMDynamicSmoothingFilter_processBufferDynamic(BMDynamicSmoothingFilter *This,
                                                            const float* input,
                                                            float* output,
-                                                            size_t numSamples);
+                                                           size_t numSamples);
 
 /*!
  *BMDynamicSmoothingFilter_initDefault
