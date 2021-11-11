@@ -85,7 +85,7 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     float instanceReleaseFC = ARTimeToCutoffFrequency(0.2f, BMTS_ARF_NUMLEVELS);
     BMMultiReleaseFilter_init(&This->sustainInputReleaseFilter, instanceReleaseFC,BMTS_ARF_NUMLEVELS, sampleRate);
     
-    float minReleaseFC = ARTimeToCutoffFrequency(1.0f, BMTS_ARF_NUMLEVELS);
+    float minReleaseFC = ARTimeToCutoffFrequency(0.5f, BMTS_ARF_NUMLEVELS);
     float maxReleaseFC = ARTimeToCutoffFrequency(5.0f, BMTS_ARF_NUMLEVELS);
     BMMultiReleaseFilter_init(&This->sustainStandardReleaseFilter, minReleaseFC,BMTS_ARF_NUMLEVELS, sampleRate);
     BMMultiReleaseFilter_setDBRange(&This->sustainStandardReleaseFilter, 0, 1.0f);

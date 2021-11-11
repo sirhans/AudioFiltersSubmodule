@@ -358,7 +358,7 @@ void BMReleaseFilter_processBufferDynamic(BMReleaseFilter *This,
         //Calculate fc - Distance is between 3 db -> fc grow from fcMax to fcMin
         float distance = fabsf(input[i]);
         float v = BM_MIN(BM_MAX((distance - This->minDb)/(This->maxDb - This->minDb),0),1.0f);
-        float fc = This->fcMin + (This->fcMax-This->fcMin) * powf(v, 2.0f);
+        float fc = This->fcMin + (This->fcMax-This->fcMin) * powf(v, 10.0f);
         BMReleaseFilter_setCutoff(This, fc);
 //        //Below
 //        float range = 5.0f;
