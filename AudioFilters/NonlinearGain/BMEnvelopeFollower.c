@@ -353,13 +353,12 @@ void BMReleaseFilter_processBuffer(BMReleaseFilter *This,
 void BMReleaseFilter_processBufferDynamic(BMReleaseFilter *This,
                                    const float* input,
                                    float* output,
-                                   float* standard,
                                    size_t numSamples){
     for (size_t i=0; i<numSamples; i++){
         //Calculate fc - Distance is between 3 db -> fc grow from fcMax to fcMin
-        float distance = fabsf(input[i]-standard[i]);
+        float distance = fabsf(input[i]);
         float v = BM_MIN(BM_MAX((distance - This->minDb)/(This->maxDb - This->minDb),0),1.0f);
-        float fc = This->fcMin + (This->fcMax-This->fcMin) * powf(1.0f-v, 2.0f);
+        float fc = This->fcMin + (This->fcMax-This->fcMin) * powf(v, 2.0f);
         BMReleaseFilter_setCutoff(This, fc);
 //        //Below
 //        float range = 5.0f;
@@ -773,11 +772,10 @@ void BMMultiReleaseFilter_processBuffer(BMMultiReleaseFilter *This,
 void BMMultiReleaseFilter_processBufferDynamic(BMMultiReleaseFilter *This,
                                    const float* input,
                                    float* output,
-                                   float* standard,
                                    size_t numSamples){
 //    memcpy(output, input, sizeof(float)*numSamples);
     for(int i=0;i<This->numLayers;i++){
-        BMReleaseFilter_processBufferDynamic(&This->filters[i], input, output, standard, numSamples);
+        BMReleaseFilter_processBufferDynamic(&This->filters[i], input, output, numSamples);
     }
 }
 

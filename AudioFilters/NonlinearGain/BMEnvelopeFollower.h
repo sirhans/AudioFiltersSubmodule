@@ -142,7 +142,6 @@ void BMReleaseFilter_processBuffer(BMReleaseFilter *This,
 void BMReleaseFilter_processBufferDynamic(BMReleaseFilter *This,
                                    const float* input,
                                    float* output,
-                                   float* standard,
                                    size_t numSamples);
 /*!
  * BMReleaseFilter_processBufferNegative
@@ -273,7 +272,6 @@ void BMMultiReleaseFilter_processBufferFOBelowDb(BMMultiReleaseFilter *This,
 void BMMultiReleaseFilter_processBufferDynamic(BMMultiReleaseFilter *This,
                                    const float* input,
                                    float* output,
-                                   float* standard,
                                    size_t numSamples);
 
 
