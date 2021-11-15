@@ -580,8 +580,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
         
     }
     
-    if(This->isTesting)
-        memcpy(This->testBuffer1,  This->attackControlSignal, sizeof(float)*numSamples);
+    
 
     
     vDSP_vneg(This->attackControlSignal, 1, This->attackControlSignal, 1, numSamples);
@@ -599,7 +598,10 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     BMMultiReleaseFilter_processBufferFO(&This->sustainSlowReleaseFilter, instantAttackEnvelope, slowSustainEnvelope, numSamples);
     BMMultiReleaseFilter_processBufferFO(&This->sustainFastReleaseFilter, instantAttackEnvelope, fastSustainEnvelope, numSamples);
     
-    
+    if(This->isTesting)
+        memcpy(This->testBuffer1,  slowSustainEnvelope, sizeof(float)*numSamples);
+    if(This->isTesting)
+        memcpy(This->testBuffer2,fastSustainEnvelope, sizeof(float)*numSamples);
     
     vDSP_vsub(slowSustainEnvelope, 1, fastSustainEnvelope, 1, This->releaseControlSignal, 1, numSamples);
     
@@ -621,14 +623,12 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     //Mix attack & release control signal
     vDSP_vadd(This->attackControlSignal, 1, This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
     
-    
     if(This->isTesting)
-        memcpy(This->testBuffer2,This->releaseControlSignal, sizeof(float)*numSamples);
+        memcpy(This->testBuffer3, This->releaseControlSignal, sizeof(float)*numSamples);
     
     // convert back to linear scale
     BMConv_dBToGainV(This->releaseControlSignal, This->releaseControlSignal, numSamples);
-    if(This->isTesting)
-        memcpy(This->testBuffer3, This->releaseControlSignal, sizeof(float)*numSamples);
+    
 }
 
 void BMTransientShaperSection_generateSustainControl(BMTransientShaperSection *This,float* input,float* output,size_t numSamples){
@@ -661,7 +661,7 @@ void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTime
     
     // find the lpf cutoff frequency that corresponds to the specified attack time
     
-    float slowReleaseFC = ARTimeToCutoffFrequency(0.1f*8.55f, BMTS_RRF1_NUMLEVELS);
+    float slowReleaseFC = ARTimeToCutoffFrequency(0.1f*6.55f, BMTS_RRF1_NUMLEVELS);
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[0], slowReleaseFC);
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
