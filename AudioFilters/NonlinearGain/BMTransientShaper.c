@@ -610,9 +610,9 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     float noiseGateClosedValue = BM_DB_TO_GAIN(BMTS_NOISE_GATE_CLOSED_LEVEL);
     BMTransientShaperSection_simpleNoiseGate(This, input, This->noiseGateThreshold, noiseGateClosedValue, input, numSamples);
 //
-//    // convert to decibels
-//    float one = 1.0f;
-//    vDSP_vdbcon(input, 1, &one, input, 1, numSamples, 0);
+    // convert to decibels
+    float one = 1.0f;
+    vDSP_vdbcon(input, 1, &one, input, 1, numSamples, 0);
     
     //Attack
     BMTransientShaperSection_generateAttackControl(This, input, numSamples);
