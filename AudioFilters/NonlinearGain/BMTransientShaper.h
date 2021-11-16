@@ -47,8 +47,10 @@ typedef struct BMTransientShaperSection {
     BMMultiReleaseFilter sustainFastReleaseFilter;
     BMMultiReleaseFilter sustainSlowReleaseFilter;
 
+    BMMultiReleaseFilter sustainSmoothReleaseFilter;
     BMMultiReleaseFilter sustainStandardReleaseFilter;
     BMMultiAttackFilter sustainStandardAttackFilter;
+    BMMultiAttackFilter sustainSmoothAttackFilter;
     BMMultiReleaseFilter sustainInputReleaseFilter;
     
     float attackFilterThreshold;
@@ -72,6 +74,9 @@ typedef struct BMTransientShaperSection {
     float releaseSamples;
     float currentReleaseSample;
     float lastOutput;
+    float monitorPeak;
+    float monitorFoot;
+    float monitorIsAttack;
 } BMTransientShaperSection;
 
 
