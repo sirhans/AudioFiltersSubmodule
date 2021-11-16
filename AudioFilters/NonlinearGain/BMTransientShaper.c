@@ -18,7 +18,6 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
                                                     size_t numSamples);
 void BMTransientShaperSection_generateSustainControl(BMTransientShaperSection *This,
                                               float* input,
-                                              float* output,
                                               size_t numSamples);
 
 void BMTransientShaper_upperLimit(float limit, const float* input, float *output, size_t numSamples);
@@ -507,29 +506,9 @@ void BMTransientShaper_setAttackDepth(BMTransientShaper *This, float depth){
         This->asSections[i].attackDepth = depth;
 }
 
-void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *This,
-                                                  float *input,
-                                                  size_t numSamples){
-    assert(numSamples <= BM_BUFFER_CHUNK_SIZE);
-    
-    
-    /*************************
-     * volume envelope in dB *
-     *************************/
-    
-    // absolute value
-    vDSP_vabs(input, 1, input, 1, numSamples);
-    
-    
-    
-    // apply a simple per-sample noise gate
-    float noiseGateClosedValue = BM_DB_TO_GAIN(BMTS_NOISE_GATE_CLOSED_LEVEL);
-    BMTransientShaperSection_simpleNoiseGate(This, input, This->noiseGateThreshold, noiseGateClosedValue, input, numSamples);
-    
-    // convert to decibels
-    float one = 1.0f;
-    vDSP_vdbcon(input, 1, &one, input, 1, numSamples, 0);
-    
+
+
+void BMTransientShaperSection_generateAttackControl(BMTransientShaperSection *This,float* input,size_t numSamples){
     /* ------------ ATTACK FILTER ---------*/
     // release filter to get instant attack envelope
     float *instantAttackEnvelope = This->b1;
@@ -580,14 +559,14 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
         
     }
     
-    
-
-    
     vDSP_vneg(This->attackControlSignal, 1, This->attackControlSignal, 1, numSamples);
     
-    
+}
+
+void BMTransientShaperSection_generateSustainControl(BMTransientShaperSection *This,float* input,size_t numSamples){
     /* ------------ SUSTAIN FILTER ---------*/
     /*--------------------------------------*/
+    float *instantAttackEnvelope = This->b1;
     float* slowSustainEnvelope = This->b2;
     float* fastSustainEnvelope = This->releaseControlSignal;
     
@@ -610,6 +589,36 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     //Dynamic
     BMMultiReleaseFilter_processBufferDynamic1(&This->sustainStandardReleaseFilter, This->releaseControlSignal, This->releaseControlSignal, numSamples);
+}
+
+void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *This,
+                                                  float *input,
+                                                  size_t numSamples){
+    assert(numSamples <= BM_BUFFER_CHUNK_SIZE);
+    
+    
+    /*************************
+     * volume envelope in dB *
+     *************************/
+    
+    // absolute value
+    vDSP_vabs(input, 1, input, 1, numSamples);
+    
+    
+    
+    // apply a simple per-sample noise gate
+    float noiseGateClosedValue = BM_DB_TO_GAIN(BMTS_NOISE_GATE_CLOSED_LEVEL);
+    BMTransientShaperSection_simpleNoiseGate(This, input, This->noiseGateThreshold, noiseGateClosedValue, input, numSamples);
+//
+//    // convert to decibels
+//    float one = 1.0f;
+//    vDSP_vdbcon(input, 1, &one, input, 1, numSamples, 0);
+    
+    //Attack
+    BMTransientShaperSection_generateAttackControl(This, input, numSamples);
+    
+    //Sustain
+    BMTransientShaperSection_generateSustainControl(This, input, numSamples);
     
     //Apply depth
     // exaggerate the control signal
@@ -631,7 +640,7 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
 }
 
-void BMTransientShaperSection_generateSustainControl(BMTransientShaperSection *This,float* input,float* output,size_t numSamples){
+void BMTransientShaperSection_generateFakeSustainControl(BMTransientShaperSection *This,float* input,float* output,size_t numSamples){
     float fastDecay = 0.5f;
     float slowDecay = 1.01f;
     float scale = 1.0f;
@@ -661,7 +670,7 @@ void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTime
     
     // find the lpf cutoff frequency that corresponds to the specified attack time
     
-    float slowReleaseFC = ARTimeToCutoffFrequency(0.1f*6.55f, BMTS_RRF1_NUMLEVELS);
+    float slowReleaseFC = ARTimeToCutoffFrequency(0.1f*3.55f, BMTS_RRF1_NUMLEVELS);
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[0], slowReleaseFC);
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
