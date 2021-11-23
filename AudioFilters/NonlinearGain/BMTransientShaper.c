@@ -59,8 +59,7 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     This->releaseControlSignal = malloc(sizeof(float)*(BM_BUFFER_CHUNK_SIZE+BMTS_DELAY_AT_48KHZ_SAMPLES));
     This->dsfAttack = malloc(sizeof(BMDynamicSmoothingFilter)*BMTS_DSF_NUMLEVELS);
     This->dsfSustain = malloc(sizeof(BMDynamicSmoothingFilter)*BMTS_DSF_NUMLEVELS);
-    This->dsfSustainSlow = malloc(sizeof(BMDynamicSmoothingFilter)*BMTS_DSF_NUMLEVELS);
-    This->dsfSustainFast = malloc(sizeof(BMDynamicSmoothingFilter)*BMTS_DSF_NUMLEVELS);
+    This->sustainDSFFilter = malloc(sizeof(BMDynamicSmoothingFilter)*BMTS_DSF_NUMLEVELS);
     
     
     // the release filters generate the fast envelope across the peaks
@@ -94,13 +93,15 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     float sustainAttackFC = ARTimeToCutoffFrequency(10.0f, 1);
     BMMultiAttackFilter_init(&This->sustainSmoothAttackFilter, sustainAttackFC, 1, sampleRate);
     
-    
     float minReleaseFC = ARTimeToCutoffFrequency(1.1f, BMTS_ARF_NUMLEVELS);
     float maxReleaseFC = ARTimeToCutoffFrequency(3.0f, BMTS_ARF_NUMLEVELS);
     BMMultiReleaseFilter_init(&This->sustainSmoothReleaseFilter, minReleaseFC,BMTS_ARF_NUMLEVELS, sampleRate);
     BMMultiReleaseFilter_setDBRange(&This->sustainSmoothReleaseFilter, 0, 10000);
     BMMultiReleaseFilter_setCutoffRange(&This->sustainSmoothReleaseFilter, minReleaseFC,minReleaseFC,maxReleaseFC);
     
+    //Delay filter
+    float delayFC = ARTimeToCutoffFrequency(0.005f, 1);
+    BMMultiAttackFilter_init(&This->sustainDelayAttackFilter, delayFC, 1, sampleRate);
     
     
     // set the delay to 12 samples at 48 KHz sampleRate or
@@ -113,8 +114,7 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     for(size_t i=0; i<BMTS_DSF_NUMLEVELS; i++){
         BMDynamicSmoothingFilter_init(&This->dsfAttack[i], dsfSensitivity, dsfFcMin, dsfFcMax, This->sampleRate);
         BMDynamicSmoothingFilter_init(&This->dsfSustain[i], 1.0f, 1.0f, 1000.0f, This->sampleRate);
-        BMDynamicSmoothingFilter_init(&This->dsfSustainSlow[i], 1.0f, 5.0f, 1000.0f, This->sampleRate);
-        BMDynamicSmoothingFilter_init(&This->dsfSustainFast[i], 1.0f, 5.0f, 1000.0f, This->sampleRate);
+        BMDynamicSmoothingFilter_init(&This->sustainDSFFilter[i], 1.1f, 100.0f, 10000.0f, This->sampleRate);
     }
 
 }
@@ -138,15 +138,14 @@ void BMTransientShaperSection_free(BMTransientShaperSection *This){
     
     BMMultiReleaseFilter_destroy(&This->attackBoostInstantFilter);
     BMMultiAttackFilter_destroy(&This->attackBoostSlowFilter);
+    BMMultiAttackFilter_destroy(&This->sustainDelayAttackFilter);
     
     free(This->dsfAttack);
     This->dsfAttack = NULL;
     free(This->dsfSustain);
     This->dsfSustain = NULL;
-    free(This->dsfSustainSlow);
-    This->dsfSustainSlow = NULL;
-    free(This->dsfSustainFast);
-    This->dsfSustainFast = NULL;
+    free(This->sustainDSFFilter);
+    This->sustainDSFFilter = NULL;
 }
 
 void BMTransientShaperSection_setAttackReduceSlowFC(BMTransientShaperSection *This, float attackFc){
@@ -602,7 +601,12 @@ void BMTransientShaperSection_generateSustainControl(BMTransientShaperSection *T
     //Dynamic
     BMMultiReleaseFilter_processBufferDynamic1(&This->sustainSmoothReleaseFilter, This->releaseControlSignal, This->releaseControlSignal, numSamples);
     
+    //Delay the start of sustain to prevent the click from guitar sound
+    BMMultiAttackFilter_processBufferFO(&This->sustainDelayAttackFilter, This->releaseControlSignal, This->releaseControlSignal, numSamples);
     
+//    for(size_t i=0; i < BMTS_DSF_NUMLEVELS; i++){
+//        BMDynamicSmoothingFilter_processBufferFastAccent2(&This->sustainDSFFilter[i], This->releaseControlSignal, This->releaseControlSignal, numSamples);
+//    }
 }
 
 void BMTransientShaperSection_correctSustainControlSignal(BMTransientShaperSection *This,float* standard,float* control,float* instantAttack,size_t numSamples){

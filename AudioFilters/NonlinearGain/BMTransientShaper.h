@@ -17,7 +17,7 @@
 #include "BMQuadraticLimiter.h"
 #include "BMCrossover.h"
 
-#define BMTS_DELAY_AT_48KHZ_SAMPLES 100
+#define BMTS_DELAY_AT_48KHZ_SAMPLES 30
 #define BMTS_AF_NUMLEVELS 1
 #define BMTS_ARF_NUMLEVELS 1
 #define BMTS_RRF1_NUMLEVELS 1
@@ -48,18 +48,21 @@ typedef struct BMTransientShaperSection {
     BMMultiReleaseFilter sustainSlowReleaseFilter;
 
     BMMultiReleaseFilter sustainSmoothReleaseFilter;
+    BMMultiAttackFilter sustainSmoothAttackFilter;
+    
     BMMultiReleaseFilter sustainStandardReleaseFilter;
     BMMultiAttackFilter sustainStandardAttackFilter;
-    BMMultiAttackFilter sustainSmoothAttackFilter;
+    
     BMMultiReleaseFilter sustainInputReleaseFilter;
+    //Delay smooth
+    BMMultiAttackFilter sustainDelayAttackFilter;
+    BMDynamicSmoothingFilter* sustainDSFFilter;
     
     float attackFilterThreshold;
     float* standard;
     
     BMDynamicSmoothingFilter* dsfAttack;
     BMDynamicSmoothingFilter* dsfSustain;
-    BMDynamicSmoothingFilter* dsfSustainSlow;
-    BMDynamicSmoothingFilter* dsfSustainFast;
     
     
     BMShortSimpleDelay dly;
