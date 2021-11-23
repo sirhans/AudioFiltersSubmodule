@@ -135,6 +135,11 @@ void BMTransientShaperSection_free(BMTransientShaperSection *This){
     
     BMMultiReleaseFilter_destroy(&This->attackReduceInstantFilter);
     BMMultiAttackFilter_destroy(&This->attackReduceSlowFilter);
+    BMMultiReleaseFilter_destroy(&This->sustainFastReleaseFilter);
+    BMMultiAttackFilter_destroy(&This->sustainSmoothAttackFilter);
+    BMMultiReleaseFilter_destroy(&This->sustainStandardReleaseFilter);
+    BMMultiAttackFilter_destroy(&This->sustainStandardAttackFilter);
+    BMMultiReleaseFilter_destroy(&This->sustainInputReleaseFilter);
     
     BMMultiReleaseFilter_destroy(&This->attackBoostInstantFilter);
     BMMultiAttackFilter_destroy(&This->attackBoostSlowFilter);
@@ -146,6 +151,13 @@ void BMTransientShaperSection_free(BMTransientShaperSection *This){
     This->dsfSustain = NULL;
     free(This->sustainDSFFilter);
     This->sustainDSFFilter = NULL;
+    
+    free(This->testBuffer1);
+    This->testBuffer1 = NULL;
+    free(This->testBuffer2);
+    This->testBuffer2 = NULL;
+    free(This->testBuffer3);
+    This->testBuffer3 = NULL;
 }
 
 void BMTransientShaperSection_setAttackReduceSlowFC(BMTransientShaperSection *This, float attackFc){
@@ -379,6 +391,12 @@ void BMTransientShaper_free(BMTransientShaper *This){
     BMCrossover_free(&This->crossover2);
     free(This->b1L);
     This->b1L = NULL;
+    free(This->b2L);
+    This->b2L = NULL;
+    free(This->b1R);
+    This->b1R = NULL;
+    free(This->b1R);
+    This->b1R = NULL;
     free(This->inputBuffer);
     This->inputBuffer = NULL;
     
@@ -589,7 +607,7 @@ void BMTransientShaperSection_generateSustainControl(BMTransientShaperSection *T
     if(This->isTesting)
         memcpy(This->testBuffer1,  instantAttackEnvelope, sizeof(float)*numSamples);
     if(This->isTesting)
-        memcpy(This->testBuffer2,This->standard, sizeof(float)*numSamples);
+        memcpy(This->testBuffer2,fastSustainEnvelope, sizeof(float)*numSamples);
     
     vDSP_vsub(slowSustainEnvelope, 1, fastSustainEnvelope, 1, This->releaseControlSignal, 1, numSamples);
     
@@ -617,8 +635,8 @@ void BMTransientShaperSection_correctSustainControlSignal(BMTransientShaperSecti
             //Fake attack
             control[i] = -0.01f;
         }
-        if(This->isTesting)
-            This->testBuffer1[i] = fabsf(standard[i]-instantAttack[i]);
+//        if(This->isTesting)
+//            This->testBuffer1[i] = fabsf(standard[i]-instantAttack[i]);
     }
 }
 
@@ -706,7 +724,7 @@ void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTime
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[0], slowReleaseFC);
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
-    float fastFC = ARTimeToCutoffFrequency(0.1f*1.6f, BMTS_RRF2_NUMLEVELS);
+    float fastFC = ARTimeToCutoffFrequency(0.1f*0.6f, BMTS_RRF2_NUMLEVELS);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[0], fastFC);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[1], fastFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
