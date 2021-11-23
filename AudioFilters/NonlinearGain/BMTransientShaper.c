@@ -100,7 +100,7 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     BMMultiReleaseFilter_setCutoffRange(&This->sustainSmoothReleaseFilter, minReleaseFC,minReleaseFC,maxReleaseFC);
     
     //Delay filter
-    float delayFC = ARTimeToCutoffFrequency(0.001f, 3);
+    float delayFC = ARTimeToCutoffFrequency(0.000625f, 3);
     BMMultiAttackFilter_init(&This->sustainDelayAttackFilter, delayFC, 3, sampleRate);
     //Lower Limiter
     BMQuadraticThreshold_initLower(&This->lowerLimiter, -35, 5);
