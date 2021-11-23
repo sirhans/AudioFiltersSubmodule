@@ -16,6 +16,8 @@
 #include "BMShortSimpleDelay.h"
 #include "BMQuadraticLimiter.h"
 #include "BMCrossover.h"
+#include "BMQuadraticThreshold.h"
+
 
 #define BMTS_DELAY_AT_48KHZ_SAMPLES 30
 #define BMTS_AF_NUMLEVELS 1
@@ -80,6 +82,9 @@ typedef struct BMTransientShaperSection {
     float monitorPeak;
     float monitorFoot;
     float monitorIsAttack;
+    
+    //Limiter
+    BMQuadraticThreshold lowerLimiter;
 } BMTransientShaperSection;
 
 

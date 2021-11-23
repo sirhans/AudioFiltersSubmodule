@@ -100,9 +100,10 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     BMMultiReleaseFilter_setCutoffRange(&This->sustainSmoothReleaseFilter, minReleaseFC,minReleaseFC,maxReleaseFC);
     
     //Delay filter
-    float delayFC = ARTimeToCutoffFrequency(0.005f, 1);
-    BMMultiAttackFilter_init(&This->sustainDelayAttackFilter, delayFC, 1, sampleRate);
-    
+    float delayFC = ARTimeToCutoffFrequency(0.001f, 3);
+    BMMultiAttackFilter_init(&This->sustainDelayAttackFilter, delayFC, 3, sampleRate);
+    //Lower Limiter
+    BMQuadraticThreshold_initLower(&This->lowerLimiter, -35, 5);
     
     // set the delay to 12 samples at 48 KHz sampleRate or
     // stretch appropriately for other sample rates
@@ -678,6 +679,10 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     adjustedExaggeration = This->releaseDepth * -This->sustainExaggeration;
     vDSP_vsmul(This->releaseControlSignal, 1, &adjustedExaggeration, This->releaseControlSignal, 1, numSamples);
     
+    //Clip sustain control signal
+    memcpy(This->b1, This->releaseControlSignal, sizeof(float)*numSamples);
+    BMQuadraticThreshold_lowerBuffer(&This->lowerLimiter, This->b1, This->releaseControlSignal, numSamples);
+    
     //Mix attack & release control signal
     vDSP_vadd(This->attackControlSignal, 1, This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
     
@@ -724,7 +729,7 @@ void BMTransientShaper_setReleaseTime(BMTransientShaper *This, float releaseTime
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[0], slowReleaseFC);
     BMTransientShaperSection_setSustainSlowFC(&This->asSections[1], slowReleaseFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
-    float fastFC = ARTimeToCutoffFrequency(0.1f*0.6f, BMTS_RRF2_NUMLEVELS);
+    float fastFC = ARTimeToCutoffFrequency(0.1f*1.6f, BMTS_RRF2_NUMLEVELS);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[0], fastFC);
     BMTransientShaperSection_setSustainFastFC(&This->asSections[1], fastFC*BMTS_SECTION_2_RF_MULTIPLIER);
     
