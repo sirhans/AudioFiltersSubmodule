@@ -94,7 +94,7 @@ typedef struct BMTransientShaper {
     float *b1L, *b2L, *b1R, *b2R;
     float* inputBuffer;
     bool isStereo;
-    
+    bool isInit;
 } BMTransientShaper;
 
 void BMTransientShaper_init(BMTransientShaper *This, bool isStereo, float sampleRate,bool isTesting);
