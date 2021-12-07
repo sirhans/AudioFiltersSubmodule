@@ -117,7 +117,6 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
         BMDynamicSmoothingFilter_init(&This->dsfSustain[i], 1.0f, 1.0f, 1000.0f, This->sampleRate);
         BMDynamicSmoothingFilter_init(&This->sustainDSFFilter[i], 1.1f, 100.0f, 10000.0f, This->sampleRate);
     }
-
 }
 
 void BMTransientShaperSection_free(BMTransientShaperSection *This){
@@ -153,12 +152,14 @@ void BMTransientShaperSection_free(BMTransientShaperSection *This){
     free(This->sustainDSFFilter);
     This->sustainDSFFilter = NULL;
     
-    free(This->testBuffer1);
-    This->testBuffer1 = NULL;
-    free(This->testBuffer2);
-    This->testBuffer2 = NULL;
-    free(This->testBuffer3);
-    This->testBuffer3 = NULL;
+    if(This->isTesting){
+        free(This->testBuffer1);
+        This->testBuffer1 = NULL;
+        free(This->testBuffer2);
+        This->testBuffer2 = NULL;
+        free(This->testBuffer3);
+        This->testBuffer3 = NULL;
+    }
 }
 
 void BMTransientShaperSection_setAttackReduceSlowFC(BMTransientShaperSection *This, float attackFc){
@@ -380,6 +381,8 @@ void BMTransientShaper_init(BMTransientShaper *This, bool isStereo, float sample
     free(input);
     free(outputL);
     free(outputR);
+    
+    This->isInit = true;
 }
 
 
@@ -387,6 +390,8 @@ void BMTransientShaper_init(BMTransientShaper *This, bool isStereo, float sample
 
 
 void BMTransientShaper_free(BMTransientShaper *This){
+    This->isInit = false;
+    
     BMTransientShaperSection_free(&This->asSections[0]);
     BMTransientShaperSection_free(&This->asSections[1]);
     BMCrossover_free(&This->crossover2);
@@ -420,27 +425,29 @@ void BMTransientShaper_processMono(BMTransientShaper *This,
                                          float *output,
                                          size_t numSamples){
     assert(!This->isStereo);
-    
-    while(numSamples > 0){
-        size_t samplesProcessing = BM_MIN(numSamples, BM_BUFFER_CHUNK_SIZE);
-        
-        // split the signal into two bands
-        BMCrossover_processMono(&This->crossover2, input, This->b1L, This->b2L, samplesProcessing);
+    if(This->isInit){
+        while(numSamples > 0){
+            size_t samplesProcessing = BM_MIN(numSamples, BM_BUFFER_CHUNK_SIZE);
+            
+            // split the signal into two bands
+            BMCrossover_processMono(&This->crossover2, input, This->b1L, This->b2L, samplesProcessing);
 
-        // generate a control signal to modulate the volume of the input
-        BMTransientShaperSection_generateControlSignal(&This->asSections[0], This->b1L, samplesProcessing);
-        // process transient shapers on each band
-        BMTransientShaperSection_processMono(&This->asSections[0], This->b1L, This->b1L, samplesProcessing);
-        BMTransientShaperSection_processMono(&This->asSections[1], This->b2L, This->b2L, samplesProcessing);
+            // generate a control signal to modulate the volume of the input
+            BMTransientShaperSection_generateControlSignal(&This->asSections[0], This->b1L, samplesProcessing);
+            // process transient shapers on each band
+            BMTransientShaperSection_processMono(&This->asSections[0], This->b1L, This->b1L, samplesProcessing);
+            BMTransientShaperSection_processMono(&This->asSections[1], This->b2L, This->b2L, samplesProcessing);
 
-        // recombine the signal
-        vDSP_vadd(This->b1L, 1, This->b2L, 1, output, 1, samplesProcessing);
-        
-        // advance pointers
-        numSamples -= samplesProcessing;
-        input += samplesProcessing;
-        output += samplesProcessing;
+            // recombine the signal
+            vDSP_vadd(This->b1L, 1, This->b2L, 1, output, 1, samplesProcessing);
+            
+            // advance pointers
+            numSamples -= samplesProcessing;
+            input += samplesProcessing;
+            output += samplesProcessing;
+        }
     }
+    
 }
 
 void BMTransientShaper_processStereo(BMTransientShaper *This,
@@ -448,20 +455,21 @@ void BMTransientShaper_processStereo(BMTransientShaper *This,
                                            float *outputL, float *outputR,
                                            size_t numSamples){
     assert(This->isStereo);
-    
-    size_t samplesProcessed = 0;
-    size_t samplesProcessing;
-    while(numSamples-samplesProcessed > 0){
-        samplesProcessing = BM_MIN(numSamples-samplesProcessed, BM_BUFFER_CHUNK_SIZE);
-        
-        float half = 0.5f;
-        vDSP_vasm(inputL+samplesProcessed, 1, inputR+samplesProcessed, 1, &half, This->inputBuffer, 1, samplesProcessing);
-        BMTransientShaperSection_generateControlSignal(&This->asSections[0], This->inputBuffer, samplesProcessing);
-        
-        BMTransientShaperSection_processStereo(&This->asSections[0], inputL+samplesProcessed, inputR+samplesProcessed, outputL+samplesProcessed, outputR+samplesProcessed, samplesProcessing);
-        
-        // advance pointers
-        samplesProcessed += samplesProcessing;
+    if(This->isInit){
+        size_t samplesProcessed = 0;
+        size_t samplesProcessing;
+        while(numSamples-samplesProcessed > 0){
+            samplesProcessing = BM_MIN(numSamples-samplesProcessed, BM_BUFFER_CHUNK_SIZE);
+            
+            float half = 0.5f;
+            vDSP_vasm(inputL+samplesProcessed, 1, inputR+samplesProcessed, 1, &half, This->inputBuffer, 1, samplesProcessing);
+            BMTransientShaperSection_generateControlSignal(&This->asSections[0], This->inputBuffer, samplesProcessing);
+            
+            BMTransientShaperSection_processStereo(&This->asSections[0], inputL+samplesProcessed, inputR+samplesProcessed, outputL+samplesProcessed, outputR+samplesProcessed, samplesProcessing);
+            
+            // advance pointers
+            samplesProcessed += samplesProcessing;
+        }
     }
 }
 
@@ -472,19 +480,20 @@ void BMTransientShaper_processStereoTest(BMTransientShaper *This,
                                            float *outputL, float *outputR,float* outCS1,float* outCS2,float* outCS3,
                                            size_t numSamples){
     assert(This->isStereo);
-    
-    size_t samplesProcessed = 0;
-    size_t samplesProcessing;
-    while(numSamples-samplesProcessed > 0){
-        samplesProcessing = BM_MIN(numSamples-samplesProcessed, BM_BUFFER_CHUNK_SIZE);
-        This->asSections[0].testBuffer1 = outCS1 + samplesProcessed;
-        This->asSections[0].testBuffer2 = outCS2 + samplesProcessed;
-        This->asSections[0].testBuffer3 = outCS3 + samplesProcessed;
-        
-        BMTransientShaper_processStereo(This, inputL+samplesProcessed, inputR+samplesProcessed, outputL+samplesProcessed, outputR+samplesProcessed, samplesProcessing);
-        
-        // advance pointers
-        samplesProcessed += samplesProcessing;
+    if(This->isInit){
+        size_t samplesProcessed = 0;
+        size_t samplesProcessing;
+        while(numSamples-samplesProcessed > 0){
+            samplesProcessing = BM_MIN(numSamples-samplesProcessed, BM_BUFFER_CHUNK_SIZE);
+            This->asSections[0].testBuffer1 = outCS1 + samplesProcessed;
+            This->asSections[0].testBuffer2 = outCS2 + samplesProcessed;
+            This->asSections[0].testBuffer3 = outCS3 + samplesProcessed;
+            
+            BMTransientShaper_processStereo(This, inputL+samplesProcessed, inputR+samplesProcessed, outputL+samplesProcessed, outputR+samplesProcessed, samplesProcessing);
+            
+            // advance pointers
+            samplesProcessed += samplesProcessing;
+        }
     }
 }
 
