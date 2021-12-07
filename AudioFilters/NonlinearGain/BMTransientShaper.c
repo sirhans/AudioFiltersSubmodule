@@ -50,7 +50,7 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     This->attackDepth = 1.0;
     This->releaseDepth = 1.0;
     This->isTesting = isTesting;
-    This->monitorPeak = -100.0f;
+
     
     This->b1 = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->b2 = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
