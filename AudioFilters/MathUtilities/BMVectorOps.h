@@ -12,6 +12,7 @@
 #define BMVectorOps_h
 
 #include <MacTypes.h>
+#include <Accelerate/Accelerate.h>
 
 // 256 bit vectors
 typedef unsigned vUint32_8 __attribute__((ext_vector_type(8),aligned(4)));
@@ -74,6 +75,19 @@ vFloat32_32 vfClipNeg32(vFloat32_32 A);
  * @param length length of v
  */
 float BMVectorNorm(const float* v, size_t length);
+
+
+
+/*!
+ *BMVectorNormSplitComplex
+ *
+ * @abstract find the l2 norm of v
+ *
+ * @param v input vector
+ * @param length length of v
+ */
+float BMVectorNormSplitComplex(const DSPSplitComplex v, size_t length);
+
 
 
 /*!
