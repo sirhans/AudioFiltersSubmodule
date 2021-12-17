@@ -60,7 +60,6 @@ typedef struct BMTransientShaperSection {
     BMMultiAttackFilter sustainDelayAttackFilter;
     BMDynamicSmoothingFilter* sustainDSFFilter;
     
-    float attackFilterThreshold;
     float* standard;
     
     BMDynamicSmoothingFilter* dsfAttack;
@@ -79,9 +78,6 @@ typedef struct BMTransientShaperSection {
     float releaseSamples;
     float currentReleaseSample;
     float lastOutput;
-    float monitorPeak;
-    float monitorFoot;
-    float monitorIsAttack;
     
     //Limiter
     BMQuadraticThreshold lowerLimiter;

@@ -50,7 +50,7 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     This->attackDepth = 1.0;
     This->releaseDepth = 1.0;
     This->isTesting = isTesting;
-    This->monitorPeak = -100.0f;
+
     
     This->b1 = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->b2 = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
@@ -71,7 +71,7 @@ void BMTransientShaperSection_init(BMTransientShaperSection *This,
     BMMultiAttackFilter_init(&This->attackBoostSlowFilter, attackFc,BMTS_AF_NUMLEVELS, sampleRate);
     
     //Attack boost smooth
-    BMAttackFilter_init(&This->attackBoostSmoothFilter,20.0f,sampleRate);
+    BMAttackFilter_init(&This->attackBoostSmoothFilter,40.0f,sampleRate);
     
     //Sustain
     BMMultiReleaseFilter_init(&This->sustainSlowReleaseFilter, releaseFilterFc,BMTS_RRF1_NUMLEVELS, sampleRate);
@@ -562,12 +562,17 @@ void BMTransientShaperSection_generateAttackControl(BMTransientShaperSection *Th
         BMMultiAttackFilter_processBufferFO(&This->attackBoostSlowFilter, instantAttackEnvelope, slowAttackEnvelope, numSamples);
     }
     
+    if(This->isTesting)
+        memcpy(This->testBuffer1,  instantAttackEnvelope, sizeof(float)*numSamples);
+    if(This->isTesting)
+        memcpy(This->testBuffer2,slowAttackEnvelope, sizeof(float)*numSamples);
     
     /***************************************************************************
      * find gain reduction (dB) to have the envelope follow slowAttackEnvelope *
      ***************************************************************************/
     // controlSignal = slowAttackEnvelope - instantAttackEnvelope;
     vDSP_vsub(instantAttackEnvelope, 1, slowAttackEnvelope, 1, This->attackControlSignal, 1, numSamples);
+    
     
     
     /************************************************
@@ -585,6 +590,7 @@ void BMTransientShaperSection_generateAttackControl(BMTransientShaperSection *Th
             //Smooth attack reduction
             BMDynamicSmoothingFilter_processBufferWithFastDescent2(&This->dsfAttack[i], This->attackControlSignal, This->attackControlSignal, numSamples);
     }else{
+        //Attack boost
         float limit = -5.0f;
         BMTransientShaper_lowerLimit(limit, This->attackControlSignal, This->attackControlSignal, numSamples);
         
@@ -593,6 +599,7 @@ void BMTransientShaperSection_generateAttackControl(BMTransientShaperSection *Th
     }
     
     vDSP_vneg(This->attackControlSignal, 1, This->attackControlSignal, 1, numSamples);
+    
     
 }
 
@@ -613,11 +620,6 @@ void BMTransientShaperSection_generateSustainControl(BMTransientShaperSection *T
     
     BMMultiReleaseFilter_processBufferFO(&This->sustainSlowReleaseFilter, instantAttackEnvelope, slowSustainEnvelope, numSamples);
     BMMultiReleaseFilter_processBufferFO(&This->sustainFastReleaseFilter, instantAttackEnvelope, fastSustainEnvelope, numSamples);
-    
-    if(This->isTesting)
-        memcpy(This->testBuffer1,  instantAttackEnvelope, sizeof(float)*numSamples);
-    if(This->isTesting)
-        memcpy(This->testBuffer2,fastSustainEnvelope, sizeof(float)*numSamples);
     
     vDSP_vsub(slowSustainEnvelope, 1, fastSustainEnvelope, 1, This->releaseControlSignal, 1, numSamples);
     
@@ -694,7 +696,6 @@ void BMTransientShaperSection_generateControlSignal(BMTransientShaperSection *Th
     
     //Mix attack & release control signal
     vDSP_vadd(This->attackControlSignal, 1, This->releaseControlSignal, 1, This->releaseControlSignal, 1, numSamples);
-    
     
     if(This->isTesting)
         memcpy(This->testBuffer3, This->releaseControlSignal, sizeof(float)*numSamples);
