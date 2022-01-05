@@ -9,6 +9,9 @@
 #include "Constants.h"
 
 #define Test_MaxBuffers 5
+#define BMAEF_NOISE_GATE_CLOSED_LEVEL -100.0f
+
+void BMAmplitudeFollower_setSidechainNoiseGateThreshold(BMAmplitudeFollower *This, float thresholdDb);
 
 void BMAmplitudeFollower_init(BMAmplitudeFollower* This,float sampleRate){
     BMAttackFilter_init(&This->attackFilter, 20.0f, sampleRate);
@@ -20,6 +23,7 @@ void BMAmplitudeFollower_init(BMAmplitudeFollower* This,float sampleRate){
     for(int i=0;i<Test_MaxBuffers;i++){
         This->testBuffers[i] = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     }
+    BMAmplitudeFollower_setSidechainNoiseGateThreshold(This, BMAEF_NOISE_GATE_CLOSED_LEVEL);
 }
 
 void BMAmplitudeFollower_destroy(BMAmplitudeFollower* This){
@@ -29,8 +33,8 @@ void BMAmplitudeFollower_destroy(BMAmplitudeFollower* This){
     free(This->testBuffers);
 }
 
-#define BMAEF_NOISE_GATE_CLOSED_LEVEL -100.0f
-void simpleNoiseGate(const float* input,
+void BMAmplitudeFollower_simpleNoiseGate(BMAmplitudeFollower *This,
+                                    const float* input,
                                     float threshold,
                                     float closedValue,
                                     float* output,
@@ -45,19 +49,28 @@ void simpleNoiseGate(const float* input,
     // get the max value to find out if the gate was open at any point during the buffer
     float maxValue;
     vDSP_maxv(output, 1, &maxValue, numSamples);
+    This->noiseGateIsOpen = maxValue > This->noiseGateThreshold;
+    if(This->noiseGateThreshold < closedValue) This->noiseGateIsOpen = false;
+}
+
+void BMAmplitudeFollower_setSidechainNoiseGateThreshold(BMAmplitudeFollower *This, float thresholdDb){
+    // Don't allow the noise gate threshold to be set lower than the
+    // gain setting the gate takes when it's closed
+    assert(thresholdDb >= BMAEF_NOISE_GATE_CLOSED_LEVEL);
+    This->noiseGateThreshold = BM_DB_TO_GAIN(thresholdDb);
 }
 
 void BMAmplitudeFollower_processBuffer(BMAmplitudeFollower* This,float* input,float* envelope,size_t numSamples){
     // absolute value
-    vDSP_vabs(input, 1, envelope, 1, numSamples);
+    vDSP_vabs(input, 1, input, 1, numSamples);
     
     // apply a simple per-sample noise gate
     float noiseGateClosedValue = BM_DB_TO_GAIN(BMAEF_NOISE_GATE_CLOSED_LEVEL);
-    simpleNoiseGate(envelope, noiseGateClosedValue, noiseGateClosedValue, envelope, numSamples);
+    BMAmplitudeFollower_simpleNoiseGate(This,input, This->noiseGateThreshold, noiseGateClosedValue, input, numSamples);
     
     // convert to decibels
     float one = 1.0f;
-    vDSP_vdbcon(envelope, 1, &one, envelope, 1, numSamples, 0);
+    vDSP_vdbcon(input, 1, &one, input, 1, numSamples, 0);
     
     size_t sampleProcessed = 0;
     size_t sampleProcessing = 0;

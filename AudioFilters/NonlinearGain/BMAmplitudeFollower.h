@@ -18,6 +18,8 @@ typedef struct BMAmplitudeFollower {
     float** testBuffers;
     float* instantAttackEnvelope;
     float* slowAttackEnvelope;
+    float noiseGateThreshold;
+    bool noiseGateIsOpen;
 } BMAmplitudeFollower;
 
 void BMAmplitudeFollower_init(BMAmplitudeFollower* This,float sampleRate);
