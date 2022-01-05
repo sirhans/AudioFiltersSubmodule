@@ -22,7 +22,7 @@ typedef struct BMAmplitudeFollower {
     bool noiseGateIsOpen;
 } BMAmplitudeFollower;
 
-void BMAmplitudeFollower_init(BMAmplitudeFollower* This,float sampleRate);
+void BMAmplitudeFollower_init(BMAmplitudeFollower* This,float sampleRate,int testLength);
 void BMAmplitudeFollower_destroy(BMAmplitudeFollower* This);
 
 void BMAmplitudeFollower_processBuffer(BMAmplitudeFollower* This,float* input,float* envelope,size_t numSamples);
