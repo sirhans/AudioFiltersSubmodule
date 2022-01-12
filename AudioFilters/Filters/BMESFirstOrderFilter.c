@@ -56,6 +56,16 @@ void BMESFirstOrderFilter_setMaxDb(BMESFirstOrderFilter* This, float maxDb){
     BMESFirstOrderFilter_updateTableParamters(This);
 }
 
+void BMESFirstOrderFilter_setOutMinDb(BMESFirstOrderFilter* This, float minDb){
+    This->outMinDb = minDb;
+    BMESFirstOrderFilter_updateTableParamters(This);
+}
+
+void BMESFirstOrderFilter_setOutMaxDb(BMESFirstOrderFilter* This, float maxDb){
+    This->outMaxDb = maxDb;
+    BMESFirstOrderFilter_updateTableParamters(This);
+}
+
 void BMESFirstOrderFilter_setHighShelfFC(BMESFirstOrderFilter* This, float fc){
     This->fc = fc;
     BMESFirstOrderFilter_updateTableParamters(This);
@@ -64,7 +74,7 @@ void BMESFirstOrderFilter_setHighShelfFC(BMESFirstOrderFilter* This, float fc){
 void BMESFirstOrderFilter_updateTableParamters(BMESFirstOrderFilter* This){
     //Calculate the parameter table every time the fc changed.
     for(int i=0;i<ES_Parameter_TableSize;i++){
-        float gainDb = This->minDb + (This->maxDb-This->minDb) * ((float)i/(ES_Parameter_TableSize-1));
+        float gainDb = This->outMinDb + (This->outMaxDb-This->outMinDb) * ((float)i/(ES_Parameter_TableSize-1));
         BMESFirstOrderFilter_calculateHighShelfParameter(This, This->fc, gainDb, &This->parametersTable[0][i],&This->parametersTable[1][i],&This->parametersTable[2][i]);
     }
 }
@@ -105,6 +115,8 @@ void BMESFirstOrderFilter_processStereoBuffer(BMESFirstOrderFilter* This,float* 
         vDSP_vsmul(This->buffer, 1, &dbRange, This->buffer, 1, sampleProcessing);
         
         //Lookup & calculate parameter value
+        //the value of the table scale from outMinDb -> outMaxDb so look up this will automatically scale the array
+        //from minDb-maxDb to outMinDb-outMaxDb
         for(int i = 0;i<ES_Parameter_Count;i++)
             vDSP_vlint(This->parametersTable[i], This->buffer, 1, This->parameterBuffers[i], 1, sampleProcessing, ES_Parameter_TableSize);
         

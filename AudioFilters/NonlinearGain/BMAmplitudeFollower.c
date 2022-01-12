@@ -19,18 +19,27 @@ void BMAmplitudeFollower_init(BMAmplitudeFollower* This,float sampleRate,int tes
     
     This->instantAttackEnvelope = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->slowAttackEnvelope = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
-    This->testBuffers = malloc(sizeof(float*)*Test_MaxBuffers);
-    for(int i=0;i<Test_MaxBuffers;i++){
-        This->testBuffers[i] = malloc(sizeof(float)*testLength);
+    
+    if(testLength>0){
+        This->testBuffers = malloc(sizeof(float*)*Test_MaxBuffers);
+        for(int i=0;i<Test_MaxBuffers;i++){
+            This->testBuffers[i] = malloc(sizeof(float)*testLength);
+        }
     }
+    This->isTesting = testLength>0;
+    
     BMAmplitudeFollower_setSidechainNoiseGateThreshold(This, BMAEF_NOISE_GATE_CLOSED_LEVEL);
 }
 
 void BMAmplitudeFollower_destroy(BMAmplitudeFollower* This){
-    for(int i=0;i<Test_MaxBuffers;i++){
-        free(This->testBuffers[i]);
+    if(This->isTesting){
+        for(int i=0;i<Test_MaxBuffers;i++){
+            free(This->testBuffers[i]);
+        }
+        free(This->testBuffers);
     }
-    free(This->testBuffers);
+    free(This->instantAttackEnvelope);
+    free(This->slowAttackEnvelope);
 }
 
 void BMAmplitudeFollower_simpleNoiseGate(BMAmplitudeFollower *This,
@@ -79,10 +88,10 @@ void BMAmplitudeFollower_processBuffer(BMAmplitudeFollower* This,float* input,fl
         
         BMReleaseFilter_processBuffer(&This->releaseFilter, input+sampleProcessed, This->instantAttackEnvelope, sampleProcessing);
 //        BMAttackFilter_processBuffer(&This->attackFilter, This->instantAttackEnvelope, This->slowAttackEnvelope, sampleProcessing);
-        
-        memcpy(This->testBuffers[0]+sampleProcessed, This->instantAttackEnvelope, sizeof(float)*sampleProcessing);
+        if(This->isTesting){
+            memcpy(This->testBuffers[0]+sampleProcessed, This->instantAttackEnvelope, sizeof(float)*sampleProcessing);
 //        memcpy(This->testBuffers[1]+sampleProcessed, This->slowAttackEnvelope, sizeof(float)*sampleProcessing);
-        
+        }
 //        vDSP_vsub(This->slowAttackEnvelope, 1,This->instantAttackEnvelope , 1, envelope+sampleProcessed, 1, sampleProcessing);
         memcpy(envelope+sampleProcessed, This->instantAttackEnvelope, sizeof(float)*sampleProcessing);
         

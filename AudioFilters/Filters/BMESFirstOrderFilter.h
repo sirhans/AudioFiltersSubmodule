@@ -14,7 +14,7 @@
 
 typedef struct BMESFirstOrderFilter{
     float** parametersTable;
-    float minDb,maxDb,fc;
+    float minDb,maxDb,fc,outMinDb,outMaxDb;
     float sampleRate;
     float** parameterBuffers;
     float* buffer;
@@ -26,6 +26,8 @@ void BMESFirstOrderFilter_destroy(BMESFirstOrderFilter* This);
 
 void BMESFirstOrderFilter_setMinDb(BMESFirstOrderFilter* This, float minDb);
 void BMESFirstOrderFilter_setMaxDb(BMESFirstOrderFilter* This, float maxDb);
+void BMESFirstOrderFilter_setOutMinDb(BMESFirstOrderFilter* This, float minDb);
+void BMESFirstOrderFilter_setOutMaxDb(BMESFirstOrderFilter* This, float maxDb);
 void BMESFirstOrderFilter_setHighShelfFC(BMESFirstOrderFilter* This, float fc);
 
 void BMESFirstOrderFilter_processStereoBuffer(BMESFirstOrderFilter* This,float* inputL, float* inputR, float* outputL,float* outputR,float* gainArray,float numSamples);

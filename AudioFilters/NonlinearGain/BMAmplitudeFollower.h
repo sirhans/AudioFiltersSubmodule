@@ -20,6 +20,7 @@ typedef struct BMAmplitudeFollower {
     float* slowAttackEnvelope;
     float noiseGateThreshold;
     bool noiseGateIsOpen;
+    bool isTesting;
 } BMAmplitudeFollower;
 
 void BMAmplitudeFollower_init(BMAmplitudeFollower* This,float sampleRate,int testLength);
