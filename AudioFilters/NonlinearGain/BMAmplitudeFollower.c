@@ -15,7 +15,7 @@ void BMAmplitudeFollower_setSidechainNoiseGateThreshold(BMAmplitudeFollower *Thi
 
 void BMAmplitudeFollower_init(BMAmplitudeFollower* This,float sampleRate,int testLength){
     BMAttackFilter_init(&This->attackFilter, 20.0f, sampleRate);
-    BMReleaseFilter_init(&This->releaseFilter, 10.0f, sampleRate);
+    BMReleaseFilter_init(&This->releaseFilter, 1.0f, sampleRate);
     
     This->instantAttackEnvelope = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->slowAttackEnvelope = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
@@ -78,12 +78,13 @@ void BMAmplitudeFollower_processBuffer(BMAmplitudeFollower* This,float* input,fl
         sampleProcessing = BM_MIN(BM_BUFFER_CHUNK_SIZE, numSamples - sampleProcessed);
         
         BMReleaseFilter_processBuffer(&This->releaseFilter, input+sampleProcessed, This->instantAttackEnvelope, sampleProcessing);
-        BMAttackFilter_processBuffer(&This->attackFilter, This->instantAttackEnvelope, This->slowAttackEnvelope, sampleProcessing);
+//        BMAttackFilter_processBuffer(&This->attackFilter, This->instantAttackEnvelope, This->slowAttackEnvelope, sampleProcessing);
         
         memcpy(This->testBuffers[0]+sampleProcessed, This->instantAttackEnvelope, sizeof(float)*sampleProcessing);
-        memcpy(This->testBuffers[1]+sampleProcessed, This->slowAttackEnvelope, sizeof(float)*sampleProcessing);
+//        memcpy(This->testBuffers[1]+sampleProcessed, This->slowAttackEnvelope, sizeof(float)*sampleProcessing);
         
-        vDSP_vsub(This->slowAttackEnvelope, 1,This->instantAttackEnvelope , 1, envelope+sampleProcessed, 1, sampleProcessing);
+//        vDSP_vsub(This->slowAttackEnvelope, 1,This->instantAttackEnvelope , 1, envelope+sampleProcessed, 1, sampleProcessing);
+        memcpy(envelope+sampleProcessed, This->instantAttackEnvelope, sizeof(float)*sampleProcessing);
         
         sampleProcessed += sampleProcessing;
     }
