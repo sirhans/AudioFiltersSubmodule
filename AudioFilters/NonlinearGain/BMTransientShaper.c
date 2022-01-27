@@ -397,12 +397,6 @@ void BMTransientShaper_free(BMTransientShaper *This){
     BMCrossover_free(&This->crossover2);
     free(This->b1L);
     This->b1L = NULL;
-    free(This->b2L);
-    This->b2L = NULL;
-    free(This->b1R);
-    This->b1R = NULL;
-    free(This->b1R);
-    This->b1R = NULL;
     free(This->inputBuffer);
     This->inputBuffer = NULL;
     
