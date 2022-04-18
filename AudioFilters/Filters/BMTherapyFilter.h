@@ -20,10 +20,13 @@ typedef struct BMTherapyFilter{
     BMMultiLevelBiquad biquad;
     BMQuadratureOscillator lfo;
     float* lfoBuffer;
-    
+    float skirtSlowMaxDB;
+    float skirtFastMaxDB;
+    float skirtMinDB;
 }BMTherapyFilter;
 
 void BMTherapyFilter_init(BMTherapyFilter* This,bool stereo,float sampleRate);
+void BMTherapyFilter_destroy(BMTherapyFilter* This);
 
 void BMTherapyFilter_processBufferStereo(BMTherapyFilter* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t length);
 void BMTherapyFilter_processBufferMono(BMTherapyFilter* This,float* input,float* output,size_t length);

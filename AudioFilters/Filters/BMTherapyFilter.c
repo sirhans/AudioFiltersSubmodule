@@ -32,21 +32,28 @@
 #define Therapy_Bell_Gain 0
 #define Therapy_Bell_Q 1.8
 
-#define Therapy_LFO_Slow_Min -20
-#define Therapy_LFO_Slow_Max 0
-#define Therapy_LFO_Slow_FC (5.0/1800)
+#define Therapy_Bell_Skirt_Min -20
 
-#define Therapy_LFO_Fast_Min -20
-#define Therapy_LFO_Fast_Max -12
+#define Therapy_Bell_Skirt_Slow_Max 0
+#define Therapy_Bell_Skirt_Fast_Max -12
+
+#define Therapy_LFO_Slow_FC (5.0/1800)
 #define Therapy_LFO_Fast_FC (13.0/1800)
 
 void BMTherapyFilter_init(BMTherapyFilter* This,bool stereo,float sampleRate){
     BMMultiLevelBiquad_init(&This->biquad, Therapy_Level, sampleRate, stereo, true, true);
-    BMMultiLevelBiquad_setBellWithSkirt(&This->biquad, Therapy_Bell1_FC, Therapy_Bell_Q, Therapy_Bell_Gain, Therapy_LFO_Slow_Min, Therapy_Bell1_Level);
-    BMMultiLevelBiquad_setBellWithSkirt(&This->biquad, Therapy_Bell2_FC, Therapy_Bell_Q, Therapy_Bell_Gain, Therapy_LFO_Slow_Min, Therapy_Bell2_Level);
+    BMMultiLevelBiquad_setBellWithSkirt(&This->biquad, Therapy_Bell1_FC, Therapy_Bell_Q, Therapy_Bell_Gain, Therapy_Bell_Skirt_Min, Therapy_Bell1_Level);
+    BMMultiLevelBiquad_setBellWithSkirt(&This->biquad, Therapy_Bell2_FC, Therapy_Bell_Q, Therapy_Bell_Gain, Therapy_Bell_Skirt_Min, Therapy_Bell2_Level);
+    This->skirtSlowMaxDB = Therapy_Bell_Skirt_Slow_Max;
+    This->skirtFastMaxDB = Therapy_Bell_Skirt_Fast_Max;
     
     BMQuadratureOscillator_init(&This->lfo, Therapy_LFO_Slow_FC, sampleRate);
     This->lfoBuffer = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+}
+
+void BMTherapyFilter_destroy(BMTherapyFilter* This){
+    free(This->lfoBuffer);
+    This->lfoBuffer = nil;
 }
 
 void BMTherapyFilter_processBufferStereo(BMTherapyFilter* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t length){
@@ -55,10 +62,20 @@ void BMTherapyFilter_processBufferStereo(BMTherapyFilter* This,float* inputL,flo
         size_t samplesProcessing = BM_MIN(length-samplesProcessed, BM_BUFFER_CHUNK_SIZE);
         BMMultiLevelBiquad_processBufferStereo(&This->biquad, inputL+samplesProcessed, inputR+samplesProcessed, outputL+samplesProcessed, outputR+samplesProcessed, samplesProcessing);
         
+        
+        
+//        vDSP_vmul(outputL+samplesProcessed, 1, This->lfoBuffer, 1, outputL+samplesProcessed, 1, samplesProcessing);
+//        vDSP_vmul(outputR+samplesProcessed, 1, This->lfoBuffer, 1, outputR+samplesProcessed, 1, samplesProcessing);
+        
+        //LFO
         BMQuadratureOscillator_process(&This->lfo, This->lfoBuffer, This->lfoBuffer, samplesProcessing);
         
-        vDSP_vmul(outputL+samplesProcessed, 1, This->lfoBuffer, 1, outputL+samplesProcessed, 1, samplesProcessing);
-        vDSP_vmul(outputR+samplesProcessed, 1, This->lfoBuffer, 1, outputR+samplesProcessed, 1, samplesProcessing);
+        //Get absolute
+        vDSP_vabs(This->lfoBuffer, 1, This->lfoBuffer, 1, samplesProcessing);
+        float skirtSlow = This->lfoBuffer[0]* (This->skirtSlowMaxDB - This->skirtMinDB) + This->skirtMinDB;
+        BMMultiLevelBiquad_setBellWithSkirt(&This->biquad, Therapy_Bell1_FC, Therapy_Bell_Q, Therapy_Bell_Gain, skirtSlow, Therapy_Bell1_Level);
+        float skirtFast = This->lfoBuffer[0]* (This->skirtFastMaxDB - This->skirtMinDB) + This->skirtMinDB;
+        BMMultiLevelBiquad_setBellWithSkirt(&This->biquad, Therapy_Bell1_FC, Therapy_Bell_Q, Therapy_Bell_Gain, skirtFast, Therapy_Bell2_Level);
         
         samplesProcessed += samplesProcessing;
     }
