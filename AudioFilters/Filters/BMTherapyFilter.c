@@ -40,6 +40,8 @@
 #define Therapy_LFO_Slow_FC (5.0/1800.0)
 #define Therapy_LFO_Fast_FC (13.0/1800.0)
 
+void BMTherapyFilter_updateBellSkirt(BMTherapyFilter* This);
+
 void BMTherapyFilter_init(BMTherapyFilter* This,bool stereo,float sampleRate){
 	BMMultiLevelBiquad_init(&This->biquad, Therapy_Level, sampleRate, stereo, true, true);
 	BMMultiLevelBiquad_setBellWithSkirt(&This->biquad, Therapy_Bell1_FC, Therapy_Bell_Q, Therapy_Bell_Gain, Therapy_Bell_Skirt_Min, Therapy_Bell1_Level);
@@ -63,31 +65,11 @@ void BMTherapyFilter_processBufferStereo(BMTherapyFilter* This,float* inputL,flo
 		size_t samplesProcessing = BM_MIN(length-samplesProcessed, BM_BUFFER_CHUNK_SIZE);
 		BMMultiLevelBiquad_processBufferStereo(&This->biquad, inputL+samplesProcessed, inputR+samplesProcessed, outputL+samplesProcessed, outputR+samplesProcessed, samplesProcessing);
 		
-		
-		
-//        vDSP_vmul(outputL+samplesProcessed, 1, This->lfoBuffer, 1, outputL+samplesProcessed, 1, samplesProcessing);
-//        vDSP_vmul(outputR+samplesProcessed, 1, This->lfoBuffer, 1, outputR+samplesProcessed, 1, samplesProcessing);
-		
 		//LFO
 		BMQuadratureOscillator_process(&This->lfo, This->lfoBuffer, This->lfoBuffer, samplesProcessing);
 		
-		// calculate the skirt level at the first sample of this buffer
-		float lfo0 = This->lfoBuffer[0];
-		// lfo0 is in [-1,1]. We need to scale and shift to [skirtMin,skirtMax]
-		//
-		// scale lfo0 to [0,1]
-		lfo0 = (lfo0 + 1.0f) * 0.5f;
-		//
-		// scale lfo0 to [0,skirtRangeDb]
-		float skirtRangeDB = (This->skirtFastMaxDB - This->skirtMinDB);
-		lfo0 *= skirtRangeDB;
-		//
-		// shift to get skirtLevel in [skirtMinDB, skirtMaxDB]
-		float skirtLevel = lfo0 + This->skirtMinDB;
-		
-		// update the Biquad filter coefficients
-		BMMultiLevelBiquad_setBellWithSkirt(&This->biquad, Therapy_Bell1_FC, Therapy_Bell_Q, Therapy_Bell_Gain, skirtLevel, Therapy_Bell1_Level);
-		BMMultiLevelBiquad_setBellWithSkirt(&This->biquad, Therapy_Bell2_FC, Therapy_Bell_Q, Therapy_Bell_Gain, skirtLevel, Therapy_Bell2_Level);
+        //Update Bell skirt
+        BMTherapyFilter_updateBellSkirt(This);
 		
 		samplesProcessed += samplesProcessing;
 	}
@@ -99,11 +81,33 @@ void BMTherapyFilter_processBufferMono(BMTherapyFilter* This,float* input,float*
 		size_t samplesProcessing = BM_MIN(length-samplesProcessed, BM_BUFFER_CHUNK_SIZE);
 		BMMultiLevelBiquad_processBufferMono(&This->biquad, input+samplesProcessed, output+samplesProcessed, samplesProcessing);
 		
-		BMQuadratureOscillator_process(&This->lfo, This->lfoBuffer, This->lfoBuffer, samplesProcessing);
-		
-		vDSP_vmul(output+samplesProcessed, 1, This->lfoBuffer, 1, output+samplesProcessed, 1, samplesProcessing);
+        //LFO
+        BMQuadratureOscillator_process(&This->lfo, This->lfoBuffer, This->lfoBuffer, samplesProcessing);
+        
+        //Update Bell skirt
+        BMTherapyFilter_updateBellSkirt(This);
 		
 		samplesProcessed += samplesProcessing;
 	}
+}
+
+inline void BMTherapyFilter_updateBellSkirt(BMTherapyFilter* This){
+    // calculate the skirt level at the first sample of this buffer
+    float lfo0 = This->lfoBuffer[0];
+    // lfo0 is in [-1,1]. We need to scale and shift to [skirtMin,skirtMax]
+    //
+    // scale lfo0 to [0,1]
+    lfo0 = (lfo0 + 1.0f) * 0.5f;
+    //
+    // scale lfo0 to [0,skirtRangeDb]
+    float skirtRangeDB = (This->skirtFastMaxDB - This->skirtMinDB);
+    lfo0 *= skirtRangeDB;
+    //
+    // shift to get skirtLevel in [skirtMinDB, skirtMaxDB]
+    float skirtLevel = lfo0 + This->skirtMinDB;
+    
+    // update the Biquad filter coefficients
+    BMMultiLevelBiquad_setBellWithSkirt(&This->biquad, Therapy_Bell1_FC, Therapy_Bell_Q, Therapy_Bell_Gain, skirtLevel, Therapy_Bell1_Level);
+    BMMultiLevelBiquad_setBellWithSkirt(&This->biquad, Therapy_Bell2_FC, Therapy_Bell_Q, Therapy_Bell_Gain, skirtLevel, Therapy_Bell2_Level);
 }
 
