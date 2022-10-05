@@ -114,6 +114,23 @@ float BMVectorNorm(const float* v, size_t length){
 }
 
 
+
+/*!
+ *BMVectorNormSplitComplex
+ *
+ * @abstract find the l2 norm of v
+ *
+ * @param v input vector
+ * @param length length of v
+ */
+float BMVectorNormSplitComplex(const DSPSplitComplex v, size_t length){
+	float sumsqi, sumsqr;
+	vDSP_svesq(v.imagp, 1, &sumsqi, length);
+	vDSP_svesq(v.realp, 1, &sumsqr, length);
+	return sqrtf(sumsqi + sumsqr);
+}
+
+
 /*!
  *BMVectorNormalise
  *

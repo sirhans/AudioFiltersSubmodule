@@ -110,11 +110,16 @@ void BMFFT_IFFT(BMFFT *This,
 	assert(inputLength > 0);
 	
 	// calculate the inverse fft
-	size_t recursionLevels = log2i((uint32_t)inputLength);
+	size_t recursionLevels = 1 + log2i((uint32_t)inputLength);
 	vDSP_fft_zropt(This->setup, input, 1, &This->fft_output, 1, &This->fft_buffer, recursionLevels, FFT_INVERSE);
 	
 	// convert the output from the packed complex array that the fft algo uses
 	vDSP_ztoc(&This->fft_output, 1, (DSPComplex *)output, 2, inputLength);
+	
+	// scale the output so that ifft(fft(X)) = X
+	size_t outputLength = 2 * inputLength;
+	float scale = 1.0 / (2 * outputLength);
+	vDSP_vsmul(output, 1, &scale, output, 1, outputLength);
 }
 
 

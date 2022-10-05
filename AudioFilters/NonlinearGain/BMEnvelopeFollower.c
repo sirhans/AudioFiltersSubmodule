@@ -229,8 +229,8 @@ void BMAttackFilter_processBufferLP(BMAttackFilter *This,
         
         // process the state variable filter
         float v3 = x - This->ic2;
-        float v1 = This->a1  *This->ic1 + This->a2 * v3;
-        float v2 = This->ic2 + This->a2  *This->ic1 + This->a3 * v3;
+        float v1 = This->a1  * This->ic1 + This->a2 * v3;
+        float v2 = This->ic2 + This->a2  * This->ic1 + This->a3 * v3;
         
         // update the state variables
         This->ic1 = 2.0f * v1 - This->ic1;
