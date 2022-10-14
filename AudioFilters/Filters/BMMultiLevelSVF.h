@@ -11,18 +11,27 @@
 
 #include <stdio.h>
 #include <Accelerate/Accelerate.h>
+#include "BMMultiLevelBiquad.h"
 
 typedef struct BMMultiLevelSVF{
     float** a;
     float** m;
-    float** tempA;
-    float** tempM;
+    float** target_a;
+    float** target_m;
     float* ic1eq;
     float* ic2eq;
+	float *a1interp;
+	float *a2interp;
+	float *a3interp;
+	float *m0interp;
+	float *m1interp;
+	float *m2interp;
     int numLevels;
     int numChannels;
     double sampleRate;
     bool shouldUpdateParam;
+	bool filterSweep;
+	BMMultiLevelBiquad biquadHelper; // we have this so that we can reuse some functions such as the ones for plotting transfer functions
 }BMMultiLevelSVF;
 
 /*init function
