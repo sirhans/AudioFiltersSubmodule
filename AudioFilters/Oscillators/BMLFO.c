@@ -79,6 +79,13 @@ void BMLFO_setMinMaxImmediately(BMLFO *This, float minVal, float maxVal){
 	// math is more complex than we originally hoped
 	float minShifted = (scale * 0.5) + minVal;
 	BMSmoothValue_setValueImmediately(&This->minValue, minShifted);
+	//
+	// after adding this minShifted, the range of the oscillator output will be
+	//    [-scale/2, scale/2] + minShifted
+	// == [-(max-min)*0.5,(max-min)*0.5] + ((max - min) * 0.5) + min
+	// == [-(max-min)*0.5 + ((max - min) * 0.5), (max-min)*0.5 + ((max - min) * 0.5)] + min
+	// == [0,(max-min)] + min
+	// == [min,max]
 }
 
 
@@ -106,4 +113,24 @@ void BMLFO_process(BMLFO *This, float *output, size_t numSamples){
 		// update the progress count
 		samplesRemaining -= samplesProcessing;
 	}
+}
+
+
+
+float BMLFO_advance(BMLFO *This, size_t numSamples){
+	
+	// get values from the quadrature oscillator, then skip ahead numSamples
+	// q is the quadrature signal, which we will not use
+	float r,q;
+	BMQuadratureOscillator_advance(&This->osc, &r, &q, numSamples);
+	
+	// get the scale and apply it to the oscillator output.
+	float scale = BMSmoothValue_advance(&This->scale, numSamples);
+	r *= scale;
+		
+	// get the shift and apply it to the oscillator output.
+	float shift = BMSmoothValue_advance(&This->minValue, numSamples);
+	r += shift;
+
+	return r;
 }

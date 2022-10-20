@@ -109,7 +109,7 @@ void BMSmoothValue_process(BMSmoothValue *This, float *output, size_t numSamples
 			vDSP_vramp(&This->currentValue, &This->increment, output, 1, numSamples);
 			
 			// update the current value
-			This->currentValue = output[numSamples] + This->increment;
+			This->currentValue = output[numSamples-1] + This->increment;
 			This->updateProgress += numSamples;
 			
 			// if the update is finished, set the current value equal to the
@@ -117,6 +117,62 @@ void BMSmoothValue_process(BMSmoothValue *This, float *output, size_t numSamples
 			// incrementation process.
 			if (This->updateProgress == This->updateTimeInSamples)
 				This->currentValue = This->targetValue;
+		}
+	}
+}
+
+
+
+float BMSmoothValue_advance(BMSmoothValue *This, size_t numSamples){
+	// Compute the increment if it hasn't been set yet. We do this here
+	// to ensure that the increment can't be changed by another thread while
+	// this function is executing on the audio thread.
+	if(!This->incrementSet) BMSmoothValue_setIncrement(This);
+	
+	
+	// if we aren't currently doing an update, return the current value
+	if(This->updateProgress == This->updateTimeInSamples){
+		return This->currentValue;
+	}
+	//
+	// else: if the value needs to update
+	else {
+		
+		size_t timeTillUpdateComplete = This->updateTimeInSamples - This->updateProgress;
+		
+		// if the update will finish before numSamples
+		if(timeTillUpdateComplete < numSamples){
+			// cache the current value
+			float currentValueCached = This->currentValue;
+			
+			// update the progress to indicate completion
+			This->updateProgress = This->updateTimeInSamples;
+			
+			// set the current value exactly equal to the target
+			This->currentValue = This->targetValue;
+		
+			// return the previously cached current value
+			return currentValueCached;
+		}
+		// if the update will not finish before the end of the buffer
+		else {
+			// cache the current value
+			float currentValueCached = This->currentValue;
+			
+			// advance the current value
+			This->currentValue += This->increment * (float)numSamples;
+			
+			// update the progress
+			This->updateProgress += numSamples;
+			
+			// if the update is finished, set the current value equal to the
+			// target in case there were numerical errors with the
+			// incrementation process.
+			if (This->updateProgress == This->updateTimeInSamples)
+				This->currentValue = This->targetValue;
+			
+			// return the cached current value
+			return currentValueCached;
 		}
 	}
 }

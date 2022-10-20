@@ -14,38 +14,43 @@
 #define SVF_Param_Count 3
 
 static inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF *This,
-                                                        int level,int channel,
+                                                        size_t level, size_t channel,
                                                         const float* input,
                                                         float* output,
                                                         size_t numSamples);
 
 static inline void BMMultiLevelSVF_updateSVFParam(BMMultiLevelSVF *This);
 
-void BMMultiLevelSVF_init(BMMultiLevelSVF *This,int numLevels,float sampleRate,
-                          bool isStereo){
-    This->sampleRate = sampleRate;
-    This->numChannels = isStereo? 2 : 1;
-    This->numLevels = numLevels;
+void BMMultiLevelSVF_init(BMMultiLevelSVF *This, size_t numLevels,float sampleRate,
+						  bool isStereo){
+	
+	// init the biquad helper. This allows us to set biquad filters using the
+	// functions in BMMultiLevelBiquad and copy them into the SVF.
+	BMMultiLevelBiquad_init(&This->biquadHelper, numLevels, sampleRate, isStereo, false, false);
+	
+	This->sampleRate = sampleRate;
+	This->numChannels = isStereo? 2 : 1;
+	This->numLevels = numLevels;
 	This->filterSweep = FALSE;
-    //If stereo -> we need totalnumlevel = numlevel *2
-    int totalNumLevels = numLevels  *This->numChannels;
-    This->a = (float**)malloc(sizeof(float*) * numLevels);
-    This->m = (float**)malloc(sizeof(float*) * numLevels);
-    This->target_a = (float**)malloc(sizeof(float*) * numLevels);
-    This->target_m = (float**)malloc(sizeof(float*) * numLevels);
-    for(int i=0;i<numLevels;i++){
-        This->a[i] = malloc(sizeof(float) * SVF_Param_Count);
-        This->m[i] = malloc(sizeof(float) * SVF_Param_Count);
-        This->target_a[i] = malloc(sizeof(float) * SVF_Param_Count);
-        This->target_m[i] = malloc(sizeof(float) * SVF_Param_Count);
-    }
-    
-    This->ic1eq = malloc(sizeof(float)* totalNumLevels);
-    This->ic2eq = malloc(sizeof(float)* totalNumLevels);
-    for(int i=0;i<totalNumLevels;i++){
-        This->ic1eq[i] = 0;
-        This->ic2eq[i] = 0;
-    }
+	//If stereo -> we need totalnumlevel = numlevel *2
+	size_t totalNumLevels = numLevels * This->numChannels;
+	This->a = (float**)malloc(sizeof(float*) * numLevels);
+	This->m = (float**)malloc(sizeof(float*) * numLevels);
+	This->target_a = (float**)malloc(sizeof(float*) * numLevels);
+	This->target_m = (float**)malloc(sizeof(float*) * numLevels);
+	for(int i=0;i<numLevels;i++){
+		This->a[i] = malloc(sizeof(float) * SVF_Param_Count);
+		This->m[i] = malloc(sizeof(float) * SVF_Param_Count);
+		This->target_a[i] = malloc(sizeof(float) * SVF_Param_Count);
+		This->target_m[i] = malloc(sizeof(float) * SVF_Param_Count);
+	}
+	
+	This->ic1eq = malloc(sizeof(float)* totalNumLevels);
+	This->ic2eq = malloc(sizeof(float)* totalNumLevels);
+	for(int i=0;i<totalNumLevels;i++){
+		This->ic1eq[i] = 0;
+		This->ic2eq[i] = 0;
+	}
 	
 	This->a1interp = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
 	This->a2interp = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
@@ -115,14 +120,6 @@ void BMMultiLevelSVF_free(BMMultiLevelSVF *This){
 }
 
 
-/*!
- *BMMultiLevelSVF_enableFilterSweep
- *
- * @abstract enable or disable smooth interpolation of parameters for filter sweeps. When sweeps are enabled, the filter interpolates the coefficient update so that it reaches the new filter coefficient values on the first sample of the following call to the process function. This means that if you want the filter to take more than one audio buffer to smoothly move toward a new configuration then you need to gradually update the filter parameters each time you call the BMMultiLevelSVF process function. This is a good way to do a filter sweep because the coefficient interpolation that happens automatically in this class is linear. The linear interpolation is efficient for sample by sample processing and for slow sweeps it is sufficiently accurate but if we were to use linear interpolation over longer sweeps it could lead to unexpected results midway through the sweep, because the filter coefficients generally don't have a liner relationship to parameters like cutoff frequency and Q.
- *
- * @param This    pointer to an initialised struct
- * @param sweepOn set true for filter sweep mode
- */
 void BMMultiLevelSVF_enableFilterSweep(BMMultiLevelSVF *This, bool sweepOn){
 	This->filterSweep = sweepOn;
 }
@@ -189,7 +186,7 @@ void BMMultiLevelSVF_processBufferStereo(BMMultiLevelSVF *This,
 
 
 inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF *This,
-                                                 int level,int channel,
+												 size_t level,size_t channel,
                                                  const float* input,
                                                  float* output,size_t numSamples){
 	
@@ -223,7 +220,7 @@ inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF *This,
 		vDSP_vramp(&This->m[level][2], &m0inc, This->m2interp, 1, numSamples);
 		
 		// process the filter
-		int icLvl = This->numLevels*channel + level;
+		size_t icLvl = This->numLevels*channel + level;
 		for(size_t i=0;i<numSamples;i++){
 			float v3 = input[i] - This->ic2eq[icLvl];
 			float v1 = This->a1interp[i]*This->ic1eq[icLvl] + This->a2interp[i]*v3;
@@ -234,7 +231,7 @@ inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF *This,
 		}
 	} else {
 		
-		int icLvl = This->numLevels*channel + level;
+		size_t icLvl = This->numLevels*channel + level;
 		for(size_t i=0;i<numSamples;i++){
 			float v3 = input[i] - This->ic2eq[icLvl];
 			float v1 = This->a[level][0]*This->ic1eq[icLvl] + This->a[level][1]*v3;
@@ -469,7 +466,7 @@ void BMMultiLevelSVF_setFromBiquad(BMMultiLevelSVF *This,
  * filter coefficient values into SVF coefficients and results in an SVF filter
  * with the same transfer function.
  */
-void BMMultiLevelSVF_copyAllFromBiquadHelper(BMMultiLevelSVF *This){
+void BMMultiLevelSVF_copyStateFromBiquadHelper(BMMultiLevelSVF *This){
 	for(size_t lv=0; lv<This->numLevels; lv++){
 		
 		double b0 = This->biquadHelper.coefficients_d[0 + lv*This->numChannels*5 + lv*5];
