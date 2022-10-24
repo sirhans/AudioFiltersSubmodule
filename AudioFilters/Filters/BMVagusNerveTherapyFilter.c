@@ -147,7 +147,7 @@ void BMVagusNerveTherapyFilter_process(BMVagusNerveTherapyFilter *This,
 	
 	// set the filters in the biquad helper
 	BMMultiLevelBiquad_setBellWithSkirt(&This->svf.biquadHelper, BMVNTF_FILTER_ONE_FC, filterQ, bellGainDb, skirtGain, 0);
-	BMMultiLevelBiquad_setBellWithSkirt(&This->svf.biquadHelper, BMVNTF_FILTER_TWO_FC, filterQ, bellGainDb, skirtGain, 0);
+	BMMultiLevelBiquad_setBellWithSkirt(&This->svf.biquadHelper, BMVNTF_FILTER_TWO_FC, filterQ, bellGainDb, skirtGain, 1);
 	
 	// copy the settings from the biquad to the svf
 	BMMultiLevelSVF_copyStateFromBiquadHelper(&This->svf);
