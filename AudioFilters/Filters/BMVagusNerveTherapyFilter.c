@@ -14,6 +14,7 @@
 #define BMVNTF_END_TIME_HOURS 5.0
 #define BMVNTF_FILTER_ONE_FC 858.854
 #define BMVNTF_FILTER_TWO_FC 1408.85
+#define BMVNTF_LFO_FC 1.0 / (3.5 * 60.0)
 
 
 
@@ -23,7 +24,7 @@ void BMVagusNerveTherapyFilter_init(BMVagusNerveTherapyFilter *This, float sampl
 	BMLFO lfo;
 	bool stereo = true;
 	size_t numFilters = 2;
-	float lfoFreq = 1.0f;
+	float lfoFreq = BMVNTF_LFO_FC;
 	float lfoMin = -30.0;
 	float lfoMax = -25.0;
 	
