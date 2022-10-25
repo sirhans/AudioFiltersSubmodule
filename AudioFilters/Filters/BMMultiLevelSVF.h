@@ -158,22 +158,7 @@ void BMMultiLevelSVF_enableFilterSweep(BMMultiLevelSVF *This, bool sweepOn);
  * with the same transfer function.
  *
  */
-void BMMultiLevelSVF_copyStateFromBiquadHelper(BMMultiLevelSVF *This){
-	for(size_t lv=0; lv<This->numLevels; lv++){
-		
-		double b0 = This->biquadHelper.coefficients_d[0 + lv*This->numChannels*5 + lv*5];
-		double b1 = This->biquadHelper.coefficients_d[1 + lv*This->numChannels*5 + lv*5];
-		double b2 = This->biquadHelper.coefficients_d[2 + lv*This->numChannels*5 + lv*5];
-		double a0 = 1.0f;
-		double a1 = This->biquadHelper.coefficients_d[3 + lv*This->numChannels*5 + lv*5];
-		double a2 = This->biquadHelper.coefficients_d[4 + lv*This->numChannels*5 + lv*5];
-		
-		BMMultiLevelSVF_setFromBiquad(This,
-									  b0, b1, b2,
-									  a0, a1, a2,
-									  lv);
-	}
-}
+void BMMultiLevelSVF_copyStateFromBiquadHelper(BMMultiLevelSVF *This);
 
 
 

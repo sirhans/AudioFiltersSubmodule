@@ -427,8 +427,19 @@ void BMMultiLevelSVF_setFromBiquad(BMMultiLevelSVF *This,
 	
 	// https://cytomic.com/files/dsp/SvfLinearTrapezoidalSin.pdf
 	// *** See section: "Solve for the mixed output SVF to show relation to regular DF1 coefficients..."
-	double g = - sqrt(-1.0 - b1 - b2) / sqrt(-1.0 + b1 - b2);
-	double k = (1.0 - b2) / (sqrt(-1.0 - b1 - b2) * sqrt(-1.0 + b1 - b2));
+	// *** these formulae come from the function MatchDF1Coeff. Pay special attention to the signs and to how the function SqrSqrtSimpify affects the signs.
+	//
+	// The sign of g is always positive after SqrSqrtSimplify. Below we do the simplification manually
+	// g = - sqrt(-1.0 - b1 - b2) / sqrt(-1.0 + b1 - b2);
+	// g = sqrt( (- sqrt(-1.0 - b1 - b2) / sqrt(-1.0 + b1 - b2))^2 );
+	// g = sqrt( sqrt(-1.0 - b1 - b2)^2 / sqrt(-1.0 + b1 - b2)^2 );
+	// g = sqrt( (-1.0 - b1 - b2) / (-1.0 + b1 - b2) )
+	double g = sqrt( (-1.0 - b1 - b2) / (-1.0 + b1 - b2) );
+	
+	// we do the SqrSqrtSimplify manually on k
+	// k = (1.0 - b2) / (sqrt(-1.0 - b1 - b2) * sqrt(-1.0 + b1 - b2));
+	// k = sqrt( (1.0 - b2)^2 / ((-1.0 - b1 - b2) * (-1.0 + b1 - b2)));
+	double k = sqrt( ((1.0 - b2)*(1.0 - b2)) / ((-1.0 - b1 - b2) * (-1.0 + b1 - b2)));
 	
 	// https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf
 	// *** See section: "Algorithm for every response"
@@ -442,9 +453,23 @@ void BMMultiLevelSVF_setFromBiquad(BMMultiLevelSVF *This,
 	
 	// https://cytomic.com/files/dsp/SvfLinearTrapezoidalSin.pdf
 	// *** See section: "Solve for the mixed output SVF to show relation to regular DF1 coefficients..."
-	double svf_m0 = (a0 - a1 + a2) / (1.0 - b1 + b2);
-	double svf_m1 = 2.0 * (a0 - a2) /  (sqrt(-1.0 - b1 - b2) * sqrt(-1.0 + b1 - b2));
-	double svf_m2 = (a0 + a1 + a2) / (1.0 + b1 + b2);
+	//
+	// for m0 we can use abs instead of SqrSqrtSimplify
+	double svf_m0 = fabs((a0 - a1 + a2) / (1.0 - b1 + b2));
+	//
+	// for m1 we need to use SqrSqrtSimplify manually
+	// svf_m1 = 2.0 * (a0 - a2) /  (sqrt(-1.0 - b1 - b2) * sqrt(-1.0 + b1 - b2));
+	// svf_m1 = sqrt( (2.0 * (a0 - a2))^2 /  (sqrt(-1.0 - b1 - b2) * sqrt(-1.0 + b1 - b2))^2 );
+	// svf_m1 = sqrt( (2.0 * (a0 - a2))^2 /  ((-1.0 - b1 - b2) * (-1.0 + b1 - b2)) );
+	// svf_m1 = sqrt( (2.0 * (a0 - a2) * 2.0 * (a0 - a2)) /  ((-1.0 - b1 - b2) * (-1.0 + b1 - b2)) );
+	double svf_m1 = sqrt( (4.0 * (a0 - a2) * (a0 - a2)) /  ((-1.0 - b1 - b2) * (-1.0 + b1 - b2)) );
+	//
+	// for m2 we can use abs instead of SqrSqrtSimplify
+	double svf_m2 = fabs((a0 + a1 + a2) / (1.0 + b1 + b2));
+	
+	// In MatchDF1Coeff[] the signs of k and m1 are opposite. We have already
+	// used k above without changing the sign so we will negate m1 here.
+	svf_m1 = -svf_m1;
 	
 	This->target_m[level][0] = svf_m0;
 	This->target_m[level][1] = svf_m1;
