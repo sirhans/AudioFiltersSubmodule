@@ -82,6 +82,8 @@ void BMMultiLevelSVF_setLowShelfQ(BMMultiLevelSVF *This, double fc, double gain,
 void BMMultiLevelSVF_setHighShelf(BMMultiLevelSVF *This, double fc, double gain, size_t level);
 void BMMultiLevelSVF_setHighShelfQ(BMMultiLevelSVF *This, double fc, double gain, double q, size_t level);
 
+void BMMultiLevelSVF_copyAllFromBiquadHelper(BMMultiLevelSVF *This);
+
 /*impulse response*/
 void BMMultiLevelSVF_impulseResponse(BMMultiLevelSVF *This,size_t frameCount);
 
