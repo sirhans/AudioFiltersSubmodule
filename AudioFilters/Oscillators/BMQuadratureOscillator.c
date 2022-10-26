@@ -27,13 +27,17 @@ extern "C" {
     
 	
     void BMQuadratureOscillator_initMatrix(simd_float2x2* m,
-                                           float frequency,
+                                           double frequency,
                                            float sampleRate){
         // we want a rotation matrix that completes a rotation of 2*M_PI in
         // (sampleRate / fHz) samples. That means that in 1 sample, we need to
         // rotate by an angle of fHz * 2 * M_PI / sampleRate.
-        float oneSampleAngle = frequency * 2.0f * M_PI / sampleRate;
-        *m = BM2x2Matrix_rotationMatrix(oneSampleAngle);
+        double oneSampleAngle = frequency * 2.0 * M_PI / (double)sampleRate;
+		
+		// limit the rotation to within [0,2*pi]
+		oneSampleAngle = fmod(oneSampleAngle, 2.0 * M_PI);
+		
+        *m = BM2x2Matrix_rotationMatrix((float)oneSampleAngle);
     }
     
     
@@ -43,20 +47,22 @@ extern "C" {
                                      float fHz,
                                      float sampleRate){
         This->sampleRate = sampleRate;
+		This->oscFreq = fHz;
         
         BMQuadratureOscillator_initMatrix(&This->m, fHz, sampleRate);
         
-        // set the initial values for an oscillation amplitude of 1
-        This->rq.x = 1.0f;
-        This->rq.y = 0.0f;
+        // set the initial values for an oscillation amplitude of 1 and initial
+		// value of (0 + i)
+        This->rq.x = 0.0f;
+        This->rq.y = 1.0f;
     }
 
 	
 	
 	
 	void BMQuadratureOscillator_setFrequency(BMQuadratureOscillator *This, float fHz){
-		This->modRateHz = fHz;
-		BMQuadratureOscillator_initMatrix(&This->m, fHz, This->sampleRate);
+		This->oscFreq = fHz;
+		BMQuadratureOscillator_initMatrix(&This->mPending, fHz, This->sampleRate);
 	}
     
 	
@@ -76,6 +82,11 @@ extern "C" {
                                             float* r,
                                             float* q,
                                             size_t numSamples){
+		// update the matrix if necessary
+		if(!simd_equal(This->m, This->mPending)){
+			This->m = This->mPending;
+		}
+		
         for(size_t i=0; i<numSamples; i++){
             // copy the current sample value to output
             r[i] = This->rq.x;
@@ -88,7 +99,32 @@ extern "C" {
     }
     
 	
+	
+	
+	void BMQuadratureOscillator_advance(BMQuadratureOscillator *This,
+										float *r,
+										float *q,
+										size_t numSamples){
+		// update the matrix if necessary
+		if(!simd_equal(This->m, This->mPending)){
+			This->m = This->mPending;
+		}
+		
+		// copy the current sample value to output
+		*r = This->rq.x;
+		*q = This->rq.y;
+		
+		// compute the rotation matrix for skipping ahead numSamples
+		simd_float2x2 m;
+		double skipFreq = This->oscFreq * (double)numSamples;
+		BMQuadratureOscillator_initMatrix(&m, skipFreq, This->sampleRate);
+		
+		// multiply the vector rq by the rotation matrix m to skip ahead numSamples
+		This->rq = simd_mul(m, This->rq);
+	}
 
+	
+	
 	
 	void BMQuadratureOscillator_volumeEnvelope4Stereo(BMQuadratureOscillator *This,
 												float** buffersL, float** buffersR,

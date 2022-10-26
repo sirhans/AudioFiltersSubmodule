@@ -14,38 +14,43 @@
 #define SVF_Param_Count 3
 
 static inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF *This,
-                                                        int level,int channel,
+                                                        size_t level, size_t channel,
                                                         const float* input,
                                                         float* output,
                                                         size_t numSamples);
 
 static inline void BMMultiLevelSVF_updateSVFParam(BMMultiLevelSVF *This);
 
-void BMMultiLevelSVF_init(BMMultiLevelSVF *This,int numLevels,float sampleRate,
-                          bool isStereo){
-    This->sampleRate = sampleRate;
-    This->numChannels = isStereo? 2 : 1;
-    This->numLevels = numLevels;
+void BMMultiLevelSVF_init(BMMultiLevelSVF *This, size_t numLevels,float sampleRate,
+						  bool isStereo){
+	
+	// init the biquad helper. This allows us to set biquad filters using the
+	// functions in BMMultiLevelBiquad and copy them into the SVF.
+	BMMultiLevelBiquad_init(&This->biquadHelper, numLevels, sampleRate, isStereo, false, false);
+	
+	This->sampleRate = sampleRate;
+	This->numChannels = isStereo? 2 : 1;
+	This->numLevels = numLevels;
 	This->filterSweep = FALSE;
-    //If stereo -> we need totalnumlevel = numlevel *2
-    int totalNumLevels = numLevels  *This->numChannels;
-    This->a = (float**)malloc(sizeof(float*) * numLevels);
-    This->m = (float**)malloc(sizeof(float*) * numLevels);
-    This->target_a = (float**)malloc(sizeof(float*) * numLevels);
-    This->target_m = (float**)malloc(sizeof(float*) * numLevels);
-    for(int i=0;i<numLevels;i++){
-        This->a[i] = malloc(sizeof(float) * SVF_Param_Count);
-        This->m[i] = malloc(sizeof(float) * SVF_Param_Count);
-        This->target_a[i] = malloc(sizeof(float) * SVF_Param_Count);
-        This->target_m[i] = malloc(sizeof(float) * SVF_Param_Count);
-    }
-    
-    This->ic1eq = malloc(sizeof(float)* totalNumLevels);
-    This->ic2eq = malloc(sizeof(float)* totalNumLevels);
-    for(int i=0;i<totalNumLevels;i++){
-        This->ic1eq[i] = 0;
-        This->ic2eq[i] = 0;
-    }
+	//If stereo -> we need totalnumlevel = numlevel *2
+	size_t totalNumLevels = numLevels * This->numChannels;
+	This->a = (float**)malloc(sizeof(float*) * numLevels);
+	This->m = (float**)malloc(sizeof(float*) * numLevels);
+	This->target_a = (float**)malloc(sizeof(float*) * numLevels);
+	This->target_m = (float**)malloc(sizeof(float*) * numLevels);
+	for(int i=0;i<numLevels;i++){
+		This->a[i] = malloc(sizeof(float) * SVF_Param_Count);
+		This->m[i] = malloc(sizeof(float) * SVF_Param_Count);
+		This->target_a[i] = malloc(sizeof(float) * SVF_Param_Count);
+		This->target_m[i] = malloc(sizeof(float) * SVF_Param_Count);
+	}
+	
+	This->ic1eq = malloc(sizeof(float)* totalNumLevels);
+	This->ic2eq = malloc(sizeof(float)* totalNumLevels);
+	for(int i=0;i<totalNumLevels;i++){
+		This->ic1eq[i] = 0;
+		This->ic2eq[i] = 0;
+	}
 	
 	This->a1interp = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
 	This->a2interp = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
@@ -115,14 +120,6 @@ void BMMultiLevelSVF_free(BMMultiLevelSVF *This){
 }
 
 
-/*!
- *BMMultiLevelSVF_enableFilterSweep
- *
- * @abstract enable or disable smooth interpolation of parameters for filter sweeps. When sweeps are enabled, the filter interpolates the coefficient update so that it reaches the new filter coefficient values on the first sample of the following call to the process function. This means that if you want the filter to take more than one audio buffer to smoothly move toward a new configuration then you need to gradually update the filter parameters each time you call the BMMultiLevelSVF process function. This is a good way to do a filter sweep because the coefficient interpolation that happens automatically in this class is linear. The linear interpolation is efficient for sample by sample processing and for slow sweeps it is sufficiently accurate but if we were to use linear interpolation over longer sweeps it could lead to unexpected results midway through the sweep, because the filter coefficients generally don't have a liner relationship to parameters like cutoff frequency and Q.
- *
- * @param This    pointer to an initialised struct
- * @param sweepOn set true for filter sweep mode
- */
 void BMMultiLevelSVF_enableFilterSweep(BMMultiLevelSVF *This, bool sweepOn){
 	This->filterSweep = sweepOn;
 }
@@ -189,7 +186,7 @@ void BMMultiLevelSVF_processBufferStereo(BMMultiLevelSVF *This,
 
 
 inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF *This,
-                                                 int level,int channel,
+												 size_t level,size_t channel,
                                                  const float* input,
                                                  float* output,size_t numSamples){
 	
@@ -223,7 +220,7 @@ inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF *This,
 		vDSP_vramp(&This->m[level][2], &m0inc, This->m2interp, 1, numSamples);
 		
 		// process the filter
-		int icLvl = This->numLevels*channel + level;
+		size_t icLvl = This->numLevels*channel + level;
 		for(size_t i=0;i<numSamples;i++){
 			float v3 = input[i] - This->ic2eq[icLvl];
 			float v1 = This->a1interp[i]*This->ic1eq[icLvl] + This->a2interp[i]*v3;
@@ -234,7 +231,7 @@ inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF *This,
 		}
 	} else {
 		
-		int icLvl = This->numLevels*channel + level;
+		size_t icLvl = This->numLevels*channel + level;
 		for(size_t i=0;i<numSamples;i++){
 			float v3 = input[i] - This->ic2eq[icLvl];
 			float v1 = This->a[level][0]*This->ic1eq[icLvl] + This->a[level][1]*v3;
@@ -430,8 +427,19 @@ void BMMultiLevelSVF_setFromBiquad(BMMultiLevelSVF *This,
 	
 	// https://cytomic.com/files/dsp/SvfLinearTrapezoidalSin.pdf
 	// *** See section: "Solve for the mixed output SVF to show relation to regular DF1 coefficients..."
-	double g = - sqrt(-1.0 - b1 - b2) / sqrt(-1.0 + b1 - b2);
-	double k = (1.0 - b2) / (sqrt(-1.0 - b1 - b2) * sqrt(-1.0 + b1 - b2));
+	// *** these formulae come from the function MatchDF1Coeff. Pay special attention to the signs and to how the function SqrSqrtSimpify affects the signs.
+	//
+	// The sign of g is always positive after SqrSqrtSimplify. Below we do the simplification manually
+	// g = - sqrt(-1.0 - b1 - b2) / sqrt(-1.0 + b1 - b2);
+	// g = sqrt( (- sqrt(-1.0 - b1 - b2) / sqrt(-1.0 + b1 - b2))^2 );
+	// g = sqrt( sqrt(-1.0 - b1 - b2)^2 / sqrt(-1.0 + b1 - b2)^2 );
+	// g = sqrt( (-1.0 - b1 - b2) / (-1.0 + b1 - b2) )
+	double g = sqrt( (-1.0 - b1 - b2) / (-1.0 + b1 - b2) );
+	
+	// we do the SqrSqrtSimplify manually on k
+	// k = (1.0 - b2) / (sqrt(-1.0 - b1 - b2) * sqrt(-1.0 + b1 - b2));
+	// k = sqrt( (1.0 - b2)^2 / ((-1.0 - b1 - b2) * (-1.0 + b1 - b2)));
+	double k = sqrt( ((1.0 - b2)*(1.0 - b2)) / ((-1.0 - b1 - b2) * (-1.0 + b1 - b2)));
 	
 	// https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf
 	// *** See section: "Algorithm for every response"
@@ -445,9 +453,23 @@ void BMMultiLevelSVF_setFromBiquad(BMMultiLevelSVF *This,
 	
 	// https://cytomic.com/files/dsp/SvfLinearTrapezoidalSin.pdf
 	// *** See section: "Solve for the mixed output SVF to show relation to regular DF1 coefficients..."
-	double svf_m0 = (a0 - a1 + a2) / (1.0 - b1 + b2);
-	double svf_m1 = 2.0 * (a0 - a2) /  (sqrt(-1.0 - b1 - b2) * sqrt(-1.0 + b1 - b2));
-	double svf_m2 = (a0 + a1 + a2) / (1.0 + b1 + b2);
+	//
+	// for m0 we can use abs instead of SqrSqrtSimplify
+	double svf_m0 = fabs((a0 - a1 + a2) / (1.0 - b1 + b2));
+	//
+	// for m1 we need to use SqrSqrtSimplify manually
+	// svf_m1 = 2.0 * (a0 - a2) /  (sqrt(-1.0 - b1 - b2) * sqrt(-1.0 + b1 - b2));
+	// svf_m1 = sqrt( (2.0 * (a0 - a2))^2 /  (sqrt(-1.0 - b1 - b2) * sqrt(-1.0 + b1 - b2))^2 );
+	// svf_m1 = sqrt( (2.0 * (a0 - a2))^2 /  ((-1.0 - b1 - b2) * (-1.0 + b1 - b2)) );
+	// svf_m1 = sqrt( (2.0 * (a0 - a2) * 2.0 * (a0 - a2)) /  ((-1.0 - b1 - b2) * (-1.0 + b1 - b2)) );
+	double svf_m1 = sqrt( (4.0 * (a0 - a2) * (a0 - a2)) /  ((-1.0 - b1 - b2) * (-1.0 + b1 - b2)) );
+	//
+	// for m2 we can use abs instead of SqrSqrtSimplify
+	double svf_m2 = fabs((a0 + a1 + a2) / (1.0 + b1 + b2));
+	
+	// In MatchDF1Coeff[] the signs of k and m1 are opposite. We have already
+	// used k above without changing the sign so we will negate m1 here.
+	svf_m1 = -svf_m1;
 	
 	This->target_m[level][0] = svf_m0;
 	This->target_m[level][1] = svf_m1;
@@ -469,7 +491,7 @@ void BMMultiLevelSVF_setFromBiquad(BMMultiLevelSVF *This,
  * filter coefficient values into SVF coefficients and results in an SVF filter
  * with the same transfer function.
  */
-void BMMultiLevelSVF_copyAllFromBiquadHelper(BMMultiLevelSVF *This){
+void BMMultiLevelSVF_copyStateFromBiquadHelper(BMMultiLevelSVF *This){
 	for(size_t lv=0; lv<This->numLevels; lv++){
 		
 		double b0 = This->biquadHelper.coefficients_d[0 + lv*This->numChannels*5 + lv*5];

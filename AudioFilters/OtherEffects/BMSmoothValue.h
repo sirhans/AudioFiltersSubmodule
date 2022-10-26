@@ -63,4 +63,12 @@ void BMSmoothValue_setValueImmediately(BMSmoothValue *This, float value);
  */
 void BMSmoothValue_process(BMSmoothValue *This, float *output, size_t numSamples);
 
+
+/*!
+ *BMSmoothValue_advance
+ *
+ * @abstract skip ahead numSamples without processing the intervening samples. Return the value before skipping.
+ */
+float BMSmoothValue_advance(BMSmoothValue *This, size_t numSamples);
+
 #endif /* BMSmoothValue_h */

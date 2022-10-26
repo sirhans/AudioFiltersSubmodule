@@ -91,6 +91,19 @@ void BMLFO_setMinMaxImmediately(BMLFO *This, float minVal, float maxVal);
 
 
 
+/*!
+ *BMLFO_advance
+ *
+ * @abstract advance the position of the LFO by numSamples without actually processing the samples. Returns the value of the LFO before advancing. 
+ *
+ * @param This pointer to an initialised struct
+ * @param numSamples number of samples to advance the LFO
+ *
+ */
+float BMLFO_advance(BMLFO *This, size_t numSamples);
+
+
+
 
 
 #endif /* BMLFO_h */

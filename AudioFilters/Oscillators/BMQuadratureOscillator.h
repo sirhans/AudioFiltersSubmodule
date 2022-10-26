@@ -55,9 +55,9 @@ extern "C" {
 
 
 typedef struct BMQuadratureOscillator {
-	simd_float2x2 m;
+	simd_float2x2 m, mPending;
 	simd_float2 rq;
-	float sampleRate, modRateHz;
+	float sampleRate, oscFreq;
 } BMQuadratureOscillator;
 
 
@@ -125,10 +125,29 @@ void BMQuadratureOscillator_volumeEnvelope4Stereo(BMQuadratureOscillator *This,
 
 
 
+/*!
+ *BMQuadratureOscillator_advance
+ *
+ * @abstract skip ahead by numSamples, outputting only the first sample
+ *
+ * @param r a pointer to a single floating point number for output
+ * @param q a pointer to a single floaring point number for quadrature phase output
+ * @param numSamples number of samples to skip
+ */
+void BMQuadratureOscillator_advance(BMQuadratureOscillator *This,
+									float *r,
+									float *q,
+									size_t numSamples);
+
+
+
 
 void BMQuadratureOscillator_initMatrix(simd_float2x2* m,
-float frequency,
+									   double frequency,
                                        float sampleRate);
+
+
+
 
 #ifdef __cplusplus
 }
