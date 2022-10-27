@@ -5,6 +5,7 @@
 //  Created by Nguyen Minh Tien on 1/9/19.
 //  Copyright © 2019 Hans. All rights reserved.
 //
+//Source : http://www.cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf
 
 #ifndef BMMultiLevelSVF_h
 #define BMMultiLevelSVF_h
