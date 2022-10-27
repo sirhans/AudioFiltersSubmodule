@@ -269,18 +269,14 @@ void BMStereoMod2_process(BMStereoMod2 *This,
 						  const float* inL, const float* inR,
 						  float* outL, float* outR,
 						  size_t numSamples){
-<<<<<<< HEAD
 	if(This->qOscillator.oscFreq > 0.0f)
-=======
-//	if(This->qOscillator.modRateHz > 0.0f)
->>>>>>> acd98499214d657f6c6f2e58187b38b80e93bf05
 		BMStereoMod2_processWithMod(This,
 									inL, inR,
 									outL, outR,
 									numSamples);
-//	else
-//		BMStereoMod2processWithoutMod(This,
-//									  inL, inR,
-//									  outL, outR,
-//									  numSamples);
+	else
+		BMStereoMod2processWithoutMod(This,
+									  inL, inR,
+									  outL, outR,
+									  numSamples);
 }
