@@ -20,8 +20,6 @@
 
 
 void BMVagusNerveTherapyFilter_init(BMVagusNerveTherapyFilter *This, float sampleRate){
-	BMMultiLevelSVF svf;
-	BMLFO lfo;
 	bool stereo = true;
 	size_t numFilters = 2;
 	float lfoFreq = BMVNTF_LFO_FC;
@@ -132,10 +130,10 @@ void BMVagusNerveTherapyFilter_process(BMVagusNerveTherapyFilter *This,
 	// calculate the filter Q. The idea here is that we want the Q to be at its
 	// minimum value when the skirt gain is 0dB, because that prevents a trough
 	// from forming between the peaks of the two bell filters. The Q increases
-	// as the skirt gain falls lower, with a maximum Q of 1.5 + 0.8 = 2.3.
+	// as the skirt gain falls lower, with a maximum Q of 2.3.
 	float minQ = 1.5f;
 	float maxQ = 2.3f;
-	float filterQ = minQ + (0.8 * (skirtGain / BMVNTF_MIN_DB));
+	float filterQ = minQ + ((maxQ - minQ) * (skirtGain / BMVNTF_MIN_DB));
 	
 	// the gain at the peak of filter one is affected by the skirt of filter 2
 	// and vice versa. To keep the peaks at 0 dB we found the following function
@@ -145,12 +143,16 @@ void BMVagusNerveTherapyFilter_process(BMVagusNerveTherapyFilter *This,
 	float bellGainDb = 3.6 * skirtGainExcursion;
 	bellGainDb += sin(M_PI * pow(skirtGainExcursion,2.0/3.0));
 	
-	// set the filters in the biquad helper
-	BMMultiLevelBiquad_setBellWithSkirt(&This->svf.biquadHelper, BMVNTF_FILTER_ONE_FC, filterQ, bellGainDb, skirtGain, 0);
-	BMMultiLevelBiquad_setBellWithSkirt(&This->svf.biquadHelper, BMVNTF_FILTER_TWO_FC, filterQ, bellGainDb, skirtGain, 1);
+//	// set the filters in the biquad helper
+//	BMMultiLevelBiquad_setBellWithSkirt(&This->svf.biquadHelper, BMVNTF_FILTER_ONE_FC, filterQ, bellGainDb, skirtGain, 0);
+//	BMMultiLevelBiquad_setBellWithSkirt(&This->svf.biquadHelper, BMVNTF_FILTER_TWO_FC, filterQ, bellGainDb, skirtGain, 1);
+//
+//	// copy the settings from the biquad to the svf
+//	BMMultiLevelSVF_copyStateFromBiquadHelper(&This->svf);
 	
-	// copy the settings from the biquad to the svf
-	BMMultiLevelSVF_copyStateFromBiquadHelper(&This->svf);
+	// set the filters
+	BMMultiLevelSVF_setBellWithSkirt(&This->svf, BMVNTF_FILTER_ONE_FC, bellGainDb, skirtGain, filterQ, 0);
+	BMMultiLevelSVF_setBellWithSkirt(&This->svf, BMVNTF_FILTER_TWO_FC, bellGainDb, skirtGain, filterQ, 1);
 	
 	// process audio
 	BMMultiLevelSVF_processBufferStereo(&This->svf, inputL, inputR, outputL, outputR, numSamples);

@@ -84,7 +84,7 @@ void BMSpectrumManager_storeData(BMSpectrumManager* this,float* inData ,UInt32 f
     while (frameCount > 0){
         
         // get the write pointer for the buffer
-        int bytesAvailable;
+        uint32_t bytesAvailable;
         float* head = TPCircularBufferHead(&this->dataBuffer, &bytesAvailable);
         
         // convert units from bytes to samples to get the size of the

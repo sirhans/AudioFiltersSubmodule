@@ -216,8 +216,8 @@ inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF *This,
 		vDSP_vramp(&This->a[level][1], &a2inc, This->a2interp, 1, numSamples);
 		vDSP_vramp(&This->a[level][2], &a3inc, This->a3interp, 1, numSamples);
 		vDSP_vramp(&This->m[level][0], &m0inc, This->m0interp, 1, numSamples);
-		vDSP_vramp(&This->m[level][1], &m0inc, This->m1interp, 1, numSamples);
-		vDSP_vramp(&This->m[level][2], &m0inc, This->m2interp, 1, numSamples);
+		vDSP_vramp(&This->m[level][1], &m1inc, This->m1interp, 1, numSamples);
+		vDSP_vramp(&This->m[level][2], &m2inc, This->m2interp, 1, numSamples);
 		
 		// process the filter
 		size_t icLvl = This->numLevels*channel + level;
@@ -371,6 +371,25 @@ void BMMultiLevelSVF_setBell(BMMultiLevelSVF *This, double fc, double gain, doub
     
     This->shouldUpdateParam = true;
 }
+
+
+void BMMultiLevelSVF_setBellWithSkirt(BMMultiLevelSVF *This, double fc, double bellGainDb, double skirtGainDb, double q, size_t level){
+	assert(level < This->numLevels);
+	
+	float A = powf(10.0, (bellGainDb-skirtGainDb)/40.);
+	float mScale = powf(10.0,skirtGainDb/40.0);
+	float g = tanf(M_PI*fc/This->sampleRate);
+	float k = 1.0/(q*A);
+	This->target_a[level][0] = 1.0/(1.0 + g*(g+k));
+	This->target_a[level][1] = g*This->target_a[level][0];
+	This->target_a[level][2] = g*This->target_a[level][1];
+	This->target_m[level][0] = 1.0 * mScale;
+	This->target_m[level][1] = k*(A*A -1.0) * mScale;
+	This->target_m[level][2] = 0;
+	
+	This->shouldUpdateParam = true;
+}
+
 
 void BMMultiLevelSVF_setLowShelf(BMMultiLevelSVF *This, double fc, double gain, size_t level){
     BMMultiLevelSVF_setLowShelfQ(This, fc, gain, 1./sqrtf(2.), level);

@@ -104,7 +104,12 @@ void BMMultiLevelSVF_setAllpass(BMMultiLevelSVF *This, double fc, double q, size
 /*!
  *BMMultiLevelSVF_setBell
  */
-void BMMultiLevelSVF_setBell(BMMultiLevelSVF *This, double fc, double gain, double q, size_t level);
+void BMMultiLevelSVF_setBell(BMMultiLevelSVF *This, double fc, double gainDb, double q, size_t level);
+
+/*!
+ *BMMultiLevelSVF_setBellWithSkirt
+ */
+void BMMultiLevelSVF_setBellWithSkirt(BMMultiLevelSVF *This, double fc, double bellGainDb, double skirtGainDb, double q, size_t level);
 
 /*!
  *BMMultiLevelSVF_setLowShelf

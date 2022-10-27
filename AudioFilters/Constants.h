@@ -62,23 +62,23 @@
 //})
 //#endif
 
-static void BMChunkProcessMono(void (*procFunction)(void*,const float*, float*, size_t),
-							   void *This,
-							   const float *input,
-							   float *output,
-							   size_t length,
-							   size_t maxChunkSize){
-	size_t samplesRemaining = length;
-	size_t i=0;
-	while(samplesRemaining > 0){
-		size_t samplesProcessing = BM_MIN(maxChunkSize,samplesRemaining);
-		
-		procFunction(This, input, output, samplesProcessing);
-		
-		i+= samplesProcessing;
-		samplesRemaining -= samplesProcessing;
-	}
-}
+//static void BMChunkProcessMono(void (*procFunction)(void*,const float*, float*, size_t),
+//							   void *This,
+//							   const float *input,
+//							   float *output,
+//							   size_t length,
+//							   size_t maxChunkSize){
+//	size_t samplesRemaining = length;
+//	size_t i=0;
+//	while(samplesRemaining > 0){
+//		size_t samplesProcessing = BM_MIN(maxChunkSize,samplesRemaining);
+//		
+//		procFunction(This, input, output, samplesProcessing);
+//		
+//		i+= samplesProcessing;
+//		samplesRemaining -= samplesProcessing;
+//	}
+//}
 
 
 #endif /* Constants_h */
