@@ -11,26 +11,52 @@
 
 #include <stdio.h>
 #include <Accelerate/Accelerate.h>
+#import <os/lock.h>
 #include "BMMultiLevelBiquad.h"
 
 typedef struct BMMultiLevelSVF{
-    float** a;
-    float** m;
-    float** target_a;
-    float** target_m;
-    float* ic1eq;
-    float* ic2eq;
-	float *a1interp;
-	float *a2interp;
-	float *a3interp;
-	float *m0interp;
-	float *m1interp;
-	float *m2interp;
+    float *g0;
+    float *g1;
+	float *g2;
+	float *m0;
+	float *m1;
+	float *m2;
+	float *k;
+	// targets are the values that we are sweeping to in the current buffer
+	float *g0_target;
+	float *g1_target;
+	float *g2_target;
+	float *m0_target;
+	float *m1_target;
+	float *m2_target;
+	float *k_target;
+	// pending are the values we will be sweeping to in the next buffer
+	float *g0_pending;
+	float *g1_pending;
+	float *g2_pending;
+	float *m0_pending;
+	float *m1_pending;
+	float *m2_pending;
+	float *k_pending;
+	// interpolation arrays are used for sample-by-sample filter coefficient
+	// update during filter sweeps
+	float *g0_interp;
+	float *g1_interp;
+	float *g2_interp;
+	float *m0_interp;
+	float *m1_interp;
+	float *m2_interp;
+	float *k_interp;
+	// these are the state variables
+    float *ic1eq;
+    float *ic2eq;
+	
     size_t numLevels;
     size_t numChannels;
     double sampleRate;
     bool shouldUpdateParam;
 	bool filterSweep;
+	os_unfair_lock lock;
 	BMMultiLevelBiquad biquadHelper; // we have this so that we can reuse some functions such as the ones for plotting transfer functions
 }BMMultiLevelSVF;
 
@@ -87,16 +113,6 @@ void BMMultiLevelSVF_setHighpass(BMMultiLevelSVF *This, double fc, size_t level)
 void BMMultiLevelSVF_setHighpassQ(BMMultiLevelSVF *This, double fc, double q, size_t level);
 
 /*!
- *BMMultiLevelSVF_setNotchpass
- */
-void BMMultiLevelSVF_setNotchpass(BMMultiLevelSVF *This, double fc, double q, size_t level);
-
-/*!
- *BMMultiLevelSVF_setPeak
- */
-void BMMultiLevelSVF_setPeak(BMMultiLevelSVF *This, double fc, double q, size_t level);
-
-/*!
  *BMMultiLevelSVF_setAllpass
  */
 void BMMultiLevelSVF_setAllpass(BMMultiLevelSVF *This, double fc, double q, size_t level);
@@ -113,23 +129,35 @@ void BMMultiLevelSVF_setBellWithSkirt(BMMultiLevelSVF *This, double fc, double b
 
 /*!
  *BMMultiLevelSVF_setLowShelf
+ *
+ * @abstract set shelf with default slope = 1
  */
-void BMMultiLevelSVF_setLowShelf(BMMultiLevelSVF *This, double fc, double gain, size_t level);
+void BMMultiLevelSVF_setLowShelf(BMMultiLevelSVF *This, double fc, double gainDb, size_t level);
 
 /*!
- *BMMultiLevelSVF_setLowShelfQ
+ *BMMultiLevelSVF_setLowShelfS
+ *
+ * @param fc cutoff frequency
+ * @param gainDb shelf gain in decibels
+ * @param S slope in [0.5,1]
  */
-void BMMultiLevelSVF_setLowShelfQ(BMMultiLevelSVF *This, double fc, double gain, double q, size_t level);
+void BMMultiLevelSVF_setLowShelfS(BMMultiLevelSVF *This, double fc, double gainDb, double S, size_t level);
 
 /*!
  *BMMultiLevelSVF_setHighShelf
+ *
+ * @abstract set shelf with default slope = 1
  */
-void BMMultiLevelSVF_setHighShelf(BMMultiLevelSVF *This, double fc, double gain, size_t level);
+void BMMultiLevelSVF_setHighShelf(BMMultiLevelSVF *This, double fc, double gainDb, size_t level);
 
 /*!
- *BMMultiLevelSVF_setHighShelfQ
+ *BMMultiLevelSVF_setHighShelfS
+ *
+ * @param fc cutoff frequency
+ * @param gainDb shelf gain in decibels
+ * @param S slope in [0.5,1]
  */
-void BMMultiLevelSVF_setHighShelfQ(BMMultiLevelSVF *This, double fc, double gain, double q, size_t level);
+void BMMultiLevelSVF_setHighShelfS(BMMultiLevelSVF *This, double fc, double gainDb, double S, size_t level);
 
 /*!
  *BMMultiLevelSVF_impulseResponse

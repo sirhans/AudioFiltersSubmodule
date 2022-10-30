@@ -72,9 +72,9 @@
 //	size_t i=0;
 //	while(samplesRemaining > 0){
 //		size_t samplesProcessing = BM_MIN(maxChunkSize,samplesRemaining);
-//		
+//
 //		procFunction(This, input, output, samplesProcessing);
-//		
+//
 //		i+= samplesProcessing;
 //		samplesRemaining -= samplesProcessing;
 //	}
