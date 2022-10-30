@@ -3,7 +3,6 @@
 //  BMAudioFilters
 //
 //  Created by Nguyen Minh Tien on 1/9/19.
-//  Copyright © 2019 Hans. All rights reserved.
 //
 
 #include "BMMultiLevelSVF.h"
