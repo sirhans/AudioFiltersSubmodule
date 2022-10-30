@@ -391,7 +391,7 @@ void BMMultiLevelSVF_setBandpass(BMMultiLevelSVF *This, double fc, double Q, siz
 	os_unfair_lock_lock(&This->lock);
 	BMMultiLevelSVF_setCoefficientsHelper(This, fc, Q, level);
 	This->m0_pending[level] = 0.0;
-	This->m1_pending[level] = 1.0 / This->k_pending[level];
+	This->m1_pending[level] = 2.0 * This->k_pending[level];
 	This->m2_pending[level] = 0.0;
 	os_unfair_lock_unlock(&This->lock);
 	
