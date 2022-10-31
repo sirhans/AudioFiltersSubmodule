@@ -25,7 +25,8 @@ void BMVagusNerveTherapyFilter_init(BMVagusNerveTherapyFilter *This, float sampl
 	float lfoFreq = BMVNTF_LFO_FC;
 	float lfoMin = -30.0;
 	float lfoMax = -25.0;
-	This->useBiquadHelper = FALSE;
+	This->getCoefficientsFromBiquadHelper = FALSE;
+	This->filterWithBiquad = FALSE;
 	
 	BMMultiLevelSVF_init(&This->svf, numFilters, sampleRate, stereo);
 	BMLFO_init(&This->lfo, lfoFreq, lfoMin, lfoMax, sampleRate);
@@ -51,11 +52,15 @@ void BMVagusNerveTherapyFilter_free(BMVagusNerveTherapyFilter *This){
 }
 
 
-/*!
- *BMVagusNerveTherapyFilter_biquadHelperSetEnabled
- */
-void BMVagusNerveTherapyFilter_biquadHelperSetEnabled(BMVagusNerveTherapyFilter *This, bool enabled){
-	This->useBiquadHelper = enabled;
+
+void BMVagusNerveTherapyFilter_getCoefficientsFromBiquad(BMVagusNerveTherapyFilter *This, bool enabled){
+	This->getCoefficientsFromBiquadHelper = enabled;
+}
+
+
+
+void BMVagusNerveTherapyFilter_filterWithBiquad(BMVagusNerveTherapyFilter *This, bool enabled){
+	This->filterWithBiquad = enabled;
 }
 
 
@@ -152,7 +157,7 @@ void BMVagusNerveTherapyFilter_process(BMVagusNerveTherapyFilter *This,
 	float bellGainDb = 3.6 * skirtGainExcursion;
 	bellGainDb += sin(M_PI * pow(skirtGainExcursion,2.0/3.0));
 	
-	if(This->useBiquadHelper){
+	if(This->getCoefficientsFromBiquadHelper || This->filterWithBiquad){
 		// set the filters in the biquad helper
 		BMMultiLevelBiquad_setBellWithSkirt(&This->svf.biquadHelper, BMVNTF_FILTER_ONE_FC, filterQ, bellGainDb, skirtGain, 0);
 		BMMultiLevelBiquad_setBellWithSkirt(&This->svf.biquadHelper, BMVNTF_FILTER_TWO_FC, filterQ, bellGainDb, skirtGain, 1);
@@ -167,7 +172,10 @@ void BMVagusNerveTherapyFilter_process(BMVagusNerveTherapyFilter *This,
 	}
 		
 	// process audio
-	BMMultiLevelSVF_processBufferStereo(&This->svf, inputL, inputR, outputL, outputR, numSamples);
+	if(This->filterWithBiquad)
+		BMMultiLevelBiquad_processBufferStereo(&This->svf.biquadHelper, inputL, inputR, outputL, outputR, numSamples);
+	else
+		BMMultiLevelSVF_processBufferStereo(&This->svf, inputL, inputR, outputL, outputR, numSamples);
 	
 	// advance the timer
 	This->timeSamples += numSamples;
