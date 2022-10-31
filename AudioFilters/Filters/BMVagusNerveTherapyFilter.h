@@ -59,7 +59,7 @@ void BMVagusNerveTherapyFilter_process(BMVagusNerveTherapyFilter *This,
 
 
 /*!
- *BMVagusNerveTherapyFilter_biquadHelperSetEnabled
+ *BMVagusNerveTherapyFilter_getCoefficientsFromBiquad
  *
  * @abstract
  * The SVF filter coefficients can be set either by using the SVF setBellWithSkirt
@@ -71,6 +71,21 @@ void BMVagusNerveTherapyFilter_process(BMVagusNerveTherapyFilter *This,
  *
  * @param enabled set TRUE to use the biquad helper. False for direct SVF coefficient calculation
  */
-void BMVagusNerveTherapyFilter_biquadHelperSetEnabled(BMVagusNerveTherapyFilter *This, bool enabled);
+void BMVagusNerveTherapyFilter_getCoefficientsFromBiquad(BMVagusNerveTherapyFilter *This, bool enabled);
+
+
+/*!
+ *BMVagusNerveTherapyFilter_filterWithBiquad
+ *
+ * @abstract
+ * This class is designed to use a State Variable Filter for audio processing.
+ * However, for the purpose of verifying that the SVF is working properly we
+ * also include the option to process audio using a biquad filter. The biquad
+ * filter does not handle filter coefficient changes as smoothly as the SVF so
+ * it should not be used in a production enviornment.
+ *
+ * @param enabled set TRUE to use the biquad filter for both coefficient calculation and filtering
+ */
+void BMVagusNerveTherapyFilter_filterWithBiquad(BMVagusNerveTherapyFilter *This, bool enabled);
 
 #endif /* BMVagusNerveTherapyFilter_h */
