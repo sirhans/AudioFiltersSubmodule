@@ -52,9 +52,9 @@ void BMVagusNerveTherapyFilter_free(BMVagusNerveTherapyFilter *This){
 
 
 /*!
- *BMVagusNerveTherapyFilter_enableBiquadHelperSetEnabled
+ *BMVagusNerveTherapyFilter_biquadHelperSetEnabled
  */
-void BMVagusNerveTherapyFilter_enableBiquadHelperSetEnabled(BMVagusNerveTherapyFilter *This, bool enabled){
+void BMVagusNerveTherapyFilter_biquadHelperSetEnabled(BMVagusNerveTherapyFilter *This, bool enabled){
 	This->useBiquadHelper = enabled;
 }
 

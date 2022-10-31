@@ -59,8 +59,18 @@ void BMVagusNerveTherapyFilter_process(BMVagusNerveTherapyFilter *This,
 
 
 /*!
- *BMVagusNerveTherapyFilter_enableBiquadHelperSetEnabled
+ *BMVagusNerveTherapyFilter_biquadHelperSetEnabled
+ *
+ * @abstract
+ * The SVF filter coefficients can be set either by using the SVF setBellWithSkirt
+ * function or by calling the same function in the biquad helper and copying
+ * the state from the biquad into the SVF. By default we use the SVF function
+ * but by calling this function with enabled = TRUE you can switch to the biquad
+ * helper method. This is useful for confirming that the formulae are correct
+ * and the filter is correctly implemented.
+ *
+ * @param enabled set TRUE to use the biquad helper. False for direct SVF coefficient calculation
  */
-void BMVagusNerveTherapyFilter_enableBiquadHelperSetEnabled(BMVagusNerveTherapyFilter *This, bool enabled);
+void BMVagusNerveTherapyFilter_biquadHelperSetEnabled(BMVagusNerveTherapyFilter *This, bool enabled);
 
 #endif /* BMVagusNerveTherapyFilter_h */
