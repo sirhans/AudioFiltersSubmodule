@@ -18,6 +18,7 @@ typedef struct BMVagusNerveTherapyFilter {
 	BMLFO lfo;
 	size_t timeSamples, endTimeSamples;
 	float sampleRate;
+	bool useBiquadHelper;
 } BMVagusNerveTherapyFilter;
 
 
@@ -55,5 +56,11 @@ void BMVagusNerveTherapyFilter_setTimeSamples(BMVagusNerveTherapyFilter *This, s
 void BMVagusNerveTherapyFilter_process(BMVagusNerveTherapyFilter *This,
 									   const float *inputL, const float *inputR,
 									   float *outputL, float *outputR, size_t numSamples);
+
+
+/*!
+ *BMVagusNerveTherapyFilter_enableBiquadHelperSetEnabled
+ */
+void BMVagusNerveTherapyFilter_enableBiquadHelperSetEnabled(BMVagusNerveTherapyFilter *This, bool enabled);
 
 #endif /* BMVagusNerveTherapyFilter_h */

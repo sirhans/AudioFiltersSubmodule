@@ -25,6 +25,7 @@ void BMVagusNerveTherapyFilter_init(BMVagusNerveTherapyFilter *This, float sampl
 	float lfoFreq = BMVNTF_LFO_FC;
 	float lfoMin = -30.0;
 	float lfoMax = -25.0;
+	This->useBiquadHelper = FALSE;
 	
 	BMMultiLevelSVF_init(&This->svf, numFilters, sampleRate, stereo);
 	BMLFO_init(&This->lfo, lfoFreq, lfoMin, lfoMax, sampleRate);
@@ -47,6 +48,14 @@ void BMVagusNerveTherapyFilter_init(BMVagusNerveTherapyFilter *This, float sampl
 void BMVagusNerveTherapyFilter_free(BMVagusNerveTherapyFilter *This){
 	BMMultiLevelSVF_free(&This->svf);
 	BMLFO_free(&This->lfo);
+}
+
+
+/*!
+ *BMVagusNerveTherapyFilter_enableBiquadHelperSetEnabled
+ */
+void BMVagusNerveTherapyFilter_enableBiquadHelperSetEnabled(BMVagusNerveTherapyFilter *This, bool enabled){
+	This->useBiquadHelper = enabled;
 }
 
 
@@ -143,17 +152,20 @@ void BMVagusNerveTherapyFilter_process(BMVagusNerveTherapyFilter *This,
 	float bellGainDb = 3.6 * skirtGainExcursion;
 	bellGainDb += sin(M_PI * pow(skirtGainExcursion,2.0/3.0));
 	
-//	// set the filters in the biquad helper
-//	BMMultiLevelBiquad_setBellWithSkirt(&This->svf.biquadHelper, BMVNTF_FILTER_ONE_FC, filterQ, bellGainDb, skirtGain, 0);
-//	BMMultiLevelBiquad_setBellWithSkirt(&This->svf.biquadHelper, BMVNTF_FILTER_TWO_FC, filterQ, bellGainDb, skirtGain, 1);
-//
-//	// copy the settings from the biquad to the svf
-//	BMMultiLevelSVF_copyStateFromBiquadHelper(&This->svf);
-	
-	// set the filters
-	BMMultiLevelSVF_setBellWithSkirt(&This->svf, BMVNTF_FILTER_ONE_FC, bellGainDb, skirtGain, filterQ, 0);
-	BMMultiLevelSVF_setBellWithSkirt(&This->svf, BMVNTF_FILTER_TWO_FC, bellGainDb, skirtGain, filterQ, 1);
-	
+	if(This->useBiquadHelper){
+		// set the filters in the biquad helper
+		BMMultiLevelBiquad_setBellWithSkirt(&This->svf.biquadHelper, BMVNTF_FILTER_ONE_FC, filterQ, bellGainDb, skirtGain, 0);
+		BMMultiLevelBiquad_setBellWithSkirt(&This->svf.biquadHelper, BMVNTF_FILTER_TWO_FC, filterQ, bellGainDb, skirtGain, 1);
+		
+		// copy the settings from the biquad to the svf
+		BMMultiLevelSVF_copyStateFromBiquadHelper(&This->svf);
+	}
+	else {
+		// set the filters directly using the svf formulae
+		BMMultiLevelSVF_setBellWithSkirt(&This->svf, BMVNTF_FILTER_ONE_FC, bellGainDb, skirtGain, filterQ, 0);
+		BMMultiLevelSVF_setBellWithSkirt(&This->svf, BMVNTF_FILTER_TWO_FC, bellGainDb, skirtGain, filterQ, 1);
+	}
+		
 	// process audio
 	BMMultiLevelSVF_processBufferStereo(&This->svf, inputL, inputR, outputL, outputR, numSamples);
 	
