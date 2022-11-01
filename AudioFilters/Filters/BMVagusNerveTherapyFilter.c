@@ -17,7 +17,7 @@
 #define BMVNTF_LFO_FC 1.0 / (6.0 * 60.0) // one cycle for every six minutes
 #define BMVNTF_HIGHPASS_FC 350.0
 #define BMVNTF_LOWPASS_FC 3000.0
-#define BMVNTF_FIXED_FILTER_GAIN_COMPENSATION 3.0
+#define BMVNTF_FIXED_FILTER_GAIN_COMPENSATION 3.5 // dB
 
 
 
