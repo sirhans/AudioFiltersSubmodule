@@ -14,7 +14,7 @@
 #define BMVNTF_END_TIME_HOURS 5.0
 #define BMVNTF_FILTER_ONE_FC 858.854
 #define BMVNTF_FILTER_TWO_FC 1408.85
-#define BMVNTF_LFO_FC 1.0 / (3.5 * 60.0)
+#define BMVNTF_LFO_FC 1.0 / (6.0 * 60.0) // one cycle for every six minutes
 
 
 
