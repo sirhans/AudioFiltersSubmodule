@@ -17,7 +17,7 @@
 #define BMVNTF_LFO_FC 1.0 / (6.0 * 60.0) // one cycle for every six minutes
 #define BMVNTF_HIGHPASS_FC 350.0
 #define BMVNTF_LOWPASS_FC 3000.0
-
+#define BMVNTF_FIXED_FILTER_GAIN_COMPENSATION 3.0
 
 
 
@@ -189,6 +189,11 @@ void BMVagusNerveTherapyFilter_process(BMVagusNerveTherapyFilter *This,
 	// apply the fixed filters
 	BMMultiLevelBiquad_processBufferStereo(&This->fixedFilters, outputL, outputR, outputL, outputR, numSamples);
 	
+        // compensate for gain reduction from fixed filters
+        float g = BM_DB_TO_GAIN(BMVNTF_FIXED_FILTER_GAIN_COMPENSATION);
+        vDSP_vsmul(outputL,1,&g,outputL,1,numSamples);
+        vDSP_vsmul(outputR,1,&g,outputR,1,numSamples);
+
 	// advance the timer
 	This->timeSamples += numSamples;
 }
