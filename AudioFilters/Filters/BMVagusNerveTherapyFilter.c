@@ -15,21 +15,29 @@
 #define BMVNTF_FILTER_ONE_FC 858.854
 #define BMVNTF_FILTER_TWO_FC 1408.85
 #define BMVNTF_LFO_FC 1.0 / (6.0 * 60.0) // one cycle for every six minutes
+#define BMVNTF_HIGHPASS_FC 350.0
+#define BMVNTF_LOWPASS_FC 3500.0
 
 
 
 
 void BMVagusNerveTherapyFilter_init(BMVagusNerveTherapyFilter *This, float sampleRate){
 	bool stereo = true;
-	size_t numFilters = 2;
+	size_t numSVFFilters = 2;
+	size_t numFixedFilters = 2;
 	float lfoFreq = BMVNTF_LFO_FC;
 	float lfoMin = -30.0;
 	float lfoMax = -25.0;
 	This->getCoefficientsFromBiquadHelper = FALSE;
 	This->filterWithBiquad = FALSE;
 	
-	BMMultiLevelSVF_init(&This->svf, numFilters, sampleRate, stereo);
+	BMMultiLevelSVF_init(&This->svf, numSVFFilters, sampleRate, stereo);
+	BMMultiLevelBiquad_init(&This->fixedFilters, numFixedFilters, sampleRate, true, false, false);
 	BMLFO_init(&This->lfo, lfoFreq, lfoMin, lfoMax, sampleRate);
+	
+	// set fixed filters to reduce low and high frequencies
+	BMMultiLevelBiquad_setHighPass6db(&This->fixedFilters, BMVNTF_HIGHPASS_FC, 0);
+	BMMultiLevelBiquad_setLowPass6db(&This->fixedFilters, BMVNTF_LOWPASS_FC, 1);
 	
 	// set the SVF to smoothly sweep the filter parameters
 	BMMultiLevelSVF_enableFilterSweep(&This->svf, TRUE);
@@ -48,6 +56,7 @@ void BMVagusNerveTherapyFilter_init(BMVagusNerveTherapyFilter *This, float sampl
 
 void BMVagusNerveTherapyFilter_free(BMVagusNerveTherapyFilter *This){
 	BMMultiLevelSVF_free(&This->svf);
+	BMMultiLevelBiquad_free(&This->fixedFilters);
 	BMLFO_free(&This->lfo);
 }
 
@@ -176,6 +185,9 @@ void BMVagusNerveTherapyFilter_process(BMVagusNerveTherapyFilter *This,
 		BMMultiLevelBiquad_processBufferStereo(&This->svf.biquadHelper, inputL, inputR, outputL, outputR, numSamples);
 	else
 		BMMultiLevelSVF_processBufferStereo(&This->svf, inputL, inputR, outputL, outputR, numSamples);
+	
+	// apply the fixed filters
+	BMMultiLevelBiquad_processBufferStereo(&This->fixedFilters, outputL, outputR, outputL, outputR, numSamples);
 	
 	// advance the timer
 	This->timeSamples += numSamples;

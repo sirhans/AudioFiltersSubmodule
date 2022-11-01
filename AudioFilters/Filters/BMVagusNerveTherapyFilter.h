@@ -11,10 +11,12 @@
 
 #include <stdio.h>
 #include "BMMultiLevelSVF.h"
+#include "BMFirsr"
 #include "BMLFO.h"
 
 typedef struct BMVagusNerveTherapyFilter {
 	BMMultiLevelSVF svf;
+	BMMultiLevelBiquad fixedFilters;
 	BMLFO lfo;
 	size_t timeSamples, endTimeSamples;
 	float sampleRate;
