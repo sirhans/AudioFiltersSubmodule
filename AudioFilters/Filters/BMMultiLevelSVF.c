@@ -353,8 +353,7 @@ inline void BMMultiLevelSVF_updateSVFParam(BMMultiLevelSVF *This){
 void BMMultiLevelSVF_setCoefficientsHelper(BMMultiLevelSVF *This, double fc, double Q, size_t level){
 	// This is from the function CalcCoeff2 in https://cytomic.com/files/dsp/SvfLinearTrapezoidalSin.pdf
 	double w = fc / This->sampleRate;
-	double damp = 1.0/(2.0 * Q); // this is not what the pdf says but it works
-	double k = damp;
+    double k = 1.0/Q;
 	double s1 = sin(M_PI * w);
 	double s2 = sin(2.0 * M_PI * w);
 	double nrm = 1.0 / (2.0 + k * s2);
@@ -435,7 +434,7 @@ void BMMultiLevelSVF_setAllpass(BMMultiLevelSVF *This, double fc, double Q, size
 	os_unfair_lock_lock(&This->lock);
 	BMMultiLevelSVF_setCoefficientsHelper(This, fc, Q, level);
 	This->m0_pending[level] = 1.0;
-	This->m1_pending[level] = 2.0 * This->k_pending[level];
+	This->m1_pending[level] = This->k_pending[level];
 	This->m2_pending[level] = 1.0;
 	os_unfair_lock_unlock(&This->lock);
     
@@ -452,7 +451,7 @@ void BMMultiLevelSVF_setBell(BMMultiLevelSVF *This, double fc, double gainDb, do
 	os_unfair_lock_lock(&This->lock);
 	BMMultiLevelSVF_setCoefficientsHelper(This, fc, Q, level);
 	This->m0_pending[level] = 1.0;
-	This->m1_pending[level] = A * 2.0 * This->k_pending[level];
+	This->m1_pending[level] = A * This->k_pending[level];
 	This->m2_pending[level] = 1.0;
 	os_unfair_lock_unlock(&This->lock);
     
@@ -469,7 +468,7 @@ void BMMultiLevelSVF_setBellWithSkirt(BMMultiLevelSVF *This, double fc, double b
 	os_unfair_lock_lock(&This->lock);
 	BMMultiLevelSVF_setCoefficientsHelper(This, fc, Q, level);
 	This->m0_pending[level] = B;
-	This->m1_pending[level] = A * 2.0 * This->k_pending[level];
+	This->m1_pending[level] = A * This->k_pending[level];
 	This->m2_pending[level] = B;
 	os_unfair_lock_unlock(&This->lock);
 	
@@ -490,7 +489,7 @@ void BMMultiLevelSVF_setLowShelfS(BMMultiLevelSVF *This, double fc, double gainD
 	os_unfair_lock_lock(&This->lock);
 	BMMultiLevelSVF_setCoefficientsHelper(This, fc, Q, level);
 	This->m0_pending[level] = 1.0;
-	This->m1_pending[level] = A * 2.0 * This->k_pending[level];
+	This->m1_pending[level] = A * This->k_pending[level];
 	This->m2_pending[level] = A * A;
 	os_unfair_lock_unlock(&This->lock);
     
@@ -510,7 +509,7 @@ void BMMultiLevelSVF_setHighShelfS(BMMultiLevelSVF *This, double fc, double gain
 	os_unfair_lock_lock(&This->lock);
 	BMMultiLevelSVF_setCoefficientsHelper(This, fc, Q, level);
 	This->m0_pending[level] = A * A;
-	This->m1_pending[level] = A * 2.0 * This->k_pending[level];
+	This->m1_pending[level] = A * This->k_pending[level];
 	This->m2_pending[level] = 1.0;
 	os_unfair_lock_unlock(&This->lock);
 	
