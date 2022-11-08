@@ -11,8 +11,11 @@
 
 #include <stdio.h>
 #include "BMMultiLevelSVF.h"
-#include "BMFirsr"
 #include "BMLFO.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct BMVagusNerveTherapyFilter {
 	BMMultiLevelSVF svf;
@@ -89,5 +92,9 @@ void BMVagusNerveTherapyFilter_getCoefficientsFromBiquad(BMVagusNerveTherapyFilt
  * @param enabled set TRUE to use the biquad filter for both coefficient calculation and filtering
  */
 void BMVagusNerveTherapyFilter_filterWithBiquad(BMVagusNerveTherapyFilter *This, bool enabled);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* BMVagusNerveTherapyFilter_h */
