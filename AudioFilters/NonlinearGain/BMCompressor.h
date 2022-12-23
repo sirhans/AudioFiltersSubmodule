@@ -11,11 +11,16 @@
 #ifndef BMCompressor_h
 #define BMCompressor_h
 
+
 #include <stdio.h>
 #include <stdbool.h>
 #include "BMMultiLevelBiquad.h"
 #include "BMEnvelopeFollower.h"
 #include "BMQuadraticThreshold.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct{
     float thresholdInDB, kneeWidthInDB, releaseTime, attackTime,slope;
@@ -68,5 +73,9 @@ void BMCompressor_SetSampleRate(BMCompressor* compressor, float sampleRate);
 void BMCompressor_SetKneeWidthInDB(BMCompressor* compressor, float kneeWidth);
 
 void BMCompressor_Free(BMCompressor *This);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* BMCompressor_h */

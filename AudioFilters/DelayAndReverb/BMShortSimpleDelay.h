@@ -14,6 +14,9 @@
 
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct BMShortSimpleDelay{
     float **delayPtrs;
@@ -55,5 +58,8 @@ void BMShortSimpleDelay_free(BMShortSimpleDelay* This);
  */
 void BMShortSimpleDelay_changeLength(BMShortSimpleDelay* This, size_t lengthSamples);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* BMShortSimpleDelay_h */

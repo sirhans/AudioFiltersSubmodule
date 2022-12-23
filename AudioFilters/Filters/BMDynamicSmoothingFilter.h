@@ -18,15 +18,17 @@
 //  there is a large spike in the input value. This way we can smooth out small
 //  changes and still react immediately to large changes.
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+
 
 #ifndef BMDynamicSmoothingFilter_h
 #define BMDynamicSmoothingFilter_h
 
 #include <stdio.h>
 #include <Accelerate/Accelerate.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct BMDynamicSmoothingFilter {
 	float low1z, low2z, g, gMin, gMax, sensitivity, sampleRate;
@@ -111,5 +113,9 @@ void BMDynamicSmoothingFilter_setMinFc(BMDynamicSmoothingFilter *This, float min
 *BMDynamicSmoothingFilter_setMaxFc
 */
 void BMDynamicSmoothingFilter_setMaxFc(BMDynamicSmoothingFilter *This, float maxFC);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* BMDynamicSmoothingFilter_h */

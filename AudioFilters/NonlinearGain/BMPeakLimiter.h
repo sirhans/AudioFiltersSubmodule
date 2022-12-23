@@ -14,6 +14,9 @@
 #include "BMEnvelopeFollower.h"
 #include "Constants.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct BMPeakLimiter {
 	BMShortSimpleDelay delay;
@@ -84,6 +87,8 @@ void BMPeakLimiter_processMono(BMPeakLimiter *This,
 bool BMPeakLimiter_isLimiting(BMPeakLimiter *This);
 
 
-
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* BMPeakLimiter_h */

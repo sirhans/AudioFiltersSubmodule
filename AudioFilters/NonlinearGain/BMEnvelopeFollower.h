@@ -14,6 +14,10 @@
 #include <stdbool.h>
 #include "BMDynamicSmoothingFilter.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define BMENV_NUM_STAGES 3
 
 
@@ -308,5 +312,8 @@ void BMMultiAttackFilter_processBufferFOBelowDb(BMMultiAttackFilter *This,
                                         size_t numSamples);
 
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* BMEnvelopeFollower_h */

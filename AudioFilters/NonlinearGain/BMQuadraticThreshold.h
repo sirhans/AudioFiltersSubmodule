@@ -11,6 +11,9 @@
 
 #include <Accelerate/Accelerate.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct BMQuadraticThreshold {
     float lPlusW, lMinusW;
@@ -49,5 +52,9 @@ void BMQuadraticThreshold_upperBuffer(BMQuadraticThreshold *This,
                                     const float* input,
                                     float* output,
                                     size_t numFrames);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* BMQuadraticThreshold_h */
