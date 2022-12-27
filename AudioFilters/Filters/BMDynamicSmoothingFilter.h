@@ -32,7 +32,7 @@ extern "C" {
 
 typedef struct BMDynamicSmoothingFilter {
 	float low1z, low2z, g, gMin, gMax, sensitivity, sampleRate;
-    bool descending;
+	bool descending;
 } BMDynamicSmoothingFilter;
 
 
@@ -46,18 +46,18 @@ void BMDynamicSmoothingFilter_processBuffer(BMDynamicSmoothingFilter *This,
 											size_t numSamples);
 
 void BMDynamicSmoothingFilter_processBufferFastAccent(BMDynamicSmoothingFilter *This,
-                                            const float* input,
-                                            float* output,
-                                                      size_t numSamples);
+													  const float* input,
+													  float* output,
+													  size_t numSamples);
 
 void BMDynamicSmoothingFilter_processBufferFastAccent2(BMDynamicSmoothingFilter *This,
-                                            const float* input,
-                                            float* output,
-                                                       size_t numSamples);
+													   const float* input,
+													   float* output,
+													   size_t numSamples);
 void BMDynamicSmoothingFilter_processBufferFastAccent3(BMDynamicSmoothingFilter *This,
-                                            const float* input,
-                                            float* output,
-                                                       size_t numSamples);
+													   const float* input,
+													   float* output,
+													   size_t numSamples);
 /*!
  *BMDynamicSmoothingFilter_processBufferWithFastDescent
  */
@@ -74,9 +74,9 @@ void BMDynamicSmoothingFilter_processBufferWithFastDescent2(BMDynamicSmoothingFi
 															float* output,
 															size_t numSamples);
 void BMDynamicSmoothingFilter_processBufferDynamic(BMDynamicSmoothingFilter *This,
-                                                           const float* input,
-                                                           float* output,
-                                                           size_t numSamples);
+												   const float* input,
+												   float* output,
+												   size_t numSamples);
 
 /*!
  *BMDynamicSmoothingFilter_initDefault
@@ -110,12 +110,12 @@ void BMDynamicSmoothingFilter_setMinFc(BMDynamicSmoothingFilter *This, float min
 
 
 /*!
-*BMDynamicSmoothingFilter_setMaxFc
-*/
+ *BMDynamicSmoothingFilter_setMaxFc
+ */
 void BMDynamicSmoothingFilter_setMaxFc(BMDynamicSmoothingFilter *This, float maxFC);
+
+#endif /* BMDynamicSmoothingFilter_h */
 
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* BMDynamicSmoothingFilter_h */
