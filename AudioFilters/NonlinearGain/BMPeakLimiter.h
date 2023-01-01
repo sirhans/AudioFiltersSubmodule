@@ -36,6 +36,12 @@ void BMPeakLimiter_init(BMPeakLimiter *This, bool stereo, float sampleRate);
 
 
 /*!
+ *BMPeakLimiter_initNoRealtime
+ */
+void BMPeakLimiter_initNoRealtime(BMPeakLimiter *This, bool stereo, float sampleRate);
+
+
+/*!
  *BMPeakLimiter_free
  */
 void BMPeakLimiter_free(BMPeakLimiter *This);

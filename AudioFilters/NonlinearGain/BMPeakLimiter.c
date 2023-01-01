@@ -12,9 +12,11 @@
 #include "Constants.h"
 
 #define BM_PEAK_LIMITER_LOOKAHEAD_TIME_DV 0.00025f
+#define BM_PEAK_LIMITER_LOOKAHEAD_TIME_NO_REALTIME 0.025f
 #define BM_PEAK_LIMITER_ATTACK_LOOKAHEAD_RATIO 2.5f
 #define BM_PEAK_LIMITER_RELEASE_TIME_DV 0.200f
 #define BM_PEAK_LIMITER_THRESHOLD_GAIN_DV BM_DB_TO_GAIN(-2.0f)
+#define BM_PEAK_LIMITER_THRESHOLD_GAIN_NO_REALTIME BM_DB_TO_GAIN(-0.5f)
 
 
 
@@ -37,6 +39,30 @@ void BMPeakLimiter_init(BMPeakLimiter *This, bool stereo, float sampleRate){
     
     // not limiting yet on startup
     This->isLimiting = false;
+}
+
+
+
+
+void BMPeakLimiter_initNoRealtime(BMPeakLimiter *This, bool stereo, float sampleRate){
+	This->sampleRate = sampleRate;
+	This->lookaheadTime = This->targetLookaheadTime = BM_PEAK_LIMITER_LOOKAHEAD_TIME_NO_REALTIME;
+	
+	// init the envelope follower
+	BMEnvelopeFollower_initWithCustomNumStages(&This->envelopeFollower, 3, 3, sampleRate);
+	BMEnvelopeFollower_setAttackTime(&This->envelopeFollower, This->lookaheadTime * BM_PEAK_LIMITER_ATTACK_LOOKAHEAD_RATIO);
+	BMEnvelopeFollower_setReleaseTime(&This->envelopeFollower, BM_PEAK_LIMITER_RELEASE_TIME_DV);
+	
+	// init the delay
+	size_t numChannels = (stereo == true) ? 2 : 1;
+	size_t delayInSamples = This->lookaheadTime * sampleRate;
+	BMShortSimpleDelay_init(&This->delay, numChannels, delayInSamples);
+	
+	// set the threshold
+	This->thresholdGain = BM_PEAK_LIMITER_THRESHOLD_GAIN_NO_REALTIME;
+	
+	// not limiting yet on startup
+	This->isLimiting = false;
 }
 
 
