@@ -15,6 +15,8 @@ extern "C" {
 #include "BMSmoothGain.h"
 #include <Accelerate/Accelerate.h>
 #include "Constants.h"
+	
+#define BM_SMOOTH_GAIN_INIT_CHECK 44643340424
     
     // returns the ratio that would affect a gain change of dB if applied
     // geometrically over a period of numSamples
@@ -24,7 +26,10 @@ extern "C" {
     
     
     void BMSmoothGain_init(BMSmoothGain *This, float sampleRate){
-        This->gain = This->gainTarget = 1.0f;
+//		// check for double call to init function
+//		assert(This->initCheck != BM_SMOOTH_GAIN_INIT_CHECK);
+		
+        This->gain = This->gainTarget = This->nextGainTarget = 1.0f;
         This->inTransition = false;
         
         // set the per sample ratio to fade 60 dB in *time*
@@ -33,6 +38,9 @@ extern "C" {
         
         // set the per sample ratio for fading -60 dB in *time*
         This->perSampleRatioDown = getRatio(-60.0, sampleRate * time);
+		
+//		// set a value for initCheck to detect double initialization
+//		This->initCheck = BM_SMOOTH_GAIN_INIT_CHECK;
     }
     
     

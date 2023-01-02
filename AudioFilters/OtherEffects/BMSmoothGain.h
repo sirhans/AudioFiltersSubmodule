@@ -22,6 +22,7 @@ extern "C" {
 typedef struct BMSmoothGain {
 	float gain, gainTarget, nextGainTarget, perSampleRatioUp, perSampleRatioDown;
 	bool inTransition;
+	size_t initCheck;
 } BMSmoothGain;
 
 
