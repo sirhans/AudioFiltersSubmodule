@@ -120,7 +120,7 @@ extern "C" {
     
     
     
-     void BMSmoothGain_processBuffers(BMSmoothGain *This,
+	void BMSmoothGain_processBuffers(BMSmoothGain *This,
                                       const float** inputs,
                                       float** outputs,
                                       size_t numChannels,
