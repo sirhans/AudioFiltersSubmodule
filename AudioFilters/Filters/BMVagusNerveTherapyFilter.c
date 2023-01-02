@@ -8,9 +8,9 @@
 
 #include "BMVagusNerveTherapyFilter.h"
 
-#define BMVNTF_MIN_DB -30.0f
-#define BMVNTF_MAX_SKIRT_DB_START -25.0f
-#define BMVNTF_MAX_SKIRT_DB_END -7.0f
+#define BMVNTF_MIN_DB -15.0f
+#define BMVNTF_MAX_SKIRT_DB_START -12.0f
+#define BMVNTF_MAX_SKIRT_DB_END -3.5f
 #define BMVNTF_END_TIME_HOURS 5.0
 #define BMVNTF_FILTER_ONE_FC 858.854
 #define BMVNTF_FILTER_TWO_FC 1408.85
@@ -23,11 +23,11 @@
 
 void BMVagusNerveTherapyFilter_init(BMVagusNerveTherapyFilter *This, float sampleRate){
 	bool stereo = true;
-	size_t numSVFFilters = 2;
+	size_t numSVFFilters = 4;
 	size_t numFixedFilters = 2;
 	float lfoFreq = BMVNTF_LFO_FC;
-	float lfoMin = -30.0;
-	float lfoMax = -25.0;
+	float lfoMin = BMVNTF_MIN_DB;
+	float lfoMax = BMVNTF_MAX_SKIRT_DB_START;
 	This->getCoefficientsFromBiquadHelper = FALSE;
 	This->filterWithBiquad = FALSE;
 	
@@ -164,12 +164,14 @@ void BMVagusNerveTherapyFilter_process(BMVagusNerveTherapyFilter *This,
 	// BellGain = 3.6 (skirtG/-30) + Sin[\[Pi] (skirtG/-30)^(2/3)]
 	float skirtGainExcursion = (skirtGain / BMVNTF_MIN_DB);
 	float bellGainDb = 3.6 * skirtGainExcursion;
-	bellGainDb += sin(M_PI * pow(skirtGainExcursion,2.0/3.0));
+	bellGainDb += sin(M_PI * pow(skirtGainExcursion,3.0/5.0));
 	
 	if(This->getCoefficientsFromBiquadHelper || This->filterWithBiquad){
 		// set the filters in the biquad helper
 		BMMultiLevelBiquad_setBellWithSkirt(&This->svf.biquadHelper, BMVNTF_FILTER_ONE_FC, filterQ, bellGainDb, skirtGain, 0);
 		BMMultiLevelBiquad_setBellWithSkirt(&This->svf.biquadHelper, BMVNTF_FILTER_TWO_FC, filterQ, bellGainDb, skirtGain, 1);
+		BMMultiLevelBiquad_setBellWithSkirt(&This->svf.biquadHelper, BMVNTF_FILTER_ONE_FC, filterQ, bellGainDb, skirtGain, 2);
+		BMMultiLevelBiquad_setBellWithSkirt(&This->svf.biquadHelper, BMVNTF_FILTER_TWO_FC, filterQ, bellGainDb, skirtGain, 3);
 		
 		// copy the settings from the biquad to the svf
 		BMMultiLevelSVF_copyStateFromBiquadHelper(&This->svf);
@@ -178,6 +180,8 @@ void BMVagusNerveTherapyFilter_process(BMVagusNerveTherapyFilter *This,
 		// set the filters directly using the svf formulae
 		BMMultiLevelSVF_setBellWithSkirt(&This->svf, BMVNTF_FILTER_ONE_FC, bellGainDb, skirtGain, filterQ, 0);
 		BMMultiLevelSVF_setBellWithSkirt(&This->svf, BMVNTF_FILTER_TWO_FC, bellGainDb, skirtGain, filterQ, 1);
+		BMMultiLevelSVF_setBellWithSkirt(&This->svf, BMVNTF_FILTER_ONE_FC, bellGainDb, skirtGain, filterQ, 2);
+		BMMultiLevelSVF_setBellWithSkirt(&This->svf, BMVNTF_FILTER_TWO_FC, bellGainDb, skirtGain, filterQ, 3);
 	}
 		
 	// process audio
