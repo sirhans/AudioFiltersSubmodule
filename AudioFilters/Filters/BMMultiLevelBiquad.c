@@ -226,7 +226,7 @@ void BMMultiLevelBiquad_init(BMMultiLevelBiquad *This,
     // set 0db of gain
     BMSmoothGain_init(&This->gain, sampleRate);
     BMSmoothGain_init(&This->gain2, sampleRate);
-    BMMultiLevelBiquad_setGain(This,0.0);
+    BMMultiLevelBiquad_setGainInstant(This,0.0);
     
     // setup filter struct
     BMMultiLevelBiquad_create(This);
