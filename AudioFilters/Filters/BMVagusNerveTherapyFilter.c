@@ -8,8 +8,8 @@
 
 #include "BMVagusNerveTherapyFilter.h"
 
-#define BMVNTF_MIN_DB -15.0f
-#define BMVNTF_MAX_SKIRT_DB_START -12.0f
+#define BMVNTF_MIN_DB -16.0f
+#define BMVNTF_MAX_SKIRT_DB_START -14.0f
 #define BMVNTF_MAX_SKIRT_DB_END -3.5f
 #define BMVNTF_END_TIME_HOURS 5.0
 #define BMVNTF_FILTER_ONE_FC 858.854
