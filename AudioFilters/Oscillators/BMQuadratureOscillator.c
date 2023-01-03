@@ -23,16 +23,16 @@
 extern "C" {
 #endif
 	
-	
+#define BM_QUADRATURE_OSCILLATOR_START_ANGLE -M_PI_2
     
 	
     void BMQuadratureOscillator_initMatrix(simd_float2x2* m,
                                            double frequency,
-                                           float sampleRate){
+                                           double sampleRate){
         // we want a rotation matrix that completes a rotation of 2*M_PI in
         // (sampleRate / fHz) samples. That means that in 1 sample, we need to
         // rotate by an angle of fHz * 2 * M_PI / sampleRate.
-        double oneSampleAngle = frequency * 2.0 * M_PI / (double)sampleRate;
+        double oneSampleAngle = frequency * 2.0 * M_PI / sampleRate;
 		
 		// limit the rotation to within [0,2*pi]
 		oneSampleAngle = fmod(oneSampleAngle, 2.0 * M_PI);
@@ -51,12 +51,32 @@ extern "C" {
         
         BMQuadratureOscillator_initMatrix(&This->m, fHz, sampleRate);
         
-        // set the initial values for an oscillation amplitude of 1 and initial
-		// value of (0 + i)
-        This->rq.x = 0.0f;
-        This->rq.y = 1.0f;
+//        // set the initial values for an oscillation amplitude of 1 and initial
+//		// value of (-1 + 0i)
+//        This->rq.x = -1.0f;
+//        This->rq.y = 0.0f;
+		
+		BMQuadratureOscillator_setAngle(This,BM_QUADRATURE_OSCILLATOR_START_ANGLE);
     }
+	
+	
+	
+	
+	void BMQuadratureOscillator_setAngle(BMQuadratureOscillator *This,
+										 double angleRadians){
+		This->rq.x = cos(angleRadians);
+		This->rq.y = sin(angleRadians);
+	}
 
+	
+	
+	void BMQuadratureOscillator_setTimeInSamples(BMQuadratureOscillator *This, size_t sampleTime){
+		// the math here will not be exact due to limits of floating point precision
+		double periodInSamples = (double)This->sampleRate / (double)This->oscFreq;
+		double angleTime = fmod((double)sampleTime, periodInSamples);
+		double angle = angleTime - BM_QUADRATURE_OSCILLATOR_START_ANGLE;
+		BMQuadratureOscillator_setAngle(This, angle);
+	}
 	
 	
 	
@@ -89,8 +109,8 @@ extern "C" {
 		
         for(size_t i=0; i<numSamples; i++){
             // copy the current sample value to output
-            r[i] = This->rq.x;
-            q[i] = This->rq.y;
+            r[i] = This->rq.y;
+            q[i] = This->rq.x;
             
             // multiply the vector rq by the rotation matrix m to generate the
             // next sample of output
@@ -111,8 +131,8 @@ extern "C" {
 		}
 		
 		// copy the current sample value to output
-		*r = This->rq.x;
-		*q = This->rq.y;
+		*r = This->rq.y;
+		*q = This->rq.x;
 		
 		// compute the rotation matrix for skipping ahead numSamples
 		simd_float2x2 m;

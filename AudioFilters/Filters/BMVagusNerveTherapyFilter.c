@@ -119,9 +119,9 @@ float BMVagusNerveTherapyFilter_getFilterSkirtMaxGain(BMVagusNerveTherapyFilter 
 
 
 /*!
- *BMVagusNerveTherapyFilter_updateLFO
+ *BMVagusNerveTherapyFilter_updateLFOLimits
  */
-void BMVagusNerveTherapyFilter_updateLFO(BMVagusNerveTherapyFilter *This, bool updateSmoothly){
+void BMVagusNerveTherapyFilter_updateLFOLimits(BMVagusNerveTherapyFilter *This, bool updateSmoothly){
 	float lfoMaxGain = BMVagusNerveTherapyFilter_getFilterSkirtMaxGain(This);
 	
 	if(updateSmoothly)
@@ -136,7 +136,8 @@ void BMVagusNerveTherapyFilter_setTimeSamples(BMVagusNerveTherapyFilter *This, s
 	This->timeSamples = timeInSamples;
 	
 	// update the LFO
-	BMVagusNerveTherapyFilter_updateLFO(This,FALSE);
+	BMLFO_setTimeInSamples(&This->lfo, timeInSamples);
+	BMVagusNerveTherapyFilter_updateLFOLimits(This,FALSE);
 }
 
 
@@ -145,7 +146,7 @@ void BMVagusNerveTherapyFilter_process(BMVagusNerveTherapyFilter *This,
 									   const float *inputL, const float *inputR,
 									   float *outputL, float *outputR, size_t numSamples){
 	// Update LFO gain smoothly
-	BMVagusNerveTherapyFilter_updateLFO(This,TRUE);
+	BMVagusNerveTherapyFilter_updateLFOLimits(This,TRUE);
 	
 	// get the skirt gain from the LFO
 	float skirtGain = BMLFO_advance(&This->lfo, numSamples);

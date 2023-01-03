@@ -57,6 +57,15 @@ void BMLFO_setFrequency(BMLFO *This, float frequency);
 
 
 /*!
+ *BMLFO_setTimeInSamples
+ *
+ * @param timeInSamples Time since the start sample. This assumes that the frequency hasn't changed since the start. The result is not exact. 
+ */
+void BMLFO_setTimeInSamples(BMLFO *This, size_t timeInSamples);
+
+
+
+/*!
  *BMLFO_setUpdateTime
  *
  * @abstract sets the time it takes setMinMaxSmoothly() to complete a smooth parameter update

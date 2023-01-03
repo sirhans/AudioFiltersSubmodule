@@ -57,7 +57,7 @@ extern "C" {
 typedef struct BMQuadratureOscillator {
 	simd_float2x2 m, mPending;
 	simd_float2 rq;
-	float sampleRate, oscFreq;
+	double sampleRate, oscFreq;
 } BMQuadratureOscillator;
 
 
@@ -85,7 +85,20 @@ void BMQuadratureOscillator_init(BMQuadratureOscillator *This,
 void BMQuadratureOscillator_setFrequency(BMQuadratureOscillator *This, float fHz);
 
 
+/*!
+ *BMQuadratureOscillator_setAngle
+ *
+ * @abstract Use this if you need to start at a specific initial value
+ */
+void BMQuadratureOscillator_setAngle(BMQuadratureOscillator *This, double angleRadians);
 
+
+/*!
+ *BMQuadratureOscillator_setTimeInSamples
+ *
+ * @abstract Use this if you need to start at a specific initial time. This assumes that we started with an angle of -Pi/2 radians. (-1 + 0i) It also assumes that the frequency has not changed since time 0
+ */
+void BMQuadratureOscillator_setTimeInSamples(BMQuadratureOscillator *This, size_t sampleTime);
 
 
 /*!
@@ -144,7 +157,7 @@ void BMQuadratureOscillator_advance(BMQuadratureOscillator *This,
 
 void BMQuadratureOscillator_initMatrix(simd_float2x2* m,
 									   double frequency,
-                                       float sampleRate);
+                                       double sampleRate);
 
 
 

@@ -28,8 +28,16 @@ void BMLFO_free(BMLFO *This){
 	This->b2 = NULL;
 }
 
+
+
 void BMLFO_setFrequency(BMLFO *This, float frequency){
 	BMQuadratureOscillator_setFrequency(&This->osc, frequency);
+}
+
+
+
+void BMLFO_setTimeInSamples(BMLFO *This, size_t timeInSamples){
+	BMQuadratureOscillator_setTimeInSamples(&This->osc, timeInSamples);
 }
 
 
