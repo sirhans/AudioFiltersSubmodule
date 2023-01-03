@@ -74,18 +74,42 @@ void BMVagusNerveTherapyFilter_filterWithBiquad(BMVagusNerveTherapyFilter *This,
 
 
 
-void BMVagusNerveTherapyFilter_setTimeHMS(BMVagusNerveTherapyFilter *This, size_t hours, size_t minutes, float seconds){
+void BMVagusNerveTherapyFilter_setTimeHMS(BMVagusNerveTherapyFilter *This, size_t hours, size_t minutes, double seconds){
 	// convert from H:M:S to samples
 	size_t samplesPerSecond = (size_t)round(This->sampleRate);
 	size_t samplesPerMinute = samplesPerSecond * 60;
 	size_t samplesPerHour = samplesPerMinute * 60;
 	size_t timeSamples = hours * samplesPerHour +
 						 minutes * samplesPerMinute +
-						 (size_t)round(seconds * This->sampleRate);
+						 (size_t)round(seconds * (double)This->sampleRate);
 	
 	// set the time
 	BMVagusNerveTherapyFilter_setTimeSamples(This, timeSamples);
 }
+
+
+
+size_t BMVagusNerveTherapyFilter_getTimeSamples(BMVagusNerveTherapyFilter *This){
+	return This->timeSamples;
+}
+
+
+
+void BMVagusNerveTherapyFilter_getTimeHMS(BMVagusNerveTherapyFilter *This,
+										  size_t *hours,
+										  size_t *minutes,
+										  double *seconds){
+	double samplesPerSecond = This->sampleRate;
+	size_t samplesPerMinute = (size_t)round(This->sampleRate * 60.0);
+	size_t samplesPerHour = (size_t)round(This->sampleRate * 60.0 * 60.0);
+	size_t remainder;
+	
+	*hours = This->timeSamples / samplesPerHour;
+	*minutes = (This->timeSamples - (*hours * samplesPerHour)) / samplesPerMinute;
+	remainder = This->timeSamples - (*hours * samplesPerHour) - (*minutes * samplesPerMinute);
+	*seconds = (double)remainder / samplesPerSecond;
+}
+
 
 
 

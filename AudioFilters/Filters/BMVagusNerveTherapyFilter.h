@@ -44,7 +44,7 @@ void BMVagusNerveTherapyFilter_free(BMVagusNerveTherapyFilter *This);
  *
  * @abstract set time in hours, minutes, and seconds
  */
-void BMVagusNerveTherapyFilter_setTimeHMS(BMVagusNerveTherapyFilter *This, size_t hours, size_t minutes, float seconds);
+void BMVagusNerveTherapyFilter_setTimeHMS(BMVagusNerveTherapyFilter *This, size_t hours, size_t minutes, double seconds);
 
 
 /*!
@@ -53,6 +53,21 @@ void BMVagusNerveTherapyFilter_setTimeHMS(BMVagusNerveTherapyFilter *This, size_
  * @abstract set time in samples, counting from the beginning of the 5 hour course that resets every 30 days.
  */
 void BMVagusNerveTherapyFilter_setTimeSamples(BMVagusNerveTherapyFilter *This, size_t timeInSamples);
+
+
+/*!
+ *BMVagusNerveTherapyFilter_getTimeSamples
+ */
+size_t BMVagusNerveTherapyFilter_getTimeSamples(BMVagusNerveTherapyFilter *This);
+
+
+/*!
+ *BMVagusNerveTherapyFilter_getTimeHMS
+ */
+void BMVagusNerveTherapyFilter_getTimeHMS(BMVagusNerveTherapyFilter *This,
+										  size_t *hours,
+										  size_t *minutes,
+										  double *seconds);
 
 
 /*!
