@@ -19,8 +19,8 @@ void BMSmoothValue_init(BMSmoothValue *This, float updateTimeSeconds, float samp
 	This->pendingTargetValue = 0.0f;
 	This->updateProgress = This->updateTimeInSamples;
 	This->pendingUpdateTimeInSamples = This->updateTimeInSamples;
-	This->incrementSet = FALSE;
-	This->immediateUpdate = FALSE;
+	This->incrementSet = false;
+	This->immediateUpdate = false;
 }
 
 
@@ -34,6 +34,7 @@ void BMSmoothValue_setIncrement(BMSmoothValue *This){
 	if(This->immediateUpdate){
 		This->currentValue = This->targetValue;
 		This->updateProgress = This->updateTimeInSamples;
+		This->immediateUpdate = false;
 	}
 	// if the update is gradual, start at 0
 	else{
@@ -42,7 +43,7 @@ void BMSmoothValue_setIncrement(BMSmoothValue *This){
 	
 	// compute the per-sample increment to reach the target on time
 	This->increment = (This->targetValue - This->currentValue) / (float)This->updateTimeInSamples;
-	This->incrementSet = TRUE;
+	This->incrementSet = true;
 }
 
 
@@ -55,16 +56,19 @@ void BMSmoothValue_setUpdateTime(BMSmoothValue *This, float updateTimeSeconds){
 
 void BMSmoothValue_setValueSmoothly(BMSmoothValue *This, float value){
 	This->pendingTargetValue = value;
-	This->immediateUpdate = FALSE;
-	This->incrementSet = FALSE; // flag the increment as unset, but let the audio thread do the computation
+	This->incrementSet = false; // flag the increment as unset, but let the audio thread do the computation
+	
+	// we do not set immediate update to false here because if there is an
+	// immediate update pending we want to allow it to continue.
+	// This->immediateUpdate = false;
 }
 
 
 
 void BMSmoothValue_setValueImmediately(BMSmoothValue *This, float value){
 	This->pendingTargetValue = value;
-	This->immediateUpdate = TRUE;
-	This->incrementSet = FALSE;
+	This->immediateUpdate = true;
+	This->incrementSet = false;
 }
 
 

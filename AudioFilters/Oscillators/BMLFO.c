@@ -68,12 +68,6 @@ void BMLFO_setMinMaxSmoothly(BMLFO *This, float minVal, float maxVal){
 
 
 
-void BMLFO_setUpdateTime(BMLFO *This, float timeSeconds){
-	BMSmoothValue_setUpdateTime(&This->scale, timeSeconds);
-	BMSmoothValue_setUpdateTime(&This->minValue, timeSeconds);
-}
-
-
 
 void BMLFO_setMinMaxImmediately(BMLFO *This, float minVal, float maxVal){
 	
@@ -94,6 +88,13 @@ void BMLFO_setMinMaxImmediately(BMLFO *This, float minVal, float maxVal){
 	// == [-(max-min)*0.5 + ((max - min) * 0.5), (max-min)*0.5 + ((max - min) * 0.5)] + min
 	// == [0,(max-min)] + min
 	// == [min,max]
+}
+
+
+
+void BMLFO_setUpdateTime(BMLFO *This, float timeSeconds){
+	BMSmoothValue_setUpdateTime(&This->scale, timeSeconds);
+	BMSmoothValue_setUpdateTime(&This->minValue, timeSeconds);
 }
 
 

@@ -161,7 +161,7 @@ void BMVagusNerveTherapyFilter_setTimeSamples(BMVagusNerveTherapyFilter *This, s
 	
 	// update the LFO
 	BMLFO_setTimeInSamples(&This->lfo, timeInSamples);
-	BMVagusNerveTherapyFilter_updateLFOLimits(This,FALSE);
+	BMVagusNerveTherapyFilter_updateLFOLimits(This,false);
 	BMMUltiLevelSVF_forceImmediateUpdate(&This->svf);
 }
 
