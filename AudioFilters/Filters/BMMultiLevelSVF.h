@@ -54,7 +54,7 @@ typedef struct BMMultiLevelSVF{
     size_t numLevels;
     size_t numChannels;
     double sampleRate;
-    bool shouldUpdateParam;
+    bool shouldUpdateParam, updateImmediately;
 	bool filterSweep;
 	os_unfair_lock lock;
 	BMMultiLevelBiquad biquadHelper; // we have this so that we can reuse some functions such as the ones for plotting transfer functions
@@ -176,7 +176,6 @@ void BMMultiLevelSVF_impulseResponse(BMMultiLevelSVF *This,size_t frameCount);
 void BMMultiLevelSVF_enableFilterSweep(BMMultiLevelSVF *This, bool sweepOn);
 
 
-
 /*!
  *BMMultiLevelSVF_copyStateFromBiquadHelper
  *
@@ -193,6 +192,13 @@ void BMMultiLevelSVF_enableFilterSweep(BMMultiLevelSVF *This, bool sweepOn);
  */
 void BMMultiLevelSVF_copyStateFromBiquadHelper(BMMultiLevelSVF *This);
 
+
+/*!
+ *BMMUltiLevelSVF_forceImmediateUpdate
+ *
+ * @abstract call this to force the filter to do the currently queued update immediately even when smooth update is on
+ */
+void BMMUltiLevelSVF_forceImmediateUpdate(BMMultiLevelSVF *This);
 
 
 #endif /* BMMultiLevelSVF_h */

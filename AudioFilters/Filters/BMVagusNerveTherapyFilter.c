@@ -138,18 +138,12 @@ void BMVagusNerveTherapyFilter_setTimeSamples(BMVagusNerveTherapyFilter *This, s
 	// update the LFO
 	BMLFO_setTimeInSamples(&This->lfo, timeInSamples);
 	BMVagusNerveTherapyFilter_updateLFOLimits(This,FALSE);
+	BMMUltiLevelSVF_forceImmediateUpdate(&This->svf);
 }
 
 
 
-void BMVagusNerveTherapyFilter_process(BMVagusNerveTherapyFilter *This,
-									   const float *inputL, const float *inputR,
-									   float *outputL, float *outputR, size_t numSamples){
-	// Update LFO gain smoothly
-	BMVagusNerveTherapyFilter_updateLFOLimits(This,TRUE);
-	
-	// get the skirt gain from the LFO
-	float skirtGain = BMLFO_advance(&This->lfo, numSamples);
+void BMVagusNergeTherapyFilter_setFilters(BMVagusNerveTherapyFilter *This, float skirtGain, bool setSmoothly){
 	
 	// calculate the filter Q. The idea here is that we want the Q to be at its
 	// minimum value when the skirt gain is 0dB, because that prevents a trough
@@ -184,6 +178,21 @@ void BMVagusNerveTherapyFilter_process(BMVagusNerveTherapyFilter *This,
 		BMMultiLevelSVF_setBellWithSkirt(&This->svf, BMVNTF_FILTER_ONE_FC, bellGainDb, skirtGain, filterQ, 2);
 		BMMultiLevelSVF_setBellWithSkirt(&This->svf, BMVNTF_FILTER_TWO_FC, bellGainDb, skirtGain, filterQ, 3);
 	}
+}
+
+
+
+void BMVagusNerveTherapyFilter_process(BMVagusNerveTherapyFilter *This,
+									   const float *inputL, const float *inputR,
+									   float *outputL, float *outputR, size_t numSamples){
+
+	// update the LFO and get the skirt gain
+	bool setSmoothly = true;
+	BMVagusNerveTherapyFilter_updateLFOLimits(This, setSmoothly);
+	float skirtGain = BMLFO_advance(&This->lfo, numSamples);
+	
+	// update the filters
+	BMVagusNergeTherapyFilter_setFilters(This, skirtGain, setSmoothly);
 		
 	// process audio
 	if(This->filterWithBiquad)

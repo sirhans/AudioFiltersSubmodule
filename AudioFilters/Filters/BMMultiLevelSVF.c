@@ -18,7 +18,11 @@ static inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF *This,
                                                         float* output,
                                                         size_t numSamples);
 
+
+
 static inline void BMMultiLevelSVF_updateSVFParam(BMMultiLevelSVF *This);
+
+
 
 void BMMultiLevelSVF_init(BMMultiLevelSVF *This, size_t numLevels,float sampleRate,
 						  bool isStereo){
@@ -30,7 +34,9 @@ void BMMultiLevelSVF_init(BMMultiLevelSVF *This, size_t numLevels,float sampleRa
 	This->sampleRate = sampleRate;
 	This->numChannels = isStereo? 2 : 1;
 	This->numLevels = numLevels;
-	This->filterSweep = FALSE;
+	This->filterSweep = false;
+	This->shouldUpdateParam = false;
+	This->updateImmediately = false;
 	This->lock = OS_UNFAIR_LOCK_INIT;
 	//If stereo -> we need totalnumlevel = numlevel *2
 	size_t totalNumLevels = numLevels * This->numChannels;
@@ -150,6 +156,10 @@ void BMMultiLevelSVF_enableFilterSweep(BMMultiLevelSVF *This, bool sweepOn){
 	This->filterSweep = sweepOn;
 }
 
+void BMMUltiLevelSVF_forceImmediateUpdate(BMMultiLevelSVF *This){
+	This->updateImmediately = true;
+}
+
 
 #pragma mark - process
 void BMMultiLevelSVF_processBufferMono(BMMultiLevelSVF *This,
@@ -158,8 +168,7 @@ void BMMultiLevelSVF_processBufferMono(BMMultiLevelSVF *This,
                                        size_t numSamples){
     assert(This->numChannels == 1);
 	
-	// if not filter sweeping, update parameters now
-    if(This->shouldUpdateParam && !This->filterSweep)
+    if(This->shouldUpdateParam)
         BMMultiLevelSVF_updateSVFParam(This);
     
     for(int level = 0;level<This->numLevels;level++){
@@ -169,21 +178,18 @@ void BMMultiLevelSVF_processBufferMono(BMMultiLevelSVF *This,
         }else
             BMMultiLevelSVF_processBufferAtLevel(This, level, 0, output, output, numSamples);
     }
-	
-	// if we are filter sweeping, call the function to update the parameters
-	// after filtering. This updates the current parameters to match the targets,
-	// which ends the sweep.
-	if(This->shouldUpdateParam && This->filterSweep)
-		BMMultiLevelSVF_updateSVFParam(This);
 }
+
+
+
 
 void BMMultiLevelSVF_processBufferStereo(BMMultiLevelSVF *This,
                                          const float* inputL, const float* inputR,
                                          float* outputL, float* outputR, size_t numSamples){
     assert(This->numChannels == 2);
     
-	// if we aren't filter sweeping, update the parameters before filtering
-    if(This->shouldUpdateParam && !This->filterSweep)
+	// update the parameters
+    if(This->shouldUpdateParam)
         BMMultiLevelSVF_updateSVFParam(This);
     
     for(int level = 0;level<This->numLevels;level++){
@@ -202,13 +208,55 @@ void BMMultiLevelSVF_processBufferStereo(BMMultiLevelSVF *This,
             // + This->numLevels
         }
     }
-	
-	// if we are filter sweeping, call the function to update the parameters
-	// after filtering. This updates the current parameters to match the targets,
-	// which ends the sweep.
-	if(This->shouldUpdateParam && This->filterSweep)
-		BMMultiLevelSVF_updateSVFParam(This);
 }
+
+
+void BMMultiLevelSVF_stageTwoParameterUpdate(BMMultiLevelSVF *This, size_t level){
+	// parameter updates stage 2
+	This->g0[level] = This->g0_target[level];
+	This->g1[level] = This->g1_target[level];
+	This->g2[level] = This->g2_target[level];
+	This->m0[level] = This->m0_target[level];
+	This->m1[level] = This->m1_target[level];
+	This->m2[level] = This->m2_target[level];
+	This->k[level]  = This->k_target[level];
+}
+
+
+void BMMultiLevelSVF_calculateInterpolatedCoefficients(BMMultiLevelSVF *This,
+													   size_t level,
+													   size_t numSamples){
+	// compute interpolated coefficients.
+	//
+	// with each sample of audio input, the filter coefficients change by
+	// how much?
+	float g0inc = (This->g0_target[level] - This->g0[level]) / numSamples;
+	float g1inc = (This->g1_target[level] - This->g1[level]) / numSamples;
+	float g2inc = (This->g2_target[level] - This->g2[level]) / numSamples;
+	float m0inc = (This->m0_target[level] - This->m0[level]) / numSamples;
+	float m1inc = (This->m1_target[level] - This->m1[level]) / numSamples;
+	float m2inc = (This->m2_target[level] - This->m2[level]) / numSamples;
+	float kinc  = (This->k_target[level]  - This->k[level])  / numSamples;
+	
+	// These ramps will stop one sample short of reaching the target value.
+	// The targets will be reached on the first sample of the next call to
+	// this function because the calling function will call the coefficient
+	// update function, which will copy from g_target to g and m_target to m;
+	vDSP_vramp(&This->g0[level], &g0inc, This->g0_interp, 1, numSamples);
+	vDSP_vramp(&This->g1[level], &g1inc, This->g1_interp, 1, numSamples);
+	vDSP_vramp(&This->g2[level], &g2inc, This->g2_interp, 1, numSamples);
+	vDSP_vramp(&This->m0[level], &m0inc, This->m0_interp, 1, numSamples);
+	vDSP_vramp(&This->m1[level], &m1inc, This->m1_interp, 1, numSamples);
+	vDSP_vramp(&This->m2[level], &m2inc, This->m2_interp, 1, numSamples);
+	vDSP_vramp(&This->k[level],  &kinc,  This->k_interp,  1, numSamples);
+	
+	BMMultiLevelSVF_stageTwoParameterUpdate(This, level);
+}
+
+
+
+
+
 
 
 inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF *This,
@@ -229,29 +277,7 @@ inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF *This,
 		// after each one. 
 		assert (numSamples <= BM_BUFFER_CHUNK_SIZE);
 		
-		// compute interpolated coefficients.
-		//
-		// with each sample of audio input, the filter coefficients change by
-		// how much?
-		float g0inc = (This->g0_target[level] - This->g0[level]) / numSamples;
-		float g1inc = (This->g1_target[level] - This->g1[level]) / numSamples;
-		float g2inc = (This->g2_target[level] - This->g2[level]) / numSamples;
-		float m0inc = (This->m0_target[level] - This->m0[level]) / numSamples;
-		float m1inc = (This->m1_target[level] - This->m1[level]) / numSamples;
-		float m2inc = (This->m2_target[level] - This->m2[level]) / numSamples;
-		float kinc  = (This->k_target[level]  - This->k[level])  / numSamples;
-		
-		// These ramps will stop one sample short of reaching the target value.
-		// The targets will be reached on the first sample of the next call to
-		// this function because the calling function will call the coefficient
-		// update function, which will copy from g_target to g and m_target to m;
-		vDSP_vramp(&This->g0[level], &g0inc, This->g0_interp, 1, numSamples);
-		vDSP_vramp(&This->g1[level], &g1inc, This->g1_interp, 1, numSamples);
-		vDSP_vramp(&This->g2[level], &g2inc, This->g2_interp, 1, numSamples);
-		vDSP_vramp(&This->m0[level], &m0inc, This->m0_interp, 1, numSamples);
-		vDSP_vramp(&This->m1[level], &m1inc, This->m1_interp, 1, numSamples);
-		vDSP_vramp(&This->m2[level], &m2inc, This->m2_interp, 1, numSamples);
-		vDSP_vramp(&This->k[level],  &kinc,  This->k_interp,  1, numSamples);
+		BMMultiLevelSVF_calculateInterpolatedCoefficients(This, level, numSamples);
 		
 		// get pointers to simplify notation
 		float *g0 = This->g0_interp;
@@ -279,6 +305,7 @@ inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF *This,
 			output[i] = (m0[i] * high) + (m1[i] * band) + (m2[i] * low);
 		}
 	} else {
+		BMMultiLevelSVF_stageTwoParameterUpdate(This, level);
 		
 		float g0 = This->g0[level];
 		float g1 = This->g1[level];
@@ -308,11 +335,34 @@ inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF *This,
 
 
 inline void BMMultiLevelSVF_updateSVFParam(BMMultiLevelSVF *This){
-    if(This->shouldUpdateParam){
-		This->shouldUpdateParam = false;
-		
-        //Update all param
-        for(int i=0;i<This->numLevels;i++){
+	This->shouldUpdateParam = false;
+	
+	// update everything NOW, don't fade smoothly
+	if(This->updateImmediately){
+		This->updateImmediately = false;
+		for(int i=0;i<This->numLevels;i++){
+			// stage 1
+			This->g0_target[i] = This->g0_pending[i];
+			This->g1_target[i] = This->g1_pending[i];
+			This->g2_target[i] = This->g2_pending[i];
+			This->m0_target[i] = This->m0_pending[i];
+			This->m1_target[i] = This->m1_pending[i];
+			This->m2_target[i] = This->m2_pending[i];
+			This->k_target[i]  = This->k_pending[i];
+			
+			// stage 2
+			This->g0[i] = This->g0_target[i];
+			This->g1[i] = This->g1_target[i];
+			This->g2[i] = This->g2_target[i];
+			This->m0[i] = This->m0_target[i];
+			This->m1[i] = This->m1_target[i];
+			This->m2[i] = This->m2_target[i];
+			This->k[i]  = This->k_target[i];
+		}
+	}
+	// update with a smooth fade over the next audio buffer
+	else {
+		for(int i=0;i<This->numLevels;i++){
 			// we do updates in two stages. This eliminates conflicts that would
 			// occur if the coefficient updates are executed on the UI thread
 			// while processing is going on the audio thread
@@ -334,19 +384,13 @@ inline void BMMultiLevelSVF_updateSVFParam(BMMultiLevelSVF *This){
 			// if we didn't get the lock, schedule another update. Hopefully
 			// we will get the lock next time.
 			else {
-				This->shouldUpdateParam = TRUE;
+				This->shouldUpdateParam = true;
 			}
 			
-			// stage 2: this updates the values that are used on the audio thread
-			This->g0[i] = This->g0_target[i];
-			This->g1[i] = This->g1_target[i];
-			This->g2[i] = This->g2_target[i];
-			This->m0[i] = This->m0_target[i];
-			This->m1[i] = This->m1_target[i];
-			This->m2[i] = This->m2_target[i];
-			This->k[i]  = This->k_target[i];
-        }
-    }
+			// stage 2: This update should be done on the audio thread by
+			// calling BMMultiLevelSVF_stageTwoParameterUpdate()
+		}
+	}
 }
 
 #pragma mark - Filters
