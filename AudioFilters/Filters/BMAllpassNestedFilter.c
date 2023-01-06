@@ -10,6 +10,7 @@
 #include "Constants.h"
 #include <Accelerate/Accelerate.h>
 
+
 void BMAllpassFilterData_init(BMAllpassFilterData* This,size_t delaySamples,float dc1, float dc2);
 void BMAllpassFilterData_destroy(BMAllpassFilterData* This);
 
