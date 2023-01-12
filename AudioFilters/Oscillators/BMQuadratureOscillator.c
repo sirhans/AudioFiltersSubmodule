@@ -69,6 +69,10 @@ extern "C" {
 	}
 
 	
+	float BMQuadratureOscillator_getAngle(BMQuadratureOscillator *This){
+		return atan2f(This->rq.y, This->rq.x);
+	}
+	
 	
 	void BMQuadratureOscillator_setTimeInSamples(BMQuadratureOscillator *This, size_t sampleTime){
 		// the math here will not be exact due to limits of floating point precision

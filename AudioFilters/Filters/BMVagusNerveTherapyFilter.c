@@ -8,7 +8,7 @@
 
 #include "BMVagusNerveTherapyFilter.h"
 
-#define BMVNTF_MIN_DB -17.0f
+#define BMVNTF_MIN_SKIRT_DB -17.0f
 #define BMVNTF_MAX_SKIRT_DB_START -15.0f
 #define BMVNTF_MAX_SKIRT_DB_END -4.0f
 #define BMVNTF_END_TIME_HOURS 5.0
@@ -26,7 +26,7 @@ void BMVagusNerveTherapyFilter_init(BMVagusNerveTherapyFilter *This, float sampl
 	size_t numSVFFilters = 4;
 	size_t numFixedFilters = 2;
 	float lfoFreq = BMVNTF_LFO_FC;
-	float lfoMin = BMVNTF_MIN_DB;
+	float lfoMin = BMVNTF_MIN_SKIRT_DB;
 	float lfoMax = BMVNTF_MAX_SKIRT_DB_START;
 	This->getCoefficientsFromBiquadHelper = FALSE;
 	This->filterWithBiquad = FALSE;
@@ -49,7 +49,7 @@ void BMVagusNerveTherapyFilter_init(BMVagusNerveTherapyFilter *This, float sampl
 	This->endTimeSamples = (size_t)round(BMVNTF_END_TIME_HOURS * 60.0 * 60.0 * (double)sampleRate);
 	
 	// initialise the LFO
-	BMLFO_setMinMaxImmediately(&This->lfo, BMVNTF_MIN_DB, BMVNTF_MAX_SKIRT_DB_START);
+	BMLFO_setMinMaxImmediately(&This->lfo, BMVNTF_MIN_SKIRT_DB, BMVNTF_MAX_SKIRT_DB_START);
 }
 
 
@@ -142,6 +142,21 @@ float BMVagusNerveTherapyFilter_getFilterSkirtMaxGain(BMVagusNerveTherapyFilter 
 
 
 
+
+float BMVagusNerveTherapyFilter_getLFOAngle(BMVagusNerveTherapyFilter *This){
+	return BMLFO_getAngle(&This->lfo);
+}
+
+
+
+float BMVagusNerveTherapyFilter_getLFORangeAsFraction(BMVagusNerveTherapyFilter *This){
+	float currentRange = This->lfo.scale.currentValue * 2.0;
+	float endRange = BMVNTF_MAX_SKIRT_DB_END - BMVNTF_MIN_SKIRT_DB;
+	return currentRange / endRange;
+}
+
+
+
 /*!
  *BMVagusNerveTherapyFilter_updateLFOLimits
  */
@@ -149,9 +164,9 @@ void BMVagusNerveTherapyFilter_updateLFOLimits(BMVagusNerveTherapyFilter *This, 
 	float lfoMaxGain = BMVagusNerveTherapyFilter_getFilterSkirtMaxGain(This);
 	
 	if(updateSmoothly)
-		BMLFO_setMinMaxSmoothly(&This->lfo, BMVNTF_MIN_DB, lfoMaxGain);
+		BMLFO_setMinMaxSmoothly(&This->lfo, BMVNTF_MIN_SKIRT_DB, lfoMaxGain);
 	else
-		BMLFO_setMinMaxImmediately(&This->lfo, BMVNTF_MIN_DB, lfoMaxGain);
+		BMLFO_setMinMaxImmediately(&This->lfo, BMVNTF_MIN_SKIRT_DB, lfoMaxGain);
 }
 
 
@@ -175,13 +190,13 @@ void BMVagusNergeTherapyFilter_setFilters(BMVagusNerveTherapyFilter *This, float
 	// as the skirt gain falls lower, with a maximum Q of 2.3.
 	float minQ = 1.5f;
 	float maxQ = 2.3f;
-	float filterQ = minQ + ((maxQ - minQ) * (skirtGain / BMVNTF_MIN_DB));
+	float filterQ = minQ + ((maxQ - minQ) * (skirtGain / BMVNTF_MIN_SKIRT_DB));
 	
 	// the gain at the peak of filter one is affected by the skirt of filter 2
 	// and vice versa. To keep the peaks at 0 dB we found the following function
 	// in Mathematica. We found it by trial and error. It is not exact.
 	// BellGain = 3.6 (skirtG/-30) + Sin[\[Pi] (skirtG/-30)^(2/3)]
-	float skirtGainExcursion = (skirtGain / BMVNTF_MIN_DB);
+	float skirtGainExcursion = (skirtGain / BMVNTF_MIN_SKIRT_DB);
 	float bellGainDb = 3.6 * skirtGainExcursion;
 	bellGainDb += sin(M_PI * pow(skirtGainExcursion,3.0/5.0));
 	

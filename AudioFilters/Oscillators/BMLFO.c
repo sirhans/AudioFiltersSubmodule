@@ -8,6 +8,7 @@
 
 #include "BMLFO.h"
 #include <Accelerate/Accelerate.h>
+#include <math.h>
 #define BMLFO_PARAMETER_UPDATE_TIME_SECONDS 1.0
 
 void BMLFO_init(BMLFO *This, float frequency, float minVal, float maxVal, float sampleRate){
@@ -142,4 +143,9 @@ float BMLFO_advance(BMLFO *This, size_t numSamples){
 	r += shift;
 
 	return r;
+}
+
+
+float BMLFO_getAngle(BMLFO *This){
+	return BMQuadratureOscillator_getAngle(&This->osc);
 }

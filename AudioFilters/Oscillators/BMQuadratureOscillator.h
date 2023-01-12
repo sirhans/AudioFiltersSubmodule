@@ -93,6 +93,17 @@ void BMQuadratureOscillator_setFrequency(BMQuadratureOscillator *This, float fHz
 void BMQuadratureOscillator_setAngle(BMQuadratureOscillator *This, double angleRadians);
 
 
+
+/*!
+ *BMQuadratureOscillator_getAngle
+ *
+ * @returns the current angle (radians) of the oscillator on the unit circle
+ */
+float BMQuadratureOscillator_getAngle(BMQuadratureOscillator *This);
+
+
+
+
 /*!
  *BMQuadratureOscillator_setTimeInSamples
  *

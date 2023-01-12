@@ -112,6 +112,12 @@ void BMLFO_setMinMaxImmediately(BMLFO *This, float minVal, float maxVal);
 float BMLFO_advance(BMLFO *This, size_t numSamples);
 
 
+/*!
+ *BMLFO_getAngle
+ *
+ * @returns the current angle in radians of the internal oscillator
+ */
+float BMLFO_getAngle(BMLFO *This)
 
 
 

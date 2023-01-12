@@ -70,6 +70,25 @@ void BMVagusNerveTherapyFilter_getTimeHMS(BMVagusNerveTherapyFilter *This,
 										  double *seconds);
 
 
+
+/*!
+ *BMVagusNerveTherapyFilter_getLFOAngle
+ *
+ * @abstract returns the angle in radians of the internal low frequency oscillator
+ */
+float BMVagusNerveTherapyFilter_getLFOAngle(BMVagusNerveTherapyFilter *This);
+
+
+
+/*!
+ *BMVagusNerveTherapyFilter_getLFORangeAsFraction
+ *
+ * @returns the current LFO Range as a fraction of its ending range. For example, if the LFO is currently oscillating in a range between -10 and -6 db, then the current range is 4 dB. If the range at the end of the monthly course is 6dB then the current range is 4/6 = 2/3 of the ending range.
+ */
+float BMVagusNerveTherapyFilter_getLFORangeAsFraction(BMVagusNerveTherapyFilter *This);
+
+
+
 /*!
  *BMVagusNerveTherapyFilter_process
  */
