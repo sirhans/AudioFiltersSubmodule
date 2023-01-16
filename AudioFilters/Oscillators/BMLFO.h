@@ -117,7 +117,7 @@ float BMLFO_advance(BMLFO *This, size_t numSamples);
  *
  * @returns the current angle in radians of the internal oscillator
  */
-float BMLFO_getAngle(BMLFO *This)
+float BMLFO_getAngle(BMLFO *This);
 
 
 
