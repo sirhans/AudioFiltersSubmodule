@@ -14,13 +14,14 @@
 void BMLFO_init(BMLFO *This, float frequency, float minVal, float maxVal, float sampleRate){
 	BMQuadratureOscillator_init(&This->osc, frequency, sampleRate);
 	BMSmoothValue_init(&This->minValue, BMLFO_PARAMETER_UPDATE_TIME_SECONDS, sampleRate);
-	BMSmoothValue_setValueImmediately(&This->minValue, minVal);
 	BMSmoothValue_init(&This->scale, BMLFO_PARAMETER_UPDATE_TIME_SECONDS, sampleRate);
-	BMSmoothValue_setValueImmediately(&This->scale, maxVal - minVal);
+	BMLFO_setMinMaxImmediately(This, minVal, maxVal);
 	
 	This->b1 = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
 	This->b2 = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
 }
+
+
 
 void BMLFO_free(BMLFO *This){
 	free(This->b1);
@@ -123,6 +124,8 @@ void BMLFO_process(BMLFO *This, float *output, size_t numSamples){
 		// update the progress count
 		samplesRemaining -= samplesProcessing;
 	}
+	
+	This->lastOutput = output[numSamples-1];
 }
 
 
@@ -141,9 +144,20 @@ float BMLFO_advance(BMLFO *This, size_t numSamples){
 	// get the shift and apply it to the oscillator output.
 	float shift = BMSmoothValue_advance(&This->minValue, numSamples);
 	r += shift;
+	
+	This->lastOutput = r;
 
 	return r;
 }
+
+
+
+
+float BMLFO_getLastValue(BMLFO *This){
+	return This->lastOutput;
+}
+
+
 
 
 float BMLFO_getAngle(BMLFO *This){

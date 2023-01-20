@@ -17,7 +17,7 @@
 typedef struct BMLFO {
 	BMQuadratureOscillator osc;
 	BMSmoothValue minValue, scale;
-	float *b1, *b2;
+	float *b1, *b2, lastOutput;
 } BMLFO;
 
 
@@ -110,6 +110,14 @@ void BMLFO_setMinMaxImmediately(BMLFO *This, float minVal, float maxVal);
  *
  */
 float BMLFO_advance(BMLFO *This, size_t numSamples);
+
+
+/*!
+ *BMLFO_getLastValue
+ *
+ * @returns the last output from either BMLFO_advance or BMLFO_process. This is useful for updating indicators on the GUI that monitor the position of the LFO.
+ */
+float BMLFO_getLastValue(BMLFO *This);
 
 
 /*!

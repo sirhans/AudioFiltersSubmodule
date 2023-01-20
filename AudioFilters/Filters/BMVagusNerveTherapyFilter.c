@@ -8,8 +8,8 @@
 
 #include "BMVagusNerveTherapyFilter.h"
 
-#define BMVNTF_MIN_SKIRT_DB -17.0f
-#define BMVNTF_MAX_SKIRT_DB_START -15.0f
+#define BMVNTF_MIN_SKIRT_DB -18.0f
+#define BMVNTF_MAX_SKIRT_DB_START -16.0f
 #define BMVNTF_MAX_SKIRT_DB_END -4.0f
 #define BMVNTF_END_TIME_HOURS 5.0
 #define BMVNTF_FILTER_ONE_FC 858.854
@@ -30,6 +30,7 @@ void BMVagusNerveTherapyFilter_init(BMVagusNerveTherapyFilter *This, float sampl
 	float lfoMax = BMVNTF_MAX_SKIRT_DB_START;
 	This->getCoefficientsFromBiquadHelper = FALSE;
 	This->filterWithBiquad = FALSE;
+	This->statusPrintCounter = 0;
 	
 	BMMultiLevelSVF_init(&This->svf, numSVFFilters, sampleRate, stereo);
 	BMMultiLevelBiquad_init(&This->fixedFilters, numFixedFilters, sampleRate, true, false, false);
@@ -47,9 +48,6 @@ void BMVagusNerveTherapyFilter_init(BMVagusNerveTherapyFilter *This, float sampl
 	
 	// calculate how long the filter time will be in samples
 	This->endTimeSamples = (size_t)round(BMVNTF_END_TIME_HOURS * 60.0 * 60.0 * (double)sampleRate);
-	
-	// initialise the LFO
-	BMLFO_setMinMaxImmediately(&This->lfo, BMVNTF_MIN_SKIRT_DB, BMVNTF_MAX_SKIRT_DB_START);
 }
 
 
@@ -182,7 +180,33 @@ void BMVagusNerveTherapyFilter_setTimeSamples(BMVagusNerveTherapyFilter *This, s
 
 
 
-void BMVagusNergeTherapyFilter_setFilters(BMVagusNerveTherapyFilter *This, float skirtGain, bool setSmoothly){
+void BMVagusNerveTherapyFilter_printStatus(BMVagusNerveTherapyFilter *This){
+	printf("\n");
+	printf("*******************************\n");
+	printf("*    THERAPY FILTER STATUS    *\n");
+	printf("*******************************\n");
+	size_t h,m;
+	double s;
+	BMVagusNerveTherapyFilter_getTimeHMS(This, &h, &m, &s);
+	printf("Time: %zu:%zu:%f\n", h, m, s);
+	float theta = BMVagusNerveTherapyFilter_getLFOAngle(This);
+	printf("LFO angle: %f\n", theta);
+	float skirtGain = 4.0 * BMLFO_getLastValue(&This->lfo);
+	printf("Skirt Gain: %f\n", skirtGain);
+	float maxSkirtGain = 4.0 * BMVagusNerveTherapyFilter_getFilterSkirtMaxGain(This);
+	printf("Skirt Max Gain: %f\n", maxSkirtGain);
+	printf("\n");
+}
+
+
+
+
+void BMVagusNerveTherapyFilter_setFilters(BMVagusNerveTherapyFilter *This, float skirtGain, bool setSmoothly){
+//	// PRINT FILTER STATUS FOR DEBUGGING
+//	if(200 == This->statusPrintCounter++){
+//		This->statusPrintCounter = 0;
+//		BMVagusNerveTherapyFilter_printStatus(This);
+//	}
 	
 	// calculate the filter Q. The idea here is that we want the Q to be at its
 	// minimum value when the skirt gain is 0dB, because that prevents a trough
@@ -231,7 +255,7 @@ void BMVagusNerveTherapyFilter_process(BMVagusNerveTherapyFilter *This,
 	float skirtGain = BMLFO_advance(&This->lfo, numSamples);
 	
 	// update the filters
-	BMVagusNergeTherapyFilter_setFilters(This, skirtGain, setSmoothly);
+	BMVagusNerveTherapyFilter_setFilters(This, skirtGain, setSmoothly);
 		
 	// process audio
 	if(This->filterWithBiquad)

@@ -21,7 +21,7 @@ typedef struct BMVagusNerveTherapyFilter {
 	BMMultiLevelSVF svf;
 	BMMultiLevelBiquad fixedFilters;
 	BMLFO lfo;
-	size_t timeSamples, endTimeSamples;
+	size_t timeSamples, endTimeSamples, statusPrintCounter;
 	float sampleRate;
 	bool getCoefficientsFromBiquadHelper, filterWithBiquad;
 } BMVagusNerveTherapyFilter;

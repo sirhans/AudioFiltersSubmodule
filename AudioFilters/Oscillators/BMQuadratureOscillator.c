@@ -23,7 +23,7 @@
 extern "C" {
 #endif
 	
-#define BM_QUADRATURE_OSCILLATOR_START_ANGLE -M_PI_2
+#define BM_QUADRATURE_OSCILLATOR_START_ANGLE -1.0 * M_PI_2
     
 	
     void BMQuadratureOscillator_initMatrix(simd_float2x2* m,
@@ -77,9 +77,12 @@ extern "C" {
 	void BMQuadratureOscillator_setTimeInSamples(BMQuadratureOscillator *This, size_t sampleTime){
 		// the math here will not be exact due to limits of floating point precision
 		double periodInSamples = (double)This->sampleRate / (double)This->oscFreq;
-		double angleTime = fmod((double)sampleTime, periodInSamples);
-		double angle = angleTime - BM_QUADRATURE_OSCILLATOR_START_ANGLE;
+		double timeInRadians = (2.0 * M_PI) * fmod((double)sampleTime, periodInSamples) / periodInSamples;
+		double angle = timeInRadians + BM_QUADRATURE_OSCILLATOR_START_ANGLE;
 		BMQuadratureOscillator_setAngle(This, angle);
+//		printf("\nQuadrature Oscillator set angle: %f\n", angle);
+		angle = BMQuadratureOscillator_getAngle(This);
+//		printf("Quadrature Oscillator get angle: %f\n", angle);
 	}
 	
 	
