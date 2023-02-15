@@ -18,6 +18,10 @@
 #include "BMCrossover.h"
 #include "Constants.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define BMAS_DELAY_AT_48KHZ_SAMPLES 30.0f
 #define BMAS_AF_NUMLEVELS 1
 #define BMAS_RF_NUMLEVELS 3
@@ -131,5 +135,9 @@ bool BMMultibandAttackShaper_sidechainNoiseGateIsOpen(BMMultibandAttackShaper *T
  * @returns the latency in seconds
  */
 float BMMultibandAttackShaper_getLatencyInSeconds(BMMultibandAttackShaper *This);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* BMAttackShaper_h */

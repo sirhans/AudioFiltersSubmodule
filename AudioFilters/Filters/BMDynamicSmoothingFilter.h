@@ -114,8 +114,10 @@ void BMDynamicSmoothingFilter_setMinFc(BMDynamicSmoothingFilter *This, float min
  */
 void BMDynamicSmoothingFilter_setMaxFc(BMDynamicSmoothingFilter *This, float maxFC);
 
-#endif /* BMDynamicSmoothingFilter_h */
-
 #ifdef __cplusplus
 }
 #endif
+
+#endif /* BMDynamicSmoothingFilter_h */
+
+ 
