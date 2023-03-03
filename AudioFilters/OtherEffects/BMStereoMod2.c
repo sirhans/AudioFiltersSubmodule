@@ -123,12 +123,12 @@ void BM4ChannelSum(const float** buffersL, const float** buffersR,
 	vDSP_vadd(buffersR[0], 1, buffersR[1], 1, outR, 1, numSamples);
 	
 	// add buffer 3
-	vDSP_vadd(buffersL[3], 1, outL, 1, outL, 1, numSamples);
-	vDSP_vadd(buffersR[3], 1, outR, 1, outR, 1, numSamples);
+	vDSP_vadd(buffersL[2], 1, outL, 1, outL, 1, numSamples);
+	vDSP_vadd(buffersR[2], 1, outR, 1, outR, 1, numSamples);
 	
 	// add buffer 4
-	vDSP_vadd(buffersL[4], 1, outL, 1, outL, 1, numSamples);
-	vDSP_vadd(buffersR[4], 1, outR, 1, outR, 1, numSamples);
+	vDSP_vadd(buffersL[3], 1, outL, 1, outL, 1, numSamples);
+	vDSP_vadd(buffersR[3], 1, outR, 1, outR, 1, numSamples);
 }
 
 
