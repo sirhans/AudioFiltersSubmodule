@@ -58,6 +58,13 @@ void BMShortSimpleDelay_free(BMShortSimpleDelay* This);
  */
 void BMShortSimpleDelay_changeLength(BMShortSimpleDelay* This, size_t lengthSamples);
 
+
+/*!
+ *BMShortSimpleDelay_clearBuffers
+ */
+void BMShortSimpleDelay_clearBuffers(BMShortSimpleDelay *This);
+
+
 #ifdef __cplusplus
 }
 #endif

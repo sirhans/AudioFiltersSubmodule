@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include "Constants.h"
+#include <Accelerate/Accelerate.h>
 
 
 void BMShortSimpleDelay_process(BMShortSimpleDelay *This,
@@ -132,4 +133,10 @@ void BMShortSimpleDelay_free(BMShortSimpleDelay* This){
  */
 void BMShortSimpleDelay_changeLength(BMShortSimpleDelay* This, size_t lengthSamples){
     This->targetDelayLength = lengthSamples;
+}
+
+
+
+void BMShortSimpleDelay_clearBuffers(BMShortSimpleDelay *This){
+	vDSP_vclr(This->delayMemory, 1, This->delayLength * This->numChannels);
 }

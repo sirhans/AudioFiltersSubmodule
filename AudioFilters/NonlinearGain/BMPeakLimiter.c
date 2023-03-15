@@ -63,6 +63,9 @@ void BMPeakLimiter_initNoRealtime(BMPeakLimiter *This, bool stereo, float sample
 	
 	// not limiting yet on startup
 	This->isLimiting = false;
+	
+	// don't clear buffers on startup
+	This->needsClearBuffers = false;
 }
 
 
@@ -96,6 +99,12 @@ void BMPeakLimiter_setThreshold(BMPeakLimiter *This, float thresholdDb){
 
 
 
+void BMPeakLimiter_clearBuffers(BMPeakLimiter *This){
+	This->needsClearBuffers = true;
+}
+
+
+
 void BMPeakLimiter_update(BMPeakLimiter *This){
     size_t delayInSamples = This->targetLookaheadTime * This->sampleRate;
     BMShortSimpleDelay_changeLength(&This->delay, delayInSamples);
@@ -103,6 +112,11 @@ void BMPeakLimiter_update(BMPeakLimiter *This){
     
     // mark the job done
     This->lookaheadTime = This->targetLookaheadTime;
+	
+	if(This->needsClearBuffers){
+		BMShortSimpleDelay_clearBuffers(&This->delay);
+		This->needsClearBuffers = false;
+	}
 }
 
 

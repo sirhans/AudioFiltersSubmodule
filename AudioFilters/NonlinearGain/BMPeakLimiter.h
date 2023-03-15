@@ -25,7 +25,7 @@ typedef struct BMPeakLimiter {
 	float bufferL [BM_BUFFER_CHUNK_SIZE];
 	float bufferR [BM_BUFFER_CHUNK_SIZE];
 	float controlSignal [BM_BUFFER_CHUNK_SIZE];
-	bool isLimiting;
+	bool isLimiting, needsClearBuffers;
 } BMPeakLimiter;
 
 
@@ -82,6 +82,14 @@ void BMPeakLimiter_processMono(BMPeakLimiter *This,
 								 const float *input,
 								 float *output,
 								 size_t numSamples);
+
+
+/*!
+ *BMPeakLimiter_clearBuffers
+ *
+ * Sets a flag that will cause buffers to be cleared before processing the next audio buffer
+ */
+void BMPeakLimiter_clearBuffers(BMPeakLimiter *This);
 
 
 
