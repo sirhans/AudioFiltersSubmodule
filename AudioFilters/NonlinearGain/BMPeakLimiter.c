@@ -112,11 +112,6 @@ void BMPeakLimiter_update(BMPeakLimiter *This){
     
     // mark the job done
     This->lookaheadTime = This->targetLookaheadTime;
-	
-	if(This->needsClearBuffers){
-		BMShortSimpleDelay_clearBuffers(&This->delay);
-		This->needsClearBuffers = false;
-	}
 }
 
 
@@ -136,6 +131,12 @@ void BMPeakLimiter_processStereo(BMPeakLimiter *This,
         // update settings
         BMPeakLimiter_update(This);
     }
+	
+	// clear buffers if necessary
+	if(This->needsClearBuffers){
+		BMShortSimpleDelay_clearBuffers(&This->delay);
+		This->needsClearBuffers = false;
+	}
     
     // chunked processing
     size_t samplesProcessed = 0;
@@ -195,7 +196,12 @@ void BMPeakLimiter_processMono(BMPeakLimiter *This,
         BMPeakLimiter_update(This);
     }
     
-    
+	// clear buffers if necessary
+	if(This->needsClearBuffers){
+		BMShortSimpleDelay_clearBuffers(&This->delay);
+		This->needsClearBuffers = false;
+	}
+	
     // chunked processing
     size_t samplesProcessed = 0;
     while(samplesProcessed < numSamples){
