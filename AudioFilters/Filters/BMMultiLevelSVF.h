@@ -54,7 +54,7 @@ typedef struct BMMultiLevelSVF{
     size_t numLevels;
     size_t numChannels;
     double sampleRate;
-    bool shouldUpdateParam, updateImmediately;
+    bool shouldUpdateParam, updateImmediately, needsClearStateVariables;
 	bool filterSweep;
 	os_unfair_lock lock;
 	BMMultiLevelBiquad biquadHelper; // we have this so that we can reuse some functions such as the ones for plotting transfer functions
@@ -199,6 +199,14 @@ void BMMultiLevelSVF_copyStateFromBiquadHelper(BMMultiLevelSVF *This);
  * @abstract call this to force the filter to do the currently queued update immediately even when smooth update is on
  */
 void BMMUltiLevelSVF_forceImmediateUpdate(BMMultiLevelSVF *This);
+
+
+/*!
+ *BMMultiLevelSVF_clearBuffers
+ *
+ * Sets a flag that will cause the state variables to be set to zero before processing the next buffer of audio samples
+ */
+void BMMultiLevelSVF_clearBuffers(BMMultiLevelSVF *This);
 
 
 #endif /* BMMultiLevelSVF_h */

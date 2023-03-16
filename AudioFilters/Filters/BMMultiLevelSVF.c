@@ -37,6 +37,7 @@ void BMMultiLevelSVF_init(BMMultiLevelSVF *This, size_t numLevels,float sampleRa
 	This->filterSweep = false;
 	This->shouldUpdateParam = false;
 	This->updateImmediately = false;
+	This->needsClearStateVariables = false;
 	This->lock = OS_UNFAIR_LOCK_INIT;
 	//If stereo -> we need totalnumlevel = numlevel *2
 	size_t totalNumLevels = numLevels * This->numChannels;
@@ -160,6 +161,18 @@ void BMMUltiLevelSVF_forceImmediateUpdate(BMMultiLevelSVF *This){
 	This->updateImmediately = true;
 }
 
+void BMMultiLevelSVF_clearStateVariables(BMMultiLevelSVF *This){
+	// set all state variables to zero
+	memset(This->ic1eq,0,sizeof(float)*This->numLevels*This->numChannels);
+	memset(This->ic2eq,0,sizeof(float)*This->numLevels*This->numChannels);
+	
+	This->needsClearStateVariables = false;
+}
+
+void BMMultiLevelSVF_clearBuffers(BMMultiLevelSVF *This){
+	This->needsClearStateVariables = true;
+}
+
 
 #pragma mark - process
 void BMMultiLevelSVF_processBufferMono(BMMultiLevelSVF *This,
@@ -167,6 +180,9 @@ void BMMultiLevelSVF_processBufferMono(BMMultiLevelSVF *This,
                                        float* output,
                                        size_t numSamples){
     assert(This->numChannels == 1);
+	
+	if(This->needsClearStateVariables)
+		BMMultiLevelSVF_clearStateVariables(This);
 	
     if(This->shouldUpdateParam)
         BMMultiLevelSVF_updateSVFParam(This);
@@ -187,6 +203,9 @@ void BMMultiLevelSVF_processBufferStereo(BMMultiLevelSVF *This,
                                          const float* inputL, const float* inputR,
                                          float* outputL, float* outputR, size_t numSamples){
     assert(This->numChannels == 2);
+	
+	if(This->needsClearStateVariables)
+		BMMultiLevelSVF_clearStateVariables(This);
     
 	// update the parameters
     if(This->shouldUpdateParam)
@@ -260,7 +279,7 @@ void BMMultiLevelSVF_calculateInterpolatedCoefficients(BMMultiLevelSVF *This,
 
 
 inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF *This,
-												 size_t level,size_t channel,
+												 size_t level, size_t channel,
                                                  const float* input,
                                                  float* output,size_t numSamples){
 	
@@ -332,6 +351,7 @@ inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF *This,
 		}
 	}
 }
+
 
 
 inline void BMMultiLevelSVF_updateSVFParam(BMMultiLevelSVF *This){

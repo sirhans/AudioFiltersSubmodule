@@ -52,15 +52,26 @@ extern inline void BMMultiLevelBiquad_updateLevels(BMMultiLevelBiquad *This);
 // returns true if the operating system supports vDSP_biquadm_SetCoefficentsSingle()
 bool BMMultiLevelBiquad_OSSupportsRealtimeUpdate(void);
 
+void BMMultiLevelBiquad_resetState(BMMultiLevelBiquad *This){
+	assert(This->useBiquadm);
+	vDSP_biquadm_ResetState(This->multiChannelFilterSetup);
+	This->needsClearState = false;
+}
+
 /* end internal function declarations */
 
 
-
+void BMMultiLevelBiquad_clearBuffers(BMMultiLevelBiquad *This){
+	This->needsClearState = true;
+}
 
 
 void BMMultiLevelBiquad_processBufferStereo(BMMultiLevelBiquad *This, const float* inL, const float* inR, float* outL, float* outR, size_t numSamples){
     // this function is only for two channel filtering
     assert(This->numChannels == 2);
+	
+	// clear state if necessary
+	if(This->needsClearState) BMMultiLevelBiquad_resetState(This);
     
     // update filter coefficients if necessary
     if (This->needsUpdate) BMMultiLevelBiquad_updateNow(This);
@@ -91,6 +102,9 @@ void BMMultiLevelBiquad_processBuffer4(BMMultiLevelBiquad *This,
                                        size_t numSamples){
     // this function is only for four channel filtering
     assert(This->numChannels == 4);
+	
+	// clear state if necessary
+	if(This->needsClearState) BMMultiLevelBiquad_resetState(This);
     
     // update filter coefficients if necessary
     if (This->needsUpdate) BMMultiLevelBiquad_updateNow(This);
@@ -123,6 +137,8 @@ void BMMultiLevelBiquad_processBufferMono(BMMultiLevelBiquad *This, const float*
     // this function is only for single channel filtering
     assert(This->numChannels == 1);
     
+	// clear state if necessary
+	if(This->needsClearState) BMMultiLevelBiquad_resetState(This);
     
     // update filter coefficients if necessary
     if (This->needsUpdate) BMMultiLevelBiquad_updateNow(This);
@@ -190,6 +206,7 @@ void BMMultiLevelBiquad_init(BMMultiLevelBiquad *This,
     This->numChannels = isStereo ? 2 : 1;
     This->useSmoothUpdate = smoothUpdate;
     This->needUpdateActiveLevels = false;
+	This->needsClearState = false;
     This->activeLevels = malloc(sizeof(bool)*numLevels);
     for(int i=0;i<numLevels;i++){
         This->activeLevels[i] = true;

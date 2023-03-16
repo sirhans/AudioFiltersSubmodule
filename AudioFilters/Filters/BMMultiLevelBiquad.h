@@ -33,7 +33,7 @@ typedef struct BMMultiLevelBiquad {
     size_t numLevels;
     size_t numChannels;
     double sampleRate;
-    bool needsUpdate, useRealTimeUpdate, useBiquadm,useSmoothUpdate,needUpdateActiveLevels;
+    bool needsUpdate, useRealTimeUpdate, useBiquadm, useSmoothUpdate, needUpdateActiveLevels, needsClearState;
     bool *activeLevels;
     BMSmoothGain gain, gain2;
 } BMMultiLevelBiquad;
@@ -109,6 +109,15 @@ void BMMultiLevelBiquad_free(BMMultiLevelBiquad* This);
  */
 __attribute__((deprecated("please call BMMultiLevelBiquad_free instead")))
 void BMMultiLevelBiquad_destroy(BMMultiLevelBiquad* This);
+
+
+/*!
+ *BMMultiLevelBiquad_clearBuffers
+ *
+ * Sets a flag that will set all state variables to zero before processing the next buffer of audio samples
+ */
+void BMMultiLevelBiquad_clearBuffers(BMMultiLevelBiquad *This);
+
 
 
 /*!
