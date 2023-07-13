@@ -39,6 +39,7 @@ typedef struct BMCloudReverb {
     size_t numVND;
     size_t numInput;
     float fadeInS;
+	float *monoMixBuffer;
     
     BMPitchShiftDelay pitchShiftDelay;
     
@@ -78,6 +79,7 @@ typedef struct BMCloudReverb {
 void BMCloudReverb_init(BMCloudReverb* This,float sr);
 void BMCloudReverb_destroy(BMCloudReverb* This);
 void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR,float* outputL,float* outputR,size_t numSamples,bool offlineRendering);
+void BMCloudReverb_processMono(BMCloudReverb* This,float* input, float* output,size_t numSamples,bool offlineRendering);
 //Set
 void BMCloudReverb_setLoopDecayTime(BMCloudReverb* This,float decayTime);
 void BMCloudReverb_setDelayPitchMixer(BMCloudReverb* This,float wetMix);
