@@ -308,7 +308,7 @@ inline void BMMultiLevelSVF_processBufferAtLevel(BMMultiLevelSVF *This,
 		float *k = This->k_interp;
 		
 		// process the filter
-		for(size_t i=0;i<numSamples;i++){
+		for(size_t i=0; i<numSamples; i++){
 			// This code is based on the Tick 2 function in this file: https://cytomic.com/files/dsp/SvfLinearTrapezoidalSin.pdf
 			float v0 = input[i];
 			float t0 = v0 - *ic2eq;
