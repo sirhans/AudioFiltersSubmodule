@@ -111,6 +111,7 @@ void BMCloudReverb_init(BMCloudReverb* This,float sr){
     This->lastLoopBuffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     memset(This->lastLoopBuffer.bufferL, 0, sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     memset(This->lastLoopBuffer.bufferR, 0, sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+	This->monoMixBuffer = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     
     This->wetBuffer.bufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
     This->wetBuffer.bufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
@@ -156,6 +157,9 @@ void BMCloudReverb_destroy(BMCloudReverb* This){
         free(This->vnd2BufferR[i]);
         This->vnd2BufferR[i] = nil;
     }
+	
+	free(This->monoMixBuffer);
+	This->monoMixBuffer = NULL;
     
     free(This->vnd1BufferL);
     free(This->vnd1BufferR);
@@ -253,6 +257,39 @@ void BMCloudReverb_processStereo(BMCloudReverb* This,float* inputL,float* inputR
 
     }
 }
+
+
+void BMCloudReverb_processMono(BMCloudReverb* This, float *input, float *output, size_t numSamples, bool offlineRendering){
+
+	float *outputRMixBuffer = This->monoMixBuffer;
+	float mixAttenuation = 1.0f / sqrtf(2.0f);
+
+	size_t samplesProcessed = 0;
+	size_t samplesToProcess = numSamples;
+	
+	while(samplesToProcess > 0){
+		size_t samplesProcessing = BM_MIN(samplesToProcess, BM_BUFFER_CHUNK_SIZE);
+
+		// process in stereo
+		BMCloudReverb_processStereo(This,
+									input + samplesProcessed, input + samplesProcessed,
+									output + samplesProcessed, outputRMixBuffer,
+									samplesProcessing,
+									offlineRendering);
+
+		// mix output to mono
+		vDSP_vasm(output + samplesProcessed, 1,
+			  outputRMixBuffer, 1,
+			  &mixAttenuation,
+			  output + samplesProcessed, 1,
+			  samplesProcessing);
+
+		samplesToProcess -= samplesProcessing;
+		samplesProcessed += samplesProcessing;
+	}
+}
+
+
 
 float calculateScaleVol(BMCloudReverb* This){
     float factor = log2f(This->decayTime);
