@@ -28,6 +28,7 @@ extern "C" {
         assert(isPowerOfTwo(downsampleFactor));
         
         This->stereo = stereo;
+		This->bufferEntriesFilled = 0;
         This->downsampleFactor = downsampleFactor;
         
         if(downsampleFactor > 1){
@@ -54,9 +55,11 @@ extern "C" {
             // allocate memory for buffers
             This->bufferL1 = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE*downsampleFactor/2);
             This->bufferL2 = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE*downsampleFactor/2);
+			This->remnantBufferL = malloc(sizeof(float)*downsampleFactor);
             if(stereo){
                 This->bufferR1 = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE*downsampleFactor/2);
                 This->bufferR2 = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE*downsampleFactor/2);
+				This->remnantBufferR = malloc(sizeof(float)*downsampleFactor);
             } else {
                 This->bufferR1 = NULL;
                 This->bufferR2 = NULL;
@@ -155,6 +158,196 @@ extern "C" {
         }
     }
     
+	
+	
+	void BMDownsampler_processBufferStereoOddInputLength(BMDownsampler *This, 
+														 float* inputL, float* inputR,
+														 float* outputL, float* outputR,
+														 size_t numSamplesIn, size_t *numSamplesOut){
+		// refuse to process empty input
+		if(numSamplesIn == 0) {
+			*numSamplesOut = 0;
+			return;
+		}
+		
+		/***********************************************************************
+		 * if the input buffer length is divisible by the downsample factor
+		 * and the buffer is empty then...
+		 **********************************************************************/
+		if((numSamplesIn % This->downsampleFactor) == 0 && This->bufferEntriesFilled == 0){
+			// process as usual
+			BMDownsampler_processBufferStereo(This, inputL, inputR, outputL, outputR, numSamplesIn);
+		
+			// inform the calling function about the length of the output
+			*numSamplesOut = numSamplesIn / This->downsampleFactor;
+			
+			return;
+		}
+		
+		
+	
+		size_t remnantBufferLength = This->downsampleFactor;
+		
+		
+//		
+//		/***********************************************************************
+//		 * if the input buffer length is divisible by the downsample factor
+//		 * and the buffer is occupied then...
+//		 **********************************************************************/
+//		if(numSamplesIn % This->downsampleFactor == 0 && This->bufferEntriesFilled > 0){
+//			size_t samplesToFillRemnantBuffer = remnantBufferLength - This->bufferEntriesFilled;
+//			
+//			// copy the first samples of input into the back of the buffer until it's filled
+//			for(size_t i=0; i < samplesToFillRemnantBuffer; i++){
+//				This->remnantBufferL[i+This->bufferEntriesFilled] = inputL[i];
+//				This->remnantBufferR[i+This->bufferEntriesFilled] = inputR[i];
+//			}
+//			
+//			// process all the samples in the buffer to get one sample of output
+//			BMDownsampler_processBufferStereo(This,
+//											  This->remnantBufferL, This->remnantBufferR,
+//											  outputL, outputR,
+//											  remnantBufferLength);
+//			
+//			// calculate the number of samples left to process and the number to cache
+//			// in the remnant buffer
+//			size_t inputSamplesRemaining = numSamplesIn - samplesToFillRemnantBuffer;
+//			size_t remnantLength = inputSamplesRemaining % This->downsampleFactor;
+//			size_t inputSamplesToDownsample = inputSamplesRemaining - remnantLength;
+//			
+//			// if there are enough samples in the input to downsample
+//			BMDownsampler_processBufferStereo(This,
+//											  inputL + remnantLength, inputR + remnantLength,
+//											  outputL + 1, outputR + 1,
+//											  inputSamplesToDownsample);
+//			
+//			// copy the last remnantLength samples into the front of the buffer
+//			for(size_t i=0; i < remnantLength; i++){
+//				This->remnantBufferL[i] = inputL[numSamplesIn - This->bufferEntriesFilled + i];
+//				This->remnantBufferL[i] = inputR[numSamplesIn - This->bufferEntriesFilled + i];
+//			}
+//			
+//			// inform the calling function about the length of the output
+//			*numSamplesOut = (remnantBufferLength + inputSamplesToDownsample) / This->downsampleFactor;
+//			
+//			return;
+//		}
+		
+		
+		
+		
+		/***********************************************************************
+		 * if the input buffer length is not divisible
+		 * and the buffer is empty then...
+		 **********************************************************************/
+		if((numSamplesIn % This->downsampleFactor) != 0 && This->bufferEntriesFilled == 0){
+			size_t remnantLength = numSamplesIn % This->downsampleFactor;
+			
+			// process the first part of the input (leaving back the remnant)
+			BMDownsampler_processBufferStereo(This,
+											  inputL, inputR,
+											  outputL, outputR, 
+											  numSamplesIn - remnantLength);
+			
+			// copy the last samples to the front of the buffer
+			for(size_t i=0; i<remnantLength; i++){
+				This->remnantBufferL[i] = inputL[numSamplesIn - remnantLength + i];
+				This->remnantBufferR[i] = inputR[numSamplesIn - remnantLength + i];
+			}
+			
+			// set the number of entries of the remnant buffer that are occupied
+			This->bufferEntriesFilled = remnantLength;
+			
+			// inform the calling function about the length of the output
+			*numSamplesOut = (numSamplesIn-remnantLength) / This->downsampleFactor;
+			
+			return;
+		}
+		
+		
+		
+		
+		
+		/***********************************************************************
+		 * if we're still going and the buffer is not empty then...
+		 **********************************************************************/
+		//if((numSamplesIn % This->downsampleFactor) != 0 && This->bufferEntriesFilled > 0){
+		if(This->bufferEntriesFilled > 0){
+			size_t bufferEntriesEmpty = remnantBufferLength - This->bufferEntriesFilled;
+			
+			// if there's not enough input to fill the remnant buffer
+			if(bufferEntriesEmpty > numSamplesIn){
+				// copy what we have and stop without processing anything
+				for(size_t i=0; i < numSamplesIn; i++){
+					This->remnantBufferL[i+This->bufferEntriesFilled] = inputL[i];
+					This->remnantBufferR[i+This->bufferEntriesFilled] = inputR[i];
+				}
+				
+				// update the number of samples occupied
+				This->bufferEntriesFilled += numSamplesIn;
+				
+				// and we didn't get any output
+				*numSamplesOut = 0;
+				
+			// else, if there's enough input to fill the remnant buffer
+			} else {
+				
+				// copy the first samples of input into the back of the buffer until it's filled
+				for(size_t i=0; i < bufferEntriesEmpty; i++){
+					This->remnantBufferL[i+This->bufferEntriesFilled] = inputL[i];
+					This->remnantBufferR[i+This->bufferEntriesFilled] = inputR[i];
+				}
+				
+				// process the downsampleFactor samples in the buffer to get one sample of output
+				BMDownsampler_processBufferStereo(This,
+												  This->remnantBufferL, This->remnantBufferR,
+												  outputL, outputR,
+												  remnantBufferLength);
+				
+				
+				// if the input had exactly enough to fill the buffer
+				if (numSamplesIn == bufferEntriesEmpty){
+					// then clear the remnant buffer
+					This->bufferEntriesFilled = 0;
+					
+					// and we only got one output sample
+					*numSamplesOut = 1;
+					
+				// if the buffer isn't exactly filled by the input then we have a new remnant
+				} else {
+					// calculate how many samples will remain un-processed at the end
+					size_t remnantLength2 = (numSamplesIn - bufferEntriesEmpty) % This->downsampleFactor;
+					
+					// calculate the number of samples to process now
+					size_t inputSamplesProcessing = numSamplesIn - (bufferEntriesEmpty + remnantLength2);
+					
+					// process the samples in the input buffers, possibly leaving another remnant
+					BMDownsampler_processBufferStereo(This,
+													  inputL + bufferEntriesEmpty, inputR + bufferEntriesEmpty,
+													  outputL + 1, outputR + 1,
+													  inputSamplesProcessing);
+					
+					// copy the second remnant into the remnant buffer
+					for(size_t i=0; i<remnantLength2; i++){
+						This->remnantBufferL[i] = inputL[numSamplesIn - remnantLength2 + i];
+						This->remnantBufferR[i] = inputR[numSamplesIn - remnantLength2 + i];
+					}
+					
+					// set the number of elements in the remnant buffer
+					This->bufferEntriesFilled = remnantLength2;
+					
+					// inform the calling function about the length of the output
+					*numSamplesOut = (inputSamplesProcessing + remnantBufferLength) / This->downsampleFactor;
+				}
+			}
+			
+			return;
+		}
+		
+		// if we get here then there was an error
+		assert(false);
+	}
+	
     
     
     void BMDownsampler_processBufferStereo(BMDownsampler *This, float* inputL, float* inputR, float* outputL, float* outputR, size_t numSamplesIn){
@@ -242,9 +435,11 @@ extern "C" {
         
         free(This->bufferL1);
         free(This->bufferL2);
+		free(This->remnantBufferL);
         if(This->stereo){
             free(This->bufferR1);
             free(This->bufferR2);
+			free(This->remnantBufferR);
         }
         
         This->bufferL1 = NULL;

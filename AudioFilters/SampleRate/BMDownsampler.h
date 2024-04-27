@@ -23,8 +23,10 @@ typedef struct BMDownsampler {
 	BMIIRDownsampler2x* downsamplers2x;
 	BMMultiLevelBiquad antiRingingFilter;
 	float *bufferL1, *bufferR1, *bufferL2, *bufferR2;
-	size_t numStages, downsampleFactor;
+	size_t numStages, downsampleFactor, bufferEntriesFilled;
 	bool stereo;
+	float *remnantBufferL;
+	float *remnantBufferR;
 } BMDownsampler;
 
 
@@ -61,6 +63,21 @@ void BMDownsampler_processBufferMono(BMDownsampler* This, float* input, float* o
  * @param numSamplesIn  number of input samples to process
  */
 void BMDownsampler_processBufferStereo(BMDownsampler* This, float* inputL, float* inputR, float* outputL, float* outputR, size_t numSamplesIn);
+
+
+/*!
+ *BMDownsampler_processBufferStereoOddInputLength
+ *
+ * @abstract downsample a buffer that contains an even or odd number of samples
+ *
+ * @param inputL    length = numSamplesIn
+ * @param inputR    length = numSamplesIn
+ * @param outputL   length = numSamplesIn / upsampleFactor
+ * @param outputR   length = numSamplesIn / upsampleFactor
+ * @param numSamplesIn  number of input samples to process
+ * @param numSamplesOut For odd input length, the output length will be (numSamplesIn/2) rounded down or up, depending on the state of an internal buffer. This variable is used to inform the calling function of the actual length of the output.
+ */
+void BMDownsampler_processBufferStereoOddInputLength(BMDownsampler *This, float* inputL, float* inputR, float* outputL, float* outputR, size_t numSamplesIn, size_t *numSamplesOut);
 
 
 void BMDownsampler_free(BMDownsampler* This);
