@@ -55,8 +55,8 @@ extern "C" {
 
 
 typedef struct BMQuadratureOscillator {
-	simd_float2x2 m, mPending;
-	simd_float2 rq;
+	simd_double2x2 m, mPending;
+	simd_double2 rq;
 	double sampleRate, oscFreq;
 } BMQuadratureOscillator;
 
@@ -166,7 +166,7 @@ void BMQuadratureOscillator_advance(BMQuadratureOscillator *This,
 
 
 
-void BMQuadratureOscillator_initMatrix(simd_float2x2* m,
+void BMQuadratureOscillator_initMatrix(simd_double2x2* m,
 									   double frequency,
                                        double sampleRate);
 

@@ -200,6 +200,18 @@ extern "C" {
     }
     
     
+	
+	bool BMWetDryMixer_isDry(BMWetDryMixer *This){
+		// return false if the mixer is not in a stable state
+		if (This->inTransition) return false;
+		
+		// return true if the mix target is very near zero
+		if (This->mixTarget < BM_DB_TO_GAIN(-70.0))
+			return true;
+		
+		// otherwise return false
+		return false;
+	}
     
     
 #ifdef __cplusplus

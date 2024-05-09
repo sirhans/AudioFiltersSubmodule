@@ -11,519 +11,263 @@
 
 #include <Accelerate/Accelerate.h>
 #include "BMStaticDelay.h"
-#include <stdlib.h>
+#include "Constants.h"
+#include "BMReverb.h"
 
-//#ifdef __cplusplus
-//extern "C" {
-//#endif
-
-
-
-
-#define BMSD_BUFFER_PADDING 256
-
-static inline int min(int a, int b) {
-    return a > b ? b : a;
-}
-
-float rt60FeedbackGain(float delayTime, float rt60DecayTime){
-    return powf(10.0f, (-3.0f * delayTime) / rt60DecayTime );
-}
-
-
-// returns true if there is space available to write into the
-// circular buffers
-bool hasWriteBytesAvailable(BMStaticDelay *This){
-    uint32_t bytesAvailableL, bytesAvailableR;
-    TPCircularBufferHead(&This->bufferL, &bytesAvailableL);
-    TPCircularBufferHead(&This->bufferR, &bytesAvailableR);
-    return (bytesAvailableL > 0 && bytesAvailableR > 0);
-}
+#define BM_STATIC_DELAY_LOWPASS_FILTER_LEVEL 0
+#define BM_STATIC_DELAY_HIGHPASS_FILTER_LEVEL 1
 
 
 void BMStaticDelay_init(BMStaticDelay *This,
-                        size_t numChannelsIn, size_t numChannelsOut,
-                        float delayTimeSeconds,
-                        float decayTimeSeconds,
-                        float wetGainDb,
-                        float crossMixAmount,
-                        float lowpassFC,
-                        float highpassFC,
-                        float sampleRate){
-    // You must call BMStaticDelay_destroy before re-initialising
-    assert(This->initComplete != BMSD_INIT_COMPLETED);
-    
-    // set the sample rate (with a validity check)
-    assert(sampleRate > 0);
-    This->sampleRate = sampleRate;
-    
-    // do not support more than two channel stereo
-    assert(numChannelsOut <= 2);
-    This->numChannelsOut = numChannelsOut;
-    
-    This->delayTimeNeedsUpdate = false;
-    
-    // this delay does not support mixdown (but can spread mono to stereo)
-    assert(numChannelsIn <= numChannelsOut);
-    This->numChannelsIn = numChannelsIn;
-    
-    This->delayTimeInSeconds = delayTimeSeconds;
-    
-    // get the length of the buffer in samples
-    This->delayTimeSamples = (int)(round(delayTimeSeconds*sampleRate));
-    
-    // the delay time must be non-zero
-    assert(This->delayTimeSamples > 0);
-    
-    // allocate a buffer for the left side
-    bool initSuccessful = TPCircularBufferInit(&This->bufferL,
-                                               (This->delayTimeSamples+BMSD_BUFFER_PADDING)*sizeof(float));
-    assert(initSuccessful);
-    
-    // since we are not accessing the buffer in a multi-threaded context
-    // we disable atomicity to improve performance
-    TPCircularBufferSetAtomic(&This->bufferL, false);
-    
-    // repeat the last three steps for the right channel if stereo out
-    if(numChannelsOut==2){
-        initSuccessful = TPCircularBufferInit(&This->bufferR,
-                                              (This->delayTimeSamples+BMSD_BUFFER_PADDING)*sizeof(float));
-        assert(initSuccessful);
-        TPCircularBufferSetAtomic(&This->bufferR, false);
-    }
-    
-    /*
-     * write zeros into the buffer to put the write pointer ahead of the read pointer
-     */
-    
-    // get a pointer to the buffer head and ensure that there is sufficient space available to write there
-    uint32_t bytesAvailableForWrite;
-    int32_t bytesWriting = This->delayTimeSamples*sizeof(float);
-    float* head = TPCircularBufferHead(&This->bufferL, &bytesAvailableForWrite);
-    assert(bytesAvailableForWrite > bytesWriting);
-    
-    // write zeros
-    memset(head, 0, bytesWriting);
-    
-    // mark the space as written
-    TPCircularBufferProduce(&This->bufferL, bytesWriting);
-    
-    
-    // do the right channel if stereo
-    if(This->numChannelsOut == 2){
-        head = TPCircularBufferHead(&This->bufferR, &bytesAvailableForWrite);
-        assert(bytesAvailableForWrite > bytesWriting);
-        
-        // write zeros
-        memset(head, 0, bytesWriting);
-        
-        // mark the space as written
-        TPCircularBufferProduce(&This->bufferR, bytesWriting);
-    }
-    
-    
-    /*
-     * configure the feedback matrix
-     */
-    
-    // don't allow stereo cross-mix for mono output
-    if(numChannelsOut == 1)
-        assert(crossMixAmount = 0.0f);
-    
-    // set cross mix for stereo output
-    BMStaticDelay_setFeedbackCrossMix(This, crossMixAmount);
-    
-    // set RT60 decay time
-    BMStaticDelay_setRT60DecayTime(This, decayTimeSeconds);
-    
-    // set dry and wet gain
-    BMSmoothGain_init(&This->wetGain, sampleRate);
-    BMSmoothGain_init(&This->dryGain, sampleRate);
-    BMSmoothGain_setGainDb(&This->wetGain, wetGainDb);
-    BMSmoothGain_setGainDb(&This->dryGain, 0.0f);
-    /*
-     * allocate memory for the feedback buffers
-     */
-    This->feedbackBufferL = calloc(This->delayTimeSamples,sizeof(float));
-    This->tempBufferL = malloc(sizeof(float)*This->delayTimeSamples);
-    memset(This->feedbackBufferL,0,sizeof(float)*This->delayTimeSamples);
-    if(numChannelsOut == 2){
-        This->feedbackBufferR = calloc(This->delayTimeSamples,sizeof(float));
-        This->LFOBufferL = malloc(sizeof(float)*This->delayTimeSamples);
-        This->LFOBufferR = malloc(sizeof(float)*This->delayTimeSamples);
-        BMQuadratureOscillator_init(&This->qosc, 0.5, sampleRate);
-        if(numChannelsIn == 2){
-            This->tempBufferR = malloc(sizeof(float)*This->delayTimeSamples);
-        }
-    }
-    
-    /*
-     * set up the lowpass filter to tone down the clarity of the delay signal
-     */
-    BMMultiLevelBiquad_init(&This->filter,
-                            Filter_Count,
-                            sampleRate,
-                            true,
-                            false,
-                            false);
-    BMStaticDelay_setLowpassFc(This, lowpassFC);
-    BMStaticDelay_setHighpassFc(This, highpassFC);
-    
-    
-    /*
-     * set a code to indicate that the input has completed
-     */
-    This->initComplete = BMSD_INIT_COMPLETED;
+						float delayTimeSeconds,
+						float rt60DecayTimeSeconds,
+						float wetGainDb,
+						float crossMixAmount,
+						float lowpassFC,
+						float highpassFC,
+						float sampleRate){
+	This->sampleRate = sampleRate;
+	
+	This->delayTimeInSeconds = delayTimeSeconds;
+	size_t delayTimeInSamples = delayTimeSeconds * sampleRate;
+	This->needsDelayTimeUpdate = false;
+	
+	BMSimpleDelayStereo_init(&This->delay, delayTimeInSamples);
+	
+	BMWetDryMixer_init(&This->bypassSwitch, sampleRate);
+	
+	// init the stereo matrix mixer
+	float rotationAngle = M_PI_2 * crossMixAmount;
+	BM2x2MatrixMixer_initWithRotation(&This->matrixMixer, rotationAngle);
+	
+	// init the filters
+	size_t numFilters = 2;
+	bool stereo = true;
+	bool monoRealTimeUpdate = false;
+	bool smoothUpdate = true;
+	BMMultiLevelBiquad_init(&This->filter, numFilters, sampleRate, stereo, monoRealTimeUpdate, smoothUpdate);
+	BMMultiLevelBiquad_setHighPass6db(&This->filter, highpassFC, BM_STATIC_DELAY_HIGHPASS_FILTER_LEVEL);
+	BMMultiLevelBiquad_setLowPass6db(&This->filter, lowpassFC, BM_STATIC_DELAY_LOWPASS_FILTER_LEVEL);
+	
+	float panLFOFreqHz = 0.333;
+	float panLFODepth = 0.9;
+	BMLFOPan2_init(&This->pan, panLFOFreqHz, panLFODepth, sampleRate);
+	
+	// set feedback gain to get correct decay time
+	This->feedbackGain = BMReverbDelayGainFromRT60(rt60DecayTimeSeconds, delayTimeSeconds);
+	
+	// init the wet and dry gain
+	BMSmoothGain_init(&This->wetGain, sampleRate);
+	BMSmoothGain_init(&This->dryGain, sampleRate);
+	BMSmoothGain_setGainDb(&This->wetGain, wetGainDb);
+	BMSmoothGain_setGainDb(&This->dryGain, 0.0f);
+	
+	This->mixingBufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+	This->mixingBufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+	This->feedbackBufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+	This->feedbackBufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+	This->outputBufferL = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
+	This->outputBufferR = malloc(sizeof(float)*BM_BUFFER_CHUNK_SIZE);
 }
 
 
 
-void BMStaticDelay_setDelayTime(BMStaticDelay *This, float timeInSeconds){
-    if(This->delayTimeInSeconds != timeInSeconds){
-        This->delayTimeInSeconds = timeInSeconds;
-        This->delayTimeNeedsUpdate = true;
-    }
+
+void BMStaticDelay_free(BMStaticDelay *This){
+	BMLFOPan2_free(&This->pan);
+	BM2x2MatrixMixer_free(&This->matrixMixer);
+	BMMultiLevelBiquad_free(&This->filter);
+	BMSimpleDelayStereo_free(&This->delay);
+	
+	free(This->mixingBufferL);
+	free(This->mixingBufferR);
+	free(This->feedbackBufferL);
+	free(This->feedbackBufferR);
+	free(This->outputBufferL);
+	free(This->outputBufferR);
+	This->mixingBufferL = NULL;
+	This->mixingBufferR = NULL;
+	This->feedbackBufferL = NULL;
+	This->feedbackBufferR = NULL;
+	This->outputBufferL = NULL;
+	This->outputBufferR = NULL;
 }
 
 
-void BMStaticDelay_setFeedbackMatrix(BMStaticDelay *This){
-    
-    // set the matrix according to the crossMix angle
-    This->feedbackMatrix = BM2x2Matrix_rotationMatrix(This->crossMixAngle);
-    
-    // scale the matrix to give the desired rt60 decay time
-    This->feedbackMatrix = simd_mul(This->feedbackGain, This->feedbackMatrix);
+
+/*!
+ *BMStaticDelay_destroy
+ *
+ * Deprecated alternate name for BMStaticDelay_free
+ */
+void BMStaticDelay_destroy(BMStaticDelay *This){
+	BMStaticDelay_free(This);
 }
 
 
+
+void BMStaticDelay_processBufferStereo(BMStaticDelay *This,
+									   float* inL, float* inR,
+									   float* outL, float* outR,
+									   int numSamplesIn){
+	// if a delay time update was requested, reinitialise the delay.
+	if (This->needsDelayTimeUpdate) {
+		size_t newDelayTimeSamples = This->sampleRate * This->delayTimeTargetInSeconds;
+		BMSimpleDelayStereo_free(&This->delay);
+		BMSimpleDelayStereo_init(&This->delay, newDelayTimeSamples);
+		
+		// update the delay time variable so that feedback time calculations work
+		This->delayTimeInSeconds = This->delayTimeTargetInSeconds;
+		
+		// don't update again next time
+		This->needsDelayTimeUpdate = false;
+	}
+	
+	// Chunked processing
+	size_t samplesToProcess = numSamplesIn;
+	size_t samplesProcessed = 0;
+	while (samplesToProcess > 0){
+		// get the maximum number of samples that can be read from the delay
+		size_t samplesAvailableInDelay = BMSimpleDelayStereo_outputCapacity(&This->delay);
+		
+		// get the maximum number of samples we can process this time through the loop
+		size_t samplesProcessing = BM_MIN(samplesToProcess, BM_BUFFER_CHUNK_SIZE);
+		samplesProcessing = BM_MIN(samplesProcessing, samplesAvailableInDelay);
+		
+		// If not in bypass mode, process the delay
+		if(!BMWetDryMixer_isDry(&This->bypassSwitch)){
+			
+			// Delay output => output buffer
+			size_t delayOutputRead = BMSimpleDelayStereo_output(&This->delay, This->outputBufferL, This->outputBufferR, samplesProcessing);
+			
+			// Output buffer => feedback buffer
+			memcpy(This->feedbackBufferL, This->outputBufferL, samplesProcessing * sizeof(float));
+			memcpy(This->feedbackBufferR, This->outputBufferR, samplesProcessing * sizeof(float));
+		
+			// reduce gain of delay feedback
+			vDSP_vsmul(This->feedbackBufferL, 1, &This->feedbackGain, This->feedbackBufferL, 1, samplesProcessing);
+			vDSP_vsmul(This->feedbackBufferR, 1, &This->feedbackGain, This->feedbackBufferR, 1, samplesProcessing);
+			
+			// apply the mixing matrix to the delay feedback buffer
+			BM2x2MatrixMixer_processStereo(&This->matrixMixer,
+										   This->feedbackBufferL, This->feedbackBufferR,
+										   This->feedbackBufferL, This->feedbackBufferR,
+										   samplesProcessing);
+			
+			// mix the input to one channel, then pan it back to stereo with an LFO
+			BMLFOPan2_processStereo(&This->pan, inL + samplesProcessed, inR + samplesProcessed,
+									This->mixingBufferL, This->mixingBufferR,
+									samplesProcessing);
+			
+			// mix panned input + feedback
+			vDSP_vadd(This->mixingBufferL, 1, This->feedbackBufferL, 1,
+					  This->mixingBufferL, 1, samplesProcessing);
+			vDSP_vadd(This->mixingBufferR, 1, This->feedbackBufferR, 1,
+					  This->mixingBufferR, 1, samplesProcessing);
+			
+			// make sure there's space in the delay for writing the input
+			size_t spaceAvailableInDelay = BMSimpleDelayStereo_inputCapacity(&This->delay);
+			assert(spaceAvailableInDelay >= samplesProcessing);
+			
+			// mixingBuffer => delay input
+			size_t delayInputWritten = BMSimpleDelayStereo_input(&This->delay, This->mixingBufferL, This->mixingBufferR, samplesProcessing);
+			
+			// make sure we read and wrote the same number of samples in and out of the delay
+			assert(delayOutputRead == delayInputWritten);
+			
+			// filter the output
+			BMMultiLevelBiquad_processBufferStereo(&This->filter,
+												   This->outputBufferL, This->outputBufferR,
+												   This->outputBufferL, This->outputBufferR,
+												   samplesProcessing);
+			
+			// Adjust wet gain
+			BMSmoothGain_processBuffer(&This->wetGain, This->outputBufferL, This->outputBufferR, This->outputBufferL, This->outputBufferR, samplesProcessing);
+			
+			// Adjust the dry gain and send the dry signal to the mixing buffer
+			BMSmoothGain_processBuffer(&This->dryGain,
+									   inL + samplesProcessed, inR + samplesProcessed,
+									   This->mixingBufferL, This->mixingBufferR,
+									   samplesProcessing);
+			
+			// mix the wet and dry signals to the output buffer
+			vDSP_vadd(This->mixingBufferL, 1, This->outputBufferL, 1,
+					  This->outputBufferL, 1,
+					  samplesProcessing);
+			vDSP_vadd(This->mixingBufferR, 1, This->outputBufferR, 1,
+					  This->outputBufferR, 1,
+					  samplesProcessing);
+		}
+		// if we are in bypass mode, send silence to the delay so it doesn't make sound when we turn it back on.
+		else {
+			vDSP_vclr(This->mixingBufferL, 1, samplesProcessing);
+			BMSimpleDelayStereo_process(&This->delay, This->mixingBufferL, This->mixingBufferL, This->outputBufferL, This->outputBufferR, samplesProcessing);
+		}
+		
+		// Bypass switch
+		BMWetDryMixer_processBufferInPhase(&This->bypassSwitch,
+										   This->outputBufferL, This->outputBufferR,
+										   inL + samplesProcessed, inR + samplesProcessed,
+										   outL + samplesProcessed, outR + samplesProcessed,
+										   samplesProcessing);
+		
+		// Update indices
+		samplesToProcess -= samplesProcessing;
+		samplesProcessed += samplesProcessing;
+	}
+}
+
+
+
+void BMStaticDelay_setFeedbackCrossMix(BMStaticDelay *This, float amount){
+	BM2x2MatrixMixer_setRotation(&This->matrixMixer, amount * M_PI_2);
+}
 
 
 
 
 void BMStaticDelay_setRT60DecayTime(BMStaticDelay *This, float rt60DecayTime){
-    This->decayTime = rt60DecayTime;
-    This->feedbackGain = rt60FeedbackGain(This->delayTimeInSeconds, rt60DecayTime);
-    BMStaticDelay_setFeedbackMatrix(This);
-}
-
-
-
-
-
-/*
- * @param amount in [0,1]. 1 is full crossover
- */
-void BMStaticDelay_setFeedbackCrossMix(BMStaticDelay *This, float amount){
-    // set the matrix rotation rate for the feedback
-    This->crossMixAmount = amount;
-    This->crossMixAngle = amount * M_PI_2;
-    BMStaticDelay_setFeedbackMatrix(This);
-    
-    // The lfo frequency is not adjustable. If on, it is 0.1 hz, otherwise it
-    // is off.
-    if(amount>0.01){
-        This->lfoFreq = 0.1;
-    }else{
-        This->lfoFreq = 0;
-    }
-    This->updateLFO = true;
-}
-
-
-void BMStaticDelay_updateLFO(BMStaticDelay *This){
-    if(This->updateLFO){
-        This->updateLFO = false;
-        BMQuadratureOscillator_setFrequency(&This->qosc, This->lfoFreq);
-    }
+	BMReverbDelayGainFromRT60(rt60DecayTime, This->delayTimeInSeconds);
 }
 
 
 
 void BMStaticDelay_setWetGain(BMStaticDelay *This, float gainDb){
-    BMSmoothGain_setGainDb(&This->wetGain, gainDb);
+	BMSmoothGain_setGainDb(&This->wetGain, gainDb);
 }
 
 
+
 void BMStaticDelay_setDryGain(BMStaticDelay *This, float gainDb){
-    BMSmoothGain_setGainDb(&This->dryGain, gainDb);
+	BMSmoothGain_setGainDb(&This->dryGain, gainDb);
 }
 
 
 
 void BMStaticDelay_setLowpassFc(BMStaticDelay *This, float fc){
-    assert(fc > 0.0f);
-    This->lowpassFC = fc;
-    BMMultiLevelBiquad_setLowPass12db(&This->filter, fc, Filter_LP_Level);
+	BMMultiLevelBiquad_setLowPass6db(&This->filter, fc, BM_STATIC_DELAY_LOWPASS_FILTER_LEVEL);
 }
+
+
 
 void BMStaticDelay_setHighpassFc(BMStaticDelay *This, float fc){
-    assert(fc > 0.0f);
-    This->highpassFC = fc;
-    BMMultiLevelBiquad_setHighPass12db(&This->filter, fc, Filter_HP_Level);
-}
-
-void BMStaticDelay_setBypass(BMStaticDelay *This, size_t level){
-    BMMultiLevelBiquad_setBypass(&This->filter, level);
-}
-
-
-void BMStaticDelay_destroy(BMStaticDelay *This){
-    // mark the delay uninitialised to prevent usage after deletion
-    This->initComplete = 0;
-    
-    // free resources used by all configurations
-    TPCircularBufferCleanup(&This->bufferL);
-    free(This->feedbackBufferL);
-    free(This->tempBufferL);
-    
-    // free resources used by stereo out configurations
-    if(This->numChannelsOut == 2){
-        TPCircularBufferCleanup(&This->bufferR);
-        free(This->feedbackBufferR);
-        free(This->LFOBufferL);
-        free(This->LFOBufferR);
-        
-        if(This->numChannelsIn == 2)
-            free(This->tempBufferR);
-    }
-    
-    // free the filter resources
-    BMMultiLevelBiquad_free(&This->filter);
+	BMMultiLevelBiquad_setLowPass6db(&This->filter, fc, BM_STATIC_DELAY_HIGHPASS_FILTER_LEVEL);
 }
 
 
 
-
-
-
-/*
- * Processing function used once for mono and twice for stereo
- */
-static inline void processOneChannel(TPCircularBuffer* buffer, const void* input, void* output, int numFrames){
-    
-    int bytesToProcess = numFrames * sizeof(float);
-    
-    while(bytesToProcess > 0){
-        /*
-         * Write to the circular buffer
-         */
-        
-        // get a pointer to the head of the buffer
-        // and how find out many bytes are available to write
-        uint32_t bytesAvailableForWrite;
-        void* head = TPCircularBufferHead(buffer, &bytesAvailableForWrite);
-        
-        // how many bytes are we processing This time through the loop?
-        SInt32 bytesProcessing = min(bytesToProcess,bytesAvailableForWrite);
-        
-        // copy from input to the buffer head
-        memcpy(head, input, bytesProcessing);
-        
-        // mark the written region of the buffer as written
-        TPCircularBufferProduce(buffer, bytesProcessing);
-        
-        // advance the input pointer
-        input += bytesProcessing;
-        
-        
-        /*
-         * read from the circular buffer
-         */
-        
-        // get a pointer to the tail of the buffer and
-        // find out how many bytes are available for reading
-        uint32_t bytesAvailableForRead;
-        void* tail = TPCircularBufferTail(buffer, &bytesAvailableForRead);
-        
-        // if the bytes available for reading is less than what we just wrote,
-        // something has gone wrong
-        assert(bytesAvailableForRead >= bytesProcessing);
-        
-        // copy from buffer tail to output
-        memcpy(output, tail, bytesProcessing);
-        
-        // mark the read bytes as used
-        TPCircularBufferConsume(buffer, bytesProcessing);
-        
-        // advance the output pointer
-        output += bytesProcessing;
-        
-        // how many bytes still left to process?
-        bytesToProcess -= bytesProcessing;
-    }
+void BMStaticDelay_setDelayTime(BMStaticDelay *This, float timeInSeconds){
+	This->delayTimeTargetInSeconds = timeInSeconds;
+	This->needsDelayTimeUpdate = true;
 }
 
 
 
-
-
-void static inline stereoBufferHelper(BMStaticDelay *This,
-                                      const float* inL, const float* inR,
-                                      float* outL, float* outR,
-                                      int framesProcessing){
-    
-    // We will use the feedback buffer as a cache for mixing. We
-    // rename the feedback buffer to make the code easier to read.
-    float* mixBufferL = This->feedbackBufferL;
-    float* mixBufferR = This->feedbackBufferR;
-    
-    // mix the feedback buffer with the input. Cache to the mix buffer.
-    vDSP_vadd(inL, 1,
-              This->feedbackBufferL, 1,
-              mixBufferL, 1,
-              framesProcessing);
-    vDSP_vadd(inR, 1,
-              This->feedbackBufferR, 1,
-              mixBufferR, 1,
-              framesProcessing);
-    
-    // process the delay to the outputs
-    processOneChannel(&This->bufferL,
-                      mixBufferL,
-                      outL,
-                      framesProcessing);
-    
-    processOneChannel(&This->bufferR,
-                      mixBufferR,
-                      outR,
-                      framesProcessing);
-    
-    /*
-     * mix the feedback to the feedback buffer
-     */
-    // straight mix (L=>L and R=>R)
-	float m00 = This->feedbackMatrix.columns[0][0];
-	float m11 = This->feedbackMatrix.columns[1][1];
-    vDSP_vsmul(outL, 1, &m00,
-               This->feedbackBufferL, 1,
-               framesProcessing);
-    vDSP_vsmul(outR, 1, &m11,
-               This->feedbackBufferR, 1,
-               framesProcessing);
-    
-    // cross mix (L=>R and R=>L)
-	float m01 = This->feedbackMatrix.columns[1][0];
-	float m10 = This->feedbackMatrix.columns[0][1];
-    vDSP_vsma(outL, 1, &m01,
-              This->feedbackBufferR, 1,
-              This->feedbackBufferR, 1,
-              framesProcessing);
-    vDSP_vsma(outR, 1, &m10,
-              This->feedbackBufferL, 1,
-              This->feedbackBufferL, 1,
-              framesProcessing);
+void BMStaticDelay_setBypassed(BMStaticDelay *This){
+	BMWetDryMixer_setMix(&This->bypassSwitch, 0.0f);
 }
 
 
-
-
-
-
-void BMStaticDelay_processBufferStereo(BMStaticDelay *This,
-                                       const float* inL, const float* inR,
-                                       float* outL, float* outR,
-                                       int numFrames){
-    // confirm that the delay is initialised
-    assert(This->initComplete == BMSD_INIT_COMPLETED);
-    
-    // confirm that the delay is configured correctly
-    assert(This->numChannelsIn == 2 && This->numChannelsOut == 2);
-    
-    // don't process anything if there are nan values in the input
-    if (isnan(inL[0]) || isnan(inR[0])) {
-        memset(outL, 0, sizeof(float)*numFrames);
-        memset(outR, 0, sizeof(float)*numFrames);
-        return;
-    }
-    
-    BMStaticDelay_updateLFO(This);
-    
-    size_t i = 0;
-    while(numFrames > 0){
-        
-        // what is the largest chunk we can process at one time?
-        int framesProcessing = min(numFrames, This->delayTimeSamples);
-        
-        // mix both channels to one
-        vDSP_vadd(&inL[i], 1, &inR[i], 1, This->tempBufferL, 1, framesProcessing);
-        
-        // scale down so that the energy per channel after mixing is equal
-        float scale = M_SQRT1_2;
-        vDSP_vsmul(This->tempBufferL, 1, &scale, This->tempBufferL, 1, framesProcessing);
-        
-        /*
-         * multiplex the mono input to stereo, using a quadrature LFO
-         * to rotate between the two channels.
-         */
-        // generate the quadrature LFO output into the temp buffers
-        BMQuadratureOscillator_process(&This->qosc,
-									   This->LFOBufferL,
-									   This->LFOBufferR,
-									   framesProcessing);
-        
-        // multiplex the mixed input to the left channel buffer
-        vDSP_vmul(This->LFOBufferL, 1, This->tempBufferL,1,
-                  This->LFOBufferL, 1,
-                  framesProcessing);
-        // multiplex the mixed input to the right channel buffer
-        vDSP_vmul(This->LFOBufferR, 1, This->tempBufferL,1,
-                  This->LFOBufferR, 1,
-                  framesProcessing);
-        
-        // process the delay
-        stereoBufferHelper(This,
-                           This->LFOBufferL, This->LFOBufferR,
-                           This->tempBufferL, This->tempBufferR,
-                           framesProcessing);
-        
-        // filter the output
-        BMMultiLevelBiquad_processBufferStereo(&This->filter,
-                                               This->tempBufferL, This->tempBufferR,
-                                               This->tempBufferL, This->tempBufferR,
-                                               framesProcessing);
-        
-        // process gain of wet signal
-        BMSmoothGain_processBuffer(&This->wetGain,
-                                   This->tempBufferL, This->tempBufferR,
-                                   This->tempBufferL, This->tempBufferR,
-                                   framesProcessing);
-        
-        // process gain of dry signal, buffering into the output
-        BMSmoothGain_processBuffer(&This->dryGain,
-                                   &inL[i], &inR[i],
-                                   &outL[i], &outR[i],
-                                   framesProcessing);
-        
-        // mix wet and dry signals
-        vDSP_vadd(This->tempBufferL,1,&outL[i],1,&outL[i],1,framesProcessing);
-        vDSP_vadd(This->tempBufferR,1,&outR[i],1,&outR[i],1,framesProcessing);
-        
-        
-        // advance pointers
-        i += framesProcessing;
-        numFrames -= framesProcessing;
-    }
-    
-    if(This->delayTimeNeedsUpdate){
-        
-        BMStaticDelay_destroy(This);
-        
-        BMStaticDelay_init(This,
-                           2, 2,
-                           This->delayTimeInSeconds,
-                           This->decayTime,
-                           BMSmoothGain_getGainDb(&This->wetGain),
-                           This->crossMixAmount,
-                           This->lowpassFC,
-                           This->highpassFC,
-                           This->sampleRate);
-    }
+void BMStaticDelay_setActive(BMStaticDelay *This){
+	BMWetDryMixer_setMix(&This->bypassSwitch, 1.0f);
 }
-
-
-
-
-
-//#ifdef __cplusplus
-//}
-//#endif

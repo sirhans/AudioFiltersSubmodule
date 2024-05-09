@@ -52,133 +52,171 @@ extern "C" {
     
     
 #include <stdio.h>
-#include <simd/simd.h>
-#include "TPCircularBuffer+AudioBufferList.h"
-#include "BM2x2Matrix.h"
+//#include <simd/simd.h>
+//#include "TPCircularBuffer+AudioBufferList.h"
+//#include "BM2x2Matrix.h"
+//#include "BMMultiLevelBiquad.h"
+//#include "BMQuadratureOscillator.h"
+#include "BMWetDryMixer.h"
+#include "BMLFOPan2.h"
+#include "BMSimpleDelay.h"
+#include "BM2x2MatrixMixer.h"
 #include "BMMultiLevelBiquad.h"
-#include "BMQuadratureOscillator.h"
-#include "BMSmoothGain.h"
     
-#define Filter_LP_Level 0
-#define Filter_HP_Level 1
-#define Filter_Count 2
+//#define Filter_LP_Level 0
+//#define Filter_HP_Level 1
+//#define Filter_Count 2
     
-#define BMSD_INIT_COMPLETED 9913156
+//#define BMSD_INIT_COMPLETED 9913156
     
     
-    typedef struct BMStaticDelay {
-        TPCircularBuffer bufferL, bufferR;
-        size_t numChannelsIn, numChannelsOut;
-        int delayTimeSamples;
-        float sampleRate, feedbackGain, delayTimeInSeconds, crossMixAngle, crossMixAmount, lowpassFC, decayTime, lfoFreq, highpassFC;
-        bool updateLFO;
-        float *feedbackBufferL, *feedbackBufferR, *tempBufferL, *tempBufferR, *LFOBufferR, *LFOBufferL;
-        simd_float2x2 feedbackMatrix;
-        BMMultiLevelBiquad filter;
-        BMQuadratureOscillator qosc;
-        BMSmoothGain wetGain, dryGain;
-        uint32_t initComplete;
-        bool delayTimeNeedsUpdate;
-    } BMStaticDelay;
+//    typedef struct BMStaticDelay {
+//        TPCircularBuffer bufferL, bufferR;
+//        size_t numChannelsIn, numChannelsOut;
+//        int delayTimeSamples;
+//        float sampleRate, feedbackGain, delayTimeInSeconds, crossMixAngle, crossMixAmount, lowpassFC, decayTime, lfoFreq, highpassFC;
+//        bool updateLFO;
+//		float *feedbackBufferL, *feedbackBufferR, *tempBufferL, *tempBufferR, *LFOBufferR, *LFOBufferL, *mixBufferL, *mixBufferR;
+//        simd_float2x2 feedbackMatrix;
+//        BMMultiLevelBiquad filter;
+//        BMQuadratureOscillator qosc;
+//        BMSmoothGain wetGain, dryGain;
+//        uint32_t initComplete;
+//        bool delayTimeNeedsUpdate;
+//    } BMStaticDelay;
     
+typedef struct BMStaticDelay {
+	BMWetDryMixer bypassSwitch;
+	BMSimpleDelayStereo delay;
+	BM2x2MatrixMixer matrixMixer;
+	BMMultiLevelBiquad filter;
+	BMLFOPan2 pan;
+	BMSmoothGain wetGain, dryGain;
+	float feedbackGain, delayTimeInSeconds, delayTimeTargetInSeconds, sampleRate;
+	float *feedbackBufferL, *feedbackBufferR, *mixingBufferL, *mixingBufferR, *outputBufferL, *outputBufferR;
+	bool needsDelayTimeUpdate;
+} BMStaticDelay;
     
-    
-    /*
-     * @param numChannelsIn  1:mono, 2:stereo
-     * @param numChannelsOut 1:mono, 2:stereo
-     * @param delayTimeSeconds delay time in seconds
-     * @param decayTimeSeconds Time for feedback to decay from unity gain to -60db. Set 0 for no feedback.
-     * @param wetGainDb sets the gain level of the first echo out of the delay
-     * @param crossMixAmount In [0,1]. Set to 0 for no cross mix, 1 for 100% cross, 0.5 for even mixing.
-     * @param lowpassFC The cutoff frequency of a 12db lowpass filter on the delay signal output
-     * @param highpassFC The cutoff frequency of a 12db highpass filter on the delay signal output
-     * @param sampleRate
-     */
-    void BMStaticDelay_init(BMStaticDelay *This,
-                            size_t numChannelsIn, size_t numChannelsOut,
-                            float delayTimeSeconds,
-                            float decayTimeSeconds,
-                            float wetGainDb,
-                            float crossMixAmount,
-                            float lowpassFC,
-                            float highpassFC,
-                            float sampleRate);
-    
-    void BMStaticDelay_destroy(BMStaticDelay *This);
-    
-    
-    
-    /*!
-     *BMStaticDelay_processBufferStereo
-     *
-     */
-    void BMStaticDelay_processBufferStereo(BMStaticDelay *This,
-                                           const float* inL, const float* inR,
-                                           float* outL, float* outR,
-                                           int numFrames);
-    
-    
-    /*!
-     * BMStaticDelay_setFeedbackCrossMix
-     *
-     * @abstract sets the amount of mixing from left channel to right and right channel to left
-     *
-     * @param amount In [0,1]. Set to 0 for no cross mix, 1 for 100% cross, 0.5 for even mixing.
-     */
-    void BMStaticDelay_setFeedbackCrossMix(BMStaticDelay *This, float amount);
-    
-    
-    
-    /*!
-     *BMStaticDelay_setRT60DecayTime
-     *
-     * @abstract Sets the time for the gain of the feedback signal to decay from unity down to -60db
-     */
-    void BMStaticDelay_setRT60DecayTime(BMStaticDelay *This, float rt60DecayTime);
-    
-    
-    
-    /*!
-     *BMStaticDelay_setWetGain
-     *
-     * @abstract sets the wet mixture
-     *
-     * @param gainDb  sets the gain of the wet signal in dB
-     */
-    void BMStaticDelay_setWetGain(BMStaticDelay *This, float gainDb);
-    
-    
-    
-    /*!
-     *BMStaticDelay_setLowpassFc
-     *
-     * @param fc The cutoff frequency of a 12db lowpass filter on the delay signal output
-     */
-    void BMStaticDelay_setLowpassFc(BMStaticDelay *This, float fc);
-    
-    
-    
-    /*!
-     *BMStaticDelay_setHighpassFc
-     *
-     * @param fc The cutoff frequency of a 12db highpass filter on the delay signal output
-     */
-    void BMStaticDelay_setHighpassFc(BMStaticDelay *This, float fc);
-    
-    
-    
-    /*!
-     *BMStaticDelay_setDelayTime
-     *
-     * @abstract set the delay time. The delay time must be updated on the audio thread and this will cause a click.  Calling this function queues the update.  The update will take effect next time the process function is called.
-     *
-     * @param timeInSeconds delay time in seconds
-     */
-    void BMStaticDelay_setDelayTime(BMStaticDelay *This, float timeInSeconds);
-    
-    void BMStaticDelay_setBypass(BMStaticDelay *This, size_t level);
-    
-    void BMStaticDelay_setDryGain(BMStaticDelay *This, float gainDb);
+/*
+ * @param delayTimeSeconds delay time in seconds
+ * @param decayTimeSeconds Time for feedback to decay from unity gain to -60db. Set 0 for no feedback.
+ * @param wetGainDb sets the gain level of the first echo out of the delay
+ * @param crossMixAmount In [0,1]. Set to 0 for no cross mix, 1 for 100% cross, 0.5 for even mixing.
+ * @param lowpassFC The cutoff frequency of a 12db lowpass filter on the delay signal output
+ * @param highpassFC The cutoff frequency of a 12db highpass filter on the delay signal output
+ * @param sampleRate
+ */
+void BMStaticDelay_init(BMStaticDelay *This,
+						float delayTimeSeconds,
+						float decayTimeSeconds,
+						float wetGainDb,
+						float crossMixAmount,
+						float lowpassFC,
+						float highpassFC,
+						float sampleRate);
+/*!
+ *BMStaticDelay_free
+ */
+void BMStaticDelay_free(BMStaticDelay *This);
+
+
+/*!
+ *BMStaticDelay_destroy
+ *
+ * Deprecated alternate name for BMStaticDelay_free
+ */
+void BMStaticDelay_destroy(BMStaticDelay *This);
+
+
+
+/*!
+ *BMStaticDelay_processBufferStereo
+ *
+ */
+void BMStaticDelay_processBufferStereo(BMStaticDelay *This,
+									   float* inL, float* inR,
+									   float* outL, float* outR,
+									   int numFrames);
+
+
+/*!
+ * BMStaticDelay_setFeedbackCrossMix
+ *
+ * @abstract sets the amount of mixing from left channel to right and right channel to left
+ *
+ * @param amount In [0,1]. Set to 0 for no cross mix, 1 for 100% cross, 0.5 for even mixing.
+ */
+void BMStaticDelay_setFeedbackCrossMix(BMStaticDelay *This, float amount);
+
+
+
+/*!
+ *BMStaticDelay_setRT60DecayTime
+ *
+ * @abstract Sets the time for the gain of the feedback signal to decay from unity down to -60db
+ */
+void BMStaticDelay_setRT60DecayTime(BMStaticDelay *This, float rt60DecayTime);
+
+
+
+/*!
+ *BMStaticDelay_setWetGain
+ *
+ * @abstract sets the wet gain
+ *
+ * @param gainDb  sets the gain of the wet signal in dB
+ */
+void BMStaticDelay_setWetGain(BMStaticDelay *This, float gainDb);
+
+/*!
+* BMStaticDelay_setDryGain
+*
+*
+*/
+void BMStaticDelay_setDryGain(BMStaticDelay *This, float gainDb);
+
+
+/*!
+ *BMStaticDelay_setLowpassFc
+ *
+ * @param fc The cutoff frequency of a 6db lowpass filter on the delay signal output
+ */
+void BMStaticDelay_setLowpassFc(BMStaticDelay *This, float fc);
+
+
+
+/*!
+ *BMStaticDelay_setHighpassFc
+ *
+ * @param fc The cutoff frequency of a 6db highpass filter on the delay signal output
+ */
+void BMStaticDelay_setHighpassFc(BMStaticDelay *This, float fc);
+
+
+
+/*!
+ *BMStaticDelay_setDelayTime
+ *
+ * @abstract set the delay time. The delay time must be updated on the audio thread and this will cause a click.  Calling this function queues the update.  The update will take effect next time the process function is called.
+ *
+ * @param timeInSeconds delay time in seconds
+ */
+void BMStaticDelay_setDelayTime(BMStaticDelay *This, float timeInSeconds);
+
+
+/*!
+ *BMStaticDelay_setBypassed
+ *
+ * @abstrace switch from active mode to bypass mode
+ */
+void BMStaticDelay_setBypassed(BMStaticDelay *This);
+
+/*!
+ *BMStaticDelay_setActive
+ *
+ * @abstract switch from bypass mode to active mode
+ */
+void BMStaticDelay_setActive(BMStaticDelay *This);
     
 #ifdef __cplusplus
 }
