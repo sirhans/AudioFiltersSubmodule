@@ -10,6 +10,7 @@
 #define BMStereoMod2_h
 
 #include <stdio.h>
+#include <stdbool.h>
 #include "BMCrossover.h"
 #include "BMVelvetNoiseDecorrelator.h"
 #include "BMQuadratureOscillator.h"
@@ -21,6 +22,10 @@ typedef struct BMStereoMod2 {
 	BMVelvetNoiseDecorrelator decorrelators [4];
 	BMQuadratureOscillator qOscillator;
 	BMWetDryMixer wetDryMixer;
+	
+	// arrays to monitor the state of the decorrelators
+	bool dcState [4];
+	bool dcPreviousState [4];
 	
 	// buffers for low, mid, and high (mid has wet and dry)
 	float *lowL, *lowR, *midLwet, *midRwet, *midLdry, *midRdry, *highL, *highR;

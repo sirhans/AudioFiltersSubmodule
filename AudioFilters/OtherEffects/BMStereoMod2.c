@@ -13,13 +13,13 @@
 // decorrelator settings
 #define BM_SM2_RT60 0.3f
 #define BM_SM2_LOW_CROSSOVER_FC 350.0f
-#define BM_SM2_HIGH_CROSSOVER_FC 1200.0f
-#define BM_SM2_TAPS_PER_CHANNEL 3
-#define BM_SM2_DECORRELATOR_FREQUENCY_BAND_WIDTH 40.0f
+#define BM_SM2_HIGH_CROSSOVER_FC 1500.0f
+#define BM_SM2_TAPS_PER_CHANNEL 48
+#define BM_SM2_DECORRELATOR_FREQUENCY_BAND_WIDTH 80.0f // The VND length is one wavelength of this frequency
 #define BM_SM2_DIFFUSION_TIME 1.0f / BM_SM2_DECORRELATOR_FREQUENCY_BAND_WIDTH
 
 // LFO settings
-#define BM_SM2_MOD_RATE 0.6f
+#define BM_SM2_MOD_RATE 0.3f
 
 // other settings
 #define BM_SM2_WET_MIX 0.40f
@@ -72,6 +72,16 @@ void BMStereoMod2_init(BMStereoMod2 *This, float sampleRate){
 	for(size_t i=1; i<4; i++){
 		This->vndL[i] = i*BM_BUFFER_CHUNK_SIZE + This->vndL[0];
 		This->vndR[i] = i*BM_BUFFER_CHUNK_SIZE + This->vndR[0];
+	}
+	
+	// init the state for the decorrelators
+	for(size_t i=0; i<4; i++){
+		// these initial values aren't really the correct values,
+		// but that doesn't matter. We're just doing this to prevent the
+		// decorrelators from getting reinitialised while they process the first
+		// buffer of audio.
+		This->dcState[i] = true;
+		This->dcPreviousState[i] = true;
 	}
 }
 
@@ -129,6 +139,32 @@ void BM4ChannelSum(const float** buffersL, const float** buffersR,
 	// add buffer 4
 	vDSP_vadd(buffersL[3], 1, outL, 1, outL, 1, numSamples);
 	vDSP_vadd(buffersR[3], 1, outR, 1, outR, 1, numSamples);
+}
+
+
+
+/*!
+ *BMStereoMod2_whichDecorrelatorJustBecameInactive
+ *
+ * @return the index of the decorrelator that became inactive just now, or -1 if none of them did.
+ */
+int BMStereoMod2_whichDecorrelatorJustBecameInactive(BMStereoMod2 *This){
+	int newlyInactiveDecorrelator = -1;
+	
+	// find the index of the decorrelator that just went inactive.
+	// There should be only one, but if there were more than one we could just
+	// return the index of the last one and that would be fine.
+	for(int i=0; i<4; i++){
+		if(This->dcState[i] == false && This->dcPreviousState[i] == true)
+			newlyInactiveDecorrelator = i;
+	}
+	
+	// update the previous state array
+	for(size_t i=0; i<4; i++)
+		This->dcPreviousState[i] = This->dcState[i];
+	
+	// we're done
+	return newlyInactiveDecorrelator;
 }
 
 
@@ -197,19 +233,25 @@ void BMStereoMod2_processWithMod(BMStereoMod2 *This,
 						  float* outL, float* outR,
 						  size_t numSamples){
 	
-	while(numSamples > 0){
-		size_t samplesProcessing = BM_MIN(numSamples, BM_BUFFER_CHUNK_SIZE);
+	size_t samplesRemaining = numSamples;
+	size_t c = 0;
+	while(samplesRemaining > 0){
+		size_t samplesProcessing = BM_MIN(samplesRemaining, BM_BUFFER_CHUNK_SIZE);
 		
 		// split into bass, mid, treble
 		BMCrossover3way_processStereo(&This->crossover,
-									  inL, inR,
+									  inL + c, inR + c,
 									  This->lowL, This->lowR,
 									  This->midLdry, This->midRdry,
 									  This->highL, This->highR,
 									  samplesProcessing);
 		
 		
-		// run four channels of decorrelators on the mid channel
+		// Run four channels of decorrelators on the mid channel.
+		// we always process all four but we only actually use two at a time.
+		// One of the decorrelators is fading in while another is fading out.
+		// The unused ones rest while they reinitialise to get new random phases
+		// before they become active again.
 		for(size_t i=0; i<4; i++)
 			BMVelvetNoiseDecorrelator_processBufferStereo(&This->decorrelators[i],
 													  This->midLdry, This->midRdry,
@@ -217,18 +259,19 @@ void BMStereoMod2_processWithMod(BMStereoMod2 *This,
 													  samplesProcessing);
 		
 		// apply quadrature phase volume envelopes to each decorrelator output
-		bool zeros [4];
 		BMQuadratureOscillator_volumeEnvelope4Stereo(&This->qOscillator,
 													 This->vndL,
 													 This->vndR,
-													 zeros,
+													 This->dcState,
 													 samplesProcessing);
 		
-		// update the decorrelators that are currently at zero gain to get more
-		// organic variation
-		for(size_t i=0; i<4; i++)
-			if(zeros[i] == true)
-				BMVelvetNoiseDecorrelator_randomiseAll(&This->decorrelators[i]);
+		// which decorrelator just became inactive? (-1 if none of them)
+		int decorrelatorToUpdate = BMStereoMod2_whichDecorrelatorJustBecameInactive(This);
+		
+		// if one of the decorrelators just went inactive, update it while it
+		// is resting to randomize the phase.
+		if (decorrelatorToUpdate >= 0)
+				BMVelvetNoiseDecorrelator_randomiseAll(&This->decorrelators[decorrelatorToUpdate]);
 		
 		// mix the signal from the four decorrelators into mid wet buffers
 		BM4ChannelSum((const float**)This->vndL, (const float**)This->vndR,
@@ -246,15 +289,12 @@ void BMStereoMod2_processWithMod(BMStereoMod2 *This,
 		BMCrossover3way_recombine(This->lowL, This->lowR,
 								  This->midLwet, This->midRwet,
 								  This->highL, This->highR,
-								  outL, outR,
+								  outL + c, outR + c,
 								  samplesProcessing);
 			
 		// advance pointers
-		numSamples -= samplesProcessing;
-		inL += samplesProcessing;
-		inR += samplesProcessing;
-		outL += samplesProcessing;
-		outR += samplesProcessing;
+		samplesRemaining -= samplesProcessing;
+		c += samplesProcessing;
 	}
 }
 
