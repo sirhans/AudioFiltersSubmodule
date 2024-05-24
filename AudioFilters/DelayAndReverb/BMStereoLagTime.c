@@ -83,7 +83,7 @@ void BMStereoLagTime_setDelayRight(BMStereoLagTime* This,size_t delaySample,bool
 }
 
 
-void BMStereoLagTime_prepareStrideBufferL(BMStereoLagTime* This,size_t samplesProcessed,size_t samplesProcessing){
+void BMStereoLagTime_prepareStrideBufferL(BMStereoLagTime* This,size_t samplesProcessing){
     assert(This->delayParamL.sampleToReachTarget!=0);
     
     float dr = (This->delayParamL.stopSamples-This->delayParamL.startSamples);
@@ -102,7 +102,7 @@ void BMStereoLagTime_prepareStrideBufferL(BMStereoLagTime* This,size_t samplesPr
     This->delayParamL.lastSTC = currentSTC;
 }
 
-void BMStereoLagTime_prepareStrideBufferR(BMStereoLagTime* This,size_t samplesProcessed,size_t samplesProcessing){
+void BMStereoLagTime_prepareStrideBufferR(BMStereoLagTime* This,size_t samplesProcessing){
     assert(This->delayParamR.sampleToReachTarget!=0);
 
     //Right
@@ -130,7 +130,7 @@ void BMStereoLagTime_process(BMStereoLagTime* This,float* inL, float* inR, float
     while (samplesProcessed<numSamples) {
         samplesProcessing = BM_MIN(numSamples- samplesProcessed,BM_BUFFER_CHUNK_SIZE);
         //left
-        if(This->delayParamL.currentSample==This->delayParamL.sampleToReachTarget&&
+        if(This->delayParamL.currentSample==This->delayParamL.sampleToReachTarget &&
            This->delayParamL.stopSamples==This->delayParamL.desiredDS){
             //Stop state - make copy
             float incre = 1;
@@ -146,7 +146,7 @@ void BMStereoLagTime_process(BMStereoLagTime* This,float* inL, float* inR, float
                 This->delayParamL.startSamples = This->delayParamL.stopSamples;
                 This->delayParamL.stopSamples = This->delayParamL.desiredDS;
                 This->delayParamL.lastSTC = 0;
-                printf("L %f %f %lu\n",This->delayParamL.startSamples,This->delayParamL.stopSamples,numSamples-samplesProcessed);
+//                printf("L %f %f %lu\n",This->delayParamL.startSamples,This->delayParamL.stopSamples,numSamples-samplesProcessed);
                 
             }else{
                 //Not reach target
@@ -154,7 +154,7 @@ void BMStereoLagTime_process(BMStereoLagTime* This,float* inL, float* inR, float
             }
             
             //Process pitch shift
-            BMStereoLagTime_prepareStrideBufferL(This,samplesProcessed,samplesProcessing);
+            BMStereoLagTime_prepareStrideBufferL(This,samplesProcessing);
             BMSmoothDelay_processBufferByStride(&This->delayLeft, inL+samplesProcessed, outL+samplesProcessed, This->strideBufferL, This->delayParamL.sampleToConsume, samplesProcessing);
             
             This->delayParamL.currentSample += samplesProcessing;
@@ -184,7 +184,7 @@ void BMStereoLagTime_process(BMStereoLagTime* This,float* inL, float* inR, float
                 This->delayParamR.startSamples = This->delayParamR.stopSamples;
                 This->delayParamR.stopSamples = This->delayParamR.desiredDS;
                 This->delayParamR.lastSTC = 0;
-                printf("R %f %f %lu\n",This->delayParamR.startSamples,This->delayParamR.stopSamples,numSamples-samplesProcessed);
+//                printf("R %f %f %lu\n",This->delayParamR.startSamples,This->delayParamR.stopSamples,numSamples-samplesProcessed);
                 
             }else{
                 //Not reach target
@@ -192,7 +192,7 @@ void BMStereoLagTime_process(BMStereoLagTime* This,float* inL, float* inR, float
             }
             
             //Process pitch shift
-            BMStereoLagTime_prepareStrideBufferR(This,samplesProcessed,samplesProcessing);
+            BMStereoLagTime_prepareStrideBufferR(This,samplesProcessing);
             BMSmoothDelay_processBufferByStride(&This->delayRight, inR+samplesProcessed, outR+samplesProcessed, This->strideBufferR, This->delayParamR.sampleToConsume, samplesProcessing);
             
             This->delayParamR.currentSample += samplesProcessing;
