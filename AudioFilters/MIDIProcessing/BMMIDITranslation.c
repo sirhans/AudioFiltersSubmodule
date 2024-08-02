@@ -9,21 +9,21 @@
 #include "BMMIDITranslation.h"
 #include <math.h>
 
-enum BMChromaticNote MIDINoteToBMChromaticNote(uint8_t MIDINoteNumber){
+enum BMChromaticNote MIDINoteToBMChromaticNote(int MIDINoteNumber){
 	return (enum BMChromaticNote)(MIDINoteNumber % 12);
 }
 
 
 
 
-uint8_t MIDINoteToOctave(uint8_t MIDINoteNumber){
+int MIDINoteToOctave(int MIDINoteNumber){
 	return MIDINoteNumber / 12;
 }
 
 
 
 
-float pitchToFrequency(uint8_t octave,
+float pitchToFrequency(int octave,
 					   enum BMChromaticNote note,
 					   int intonationInCents,
 					   float a4ReferenceFrequency){
@@ -40,10 +40,11 @@ float pitchToFrequency(uint8_t octave,
 
 
 
-float MIDINoteToFrequency(uint8_t MIDINote){
-	uint8_t octave = MIDINoteToOctave(MIDINote);
-	enum BMChromaticNote note = MIDINoteToBMChromaticNote(MIDINote);
-	int intonation = 0;
-	float a4 = 440.0f;
-	return pitchToFrequency(octave, note, intonation, a4);
+float MIDINoteToFrequency(int MIDINote){
+//	int octave = MIDINoteToOctave(MIDINote);
+//	enum BMChromaticNote note = MIDINoteToBMChromaticNote(MIDINote);
+//	int intonation = 0;
+//	float a4frequency = 440.0f;
+//	return pitchToFrequency(octave, note, intonation, a4frequency);
+	return 440.0 * pow(2.0, ((float)MIDINote - 69.0)/12.0);
 }

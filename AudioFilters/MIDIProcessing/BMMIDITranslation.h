@@ -22,7 +22,7 @@ enum BMChromaticNote {BMCN_C,BMCN_Db,BMCN_D,BMCN_Eb,BMCN_E,BMCN_F,BMCN_Gb,BMCN_G
  * Convert a note as unsigned 8 bit int to BMChromaticNote, wrapping notes greater than 13.
  * This counts from C = 0.
  */
-enum BMChromaticNote MIDINoteToBMChromaticNote(uint8_t MIDINoteNumber);
+enum BMChromaticNote MIDINoteToBMChromaticNote(int MIDINoteNumber);
 
 
 
@@ -31,7 +31,7 @@ enum BMChromaticNote MIDINoteToBMChromaticNote(uint8_t MIDINoteNumber);
  *
  * Find out which octave MIDINoteNumber lies in. (C0 = 12)
  */
-uint8_t MIDINoteToOctave(uint8_t MIDINoteNumber);
+int MIDINoteToOctave(int MIDINoteNumber);
 
 
 
@@ -45,7 +45,7 @@ uint8_t MIDINoteToOctave(uint8_t MIDINoteNumber);
  * @param intonationInCents 0 is the neutral value. +100 is one note above and -100 is one note below the pitch specified by note and octave
  * @param a4ReferenceFrequency default = 440. Use the default unless you have a good reason for doing otherwise.
  */
-float pitchToFrequency(uint8_t octave,
+float pitchToFrequency(int octave,
 					   enum BMChromaticNote note,
 					   int intonationInCents,
 					   float a4ReferenceFrequency);
@@ -55,8 +55,10 @@ float pitchToFrequency(uint8_t octave,
  *MIDINoteToFrequnecy
  *
  * Convert from midi note to frequency in Hz, using A=440 tuning standard
+ *
+ * @param MIDINote this can be outside the normal range of MIDI notes, and may even include negative numbers
  */
-float MIDINoteToFrequnecy(uint8_t MIDINote);
+float MIDINoteToFrequnecy(int MIDINote);
 
 
 #endif /* BMMIDITranslation_h */
