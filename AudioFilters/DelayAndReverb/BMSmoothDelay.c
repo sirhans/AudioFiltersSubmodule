@@ -67,6 +67,8 @@ void BMSmoothDelay_prepareLGIBuffer(BMSmoothDelay* This,size_t bufferSize){
     
     //Temp buffer
     This->lgiBuffer = calloc(bufferSize + This->storeSamples, sizeof(float));
+    float d = 0;
+    vDSP_vfill(&d, This->lgiBuffer, 1, bufferSize + This->storeSamples);
 }
 
 void BMSmoothDelay_destroy(BMSmoothDelay* This){
